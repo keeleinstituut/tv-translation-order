@@ -1,0 +1,16 @@
+/application/vendor/
+
+/application/.env
+/application/.env.*
+/application/!.env.example
+
+/application/node_modules
+/application/public/build
+/application/public/hot
+/application/public/storage
+/application/storage/*.key
+/application/.phpunit.result.cache
+/application/Homestead.json
+/application/Homestead.yaml
+/application/npm-debug.log
+/application/yarn-error.log
