@@ -14,7 +14,7 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
     public function save(array $resource): void
     {
         $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'user_id' => $resource['user']['user_id'],
+            'user_id' => $resource['user']['id'],
             'forename' => $resource['user']['forename'],
             'surname' => $resource['user']['surname'],
             'personal_identification_code' => $resource['user']['personal_identification_code'],

@@ -13,6 +13,7 @@ use App\Listeners\ClassifierValues\DeleteClassifierValueListener;
 use App\Listeners\Institutions\DeleteInstitutionListener;
 use App\Listeners\Institutions\SaveInstitutionListener;
 use App\Listeners\InstitutionUsers\DeleteInstitutionUserListener;
+use App\Listeners\InstitutionUsers\SaveInstitutionUserListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -36,7 +37,7 @@ class EventServiceProvider extends ServiceProvider
             DeleteInstitutionListener::class
         ],
         InstitutionUserSaved::class => [
-            SaveInstitutionListener::class
+            SaveInstitutionUserListener::class
         ],
         InstitutionUserDeleted::class => [
             DeleteInstitutionUserListener::class
