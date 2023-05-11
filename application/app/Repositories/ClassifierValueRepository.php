@@ -3,9 +3,9 @@
 namespace App\Repositories;
 
 use Amqp\Repositories\CachedEntityRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ClassifierValueRepository implements CachedEntityRepositoryInterface
@@ -26,14 +26,19 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
         $this->getBaseQuery()->delete($id);
     }
 
-    public function deleteNotSynced(Carbon $syncStartTime): void
-    {
-        $this->getBaseQuery()->where('synced_at', '<', $syncStartTime->toIsoString())
-            ->delete();
-    }
-
     private function getBaseQuery(): Builder
     {
         return DB::connection('entity-cache-pgsql')->table('cached_classifier_values');
+    }
+
+    public function getLastSyncDateTime(): ?string
+    {
+        return $this->getBaseQuery()->max('synced_at');
+    }
+
+    public function deleteNotSynced(Carbon $syncStartTime): void
+    {
+        $this->getBaseQuery()->where('synced_at', '<=', $syncStartTime->toIsoString())
+            ->delete();
     }
 }

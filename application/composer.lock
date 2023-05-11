@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5100f6756407f5df0e7a4f3aff25b401",
+    "content-hash": "ebb33649cf3f00bf1704156ccb5a3493",
     "packages": [
         {
             "name": "brick/math",
@@ -979,16 +979,16 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-amqp",
-            "version": "0.0.1",
+            "version": "0.0.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-amqp.git",
-                "reference": "ea52c3219596c8589ede246f7dc3765c31f4521c"
+                "reference": "757f726a04b0c2d130f6ae499979f338266a3e6c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/ea52c3219596c8589ede246f7dc3765c31f4521c",
-                "reference": "ea52c3219596c8589ede246f7dc3765c31f4521c",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/757f726a04b0c2d130f6ae499979f338266a3e6c",
+                "reference": "757f726a04b0c2d130f6ae499979f338266a3e6c",
                 "shasum": ""
             },
             "require": {
@@ -1033,10 +1033,10 @@
                 "rabbitmq"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.1",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.3",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-amqp/issues"
             },
-            "time": "2023-05-10T15:30:21+00:00"
+            "time": "2023-05-11T05:49:00+00:00"
         },
         {
             "name": "laravel/framework",
@@ -6813,16 +6813,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "10.1.2",
+            "version": "10.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "6f0cd95be71add539f8fd2be25b2a4a29789000b"
+                "reference": "2379ebafc1737e71cdc84f402acb6b7f04198b9d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/6f0cd95be71add539f8fd2be25b2a4a29789000b",
-                "reference": "6f0cd95be71add539f8fd2be25b2a4a29789000b",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/2379ebafc1737e71cdc84f402acb6b7f04198b9d",
+                "reference": "2379ebafc1737e71cdc84f402acb6b7f04198b9d",
                 "shasum": ""
             },
             "require": {
@@ -6894,7 +6894,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/10.1.2"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/10.1.3"
             },
             "funding": [
                 {
@@ -6910,7 +6910,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2023-04-22T07:38:19+00:00"
+            "time": "2023-05-11T05:16:22+00:00"
         },
         {
             "name": "sebastian/cli-parser",
