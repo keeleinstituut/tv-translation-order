@@ -7,5 +7,12 @@ use SyncTools\Traits\RefreshDatabaseWithCachedEntitySchema;
 
 abstract class TestCase extends BaseTestCase
 {
-    use CreatesApplication, RefreshDatabaseWithCachedEntitySchema;
+    use CreatesApplication;
+    use RefreshDatabaseWithCachedEntitySchema;
+
+
+    protected function prepareAuthorizedRequest($accessToken): TestCase
+    {
+        return $this->withHeader('Authorization', 'Bearer ' . $accessToken);
+    }
 }
