@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class InstitutionUser extends Model
 {
-    use HasReadonlyAccess;
+    // use HasReadonlyAccess;
 
     protected $table = 'cached_institution_users';
 }
