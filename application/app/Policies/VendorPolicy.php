@@ -103,6 +103,6 @@ class VendorScope implements IScope {
     */
     public function apply(Builder $builder, Model $model): void
     {
-        // $builder->where('institution_id', Auth::user()->institutionId);
+        $builder->whereRelation('institutionUser', 'institution_id', Auth::user()->institutionId);
     }
 }

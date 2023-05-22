@@ -24,7 +24,7 @@ class VendorController extends Controller
         $params = collect($request->validated());
 
         $query = $this->getBaseQuery();
-        $data = $query->get();
+        $data = $query->paginate($params->get('limit', 10));
 
         return VendorResource::collection($data);
     }

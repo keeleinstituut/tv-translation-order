@@ -14,7 +14,7 @@ class VendorListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'limit' => 'sometimes|integer'
         ];
     }
 }
