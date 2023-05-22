@@ -21,6 +21,7 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
             'status' => $resource['status'],
             'email' => $resource['email'],
             'phone' => $resource['phone'],
+            'institution_id' => $resource['institution']['id'],
             'created_at' => $resource['created_at'],
             'updated_at' => $resource['updated_at'],
             'synced_at' => new Expression("NOW()")
