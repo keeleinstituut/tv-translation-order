@@ -14,6 +14,7 @@ return new class extends BaseCachedEntityTableMigration
         Schema::create('cached_institution_users', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('institution_id');
+            $table->foreignUuid('department_id')->nullable();
             $table->uuid('user_id');
             $table->text('forename');
             $table->text('surname');

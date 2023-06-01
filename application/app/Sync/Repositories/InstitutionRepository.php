@@ -15,6 +15,9 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
         $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
             'id' => $resource['id'],
             'name' => $resource['name'],
+            'short_name' => $resource['short_name'],
+            'phone' => $resource['phone'],
+            'email' => $resource['email'],
             'logo_url' => $resource['logo_url'],
             'created_at' => $resource['created_at'],
             'updated_at' => $resource['updated_at'],

@@ -13,8 +13,9 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
     public function save(array $resource): void
     {
         $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'user_id' => $resource['user']['id'],
             'institution_id' => $resource['institution_id'],
+            'department_id' => $resource['department']['id'] ?? null,
+            'user_id' => $resource['user']['id'],
             'forename' => $resource['user']['forename'],
             'surname' => $resource['user']['surname'],
             'personal_identification_code' => $resource['user']['personal_identification_code'],
@@ -24,7 +25,7 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
             'created_at' => $resource['created_at'],
             'updated_at' => $resource['updated_at'],
             'synced_at' => new Expression('NOW()'),
-            'deleted_at' => $resource['deleted_at'] ?? null,
+            'deleted_at' => $resource['deleted_at'],
         ]);
     }
 
