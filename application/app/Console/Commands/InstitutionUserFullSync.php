@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
-use Amqp\Console\Base\BaseEntityFullSyncCommand;
-use Amqp\Gateways\ResourceGatewayInterface;
-use Amqp\Repositories\CachedEntityRepositoryInterface;
-use App\Gateways\InstitutionUserResourceGateway;
-use App\Repositories\InstitutionUserRepository;
+use App\Sync\ApiClients\TvAuthorizationApiClient;
+use App\Sync\Gateways\InstitutionUserResourceGateway;
+use App\Sync\Repositories\InstitutionUserRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use SyncTools\Console\Base\BaseEntityFullSyncCommand;
+use SyncTools\Gateways\ResourceGatewayInterface;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionUserFullSync extends BaseEntityFullSyncCommand
 {
@@ -17,12 +19,17 @@ class InstitutionUserFullSync extends BaseEntityFullSyncCommand
      */
     protected $signature = 'institution-user:full-sync';
 
-    function getResourceGateway(): ResourceGatewayInterface
+    /**
+     * @throws BindingResolutionException
+     */
+    protected function getResourceGateway(): ResourceGatewayInterface
     {
-        return new InstitutionUserResourceGateway;
+        return new InstitutionUserResourceGateway(
+            app()->make(TvAuthorizationApiClient::class)
+        );
     }
 
-    function getEntityRepository(): CachedEntityRepositoryInterface
+    protected function getEntityRepository(): CachedEntityRepositoryInterface
     {
         return new InstitutionUserRepository();
     }

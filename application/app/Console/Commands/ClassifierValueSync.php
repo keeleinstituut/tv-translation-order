@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
-use Amqp\Console\Base\BaseEntitySyncCommand;
-use Amqp\Gateways\ResourceGatewayInterface;
-use Amqp\Repositories\CachedEntityRepositoryInterface;
-use App\Gateways\ClassifierValueResourceGateway;
-use App\Repositories\ClassifierValueRepository;
+use App\Sync\ApiClients\TvClassifierApiClient;
+use App\Sync\Gateways\ClassifierValueResourceGateway;
+use App\Sync\Repositories\ClassifierValueRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use SyncTools\Console\Base\BaseEntitySyncCommand;
+use SyncTools\Gateways\ResourceGatewayInterface;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class ClassifierValueSync extends BaseEntitySyncCommand
 {
@@ -17,12 +19,17 @@ class ClassifierValueSync extends BaseEntitySyncCommand
      */
     protected $signature = 'classifier-value:sync {id : ID of classifier value}';
 
-    function getGateway(): ResourceGatewayInterface
+    /**
+     * @throws BindingResolutionException
+     */
+    protected function getGateway(): ResourceGatewayInterface
     {
-        return new ClassifierValueResourceGateway;
+        return new ClassifierValueResourceGateway(
+            app()->make(TvClassifierApiClient::class)
+        );
     }
 
-    function getRepository(): CachedEntityRepositoryInterface
+    protected function getRepository(): CachedEntityRepositoryInterface
     {
         return new ClassifierValueRepository;
     }

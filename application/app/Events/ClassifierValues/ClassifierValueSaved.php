@@ -2,7 +2,7 @@
 
 namespace App\Events\ClassifierValues;
 
-use Amqp\Events\SyncEntityEvent;
+use SyncTools\Events\SyncEntityEvent;
 
 class ClassifierValueSaved extends SyncEntityEvent
 {

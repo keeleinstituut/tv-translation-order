@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Repositories;
+namespace App\Sync\Repositories;
 
-use Amqp\Repositories\CachedEntityRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionRepository implements CachedEntityRepositoryInterface
 {
@@ -18,19 +18,14 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
             'logo_url' => $resource['logo_url'],
             'created_at' => $resource['created_at'],
             'updated_at' => $resource['updated_at'],
-            'synced_at' => new Expression("NOW()")
+            'deleted_at' => $resource['deleted_at'],
+            'synced_at' => new Expression('NOW()'),
         ]);
     }
 
     public function delete(string $id): void
     {
         $this->getBaseQuery()->delete($id);
-    }
-
-
-    private function getBaseQuery(): Builder
-    {
-        return DB::connection('entity-cache-pgsql')->table('cached_institutions');
     }
 
     public function getLastSyncDateTime(): ?string
@@ -42,5 +37,10 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
     {
         $this->getBaseQuery()->where('synced_at', '<=', $syncStartTime->toIsoString())
             ->delete();
+    }
+
+    private function getBaseQuery(): Builder
+    {
+        return DB::connection(config('pgsql-connection.sync.name'))->table('cached_institutions');
     }
 }

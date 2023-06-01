@@ -2,14 +2,14 @@
 
 namespace App\Providers;
 
-use App\Events\ClassifierValues\ClassifierValueSaved;
 use App\Events\ClassifierValues\ClassifierValueDeleted;
+use App\Events\ClassifierValues\ClassifierValueSaved;
 use App\Events\Institutions\InstitutionDeleted;
 use App\Events\Institutions\InstitutionSaved;
 use App\Events\InstitutionUsers\InstitutionUserDeleted;
 use App\Events\InstitutionUsers\InstitutionUserSaved;
-use App\Listeners\ClassifierValues\SaveClassifierValueListener;
 use App\Listeners\ClassifierValues\DeleteClassifierValueListener;
+use App\Listeners\ClassifierValues\SaveClassifierValueListener;
 use App\Listeners\Institutions\DeleteInstitutionListener;
 use App\Listeners\Institutions\SaveInstitutionListener;
 use App\Listeners\InstitutionUsers\DeleteInstitutionUserListener;
@@ -31,17 +31,17 @@ class EventServiceProvider extends ServiceProvider
             DeleteClassifierValueListener::class,
         ],
         InstitutionSaved::class => [
-            SaveInstitutionListener::class
+            SaveInstitutionListener::class,
         ],
         InstitutionDeleted::class => [
-            DeleteInstitutionListener::class
+            DeleteInstitutionListener::class,
         ],
         InstitutionUserSaved::class => [
-            SaveInstitutionUserListener::class
+            SaveInstitutionUserListener::class,
         ],
         InstitutionUserDeleted::class => [
-            DeleteInstitutionUserListener::class
-        ]
+            DeleteInstitutionUserListener::class,
+        ],
     ];
 
     /**

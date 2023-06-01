@@ -2,9 +2,9 @@
 
 namespace App\Listeners\InstitutionUsers;
 
-use Amqp\Listeners\EntityDeleteEventListener;
-use Amqp\Repositories\CachedEntityRepositoryInterface;
-use App\Repositories\InstitutionUserRepository;
+use App\Sync\Repositories\InstitutionUserRepository;
+use SyncTools\Listeners\EntityDeleteEventListener;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class DeleteInstitutionUserListener extends EntityDeleteEventListener
 {

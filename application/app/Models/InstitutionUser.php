@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
-use App\Traits\HasReadonlyAccess;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use SyncTools\Traits\HasCachedEntityFactory;
 
 class InstitutionUser extends Model
 {
-    // use HasReadonlyAccess;
+    use HasCachedEntityFactory, HasUuids, SoftDeletes;
 
-    protected $table = 'cached_institution_users';
+    protected $table = 'entity_cache.cached_institution_users';
 }

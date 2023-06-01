@@ -2,20 +2,25 @@
 
 namespace App\Listeners\ClassifierValues;
 
-use App\Gateways\ClassifierValueResourceGateway;
-use Amqp\Gateways\ResourceGatewayInterface;
-use Amqp\Listeners\EntitySaveEventListener;
-use Amqp\Repositories\CachedEntityRepositoryInterface;
-use App\Repositories\ClassifierValueRepository;
+use App\Sync\ApiClients\TvClassifierApiClient;
+use App\Sync\Gateways\ClassifierValueResourceGateway;
+use App\Sync\Repositories\ClassifierValueRepository;
+use SyncTools\Gateways\ResourceGatewayInterface;
+use SyncTools\Listeners\EntitySaveEventListener;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class SaveClassifierValueListener extends EntitySaveEventListener
 {
-    function getGateway(): ResourceGatewayInterface
+    public function __construct(private readonly TvClassifierApiClient $apiClient)
     {
-        return new ClassifierValueResourceGateway;
     }
 
-    function getRepository(): CachedEntityRepositoryInterface
+    protected function getGateway(): ResourceGatewayInterface
+    {
+        return new ClassifierValueResourceGateway($this->apiClient);
+    }
+
+    protected function getRepository(): CachedEntityRepositoryInterface
     {
         return new ClassifierValueRepository;
     }

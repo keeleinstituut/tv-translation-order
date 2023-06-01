@@ -1,12 +1,12 @@
 <?php
 
-use Amqp\Events\MessageEventFactory;
-use App\Events\ClassifierValues\ClassifierValueSaved;
 use App\Events\ClassifierValues\ClassifierValueDeleted;
+use App\Events\ClassifierValues\ClassifierValueSaved;
 use App\Events\Institutions\InstitutionDeleted;
 use App\Events\Institutions\InstitutionSaved;
 use App\Events\InstitutionUsers\InstitutionUserDeleted;
 use App\Events\InstitutionUsers\InstitutionUserSaved;
+use SyncTools\Events\MessageEventFactory;
 
 return [
     /*
@@ -56,7 +56,7 @@ return [
                 'institution.saved' => InstitutionSaved::class,
                 'institution.deleted' => InstitutionDeleted::class,
                 'institution-user.saved' => InstitutionUserSaved::class,
-                'institution-user.deleted' => InstitutionUserDeleted::class
+                'institution-user.deleted' => InstitutionUserDeleted::class,
             ],
         ],
     ],

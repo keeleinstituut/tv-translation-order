@@ -2,9 +2,8 @@
 
 namespace App\Events\Institutions;
 
-use Amqp\Events\SyncEntityEvent;
+use SyncTools\Events\SyncEntityEvent;
 
 class InstitutionDeleted extends SyncEntityEvent
 {
-
 }

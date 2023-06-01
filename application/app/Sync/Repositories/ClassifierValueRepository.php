@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Repositories;
+namespace App\Sync\Repositories;
 
-use Amqp\Repositories\CachedEntityRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class ClassifierValueRepository implements CachedEntityRepositoryInterface
 {
@@ -17,18 +17,14 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
             'value' => $resource['value'],
             'type' => $resource['type'],
             'meta' => is_array($resource['meta']) ? json_encode($resource['meta']) : $resource['meta'],
-            'synced_at' => new Expression("NOW()")
+            'synced_at' => new Expression('NOW()'),
+            'deleted_at' => $resource['deleted_at'],
         ]);
     }
 
     public function delete(string $id): void
     {
         $this->getBaseQuery()->delete($id);
-    }
-
-    private function getBaseQuery(): Builder
-    {
-        return DB::connection('entity-cache-pgsql')->table('cached_classifier_values');
     }
 
     public function getLastSyncDateTime(): ?string
@@ -40,5 +36,10 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
     {
         $this->getBaseQuery()->where('synced_at', '<=', $syncStartTime->toIsoString())
             ->delete();
+    }
+
+    private function getBaseQuery(): Builder
+    {
+        return DB::connection(config('pgsql-connection.sync.name'))->table('cached_classifier_values');
     }
 }

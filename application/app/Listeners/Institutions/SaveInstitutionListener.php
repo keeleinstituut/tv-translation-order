@@ -2,14 +2,19 @@
 
 namespace App\Listeners\Institutions;
 
-use Amqp\Gateways\ResourceGatewayInterface;
-use Amqp\Listeners\EntitySaveEventListener;
-use Amqp\Repositories\CachedEntityRepositoryInterface;
-use App\Gateways\InstitutionResourceGateway;
-use App\Repositories\InstitutionRepository;
+use App\Sync\ApiClients\TvAuthorizationApiClient;
+use App\Sync\Gateways\InstitutionResourceGateway;
+use App\Sync\Repositories\InstitutionRepository;
+use SyncTools\Gateways\ResourceGatewayInterface;
+use SyncTools\Listeners\EntitySaveEventListener;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class SaveInstitutionListener extends EntitySaveEventListener
 {
+    public function __construct(private readonly TvAuthorizationApiClient $apiClient)
+    {
+    }
+
     protected function getRepository(): CachedEntityRepositoryInterface
     {
         return new InstitutionRepository;
@@ -17,6 +22,6 @@ class SaveInstitutionListener extends EntitySaveEventListener
 
     protected function getGateway(): ResourceGatewayInterface
     {
-        return new InstitutionResourceGateway;
+        return new InstitutionResourceGateway($this->apiClient);
     }
 }

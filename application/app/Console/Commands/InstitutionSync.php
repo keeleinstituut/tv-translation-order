@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
-use Amqp\Console\Base\BaseEntitySyncCommand;
-use Amqp\Gateways\ResourceGatewayInterface;
-use Amqp\Repositories\CachedEntityRepositoryInterface;
-use App\Gateways\InstitutionResourceGateway;
-use App\Repositories\InstitutionRepository;
+use App\Sync\ApiClients\TvAuthorizationApiClient;
+use App\Sync\Gateways\InstitutionResourceGateway;
+use App\Sync\Repositories\InstitutionRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use SyncTools\Console\Base\BaseEntitySyncCommand;
+use SyncTools\Gateways\ResourceGatewayInterface;
+use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionSync extends BaseEntitySyncCommand
 {
@@ -17,12 +19,17 @@ class InstitutionSync extends BaseEntitySyncCommand
      */
     protected $signature = 'institution:sync {id : ID of institution}';
 
-    function getGateway(): ResourceGatewayInterface
+    /**
+     * @throws BindingResolutionException
+     */
+    protected function getGateway(): ResourceGatewayInterface
     {
-        return new InstitutionResourceGateway;
+        return new InstitutionResourceGateway(
+            app()->make(TvAuthorizationApiClient::class)
+        );
     }
 
-    function getRepository(): CachedEntityRepositoryInterface
+    protected function getRepository(): CachedEntityRepositoryInterface
     {
         return new InstitutionRepository;
     }
