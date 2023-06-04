@@ -20,7 +20,6 @@ readonly class InstitutionUserResourceGateway implements ResourceGatewayInterfac
     /**
      * @throws ResourceGatewayConnectionException
      * @throws ResourceNotFoundException
-     * @throws InvalidArgumentException
      */
     public function getResource(string $id): array
     {

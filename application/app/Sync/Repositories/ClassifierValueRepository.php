@@ -2,7 +2,6 @@
 
 namespace App\Sync\Repositories;
 
-use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
@@ -27,15 +26,15 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
         $this->getBaseQuery()->delete($id);
     }
 
-    public function getLastSyncDateTime(): ?string
+    public function deleteNotSynced(): void
     {
-        return $this->getBaseQuery()->max('synced_at');
+        $this->getBaseQuery()->whereNull('synced_at')
+            ->delete();
     }
 
-    public function deleteNotSynced(Carbon $syncStartTime): void
+    public function cleanupLastSyncDateTime(): void
     {
-        $this->getBaseQuery()->where('synced_at', '<=', $syncStartTime->toIsoString())
-            ->delete();
+        $this->getBaseQuery()->update(['synced_at' => null]);
     }
 
     private function getBaseQuery(): Builder

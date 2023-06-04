@@ -24,6 +24,7 @@ class InstitutionUserFactory extends Factory
         return [
             'institution_id' => Institution::factory(),
             'user_id' => $this->faker->uuid,
+            'department_id' => $this->faker->uuid,
             'forename' => $this->faker->firstName(),
             'surname' => $this->faker->lastName(),
             'personal_identification_code' => $this->faker->estonianPIC(),

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "45ad3de9b526da038dbac4e538402d7d",
+    "content-hash": "b2cd68206db8b47c812286d5e17a99c7",
     "packages": [
         {
             "name": "brick/math",
@@ -1039,16 +1039,16 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-amqp",
-            "version": "0.0.11",
+            "version": "0.0.13",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-amqp.git",
-                "reference": "be65d9ec2aa0beda06c4dd8f86cecf8803d1e7fd"
+                "reference": "b0979cc2738c93fea9d07a7b377b65f5f78bea0f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/be65d9ec2aa0beda06c4dd8f86cecf8803d1e7fd",
-                "reference": "be65d9ec2aa0beda06c4dd8f86cecf8803d1e7fd",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/b0979cc2738c93fea9d07a7b377b65f5f78bea0f",
+                "reference": "b0979cc2738c93fea9d07a7b377b65f5f78bea0f",
                 "shasum": ""
             },
             "require": {
@@ -1094,23 +1094,23 @@
                 "rabbitmq"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.11",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.13",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-amqp/issues"
             },
-            "time": "2023-06-01T08:48:42+00:00"
+            "time": "2023-06-04T16:58:56+00:00"
         },
         {
             "name": "keeleinstituut/tv-common-laravel-security",
-            "version": "0.0.12",
+            "version": "0.0.13",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-security.git",
-                "reference": "751fe2132447b0f453d7eba439770c442e23a953"
+                "reference": "b2875d981df3ea160c42ebb4ea3827ec4c350b59"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/751fe2132447b0f453d7eba439770c442e23a953",
-                "reference": "751fe2132447b0f453d7eba439770c442e23a953",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/b2875d981df3ea160c42ebb4ea3827ec4c350b59",
+                "reference": "b2875d981df3ea160c42ebb4ea3827ec4c350b59",
                 "shasum": ""
             },
             "require": {
@@ -1155,10 +1155,10 @@
                 "laravel"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.12",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.13",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-security/issues"
             },
-            "time": "2023-05-31T15:58:06+00:00"
+            "time": "2023-06-04T16:39:53+00:00"
         },
         {
             "name": "laravel/framework",
