@@ -21,11 +21,16 @@
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <env name="DB_DATABASE" value="testing"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="REALM_PUBLIC_KEY_RETRIEVAL_MODE" value="config" />
+        <env name="KEYCLOAK_REALM_PUBLIC_KEY" value="MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDOk1X/mSqKfI67jPLqk13xDpjznlCAbJO/DgWbabgdnkg1KI4YpImbHZk/8DckXnGAyCHjZJTnVtKJ51ljT3VwN6kwSiTGHWr8u9VKilf7UM9lj5cCIjS6tRFGxH4iOig50HfdWO9lx+m/E/Q+XmIXDJMH8WTXhxgR+WPg9V2s9wIDAQAB" />
+        <env name="KEYCLOAK_REALM_PRIVATE_KEY" value="MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAM6TVf+ZKop8jruM8uqTXfEOmPOeUIBsk78OBZtpuB2eSDUojhikiZsdmT/wNyRecYDIIeNklOdW0onnWWNPdXA3qTBKJMYdavy71UqKV/tQz2WPlwIiNLq1EUbEfiI6KDnQd91Y72XH6b8T9D5eYhcMkwfxZNeHGBH5Y+D1Xaz3AgMBAAECgYAc6ehulyyqJ5b+z1Ks3KWYePeVmcIgx5HCex7zys9XbfEjZ6LD9jvAd1sc5O2C7KksYlbD8i8ZVkCvxq7vRI7mPog9LzhNiZvhvT1Y/H6vwVBgkwAg9f/5iv5czjjtN66pVpGIKTJJhZo9J2vJ14CdSahiekocFX+TOJVfhlLSKQJBAPdbSSL7NdgcvDg3jA/mhXeypTN2Yw5HHGJ2gJUYik0kv8f7JEjZq+T3hjssMWeIaIkcxILwzN74zr9y4iSziZsCQQDVyz7iBUo5YJPtfyaNNN14b3ImsSFK/hGq0wrSje+mzOp+9dK+6noCGSHxnwTATizt2zsRco1VN4zmJR/d2v3VAkEA5isccB+f59w9THZrr3QLJ+mlDbEQ1X1YLUsltRcjwkr65iSMi/l4mVO2pSMnSbbFxyhst4dIrAaLo9xMEGi8FwJBAM+OfyEc859apKKYo8vI/A41XAQ2SNUubeaC9unNRFGSdUIG06/nocWxsqOJtyofezz8bo8UwCNwR8kTV6miNnUCQA95n5pY07ahQgxPpaOp0d2rOrfTodVPZGmv+r6EeiKDgTgdTcnmNTerQ2+JZwhExU9W0oOXe2iEUdfGM2ewZgY=" />
+        <env name="ACCEPTED_AUTHORIZED_PARTIES" value="tolkevarav-web-dev" />
+        <env name="KEYCLOAK_REALM" value="tolkevarav-dev" />
+        <env name="KEYCLOAK_BASE_URL" value="https://sso.dev.tolkevarav.eki.ee" />
     </php>
 </phpunit>

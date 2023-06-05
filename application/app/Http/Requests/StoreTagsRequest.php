@@ -3,9 +3,14 @@
 namespace App\Http\Requests;
 
 use App\Enums\TagType;
+use App\Policies\TagPolicy;
+use App\Rules\EnumWithExcludedItems;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Enum;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class StoreTagsRequest extends FormRequest
 {
@@ -17,15 +22,34 @@ class StoreTagsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tags' => ['required', 'array', 'min'],
-            'tags.*.id' => ['bail', 'uuid'], // TODO: add validation of the ID with institution_id
-            'tags.*.name' => ['required', 'string'], // TODO: add unique validation with institution_id
-            'tags.*.type' => ['required',  new Enum(TagType::class)],
+            'tags' => ['required', 'array', 'min:1'],
+            'tags.*' => Rule::forEach(fn() => [
+                function ($attr, $value, $fail) {
+                    $subValidator = Validator::make($value, [
+                        'name' => [
+                            'required', 'string',
+                            Rule::unique('tags', 'name')->using(fn(Builder $query) => $query
+                                ->where('institution_id', $this->getActingUserInstitutionId())
+                                ->where('type', $value['type'])
+                            )
+                        ],
+                        'type' => ['required', new EnumWithExcludedItems(TagType::class, [TagType::VendorSkill])]
+                    ]);
+
+                    if ($subValidator->fails()) {
+                        $fail($subValidator->errors()->first());
+                    }
+                }
+            ])
         ];
     }
 
-    public function hasNewTags(): bool
+    private function getActingUserInstitutionId(): string
     {
-        return true;
+        if (empty($currentUserInstitutionId = Auth::user()?->institutionId)) {
+            abort(401);
+        }
+
+        return $currentUserInstitutionId;
     }
 }

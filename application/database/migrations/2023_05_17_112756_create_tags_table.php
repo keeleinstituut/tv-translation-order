@@ -8,16 +8,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('tags', function (Blueprint $table) {
             $table->uuid('id');
             $table->string('name');
             $table->enum('type', TagType::values());
-            $table->foreignUuid('institution_id')->nullable(); // TODO: add constraint
+            $table->foreignUuid('institution_id')->nullable()->constrained('entity_cache.cached_institutions');
             $table->timestampsTz();
             $table->softDeletesTz();
         });
@@ -35,9 +32,6 @@ return new class extends Migration
         );
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tags');
