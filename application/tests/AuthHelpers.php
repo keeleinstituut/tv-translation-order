@@ -9,13 +9,12 @@ use Illuminate\Support\Str;
 
 readonly class AuthHelpers
 {
-
     public static function generateAccessToken(array $tolkevaravPayload = [], string $azp = null): string
     {
         $payload = collect([
             'azp' => $azp ?? Str::of(config('keycloak.accepted_authorized_parties'))
-                    ->explode(',')
-                    ->first(),
+                ->explode(',')
+                ->first(),
             'iss' => config('keycloak.base_url').'/realms/'.config('keycloak.realm'),
             'tolkevarav' => collect([
                 'userId' => 1,

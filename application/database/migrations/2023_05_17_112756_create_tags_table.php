@@ -12,7 +12,7 @@ return new class extends Migration
     {
         Schema::create('tags', function (Blueprint $table) {
             $table->uuid('id');
-            $table->string('name');
+            $table->string('name', 50);
             $table->enum('type', TagType::values());
             $table->foreignUuid('institution_id')->nullable()->constrained('entity_cache.cached_institutions');
             $table->timestampsTz();

@@ -3,10 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Enums\TagType;
-use App\Policies\TagPolicy;
 use App\Rules\EnumWithExcludedItems;
+use App\Rules\TagNameRule;
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -23,24 +22,24 @@ class StoreTagsRequest extends FormRequest
     {
         return [
             'tags' => ['required', 'array', 'min:1'],
-            'tags.*' => Rule::forEach(fn() => [
+            'tags.*' => Rule::forEach(fn () => [
                 function ($attr, $value, $fail) {
                     $subValidator = Validator::make($value, [
+                        'type' => ['required', new EnumWithExcludedItems(TagType::class, [TagType::VendorSkill])],
                         'name' => [
                             'required', 'string',
-                            Rule::unique('tags', 'name')->using(fn(Builder $query) => $query
-                                ->where('institution_id', $this->getActingUserInstitutionId())
-                                ->where('type', $value['type'])
-                            )
+                            new TagNameRule(
+                                $this->getActingUserInstitutionId(),
+                                $value['type']
+                            ),
                         ],
-                        'type' => ['required', new EnumWithExcludedItems(TagType::class, [TagType::VendorSkill])]
                     ]);
 
                     if ($subValidator->fails()) {
                         $fail($subValidator->errors()->first());
                     }
-                }
-            ])
+                },
+            ]),
         ];
     }
 

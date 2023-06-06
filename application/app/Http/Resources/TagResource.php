@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources;
 
-use Carbon\Carbon;
 use App\Models\Tag;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,7 +30,7 @@ class TagResource extends JsonResource
             'name',
             'type',
             'created_at',
-            'updated_at'
+            'updated_at',
         ]);
     }
 }

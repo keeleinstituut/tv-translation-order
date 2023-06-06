@@ -8,7 +8,6 @@ use App\Http\Controllers\TagController;
 use App\Models\Institution;
 use App\Models\Tag;
 use Illuminate\Testing\TestResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 
@@ -22,9 +21,9 @@ class TagControllerIndexTest extends TestCase
 
         $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag])
-        )->assertStatus(Response::HTTP_OK)->assertJsonFragment([
-            'data' => $tags->map(fn(Tag $tag) => $this->createTagRepresentation($tag))
-                ->toArray()
+        )->assertOk()->assertJsonFragment([
+            'data' => $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
+                ->toArray(),
         ]);
     }
 
@@ -40,11 +39,11 @@ class TagControllerIndexTest extends TestCase
         $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]),
             ['type' => TagType::Order->value],
-        )->assertStatus(Response::HTTP_OK)->assertJsonFragment([
-            'data' => $orderTags->map(fn(Tag $tag) => $this->createTagRepresentation($tag))
-                ->toArray()
+        )->assertOk()->assertJsonFragment([
+            'data' => $orderTags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
+                ->toArray(),
         ])->assertJsonMissing(
-            $vendorTags->map(fn(Tag $tag) => $this->createTagRepresentation($tag))
+            $vendorTags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
                 ->toArray()
         );
     }
@@ -55,8 +54,8 @@ class TagControllerIndexTest extends TestCase
         $tags = Tag::factory(10)->create();
         $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag])
-        )->assertStatus(Response::HTTP_OK)->assertJsonMissing(
-            $tags->map(fn(Tag $tag) => $this->createTagRepresentation($tag))
+        )->assertOk()->assertJsonMissing(
+            $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
                 ->toArray()
         );
     }
@@ -69,8 +68,8 @@ class TagControllerIndexTest extends TestCase
 
         $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag])
-        )->assertStatus(Response::HTTP_OK)->assertJsonMissing(
-            $tags->map(fn(Tag $tag) => $this->createTagRepresentation($tag))
+        )->assertOk()->assertJsonMissing(
+            $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
                 ->toArray()
         );
     }

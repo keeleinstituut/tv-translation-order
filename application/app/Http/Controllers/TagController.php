@@ -30,6 +30,7 @@ class TagController extends Controller
         });
 
         $tagsQuery->orderBy('type')->orderBy('name');
+
         return TagResource::collection($tagsQuery->get());
     }
 
@@ -37,9 +38,10 @@ class TagController extends Controller
      * @throws AuthorizationException
      * @throws Throwable
      */
-    function store(StoreTagsRequest $request)
+    public function store(StoreTagsRequest $request)
     {
         $this->authorize('create', Tag::class);
+
         return DB::transaction(function () use ($request): ResourceCollection {
             $currentInstitution = Institution::findOrFail(Auth::user()->institutionId);
             $tags = collect();

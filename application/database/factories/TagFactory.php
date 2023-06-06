@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Enums\TagType;
 use App\Models\Institution;
 use App\Models\Tag;
-use Arr;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,18 +17,18 @@ class TagFactory extends Factory
         return [
             'name' => $this->faker->name,
             'type' => $this->faker->randomElement(TagType::cases()),
-            'institution_id' => Institution::factory()
+            'institution_id' => Institution::factory(),
         ];
     }
 
-    public function notVendorSkills(): Factory
+    public function notVendorSkills(): TagFactory
     {
         return $this->state(function (array $attributes) {
             return [
                 'type' => $this->faker->randomElement([
                     TagType::Order,
                     TagType::Vendor,
-                    TagType::TranslationMemory
+                    TagType::TranslationMemory,
                 ]),
             ];
         });

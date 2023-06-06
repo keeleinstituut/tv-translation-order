@@ -14,7 +14,7 @@ class EnumWithExcludedItems extends Enum
     {
         parent::__construct($type);
         foreach ($excludedEnumItems as $excludedItem) {
-            if (!$excludedItem instanceof $this->type) {
+            if (! $excludedItem instanceof $this->type) {
                 throw new UnexpectedValueException();
             }
         }
@@ -23,11 +23,11 @@ class EnumWithExcludedItems extends Enum
 
     public function passes($attribute, $value): bool
     {
-        if (!parent::passes($attribute, $value)) {
+        if (! parent::passes($attribute, $value)) {
             return false;
         }
 
-        return !in_array($this->getEnumInstance($value), $this->excludedEnumItems);
+        return ! in_array($this->getEnumInstance($value), $this->excludedEnumItems);
     }
 
     protected function getEnumInstance(string $value): BackedEnum

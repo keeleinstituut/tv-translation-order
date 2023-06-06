@@ -12,7 +12,7 @@ class TagPolicy
 {
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::AddTag->value) || Auth::hasPrivilege(PrivilegeKey::EditTag->value);
+        return true;
     }
 
     public function create(JwtPayloadUser $jwtPayloadUser): bool

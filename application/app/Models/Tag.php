@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
  * @property-read Institution|null $institution
+ *
  * @method static TagFactory factory($count = null, $state = [])
  * @method static Builder|Tag newModelQuery()
  * @method static Builder|Tag newQuery()
@@ -45,7 +46,7 @@ class Tag extends Model
     protected $fillable = [
         'name',
         'type',
-        'institution_id'
+        'institution_id',
     ];
 
     protected $casts = [
