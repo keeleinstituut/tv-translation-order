@@ -32,4 +32,18 @@ class TagFactory extends Factory
             'institution_id' => null,
         ]);
     }
+
+    public function withType(TagType $type): TagFactory
+    {
+        if ($type === TagType::VendorSkill) {
+            return $this->state(fn () => [
+                'type' => $type,
+                'institution_id' => null
+            ]);
+        }
+
+        return $this->state(fn () => [
+            'type' => $type,
+        ]);
+    }
 }

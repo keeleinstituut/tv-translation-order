@@ -3,13 +3,13 @@
 namespace App\Http\Requests;
 
 use App\Enums\TagType;
-use App\Rules\EnumWithExcludedItems;
 use App\Rules\TagNameRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class StoreTagsRequest extends FormRequest
 {
@@ -25,7 +25,7 @@ class StoreTagsRequest extends FormRequest
             'tags.*' => Rule::forEach(fn () => [
                 function ($attr, $value, $fail) {
                     $subValidator = Validator::make($value, [
-                        'type' => ['required', new EnumWithExcludedItems(TagType::class, [TagType::VendorSkill])],
+                        'type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
                         'name' => [
                             'required', 'string',
                             new TagNameRule(
