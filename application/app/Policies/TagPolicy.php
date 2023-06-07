@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Enums\TagType;
 use App\Models\Tag;
 use App\Policies\Scope\TagScope;
 use Illuminate\Support\Facades\Auth;
@@ -22,12 +23,16 @@ class TagPolicy
 
     public function update(JwtPayloadUser $jwtPayloadUser, Tag $tag): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditTag->value) && $this->isFromSameInstitutionAsCurrentUser($tag);
+        return Auth::hasPrivilege(PrivilegeKey::EditTag->value) &&
+            $this->isFromSameInstitutionAsCurrentUser($tag) &&
+            $tag->type !== TagType::VendorSkill;
     }
 
     public function delete(JwtPayloadUser $jwtPayloadUser, Tag $tag)
     {
-        return Auth::hasPrivilege(PrivilegeKey::DeleteTag->value) && $this->isFromSameInstitutionAsCurrentUser($tag);
+        return Auth::hasPrivilege(PrivilegeKey::DeleteTag->value) &&
+            $this->isFromSameInstitutionAsCurrentUser($tag) &&
+            $tag->type !== TagType::VendorSkill;
     }
 
     public function isFromSameInstitutionAsCurrentUser(Tag $tag): bool

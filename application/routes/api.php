@@ -21,8 +21,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::prefix('/tags')
     ->controller(TagController::class)
-    ->whereUuid('tag_id')->group(function (): void {
+    ->group(function (): void {
         Route::get('/', 'index');
-        Route::post('/', 'store');
-        Route::put('/{tag_id}', 'update');
+        Route::post('/bulk-create', 'store');
+        Route::post('/bulk-update', 'update');
     });

@@ -1,6 +1,6 @@
 <?php
 
-namespace tests\Feature\Http;
+namespace Tests\Feature\Http\Controllers;
 
 use App\Enums\PrivilegeKey;
 use App\Enums\TagType;

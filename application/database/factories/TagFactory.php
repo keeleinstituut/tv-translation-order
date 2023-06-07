@@ -23,14 +23,19 @@ class TagFactory extends Factory
 
     public function notVendorSkills(): TagFactory
     {
-        return $this->state(function (array $attributes) {
-            return [
-                'type' => $this->faker->randomElement([
-                    TagType::Order,
-                    TagType::Vendor,
-                    TagType::TranslationMemory,
-                ]),
-            ];
-        });
+        return $this->state(fn() => [
+            'type' => $this->faker->randomElement([
+                TagType::Order,
+                TagType::Vendor,
+                TagType::TranslationMemory,
+            ]),
+        ]);
+    }
+
+    public function withType(TagType $type): TagFactory
+    {
+        return $this->state(fn() => [
+            'type' => $type,
+        ]);
     }
 }

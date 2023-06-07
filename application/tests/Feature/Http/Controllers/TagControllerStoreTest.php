@@ -1,6 +1,6 @@
 <?php
 
-namespace tests\Feature\Http;
+namespace Tests\Feature\Http\Controllers;
 
 use App\Enums\PrivilegeKey;
 use App\Enums\TagType;
@@ -11,6 +11,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Testing\TestResponse;
 use Str;
 use Tests\AuthHelpers;
+use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
 
 class TagControllerStoreTest extends TestCase
@@ -42,7 +43,7 @@ class TagControllerStoreTest extends TestCase
         }
 
         $response->assertJson([
-            'data' => $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
+            'data' => $tags->map(fn (Tag $tag) => RepresentationHelpers::createTagFlatRepresentation($tag))
                 ->toArray(),
         ]);
     }
@@ -151,7 +152,7 @@ class TagControllerStoreTest extends TestCase
 
         $response->assertOk()->assertJson([
             'data' => [
-                $this->createTagRepresentation($newTag),
+                RepresentationHelpers::createTagFlatRepresentation($newTag),
             ],
         ]);
     }
@@ -176,7 +177,7 @@ class TagControllerStoreTest extends TestCase
 
         $response->assertOk()->assertJson([
             'data' => [
-                $this->createTagRepresentation($newTag),
+                RepresentationHelpers::createTagFlatRepresentation($newTag),
             ],
         ]);
     }
@@ -204,7 +205,7 @@ class TagControllerStoreTest extends TestCase
             ->assertUnprocessable();
     }
 
-    public function test_unauthorized_storing_of_tags_returned_401(): void
+    public function test_unauthenticated_storing_of_tags_returned_401(): void
     {
         $this->sendStoreRequestWithCustomHeaders([
             'tags' => [['name' => 'Some name', 'type' => TagType::Order->value]],
@@ -227,17 +228,5 @@ class TagControllerStoreTest extends TestCase
             action([TagController::class, 'store']),
             $requestParams
         );
-    }
-
-    private function createTagRepresentation(Tag $tag): array
-    {
-        return [
-            'id' => $tag->id,
-            'name' => $tag->name,
-            'institution_id' => $tag->institution_id,
-            'type' => $tag->type->value,
-            'created_at' => $tag->created_at->toIsoString(),
-            'updated_at' => $tag->updated_at->toIsoString(),
-        ];
     }
 }

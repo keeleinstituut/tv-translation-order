@@ -5,7 +5,7 @@ namespace App\Rules;
 use App\Models\Tag;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class TagNameRule implements ValidationRule
