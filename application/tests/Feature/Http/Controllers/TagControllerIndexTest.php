@@ -48,6 +48,21 @@ class TagControllerIndexTest extends TestCase
         );
     }
 
+    public function test_list_of_vendor_skill_tags_returned(): void
+    {
+        $institution = Institution::factory()->create();
+        $vendorSkillTags = Tag::factory(10)->vendorSkills()->create();
+        $vendorSkillTags->map(fn (Tag $tag) => $this->assertEmpty($tag->institution_id));
+
+        $this->sendListRequestWithCustomHeaders(
+            AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]),
+            ['type' => TagType::VendorSkill->value],
+        )->assertOk()->assertJsonFragment([
+            'data' => $vendorSkillTags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
+                ->toArray(),
+        ]);
+    }
+
     public function test_list_of_tags_doesnt_contains_tags_from_another_institution(): void
     {
         $institution = Institution::factory()->create();

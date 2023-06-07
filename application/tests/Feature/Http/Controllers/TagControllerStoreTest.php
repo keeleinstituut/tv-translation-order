@@ -19,7 +19,7 @@ class TagControllerStoreTest extends TestCase
     public function test_storing_of_tags_returned_200(): void
     {
         $institution = Institution::factory()->create();
-        $tagsAttributes = Tag::factory(10)->notVendorSkills()->make()
+        $tagsAttributes = Tag::factory(10)->make()
             ->map(fn (Tag $tag) => Arr::only($tag->getAttributes(), ['name', 'type']));
 
         $response = $this->sendStoreRequestWithCustomHeaders([
@@ -123,7 +123,7 @@ class TagControllerStoreTest extends TestCase
     {
         $tag = Tag::factory()->for(
             $institution = Institution::factory()->create()
-        )->notVendorSkills()->create();
+        )->create();
 
         $this->sendStoreRequestWithCustomHeaders([
             'tags' => [
@@ -137,7 +137,7 @@ class TagControllerStoreTest extends TestCase
     {
         $tag = Tag::factory()->trashed()->for(
             $institution = Institution::factory()->create()
-        )->notVendorSkills()->create();
+        )->create();
 
         $response = $this->sendStoreRequestWithCustomHeaders([
             'tags' => [
@@ -161,7 +161,7 @@ class TagControllerStoreTest extends TestCase
     {
         $tag = Tag::factory()->for(
             Institution::factory()->create()
-        )->notVendorSkills()->create();
+        )->create();
 
         $institution = Institution::factory()->create();
         $response = $this->sendStoreRequestWithCustomHeaders([
@@ -186,7 +186,7 @@ class TagControllerStoreTest extends TestCase
     {
         $tag = Tag::factory()->for(
             $institution = Institution::factory()->create()
-        )->notVendorSkills()->create();
+        )->create();
 
         $this->sendStoreRequestWithCustomHeaders([
             'tags' => [
