@@ -16,21 +16,20 @@ class TagFactory extends Factory
     {
         return [
             'name' => $this->faker->name,
-            'type' => $this->faker->randomElement(TagType::cases()),
+            'type' => $this->faker->randomElement([
+                TagType::Order,
+                TagType::Vendor,
+                TagType::TranslationMemory,
+            ]),
             'institution_id' => Institution::factory(),
         ];
     }
 
-    public function notVendorSkills(): TagFactory
+    public function vendorSkills(): TagFactory
     {
-        return $this->state(function (array $attributes) {
-            return [
-                'type' => $this->faker->randomElement([
-                    TagType::Order,
-                    TagType::Vendor,
-                    TagType::TranslationMemory,
-                ]),
-            ];
-        });
+        return $this->state(fn () => [
+            'type' => TagType::VendorSkill,
+            'institution_id' => null,
+        ]);
     }
 }

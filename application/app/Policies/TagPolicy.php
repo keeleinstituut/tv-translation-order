@@ -33,7 +33,7 @@ class TagPolicy
     public function isFromSameInstitutionAsCurrentUser(Tag $tag): bool
     {
         return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && $currentInstitutionId === $tag->institution_id;
+            && (empty($tag->institution_id) || $currentInstitutionId === $tag->institution_id);
     }
 
     // Should serve as a query enhancement to Eloquent queries
@@ -71,6 +71,9 @@ class TagScope implements IScope
             abort(401);
         }
 
-        $builder->where('institution_id', $currentUserInstitutionId);
+        $builder->where(fn (Builder $query) => $query
+            ->where('institution_id', $currentUserInstitutionId)
+            ->orWhereNull('institution_id')
+        );
     }
 }
