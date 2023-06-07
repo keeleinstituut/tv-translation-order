@@ -21,15 +21,15 @@ class TagControllerUpdateTest extends TestCase
         $tagsType = TagType::Order;
         $newTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->make()->map(fn(Tag $tag) => [
+            ->make()->map(fn (Tag $tag) => [
                 'id' => null,
-                'name' => $tag->name
+                'name' => $tag->name,
             ]);
         $updatedTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->create()->map(fn(Tag $tag) => [
+            ->create()->map(fn (Tag $tag) => [
                 'id' => $tag->id,
-                'name' => "new $tag->name"
+                'name' => "new $tag->name",
             ]);
         $tagsAttributes = $newTagsAttributes->merge($updatedTagsAttributes);
 
@@ -39,14 +39,14 @@ class TagControllerUpdateTest extends TestCase
 
         $response = $this->sendUpdateRequestWithCustomHeaders([
             'type' => $tagsType->value,
-            'tags' => $tagsAttributes->map(fn(array $tagAttributes) => [
+            'tags' => $tagsAttributes->map(fn (array $tagAttributes) => [
                 'id' => $tagAttributes['id'],
                 'name' => $tagAttributes['name'],
             ])->toArray(),
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::AddTag,
             PrivilegeKey::EditTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]));
         $response->assertOk();
 
@@ -57,7 +57,7 @@ class TagControllerUpdateTest extends TestCase
                 ->where('institution_id', $institution->id)
                 ->when(
                     filled($tagAttributes['id']),
-                    fn(Builder $query) => $query->where('id', $tagAttributes['id']))
+                    fn (Builder $query) => $query->where('id', $tagAttributes['id']))
                 ->first();
 
             $this->assertModelExists($tag);
@@ -69,7 +69,7 @@ class TagControllerUpdateTest extends TestCase
         }
 
         $response->assertJson([
-            'data' => $tags->map(fn(Tag $tag) => RepresentationHelpers::createTagFlatRepresentation($tag))
+            'data' => $tags->map(fn (Tag $tag) => RepresentationHelpers::createTagFlatRepresentation($tag))
                 ->toArray(),
         ]);
     }
@@ -80,21 +80,21 @@ class TagControllerUpdateTest extends TestCase
         $tagsType = TagType::Order;
         $alreadyExistingTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->create()->map(fn(Tag $tag) => [
+            ->create()->map(fn (Tag $tag) => [
                 'id' => null,
-                'name' => $tag->name
+                'name' => $tag->name,
             ]);
 
         $this->sendUpdateRequestWithCustomHeaders([
             'type' => $tagsType->value,
-            'tags' => $alreadyExistingTagsAttributes->map(fn(array $tagAttributes) => [
+            'tags' => $alreadyExistingTagsAttributes->map(fn (array $tagAttributes) => [
                 'id' => $tagAttributes['id'],
                 'name' => $tagAttributes['name'],
             ])->toArray(),
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::AddTag,
             PrivilegeKey::EditTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]))->assertUnprocessable();
     }
 
@@ -104,21 +104,21 @@ class TagControllerUpdateTest extends TestCase
         $tagsType = TagType::VendorSkill;
         $updatedTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->create()->map(fn(Tag $tag) => [
+            ->create()->map(fn (Tag $tag) => [
                 'id' => $tag->id,
-                'name' => "new $tag->name"
+                'name' => "new $tag->name",
             ]);
 
         $this->sendUpdateRequestWithCustomHeaders([
             'type' => $tagsType->value,
-            'tags' => $updatedTagsAttributes->map(fn(array $tagAttributes) => [
+            'tags' => $updatedTagsAttributes->map(fn (array $tagAttributes) => [
                 'id' => $tagAttributes['id'],
                 'name' => $tagAttributes['name'],
             ])->toArray(),
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::AddTag,
             PrivilegeKey::EditTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]))->assertUnprocessable();
     }
 
@@ -132,7 +132,7 @@ class TagControllerUpdateTest extends TestCase
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::AddTag,
             PrivilegeKey::EditTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]))->assertUnprocessable();
     }
 
@@ -142,9 +142,9 @@ class TagControllerUpdateTest extends TestCase
         $tagsType = TagType::VendorSkill;
         $newTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->make()->map(fn(Tag $tag) => [
+            ->make()->map(fn (Tag $tag) => [
                 'id' => null,
-                'name' => $tag->name
+                'name' => $tag->name,
             ]);
 
         Tag::factory(10)->for($institution)
@@ -153,14 +153,14 @@ class TagControllerUpdateTest extends TestCase
 
         $this->sendUpdateRequestWithCustomHeaders([
             'type' => $tagsType->value,
-            'tags' => $newTagsAttributes->map(fn(array $tagAttributes) => [
+            'tags' => $newTagsAttributes->map(fn (array $tagAttributes) => [
                 'id' => $tagAttributes['id'],
                 'name' => $tagAttributes['name'],
             ])->toArray(),
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::AddTag,
             PrivilegeKey::EditTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]))->assertUnprocessable();
     }
 
@@ -188,20 +188,20 @@ class TagControllerUpdateTest extends TestCase
         $tagsType = TagType::Order;
         $newTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->make()->map(fn(Tag $tag) => [
+            ->make()->map(fn (Tag $tag) => [
                 'id' => null,
-                'name' => $tag->name
+                'name' => $tag->name,
             ]);
 
         $this->sendUpdateRequestWithCustomHeaders([
             'type' => $tagsType->value,
-            'tags' => $newTagsAttributes->map(fn(array $tagAttributes) => [
+            'tags' => $newTagsAttributes->map(fn (array $tagAttributes) => [
                 'id' => $tagAttributes['id'],
                 'name' => $tagAttributes['name'],
             ])->toArray(),
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::EditTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]))->assertForbidden();
     }
 
@@ -211,20 +211,20 @@ class TagControllerUpdateTest extends TestCase
         $tagsType = TagType::Order;
         $newTagsAttributes = Tag::factory(10)->for($institution)
             ->withType($tagsType)
-            ->create()->map(fn(Tag $tag) => [
+            ->create()->map(fn (Tag $tag) => [
                 'id' => $tag->id,
-                'name' => "new $tag->name"
+                'name' => "new $tag->name",
             ]);
 
         $this->sendUpdateRequestWithCustomHeaders([
             'type' => $tagsType->value,
-            'tags' => $newTagsAttributes->map(fn(array $tagAttributes) => [
+            'tags' => $newTagsAttributes->map(fn (array $tagAttributes) => [
                 'id' => $tagAttributes['id'],
                 'name' => $tagAttributes['name'],
             ])->toArray(),
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
             PrivilegeKey::AddTag,
-            PrivilegeKey::DeleteTag
+            PrivilegeKey::DeleteTag,
         ]))->assertForbidden();
     }
 
@@ -233,7 +233,7 @@ class TagControllerUpdateTest extends TestCase
         $this->sendUpdateRequestWithCustomHeaders([
             'type' => TagType::Order->value,
             'tags' => [
-                ['name' => 'Some name']
+                ['name' => 'Some name'],
             ],
         ], ['Accept' => 'application/json'])->assertUnauthorized();
     }

@@ -44,7 +44,6 @@ use SyncTools\Traits\HasCachedEntityFactory;
  * @method static Builder|Institution withoutTrashed()
  *
  * @mixin Eloquent
- *
  */
 class Institution extends Model
 {

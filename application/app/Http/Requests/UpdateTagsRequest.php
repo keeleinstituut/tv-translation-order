@@ -25,7 +25,7 @@ class UpdateTagsRequest extends FormRequest
         return [
             'type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
             'tags' => ['present', 'array', 'max:10000'],
-            'tags.*' => Rule::forEach(fn() => [
+            'tags.*' => Rule::forEach(fn () => [
                 function ($attr, $row, $fail) {
                     $nameValidator = new TagNameRule(
                         $this->getActingUserInstitutionId(),
@@ -44,7 +44,7 @@ class UpdateTagsRequest extends FormRequest
                                     ->where('institution_id', $this->getActingUserInstitutionId());
 
                                 return $query;
-                            })
+                            }),
                         ],
                         'name' => ['required', 'string', $nameValidator],
                     ]);

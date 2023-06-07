@@ -30,7 +30,7 @@ class TagController extends Controller
         $tagsQuery = $this->getBaseQuery();
         $tagsQuery->when(
             $request->validated('type'),
-            fn(Builder $query, string $type) => $query->where('type', $type)
+            fn (Builder $query, string $type) => $query->where('type', $type)
         );
 
         $tagsQuery->orderBy('type')->orderBy('name');
@@ -82,10 +82,11 @@ class TagController extends Controller
                             $tagData['name']
                         )
                     );
+
                     continue;
                 }
 
-                !$createAbilityChecked && $this->authorize('create', Tag::class);
+                ! $createAbilityChecked && $this->authorize('create', Tag::class);
                 $createAbilityChecked = true;
 
                 $tags->add(
@@ -97,8 +98,9 @@ class TagController extends Controller
                 );
             }
 
-            $processedTagsIds = $tags->map(fn(Tag $tag) => $tag->id);
+            $processedTagsIds = $tags->map(fn (Tag $tag) => $tag->id);
             $this->deleteNotProcessedTags($processedTagsIds, $tagsType);
+
             return TagResource::collection($tags);
         });
     }
@@ -114,6 +116,7 @@ class TagController extends Controller
         ]);
         $tag->institution()->associate($institution);
         $tag->saveOrFail();
+
         return $tag->refresh();
     }
 
@@ -137,7 +140,7 @@ class TagController extends Controller
     {
         $this->getBaseQuery()->where('type', $tagsType)
             ->whereNotIn('id', $processedTagsIds)
-            ->each(fn(Tag $tag) => $this->authorize('delete', $tag) && $tag->delete());
+            ->each(fn (Tag $tag) => $this->authorize('delete', $tag) && $tag->delete());
     }
 
     private function getBaseQuery(): Builder
