@@ -19,11 +19,16 @@ class VendorController extends Controller
      */
     public function index(VendorListRequest $request)
     {
-        $this->authorize('viewAny', Vendor::class);
+        // $this->authorize('viewAny', Vendor::class);
 
         $params = collect($request->validated());
 
-        $query = $this->getBaseQuery();
+        $query = $this->getBaseQuery()
+            ->with('prices')
+            ->with('prices.sourceLanguageClassifierValue')
+            ->with('prices.destinationLanguageClassifierValue')
+            ->with('institutionUser');
+
         $data = $query->paginate($params->get('limit', 10));
 
         return VendorResource::collection($data);
@@ -74,8 +79,9 @@ class VendorController extends Controller
             $data = $inputData->map(function ($input) {
                 $vendor = new Vendor();
                 $vendor->fill($input);
-                $vendor->save();
                 $this->authorize('create', $vendor);
+
+                $vendor->save();
                 return $vendor;
             });
 
@@ -93,7 +99,9 @@ class VendorController extends Controller
         return DB::transaction(function () use ($params) {
             $ids = collect($params->get('id'));
 
-            $data = $this->getBaseQuery()->whereIn('id', $ids)->get();
+            $data = $this->getBaseQuery()
+                ->whereIn('id', $ids)
+                ->get();
 
             $data->each(function ($vendor) {
                 $this->authorize('delete', $vendor);
@@ -106,6 +114,7 @@ class VendorController extends Controller
 
     private function getBaseQuery()
     {
-        return Vendor::getModel()->withGlobalScope('policy', VendorPolicy::scope());
+        return Vendor::getModel()->withGlobalScope('policy', VendorPolicy::scope())
+            ->with('institutionUser');
     }
 }

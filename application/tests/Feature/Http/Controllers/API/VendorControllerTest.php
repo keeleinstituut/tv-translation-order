@@ -3,13 +3,10 @@
 namespace Tests\Feature\Http\Controllers\API;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\InstitutionUser;
 use App\Models\Vendor;
 use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 
 class VendorControllerTest extends TestCase
@@ -47,7 +44,7 @@ class VendorControllerTest extends TestCase
             ->assertStatus(200)
             ->assertJson([
                 'data' => collect($savedVendors)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray()
-            ], true)
+            ])
             ->assertJsonCount(1, 'data');
     }
 
@@ -63,7 +60,7 @@ class VendorControllerTest extends TestCase
                 return [
                     'institution_user_id' => $iuser->id,
                 ];
-            }),
+            })->toArray(),
         ];
 
         $accessToken = $this->generateAccessToken([
@@ -83,7 +80,8 @@ class VendorControllerTest extends TestCase
             ->assertStatus(200)
             ->assertJson([
                 'data' => collect($savedVendors)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray()
-            ]);
+            ])
+            ->assertJson($payload);
     }
 
     public function test_bulk_delete(): void
@@ -98,10 +96,7 @@ class VendorControllerTest extends TestCase
             ]);
         $testVendors = collect($testIUsers)->pluck('vendor');
 
-        $randomVendors = collect($testVendors->random(3));
-        $payload = $randomVendors
-            ->map(fn ($vendor) => 'id[]=' . $vendor->id)
-            ->implode('&');
+        $randomVendors = collect($testVendors->random(3))->sortBy('created_at');
 
         $accessToken = $this->generateAccessToken([
             'privileges' => [
@@ -112,11 +107,15 @@ class VendorControllerTest extends TestCase
             ],
         ]);
 
+        $payload = $randomVendors
+            ->map(fn ($vendor) => 'id[]=' . $vendor->id)
+            ->implode('&');
+
         $response = $this->prepareAuthorizedRequest($accessToken)->deleteJson('/api/vendors/bulk?' . $payload);
 
         $response
             ->assertStatus(200)
-            ->assertJson([
+            ->assertSimilarJson([
                 'data' => collect($randomVendors)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray()
             ]);
 
@@ -124,7 +123,7 @@ class VendorControllerTest extends TestCase
         $this->assertCount(0, $deletedVendors);
     }
 
-    public function constructRepresentation($obj)
+    public static function constructRepresentation($obj)
     {
         return [
             'id' => $obj->id,
@@ -132,6 +131,15 @@ class VendorControllerTest extends TestCase
             'company_name' => $obj->company_name,
             'created_at' => $obj->created_at->toIsoString(),
             'updated_at' => $obj->updated_at->toIsoString(),
+            'discount_percentage_101' => $obj->discount_percentage_101,
+            'discount_percentage_repetitions' => $obj->discount_percentage_repetitions,
+            'discount_percentage_100' => $obj->discount_percentage_100,
+            'discount_percentage_95_99' => $obj->discount_percentage_95_99,
+            'discount_percentage_85_94' => $obj->discount_percentage_85_94,
+            'discount_percentage_75_84' => $obj->discount_percentage_75_84,
+            'discount_percentage_50_74' => $obj->discount_percentage_50_74,
+            'discount_percentage_0_49' => $obj->discount_percentage_0_49,
+            'institution_user' => InstitutionUserControllerTest::constructRepresentation($obj->institutionUser),
         ];
     }
 }

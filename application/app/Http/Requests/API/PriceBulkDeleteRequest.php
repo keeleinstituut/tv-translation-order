@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\API;
 
+use App\Models\Price;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class VendorListRequest extends FormRequest
+class PriceBulkDeleteRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -14,7 +16,12 @@ class VendorListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'limit' => 'sometimes|integer|max:50'
+            'id' => 'required|array|min:1',
+            'id.*' => [
+                'uuid',
+                'distinct',
+                Rule::exists(app(Price::class)->getTable(), 'id'),
+            ],
         ];
     }
 }

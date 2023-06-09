@@ -15,10 +15,34 @@ class Vendor extends Model
     protected $fillable = [
         'institution_user_id',
         'company_name',
+        'discount_percentage_101',
+        'discount_percentage_repetitions',
+        'discount_percentage_100',
+        'discount_percentage_95_99',
+        'discount_percentage_85_94',
+        'discount_percentage_75_84',
+        'discount_percentage_50_74',
+        'discount_percentage_0_49',
+    ];
+
+    protected $casts = [
+        'discount_percentage_101' => 'float',
+        'discount_percentage_repetitions' => 'float',
+        'discount_percentage_100' => 'float',
+        'discount_percentage_95_99' => 'float',
+        'discount_percentage_85_94' => 'float',
+        'discount_percentage_75_84' => 'float',
+        'discount_percentage_50_74' => 'float',
+        'discount_percentage_0_49' => 'float',
     ];
 
     public function institutionUser(): BelongsTo
     {
         return $this->belongsTo(InstitutionUser::class);
+    }
+
+    public function prices()
+    {
+        return $this->hasMany(Price::class);
     }
 }

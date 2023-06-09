@@ -4,7 +4,7 @@ namespace App\Http\Requests\API;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class VendorListRequest extends FormRequest
+class InstitutionUserListRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -14,7 +14,7 @@ class VendorListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'limit' => 'sometimes|integer|max:50'
+            'limit' => 'sometimes|integer|max:50',
         ];
     }
 }
