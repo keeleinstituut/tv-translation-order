@@ -9,6 +9,7 @@ use App\Models\Institution;
 use App\Models\Tag;
 use Illuminate\Testing\TestResponse;
 use Tests\AuthHelpers;
+use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
 
 class TagControllerIndexTest extends TestCase
@@ -19,12 +20,13 @@ class TagControllerIndexTest extends TestCase
             $institution = Institution::factory()->create()
         )->create();
 
-        $this->sendListRequestWithCustomHeaders(
+        $response = $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag])
-        )->assertOk()->assertJsonFragment([
-            'data' => $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
-                ->toArray(),
-        ]);
+        )->assertOk();
+
+        $tags->each(fn (Tag $tag) => $response->assertJsonFragment(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
     }
 
     public function test_list_of_tags_filtered_by_type_returned(): void
@@ -36,16 +38,18 @@ class TagControllerIndexTest extends TestCase
         $vendorTags = Tag::factory(10)->for($institution)
             ->create(['type' => TagType::Vendor->value]);
 
-        $this->sendListRequestWithCustomHeaders(
+        $response = $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]),
             ['type' => TagType::Order->value],
-        )->assertOk()->assertJsonFragment([
-            'data' => $orderTags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
-                ->toArray(),
-        ])->assertJsonMissing(
-            $vendorTags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
-                ->toArray()
-        );
+        )->assertOk();
+
+        $orderTags->each(fn (Tag $tag) => $response->assertJsonFragment(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
+
+        $vendorTags->each(fn (Tag $tag) => $response->assertJsonMissingExact(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
     }
 
     public function test_list_of_vendor_skill_tags_returned(): void
@@ -54,13 +58,14 @@ class TagControllerIndexTest extends TestCase
         $vendorSkillTags = Tag::factory(10)->vendorSkills()->create();
         $vendorSkillTags->map(fn (Tag $tag) => $this->assertEmpty($tag->institution_id));
 
-        $this->sendListRequestWithCustomHeaders(
+        $response = $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]),
             ['type' => TagType::VendorSkill->value],
-        )->assertOk()->assertJsonFragment([
-            'data' => $vendorSkillTags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
-                ->toArray(),
-        ]);
+        )->assertOk();
+
+        $vendorSkillTags->each(fn (Tag $tag) => $response->assertJsonFragment(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
     }
 
     public function test_list_of_tags_doesnt_contains_tags_from_another_institution(): void
@@ -70,7 +75,7 @@ class TagControllerIndexTest extends TestCase
         $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag])
         )->assertOk()->assertJsonMissing(
-            $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
+            $tags->map(fn (Tag $tag) => RepresentationHelpers::createTagFlatRepresentation($tag))
                 ->toArray()
         );
     }
@@ -84,7 +89,7 @@ class TagControllerIndexTest extends TestCase
         $this->sendListRequestWithCustomHeaders(
             AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag])
         )->assertOk()->assertJsonMissing(
-            $tags->map(fn (Tag $tag) => $this->createTagRepresentation($tag))
+            $tags->map(fn (Tag $tag) => RepresentationHelpers::createTagFlatRepresentation($tag))
                 ->toArray()
         );
     }
@@ -94,17 +99,5 @@ class TagControllerIndexTest extends TestCase
         return $this->withHeaders($headers)->getJson(
             action([TagController::class, 'index'], $queryParams),
         );
-    }
-
-    private function createTagRepresentation(Tag $tag): array
-    {
-        return [
-            'id' => $tag->id,
-            'name' => $tag->name,
-            'institution_id' => $tag->institution_id,
-            'type' => $tag->type->value,
-            'created_at' => $tag->created_at->toIsoString(),
-            'updated_at' => $tag->updated_at->toIsoString(),
-        ];
     }
 }

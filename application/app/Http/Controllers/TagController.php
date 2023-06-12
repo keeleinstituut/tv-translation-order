@@ -51,7 +51,7 @@ class TagController extends Controller
             $tags = collect();
             foreach ($request->validated('tags') as $tagData) {
                 $tags->add(
-                    $this->getCreatedTag(
+                    $this->createTag(
                         $tagData['name'],
                         TagType::from($tagData['type']),
                         $currentInstitution
@@ -69,37 +69,20 @@ class TagController extends Controller
      */
     public function update(UpdateTagsRequest $request)
     {
-        return DB::transaction(function () use ($request): ResourceCollection {
-            $currentInstitution = Institution::findOrFail(Auth::user()->institutionId);
-            $tags = collect();
-            $tagsType = TagType::from($request->validated('type'));
-            $createAbilityChecked = false;
-            foreach ($request->validated('tags') as $tagData) {
-                if (filled($tagData['id'])) {
-                    $tags->add(
-                        $this->getUpdatedTag(
-                            $tagData['id'],
-                            $tagData['name']
-                        )
-                    );
+        if (collect($request->validated('tags'))->some(fn ($tag) => empty($tag['id']))) {
+            $this->authorize('create', Tag::class);
+        }
 
-                    continue;
-                }
+        $institution = Institution::findOrFail(Auth::user()->institutionId);
 
-                ! $createAbilityChecked && $this->authorize('create', Tag::class);
-                $createAbilityChecked = true;
-
-                $tags->add(
-                    $this->getCreatedTag(
-                        $tagData['name'],
-                        $tagsType,
-                        $currentInstitution
-                    )
+        return DB::transaction(function () use ($institution, $request): ResourceCollection {
+            $tags = collect($request->validated('tags'))
+                ->map(fn ($tag) => filled($tag['id'])
+                    ? $this->updateTag($tag['id'], $tag['name'])
+                    : $this->createTag($tag['name'], $request->getType(), $institution)
                 );
-            }
 
-            $processedTagsIds = $tags->map(fn (Tag $tag) => $tag->id);
-            $this->deleteNotProcessedTags($processedTagsIds, $tagsType);
+            $this->deleteNotProcessedTags($tags, $request->getType());
 
             return TagResource::collection($tags);
         });
@@ -108,7 +91,7 @@ class TagController extends Controller
     /**
      * @throws Throwable
      */
-    private function getCreatedTag(string $name, TagType $type, Institution $institution): Tag
+    private function createTag(string $name, TagType $type, Institution $institution): Tag
     {
         $tag = new Tag([
             'name' => $name,
@@ -123,7 +106,7 @@ class TagController extends Controller
     /**
      * @throws Throwable
      */
-    private function getUpdatedTag(string $id, string $name): Tag
+    private function updateTag(string $id, string $name): Tag
     {
         $tag = Tag::findOrFail($id);
         $this->authorize('update', $tag);
@@ -136,10 +119,10 @@ class TagController extends Controller
         return $tag;
     }
 
-    private function deleteNotProcessedTags(Collection $processedTagsIds, TagType $tagsType)
+    private function deleteNotProcessedTags(Collection $tags, TagType $tagsType)
     {
         $this->getBaseQuery()->where('type', $tagsType)
-            ->whereNotIn('id', $processedTagsIds)
+            ->whereNotIn('id', $tags->pluck('id'))
             ->each(fn (Tag $tag) => $this->authorize('delete', $tag) && $tag->delete());
     }
 

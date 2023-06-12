@@ -38,7 +38,7 @@ class TagFactory extends Factory
         if ($type === TagType::VendorSkill) {
             return $this->state(fn () => [
                 'type' => $type,
-                'institution_id' => null
+                'institution_id' => null,
             ]);
         }
 

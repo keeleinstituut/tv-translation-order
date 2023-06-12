@@ -9,7 +9,6 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
@@ -20,40 +19,25 @@ class UpdateTagsRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array|string>
      */
-    public function rules(): array
+    public function rules()
     {
         return [
             'type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
             'tags' => ['present', 'array', 'max:10000'],
-            'tags.*' => Rule::forEach(fn () => [
-                function ($attr, $row, $fail) {
-                    $nameValidator = new TagNameRule(
-                        $this->getActingUserInstitutionId(),
-                        $this->input('type')
-                    );
+            'tags.*.name' => ['required', 'string'],
+            'tags.*.id' => ['sometimes', 'nullable', 'uuid',
+                Rule::exists(app(Tag::class)->getTable(), 'id')->where(function (Builder $query) {
+                    $query->where('type', $this->input('type'))
+                        ->where('institution_id', $this->getActingUserInstitutionId());
 
-                    if (filled($row['id'])) {
-                        $nameValidator->ignore($row['id']);
-                    }
-
-                    $subValidator = Validator::make($row, [
-                        'id' => [
-                            'sometimes', 'nullable', 'uuid',
-                            Rule::exists(app(Tag::class)->getTable(), 'id')->where(function (Builder $query) {
-                                $query->where('type', $this->input('type'))
-                                    ->where('institution_id', $this->getActingUserInstitutionId());
-
-                                return $query;
-                            }),
-                        ],
-                        'name' => ['required', 'string', $nameValidator],
-                    ]);
-
-                    if ($subValidator->fails()) {
-                        $fail($subValidator->errors()->first());
-                    }
-                },
-            ]),
+                    return $query;
+                }),
+            ],
+            'tags.*' => [
+                'required',
+                'array',
+                new TagNameRule($this->getActingUserInstitutionId(), $this->input('type')),
+            ],
         ];
     }
 
@@ -64,5 +48,10 @@ class UpdateTagsRequest extends FormRequest
         }
 
         return $currentUserInstitutionId;
+    }
+
+    public function getType(): TagType
+    {
+        return TagType::tryFrom($this->validated('type'));
     }
 }

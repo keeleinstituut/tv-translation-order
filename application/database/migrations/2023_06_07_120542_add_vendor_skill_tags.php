@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('tags')->insert(
-            $this->getVendorSkillTagsNames()->map(fn(string $name) => [
+            $this->getVendorSkillTagsNames()->map(fn (string $name) => [
                 'id' => Str::orderedUuid(),
                 'name' => $name,
                 'type' => TagType::VendorSkill->value,

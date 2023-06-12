@@ -3,9 +3,9 @@
 namespace App\Rules;
 
 use App\Models\Tag;
+use Arr;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class TagNameRule implements ValidationRule
@@ -14,35 +14,34 @@ class TagNameRule implements ValidationRule
 
     private const MAX_LENGTH = 50;
 
-    private string $ignoreId = '';
-
-    public function __construct(private readonly string $institutionId, private readonly ?string $tagType)
+    public function __construct(private readonly string $institutionId, private readonly ?string $tagType = null)
     {
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (Str::length($value) > self::MAX_LENGTH) {
+        $tagName = Arr::get($value, 'name');
+        $tagType = $this->tagType ?: Arr::get($value, 'type');
+
+        if (empty($tagName)) {
+            $fail('The :attribute is required.');
+        }
+
+        if (Str::length($tagName) > self::MAX_LENGTH) {
             $fail('The :attribute length should be less than '.self::MAX_LENGTH.' characters');
         }
 
-        if (! Str::match(self::REGEX, $value)) {
+        if (! Str::match(self::REGEX, $tagName)) {
             $fail('The :attribute has incorrect characters.');
         }
 
-        $isExists = Tag::query()->where($attribute, 'ilike', $value)
+        $isExists = filled($tagName) && Tag::query()->where('name', 'ilike', $tagName)
             ->where('institution_id', $this->institutionId)
-            ->where('type', $this->tagType)
-            ->when($this->ignoreId, fn (Builder $query, string $id) => $query->whereNot('id', $id))
+            ->where('type', $tagType)->whereNot('id', Arr::get($value, 'id'))
             ->exists();
 
         if ($isExists) {
             $fail('Tag with such name already exists');
         }
-    }
-
-    public function ignore(string $id)
-    {
-        $this->ignoreId = $id;
     }
 }
