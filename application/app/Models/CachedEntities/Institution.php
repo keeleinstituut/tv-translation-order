@@ -2,6 +2,7 @@
 
 namespace App\Models\CachedEntities;
 
+use App\Models\Sequence;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,4 +16,10 @@ class Institution extends Model
     protected $table = 'cached_institutions';
 
     public $timestamps = false;
+
+    public function institutionProjectSequence()
+    {
+        return $this->morphOne(Sequence::class, 'sequenceable')
+            ->where('name', Sequence::INSTITUTION_PROJECT_SEQ);
+    }
 }

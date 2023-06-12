@@ -1,11 +1,6 @@
 version: "3.8"
 
 services:
-  app:
-    depends_on:
-      - postgres
-      - rabbitmq
-
   postgres:
     image: postgres:latest
     command: ["postgres", "-c", "log_statement=all"]
@@ -25,3 +20,28 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+
+  camunda:
+    image: camunda/camunda-bpm-platform:run-latest
+#    command: ./camunda.sh --webapps --rest --swaggerui
+    command: ./camunda.sh --webapps --rest --swaggerui --example
+    ports:
+      - 8090:8080
+    environment:
+      - CAMUNDA_BPM_ADMIN_USER_ID=admin
+      - CAMUNDA_BPM_ADMIN_USER_PASSWORD=password
+
+  minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - 9000:9000
+      - 9001:9001
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password

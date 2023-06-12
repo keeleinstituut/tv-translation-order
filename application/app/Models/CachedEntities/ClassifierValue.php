@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Enums\ClassifierValueType;
+use App\Models\ProjectTypeConfig;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,4 +22,9 @@ class ClassifierValue extends Model
         'type' => ClassifierValueType::class,
         'meta' => 'array',
     ];
+
+    public function projectTypeConfig()
+    {
+        return $this->hasOne(ProjectTypeConfig::class, 'type_classifier_value_id');
+    }
 }
