@@ -28,10 +28,9 @@ class TagController extends Controller
         $this->authorize('viewAny', Tag::class);
 
         $tagsQuery = $this->getBaseQuery();
-        $tagsQuery->when(
-            $request->validated('type'),
-            fn (Builder $query, string $type) => $query->where('type', $type)
-        );
+        if ($type = $request->validated('type')) {
+            $tagsQuery->where('type', $type);
+        }
 
         $tagsQuery->orderBy('type')->orderBy('name');
 
@@ -47,17 +46,13 @@ class TagController extends Controller
         $this->authorize('create', Tag::class);
 
         return DB::transaction(function () use ($request): ResourceCollection {
-            $currentInstitution = Institution::findOrFail(Auth::user()->institutionId);
-            $tags = collect();
-            foreach ($request->validated('tags') as $tagData) {
-                $tags->add(
-                    $this->createTag(
-                        $tagData['name'],
-                        TagType::from($tagData['type']),
-                        $currentInstitution
-                    )
-                );
-            }
+            $institution = Institution::findOrFail(Auth::user()->institutionId);
+            $tags = collect($request->validated('tags'))
+                ->map(fn (array $tagData) => $this->createTag(
+                    $tagData['name'],
+                    $tagData['type'],
+                    $institution
+                ));
 
             return TagResource::collection($tags);
         });
@@ -79,7 +74,7 @@ class TagController extends Controller
             $tags = collect($request->validated('tags'))
                 ->map(fn ($tag) => filled($tag['id'])
                     ? $this->updateTag($tag['id'], $tag['name'])
-                    : $this->createTag($tag['name'], $request->getType(), $institution)
+                    : $this->createTag($tag['name'], $request->validated('type'), $institution)
                 );
 
             $this->deleteNotProcessedTags($tags, $request->getType());
@@ -91,9 +86,10 @@ class TagController extends Controller
     /**
      * @throws Throwable
      */
-    private function createTag(string $name, TagType $type, Institution $institution): Tag
+    private function createTag(string $name, string $type, Institution $institution): Tag
     {
-        $tag = new Tag([
+        $tag = new Tag();
+        $tag->fill([
             'name' => $name,
             'type' => $type,
         ]);
@@ -111,12 +107,9 @@ class TagController extends Controller
         $tag = Tag::findOrFail($id);
         $this->authorize('update', $tag);
         $tag->name = $name;
-        if ($tag->isDirty()) {
-            $tag->saveOrFail();
-            $tag->refresh();
-        }
+        $tag->saveOrFail();
 
-        return $tag;
+        return $tag->refresh();
     }
 
     private function deleteNotProcessedTags(Collection $tags, TagType $tagsType)
