@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use SyncTools\Traits\HasCachedEntityDbSchema;
 use SyncTools\Traits\HasCachedEntityFactory;
 
 /**
@@ -47,7 +48,7 @@ use SyncTools\Traits\HasCachedEntityFactory;
  */
 class Institution extends Model
 {
-    use HasCachedEntityFactory, HasUuids, SoftDeletes;
+    use HasCachedEntityFactory, HasUuids, SoftDeletes, HasCachedEntityDbSchema;
 
-    protected $table = 'entity_cache.cached_institutions';
+    protected $table = 'cached_institutions';
 }

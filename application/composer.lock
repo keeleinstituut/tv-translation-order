@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b5afd9a054fecf515c12dca2c1aadd4a",
+    "content-hash": "c52c46007f82e6e1a412a7f9b43725d9",
     "packages": [
         {
             "name": "brick/math",
@@ -1039,16 +1039,16 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-amqp",
-            "version": "0.0.13",
+            "version": "0.0.15",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-amqp.git",
-                "reference": "b0979cc2738c93fea9d07a7b377b65f5f78bea0f"
+                "reference": "8927ffb86da7159a114f52758afe688da6f368a8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/b0979cc2738c93fea9d07a7b377b65f5f78bea0f",
-                "reference": "b0979cc2738c93fea9d07a7b377b65f5f78bea0f",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/8927ffb86da7159a114f52758afe688da6f368a8",
+                "reference": "8927ffb86da7159a114f52758afe688da6f368a8",
                 "shasum": ""
             },
             "require": {
@@ -1094,10 +1094,10 @@
                 "rabbitmq"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.13",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.15",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-amqp/issues"
             },
-            "time": "2023-06-04T16:58:56+00:00"
+            "time": "2023-06-14T08:15:56+00:00"
         },
         {
             "name": "keeleinstituut/tv-common-laravel-security",
