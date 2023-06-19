@@ -10,9 +10,11 @@ services:
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=app
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
+    volumes:
+      - ./dev-db-init.sql:/docker-entrypoint-initdb.d/init.sql
 
   redis:
     image: redis:latest
