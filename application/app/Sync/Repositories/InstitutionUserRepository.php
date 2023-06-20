@@ -2,6 +2,8 @@
 
 namespace App\Sync\Repositories;
 
+use Arr;
+use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
@@ -12,18 +14,44 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
     public function save(array $resource): void
     {
         $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'institution_id' => $resource['institution_id'],
-            'department_id' => $resource['department']['id'] ?? null,
-            'user_id' => $resource['user']['id'],
-            'forename' => $resource['user']['forename'],
-            'surname' => $resource['user']['surname'],
-            'personal_identification_code' => $resource['user']['personal_identification_code'],
-            'status' => $resource['status'],
             'email' => $resource['email'],
             'phone' => $resource['phone'],
-            'created_at' => $resource['created_at'],
-            'updated_at' => $resource['updated_at'],
-            'synced_at' => new Expression('NOW()'),
+            'archived_at' => $resource['archived_at'],
+            'deactivation_date' => $resource['deactivation_date'],
+            'user' => json_encode(
+                Arr::only($resource['user'], [
+                    'id',
+                    'personal_identification_code',
+                    'forename',
+                    'surname'
+                ])
+            ),
+            'institution' => json_encode(
+                Arr::only($resource['institution'], [
+                    'id',
+                    'name',
+                    'short_name',
+                    'phone',
+                    'email',
+                    'logo_url'
+                ])
+            ),
+            'department' => json_encode(
+                Arr::only($resource['department'], [
+                    'id',
+                    'institution_id',
+                    'name'
+                ])
+            ),
+            'roles' => json_encode(
+                collect($resource['roles'])->each(fn($roleResource) => Arr::only($roleResource, [
+                    'id',
+                    'name',
+                    'institution_id',
+                    'privileges'
+                ]))->toArray()
+            ),
+            'synced_at' => Carbon::now()->toISOString(),
             'deleted_at' => $resource['deleted_at'],
         ]);
     }

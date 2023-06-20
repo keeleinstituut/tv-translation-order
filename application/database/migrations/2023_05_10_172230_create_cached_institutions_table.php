@@ -18,7 +18,6 @@ return new class extends BaseCachedEntityTableMigration
             $table->string('email', 50)->nullable();
             $table->string('phone', 50)->nullable();
             $table->string('logo_url')->nullable();
-            $table->timestampsTz();
             $table->timestampTz('synced_at')->nullable();
             $table->softDeletesTz();
         });

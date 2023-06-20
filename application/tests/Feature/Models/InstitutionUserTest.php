@@ -2,7 +2,7 @@
 
 namespace tests\Feature\Models;
 
-use App\Models\Cached\InstitutionUser;
+use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;

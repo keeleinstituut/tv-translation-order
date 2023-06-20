@@ -7,7 +7,7 @@ use App\Http\Requests\StoreTagsRequest;
 use App\Http\Requests\TagListRequest;
 use App\Http\Requests\UpdateTagsRequest;
 use App\Http\Resources\TagResource;
-use App\Models\Institution;
+use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
 use App\Policies\TagPolicy;
 use Illuminate\Auth\Access\AuthorizationException;

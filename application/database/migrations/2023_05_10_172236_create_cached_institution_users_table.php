@@ -21,7 +21,6 @@ return new class extends BaseCachedEntityTableMigration
             $table->jsonb('institution')->nullable();
             $table->jsonb('department')->nullable();
             $table->jsonb('roles')->nullable();
-            $table->timestampsTz();
             $table->softDeletesTz();
             $table->timestampTz('synced_at')->nullable();
         });

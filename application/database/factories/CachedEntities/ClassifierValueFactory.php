@@ -1,9 +1,9 @@
 <?php
 
-namespace Database\Factories;
+namespace database\factories\CachedEntities;
 
 use App\Enums\ClassifierValueType;
-use App\Models\Cached\ClassifierValue;
+use App\Models\CachedEntities\ClassifierValue;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
  */
 class ClassifierValueFactory extends Factory
 {
+    protected $model = ClassifierValue::class;
+
     /**
      * Define the model's default state.
      *

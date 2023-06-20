@@ -2,7 +2,7 @@
 
 namespace tests\Feature\Models;
 
-use App\Models\Cached\ClassifierValue;
+use App\Models\CachedEntities\ClassifierValue;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;

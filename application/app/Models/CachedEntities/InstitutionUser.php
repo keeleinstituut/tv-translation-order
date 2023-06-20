@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Cached;
+namespace App\Models\CachedEntities;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;

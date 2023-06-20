@@ -17,7 +17,6 @@ return new class extends BaseCachedEntityTableMigration
             $table->string('value');
             $table->string('name');
             $table->json('meta')->nullable();
-            $table->timestampsTz();
             $table->timestampTz('synced_at')->nullable();
             $table->softDeletesTz();
         });

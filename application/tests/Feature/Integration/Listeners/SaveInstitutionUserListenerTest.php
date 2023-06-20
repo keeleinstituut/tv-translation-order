@@ -4,7 +4,7 @@ namespace tests\Feature\Integration\Listeners;
 
 use App\Events\InstitutionUsers\InstitutionUserSaved;
 use App\Listeners\InstitutionUsers\SaveInstitutionUserListener;
-use App\Models\Cached\InstitutionUser;
+use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use SyncTools\Exceptions\ResourceGatewayConnectionException;
@@ -42,6 +42,9 @@ class SaveInstitutionUserListenerTest extends TestCase
         $this->assertInstitutionUserHasAttributesValuesFromResponseData($institutionUser, $newInstitutionUserAttributes);
     }
 
+    /**
+     * @throws ResourceGatewayConnectionException
+     */
     public function test_trashed_institution_user_updated_event_listened(): void
     {
         $institutionUser = InstitutionUser::factory()->create();

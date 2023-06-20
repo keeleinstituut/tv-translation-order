@@ -4,7 +4,7 @@ namespace tests\Feature\Integration\Listeners;
 
 use App\Events\Institutions\InstitutionSaved;
 use App\Listeners\Institutions\SaveInstitutionListener;
-use App\Models\Cached\Institution;
+use App\Models\CachedEntities\Institution;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\ApiResponseHelpers;

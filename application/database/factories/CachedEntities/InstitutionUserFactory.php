@@ -1,12 +1,12 @@
 <?php
 
-namespace Database\Factories;
+namespace database\factories\CachedEntities;
 
-use App\Enums\InstitutionUserStatus;
-use App\Models\Cached\Institution;
-use App\Models\Cached\InstitutionUser;
-use Carbon\Carbon;
+use App\Enums\PrivilegeKey;
+use App\Models\CachedEntities\Institution;
+use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
  */
 class InstitutionUserFactory extends Factory
 {
+    protected $model = InstitutionUser::class;
+
     /**
      * Define the model's default state.
      *
@@ -26,10 +28,12 @@ class InstitutionUserFactory extends Factory
         return [
             'email' => $this->faker->email,
             'phone' => $this->generateRandomEstonianPhoneNumber(),
+            'archived_at' => null,
+            'deactivation_date' => null,
             'user' => $this->generateUserData(),
             'institution' => $institutionData,
             'department' => $this->generateDepartmentData($institutionData['id']),
-            'synced_at' => Carbon::now()
+            'roles' => $this->generateRolesData($institutionData['id']),
         ];
     }
 
@@ -49,6 +53,7 @@ class InstitutionUserFactory extends Factory
     private function generateUserData(): array
     {
         return [
+            'id' => Str::orderedUuid(),
             'forename' => $this->faker->firstName(),
             'surname' => $this->faker->lastName(),
             'personal_identification_code' => $this->faker->estonianPIC(),
@@ -63,8 +68,24 @@ class InstitutionUserFactory extends Factory
     private function generateDepartmentData(string $institutionId): array
     {
         return [
+            'id' => Str::orderedUuid(),
             'name' => $this->faker->city(),
             'institution_id' => $institutionId,
+        ];
+    }
+
+    private function generateRolesData(string $institutionId): array
+    {
+        return [
+            [
+                'id' => Str::orderedUuid(),
+                'name' => fake()->name,
+                'institution_id' => $institutionId,
+                'privileges' => fake()->randomElements(
+                    PrivilegeKey::values(),
+                    fake()->numberBetween(1, 16)
+                )
+            ]
         ];
     }
 }

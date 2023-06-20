@@ -1,8 +1,8 @@
 <?php
 
-namespace Database\Factories;
+namespace database\factories\CachedEntities;
 
-use App\Models\Institution;
+use App\Models\CachedEntities\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class InstitutionFactory extends Factory
 {
+    protected $model = Institution::class;
+
     /**
      * Define the model's default state.
      *
