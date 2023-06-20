@@ -40,6 +40,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'api' => [
+            'driver' => 'keycloak',
+            'provider' => 'jwt-users',
+        ],
     ],
 
     /*
@@ -62,13 +66,13 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            //'model' => App\Models\User::class,
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'jwt-users' => [
+            'driver' => 'jwt-payload-users',
+            'model' => KeycloakAuthGuard\Models\JwtPayloadUser::class,
+        ],
     ],
 
     /*
