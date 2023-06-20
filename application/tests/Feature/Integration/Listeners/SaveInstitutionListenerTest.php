@@ -4,7 +4,7 @@ namespace tests\Feature\Integration\Listeners;
 
 use App\Events\Institutions\InstitutionSaved;
 use App\Listeners\Institutions\SaveInstitutionListener;
-use App\Models\Institution;
+use App\Models\Cached\Institution;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\ApiResponseHelpers;
@@ -38,9 +38,41 @@ class SaveInstitutionListenerTest extends TestCase
         $this->assertModelHasAttributesValues($institution, $newInstitutionAttributes);
     }
 
+    public function test_trashed_institution_updated_event_listened(): void
+    {
+        $institution = Institution::factory()->create();
+        $newInstitutionAttributes = $this->generateInstitutionResponseData($institution->id, true);
+        Http::fake([
+            ...$this->getFakeKeycloakServiceAccountJwtResponse(),
+            ...$this->getFakeInstitutionResponse($newInstitutionAttributes),
+        ]);
+
+        $this->app->make(SaveInstitutionListener::class)
+            ->handle(new InstitutionSaved($institution->id));
+
+        $institution->refresh();
+        $this->assertModelHasAttributesValues($institution, $newInstitutionAttributes);
+    }
+
     public function test_institution_created_event_listened(): void
     {
         $institutionAttributes = $this->generateInstitutionResponseData();
+        Http::fake([
+            ...$this->getFakeKeycloakServiceAccountJwtResponse(),
+            ...$this->getFakeInstitutionResponse($institutionAttributes),
+        ]);
+
+        $this->app->make(SaveInstitutionListener::class)
+            ->handle(new InstitutionSaved($institutionAttributes['id']));
+
+        $institution = Institution::withTrashed()->where('id', '=', $institutionAttributes['id'])->first();
+        $this->assertModelExists($institution);
+        $this->assertModelHasAttributesValues($institution, $institutionAttributes);
+    }
+
+    public function test_trashed_institution_created_event_listened(): void
+    {
+        $institutionAttributes = $this->generateInstitutionResponseData(isDeleted: true);
         Http::fake([
             ...$this->getFakeKeycloakServiceAccountJwtResponse(),
             ...$this->getFakeInstitutionResponse($institutionAttributes),

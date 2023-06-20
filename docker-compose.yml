@@ -4,12 +4,12 @@ services:
   app:
     depends_on:
       - postgres
-      - redis
+      - rabbitmq
 
   postgres:
     image: postgres:latest
     ports:
-      - 5433:5432
+      - ${DB_PORT}:5432
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=user
@@ -17,7 +17,11 @@ services:
     volumes:
       - ./dev-db-init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  redis:
-    image: redis:latest
+  rabbitmq:
+    image: rabbitmq:latest
     ports:
-      - 6378:6379
+      - ${AMQP_PORT}:5672
+      #- 15672:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest

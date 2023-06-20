@@ -2,7 +2,7 @@
 
 namespace tests\Feature\Integration\Sync;
 
-use App\Models\InstitutionUser;
+use App\Models\Cached\InstitutionUser;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\ApiResponseHelpers;
@@ -23,6 +23,29 @@ class InstitutionUserFullSyncTest extends TestCase
     {
         $institutionUserAttributes = $this->generateInstitutionUserResponseData();
 
+        Http::fake([
+            ...$this->getFakeKeycloakServiceAccountJwtResponse(),
+            ...$this->getFakeInstitutionUsersResponse([
+                $institutionUserAttributes,
+            ]),
+        ]);
+
+        $this->artisan('institution-user:full-sync')->assertExitCode(0);
+
+        $institutionUser = InstitutionUser::withTrashed()
+            ->where('id', '=', $institutionUserAttributes['id'])
+            ->first();
+
+        $this->assertNotNull($institutionUser);
+        $this->assertModelExists($institutionUser);
+        $this->assertInstitutionUserHasAttributesValuesFromResponseData(
+            $institutionUser, $institutionUserAttributes
+        );
+    }
+
+    public function test_trashed_institution_users_synced(): void
+    {
+        $institutionUserAttributes = $this->generateInstitutionUserResponseData(isDeleted: true);
         Http::fake([
             ...$this->getFakeKeycloakServiceAccountJwtResponse(),
             ...$this->getFakeInstitutionUsersResponse([

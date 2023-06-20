@@ -4,7 +4,7 @@ namespace tests\Feature\Integration\Listeners;
 
 use App\Events\ClassifierValues\ClassifierValueDeleted;
 use App\Listeners\ClassifierValues\DeleteClassifierValueListener;
-use App\Models\ClassifierValue;
+use App\Models\Cached\ClassifierValue;
 use Tests\TestCase;
 
 class DeleteClassifierValueListenerTest extends TestCase

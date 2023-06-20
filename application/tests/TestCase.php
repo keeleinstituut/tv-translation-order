@@ -2,20 +2,10 @@
 
 namespace Tests;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Support\Facades\Artisan;
+use SyncTools\Traits\RefreshDatabaseWithCachedEntitySchema;
 
 abstract class TestCase extends BaseTestCase
 {
-    use CreatesApplication, RefreshDatabase;
-
-    protected function beforeRefreshingDatabase()
-    {
-        if (! RefreshDatabaseState::$migrated) {
-            Artisan::call('db-schema:setup');
-            Artisan::call('db:wipe', ['--database' => config('pgsql-connection.sync.name')]);
-        }
-    }
+    use CreatesApplication, RefreshDatabaseWithCachedEntitySchema;
 }

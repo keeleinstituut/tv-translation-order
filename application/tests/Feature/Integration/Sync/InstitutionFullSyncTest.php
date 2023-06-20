@@ -2,7 +2,7 @@
 
 namespace tests\Feature\Integration\Sync;
 
-use App\Models\Institution;
+use App\Models\Cached\Institution;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\ApiResponseHelpers;
@@ -23,6 +23,27 @@ class InstitutionFullSyncTest extends TestCase
     public function test_institutions_synced(): void
     {
         $institutionAttributes = $this->generateInstitutionResponseData();
+        Http::fake([
+            ...$this->getFakeKeycloakServiceAccountJwtResponse(),
+            ...$this->getFakeInstitutionsResponse([
+                $institutionAttributes,
+            ]),
+        ]);
+
+        $this->artisan('institution:full-sync')->assertExitCode(0);
+
+        $institution = Institution::withTrashed()
+            ->where('id', '=', $institutionAttributes['id'])
+            ->first();
+
+        $this->assertNotNull($institution);
+        $this->assertModelExists($institution);
+        $this->assertModelHasAttributesValues($institution, $institutionAttributes);
+    }
+
+    public function test_trashed_institutions_synced(): void
+    {
+        $institutionAttributes = $this->generateInstitutionResponseData(isDeleted: true);
         Http::fake([
             ...$this->getFakeKeycloakServiceAccountJwtResponse(),
             ...$this->getFakeInstitutionsResponse([
@@ -63,6 +84,24 @@ class InstitutionFullSyncTest extends TestCase
     {
         $institution = Institution::factory()->create();
         $newInstitutionAttributes = $this->generateInstitutionResponseData($institution->id);
+        Http::fake([
+            ...$this->getFakeKeycloakServiceAccountJwtResponse(),
+            ...$this->getFakeInstitutionsResponse([
+                $newInstitutionAttributes,
+            ]),
+        ]);
+
+        $this->artisan('institution:full-sync')->assertExitCode(0);
+
+        $institution->refresh();
+        $this->assertModelExists($institution);
+        $this->assertModelHasAttributesValues($institution, $newInstitutionAttributes);
+    }
+
+    public function test_trashed_synced_institutions_updated(): void
+    {
+        $institution = Institution::factory()->create();
+        $newInstitutionAttributes = $this->generateInstitutionResponseData($institution->id, true);
         Http::fake([
             ...$this->getFakeKeycloakServiceAccountJwtResponse(),
             ...$this->getFakeInstitutionsResponse([

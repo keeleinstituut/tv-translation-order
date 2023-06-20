@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     'app' => [
         'properties' => [
             'username' => env('PG_APP_USERNAME', ''),
@@ -16,8 +15,5 @@ return [
             'schema' => env('PG_SYNC_SCHEMA', 'entity_cache'),
         ],
         'name' => env('PG_SYNC_CONNECTION_NAME', 'entity_sync'),
-    ],
-    'admin' => [
-        'name' => env('PG_ADMIN_CONNECTION_NAME', 'pgsql_main'),
     ],
 ];

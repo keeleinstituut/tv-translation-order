@@ -2,9 +2,9 @@
 
 namespace Tests;
 
-use App\Models\ClassifierValue;
-use App\Models\Institution;
-use App\Models\InstitutionUser;
+use App\Models\Cached\ClassifierValue;
+use App\Models\Cached\Institution;
+use App\Models\Cached\InstitutionUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -113,19 +113,19 @@ trait ApiResponseHelpers
         return $classifierValueAttributes;
     }
 
-    protected function generateInstitutionResponseData(?string $id = null): array
+    protected function generateInstitutionResponseData(?string $id = null, bool $isDeleted = false): array
     {
         $institutionAttributes = Institution::factory()->make()->getAttributes();
 
         $institutionAttributes['id'] = $id ?: Str::orderedUuid()->toString();
         $institutionAttributes['created_at'] = Carbon::now();
         $institutionAttributes['updated_at'] = Carbon::now();
-        $institutionAttributes['deleted_at'] = Carbon::now();
+        $institutionAttributes['deleted_at'] = $isDeleted ? Carbon::now() : null;
 
         return $institutionAttributes;
     }
 
-    protected function generateInstitutionUserResponseData(?string $id = null): array
+    protected function generateInstitutionUserResponseData(?string $id = null, bool $isDeleted = false): array
     {
         $institutionUserAttributes = InstitutionUser::factory()->make()->getAttributes();
 
@@ -151,7 +151,7 @@ trait ApiResponseHelpers
         $institutionUserAttributes['id'] = $id ?: Str::orderedUuid()->toString();
         $institutionUserAttributes['created_at'] = Carbon::now();
         $institutionUserAttributes['updated_at'] = Carbon::now();
-        $institutionUserAttributes['deleted_at'] = Carbon::now();
+        $institutionUserAttributes['deleted_at'] = $isDeleted ? Carbon::now() : null;
 
         return $institutionUserAttributes;
     }

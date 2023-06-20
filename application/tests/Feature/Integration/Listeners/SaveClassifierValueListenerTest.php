@@ -4,7 +4,7 @@ namespace tests\Feature\Integration\Listeners;
 
 use App\Events\ClassifierValues\ClassifierValueSaved;
 use App\Listeners\ClassifierValues\SaveClassifierValueListener;
-use App\Models\ClassifierValue;
+use App\Models\Cached\ClassifierValue;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\ApiResponseHelpers;

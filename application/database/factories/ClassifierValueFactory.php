@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ClassifierValueType;
-use App\Models\ClassifierValue;
+use App\Models\Cached\ClassifierValue;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

@@ -13,18 +13,17 @@ return new class extends BaseCachedEntityTableMigration
     {
         Schema::create('cached_institution_users', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('institution_id');
-            $table->foreignUuid('department_id')->nullable();
-            $table->uuid('user_id');
-            $table->text('forename');
-            $table->text('surname');
-            $table->text('personal_identification_code');
-            $table->string('status', 20);
-            $table->string('email')->nullable();
-            $table->string('phone')->nullable();
+            $table->string('email');
+            $table->string('phone');
+            $table->date('deactivation_date')->nullable();
+            $table->timestampTz('archived_at')->nullable();
+            $table->jsonb('user')->nullable();
+            $table->jsonb('institution')->nullable();
+            $table->jsonb('department')->nullable();
+            $table->jsonb('roles')->nullable();
             $table->timestampsTz();
-            $table->timestampTz('synced_at')->nullable();
             $table->softDeletesTz();
+            $table->timestampTz('synced_at')->nullable();
         });
     }
 

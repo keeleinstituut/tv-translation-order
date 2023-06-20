@@ -2,7 +2,7 @@
 
 namespace tests\Feature\Integration\Sync;
 
-use App\Models\Institution;
+use App\Models\Cached\Institution;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\ApiResponseHelpers;

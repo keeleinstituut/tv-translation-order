@@ -4,7 +4,7 @@ namespace tests\Feature\Integration\Listeners;
 
 use App\Events\Institutions\InstitutionDeleted;
 use App\Listeners\Institutions\DeleteInstitutionListener;
-use App\Models\Institution;
+use App\Models\Cached\Institution;
 use Tests\TestCase;
 
 class DeleteInstitutionListenerTest extends TestCase
