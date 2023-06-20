@@ -6,7 +6,6 @@ use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -25,6 +24,7 @@ class InstitutionUserFactory extends Factory
     public function definition(): array
     {
         $institutionData = $this->generateInstitutionData();
+
         return [
             'email' => $this->faker->email,
             'phone' => $this->generateRandomEstonianPhoneNumber(),
@@ -84,8 +84,8 @@ class InstitutionUserFactory extends Factory
                 'privileges' => fake()->randomElements(
                     PrivilegeKey::values(),
                     fake()->numberBetween(1, 16)
-                )
-            ]
+                ),
+            ],
         ];
     }
 }

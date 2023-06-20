@@ -17,10 +17,10 @@ return new class extends BaseCachedEntityTableMigration
             $table->string('phone');
             $table->date('deactivation_date')->nullable();
             $table->timestampTz('archived_at')->nullable();
-            $table->jsonb('user')->nullable();
-            $table->jsonb('institution')->nullable();
-            $table->jsonb('department')->nullable();
-            $table->jsonb('roles')->nullable();
+            $table->jsonb('user');
+            $table->jsonb('institution');
+            $table->jsonb('department');
+            $table->jsonb('roles');
             $table->softDeletesTz();
             $table->timestampTz('synced_at')->nullable();
         });

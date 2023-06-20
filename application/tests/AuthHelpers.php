@@ -32,8 +32,8 @@ readonly class AuthHelpers
             'iss' => config('keycloak.base_url').'/realms/'.config('keycloak.realm'),
             'exp' => time() + ($expiresIn ?: 300),
             'realm_access' => [
-                'roles' => [$role ?: config('keycloak.service_account_sync_role')]
-            ]
+                'roles' => [$role ?: config('keycloak.service_account_sync_role')],
+            ],
         ], static::getPrivateKey(), 'RS256');
     }
 

@@ -16,7 +16,7 @@ trait ApiResponseHelpers
     protected function getFakeKeycloakServiceAccountJwtResponse(): array
     {
         return [
-            rtrim(config('keycloak.base_url'), '/') . '/*' => Http::response([
+            rtrim(config('keycloak.base_url'), '/').'/*' => Http::response([
                 'access_token' => AuthHelpers::generateServiceAccountJwt(),
                 'expires_in' => 300,
             ]),
@@ -26,7 +26,7 @@ trait ApiResponseHelpers
     protected function getFakeClassifierValuesResponse(array $responseData = []): array
     {
         return [
-            rtrim(config('sync.classifier_service_base_url'), '/') . '/sync/classifier-values' => Http::response([
+            rtrim(config('sync.classifier_service_base_url'), '/').'/sync/classifier-values' => Http::response([
                 'data' => $responseData,
             ]),
         ];
@@ -35,7 +35,7 @@ trait ApiResponseHelpers
     protected function getFakeClassifierValueResponse(array $responseData): array
     {
         return [
-            rtrim(config('sync.classifier_service_base_url'), '/') . '/sync/classifier-values/*' => Http::response([
+            rtrim(config('sync.classifier_service_base_url'), '/').'/sync/classifier-values/*' => Http::response([
                 'data' => $responseData,
             ]),
         ];
@@ -44,14 +44,14 @@ trait ApiResponseHelpers
     protected function getFakeNotFoundClassifierValueResponse(): array
     {
         return [
-            rtrim(config('sync.classifier_service_base_url'), '/') . '/sync/classifier-values/*' => Http::response(status: 404),
+            rtrim(config('sync.classifier_service_base_url'), '/').'/sync/classifier-values/*' => Http::response(status: 404),
         ];
     }
 
     protected function getFakeInstitutionsResponse(array $responseData = []): array
     {
         return [
-            rtrim(config('sync.authorization_service_base_url'), '/') . '/sync/institutions' => Http::response([
+            rtrim(config('sync.authorization_service_base_url'), '/').'/sync/institutions' => Http::response([
                 'data' => $responseData,
             ]),
         ];
@@ -60,7 +60,7 @@ trait ApiResponseHelpers
     protected function getFakeInstitutionResponse(array $responseData = []): array
     {
         return [
-            rtrim(config('sync.authorization_service_base_url'), '/') . '/sync/institutions/*' => Http::response([
+            rtrim(config('sync.authorization_service_base_url'), '/').'/sync/institutions/*' => Http::response([
                 'data' => $responseData,
             ]),
         ];
@@ -69,14 +69,14 @@ trait ApiResponseHelpers
     protected function getFakeNotFoundInstitutionResponse(): array
     {
         return [
-            rtrim(config('sync.authorization_service_base_url'), '/') . '/sync/institutions/*' => Http::response(status: 404),
+            rtrim(config('sync.authorization_service_base_url'), '/').'/sync/institutions/*' => Http::response(status: 404),
         ];
     }
 
     protected function getFakeInstitutionUsersResponse(array $responseData = []): array
     {
         return [
-            rtrim(config('sync.authorization_service_base_url'), '/') . '/sync/institution-users?*' => Http::response([
+            rtrim(config('sync.authorization_service_base_url'), '/').'/sync/institution-users?*' => Http::response([
                 'data' => $responseData,
                 'meta' => [
                     'current_page' => 1,
@@ -89,7 +89,7 @@ trait ApiResponseHelpers
     protected function getFakeInstitutionUserResponse(array $responseData = []): array
     {
         return [
-            rtrim(config('sync.authorization_service_base_url'), '/') . '/sync/institution-users/*' => Http::response([
+            rtrim(config('sync.authorization_service_base_url'), '/').'/sync/institution-users/*' => Http::response([
                 'data' => $responseData,
             ]),
         ];
@@ -98,7 +98,7 @@ trait ApiResponseHelpers
     protected function getFakeNotFoundInstitutionUserResponse(): array
     {
         return [
-            rtrim(config('sync.authorization_service_base_url'), '/') . '/sync/institution-users/*' => Http::response(status: 404),
+            rtrim(config('sync.authorization_service_base_url'), '/').'/sync/institution-users/*' => Http::response(status: 404),
         ];
     }
 
@@ -119,8 +119,6 @@ trait ApiResponseHelpers
         $institutionAttributes = Institution::factory()->make()->getAttributes();
 
         $institutionAttributes['id'] = $id ?: Str::orderedUuid()->toString();
-        $institutionAttributes['created_at'] = Carbon::now();
-        $institutionAttributes['updated_at'] = Carbon::now();
         $institutionAttributes['deleted_at'] = $isDeleted ? Carbon::now() : null;
 
         return $institutionAttributes;
@@ -131,8 +129,6 @@ trait ApiResponseHelpers
         $institutionUser = InstitutionUser::factory()->make();
         $institutionUserAttributes = $institutionUser->getAttributes();
         $institutionUserAttributes['id'] = $id ?: Str::orderedUuid()->toString();
-        $institutionUserAttributes['created_at'] = Carbon::now()->toISOString();
-        $institutionUserAttributes['updated_at'] = Carbon::now()->toISOString();
         $institutionUserAttributes['deleted_at'] = $isDeleted ? Carbon::now()->toISOString() : null;
 
         $institutionUserAttributes['user'] = $institutionUser->user;
@@ -146,14 +142,13 @@ trait ApiResponseHelpers
     protected function assertInstitutionUserHasAttributesValuesFromResponseData(Model $institutionUser, array $responseData): void
     {
         collect(['id', 'phone', 'email', 'deactivation_date'])
-            ->each(fn($attribute) => $this->assertEquals(
+            ->each(fn ($attribute) => $this->assertEquals(
                 $responseData[$attribute],
                 $institutionUser->getAttribute($attribute), $attribute)
             );
 
-
         collect(['archived_at', 'deleted_at'])
-            ->each(fn($attribute) => $this->assertEquals(
+            ->each(fn ($attribute) => $this->assertEquals(
                 $responseData[$attribute],
                 filled($institutionUser->getAttribute($attribute)) ?
                     $institutionUser->getAttribute($attribute)->toISOString() : null,
@@ -161,21 +156,21 @@ trait ApiResponseHelpers
             ));
 
         collect(['id', 'forename', 'surname', 'personal_identification_code'])
-            ->each(fn($attribute) => $this->assertEquals(
+            ->each(fn ($attribute) => $this->assertEquals(
                 $responseData['user'][$attribute],
                 Arr::get($institutionUser->user, $attribute),
                 "user.$attribute"
             ));
 
         collect(['id', 'name', 'institution_id'])
-            ->each(fn($attribute) => $this->assertEquals(
+            ->each(fn ($attribute) => $this->assertEquals(
                 $responseData['department'][$attribute],
                 Arr::get($institutionUser->department, $attribute),
                 "department.$attribute"
             ));
 
         collect(['id', 'name', 'short_name', 'phone', 'email', 'logo_url'])
-            ->each(fn($attribute) => $this->assertEquals(
+            ->each(fn ($attribute) => $this->assertEquals(
                 $responseData['institution'][$attribute],
                 Arr::get($institutionUser->institution, $attribute),
                 "institution.$attribute"

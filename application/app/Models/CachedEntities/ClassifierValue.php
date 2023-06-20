@@ -14,6 +14,7 @@ class ClassifierValue extends Model
     use HasCachedEntityFactory, HasCachedEntityDbSchema, HasUuids, SoftDeletes;
 
     protected $table = 'cached_classifier_values';
+    public $timestamps = false;
 
     protected $casts = [
         'type' => ClassifierValueType::class,

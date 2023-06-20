@@ -18,8 +18,6 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
             'phone' => $resource['phone'],
             'email' => $resource['email'],
             'logo_url' => $resource['logo_url'],
-            'created_at' => $resource['created_at'],
-            'updated_at' => $resource['updated_at'],
             'deleted_at' => $resource['deleted_at'],
             'synced_at' => new Expression('NOW()'),
         ]);

@@ -5,7 +5,6 @@ namespace App\Sync\Repositories;
 use Arr;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
@@ -18,39 +17,35 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
             'phone' => $resource['phone'],
             'archived_at' => $resource['archived_at'],
             'deactivation_date' => $resource['deactivation_date'],
-            'user' => json_encode(
-                Arr::only($resource['user'], [
+            'user' => $this->getNestedResourceAsJson(
+                $resource, 'user', [
                     'id',
                     'personal_identification_code',
                     'forename',
-                    'surname'
-                ])
-            ),
-            'institution' => json_encode(
-                Arr::only($resource['institution'], [
+                    'surname',
+                ]),
+            'institution' => $this->getNestedResourceAsJson(
+                $resource, 'institution', [
                     'id',
                     'name',
                     'short_name',
                     'phone',
                     'email',
-                    'logo_url'
-                ])
-            ),
-            'department' => json_encode(
-                Arr::only($resource['department'], [
+                    'logo_url',
+                ]),
+            'department' => $this->getNestedResourceAsJson(
+                $resource, 'department', [
                     'id',
                     'institution_id',
-                    'name'
-                ])
-            ),
-            'roles' => json_encode(
-                collect($resource['roles'])->each(fn($roleResource) => Arr::only($roleResource, [
+                    'name',
+                ]),
+            'roles' => $this->getNestedResourceAsJson(
+                $resource, 'roles', [
                     'id',
                     'name',
                     'institution_id',
-                    'privileges'
-                ]))->toArray()
-            ),
+                    'privileges',
+                ]),
             'synced_at' => Carbon::now()->toISOString(),
             'deleted_at' => $resource['deleted_at'],
         ]);
@@ -75,5 +70,22 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
     private function getBaseQuery(): Builder
     {
         return DB::connection(config('pgsql-connection.sync.name'))->table('cached_institution_users');
+    }
+
+    private function getNestedResourceAsJson(array $resource, string $key, array $attributes): string
+    {
+        if (empty($resource[$key])) {
+            return json_encode([]);
+        }
+
+        if (Arr::isAssoc($resource[$key])) {
+            return json_encode(Arr::only($resource[$key], $attributes));
+        }
+
+        return json_encode(
+            collect($resource[$key])->each(
+                fn ($subResource) => Arr::only($subResource, $attributes)
+            )->toArray()
+        );
     }
 }

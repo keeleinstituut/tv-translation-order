@@ -14,6 +14,8 @@ class InstitutionUser extends Model
 
     protected $table = 'cached_institution_users';
 
+    public $timestamps = false;
+
     protected $casts = [
         'user' => 'array',
         'institution' => 'array',

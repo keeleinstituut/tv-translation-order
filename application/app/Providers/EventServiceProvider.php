@@ -44,9 +44,6 @@ class EventServiceProvider extends ServiceProvider
         InstitutionUserDeleted::class => [
             DeleteInstitutionUserListener::class,
         ],
-        CommandStarting::class => [
-            MigrationCommandStartingListener::class,
-        ],
     ];
 
     /**

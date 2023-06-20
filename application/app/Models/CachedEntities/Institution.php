@@ -13,4 +13,6 @@ class Institution extends Model
     use HasCachedEntityFactory, HasCachedEntityDbSchema, HasUuids, SoftDeletes;
 
     protected $table = 'cached_institutions';
+
+    public $timestamps = false;
 }
