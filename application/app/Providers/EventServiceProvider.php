@@ -14,9 +14,7 @@ use App\Listeners\Institutions\DeleteInstitutionListener;
 use App\Listeners\Institutions\SaveInstitutionListener;
 use App\Listeners\InstitutionUsers\DeleteInstitutionUserListener;
 use App\Listeners\InstitutionUsers\SaveInstitutionUserListener;
-use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use SyncTools\Listeners\MigrationCommandStartingListener;
 
 class EventServiceProvider extends ServiceProvider
 {
