@@ -16,7 +16,7 @@ return new class extends Migration
             $table
                 ->foreignUuid('institution_user_id')
                 ->references('id')
-                ->on('cached_institution_users')
+                ->on('entity_cache.cached_institution_users')
                 ->constrained();
 
             $table->string('company_name')->nullable();

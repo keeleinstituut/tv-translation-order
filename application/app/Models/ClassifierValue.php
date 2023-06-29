@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
-use App\Traits\HasReadonlyAccess;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use SyncTools\Traits\HasCachedEntityDbSchema;
+use SyncTools\Traits\HasCachedEntityFactory;
 
 class ClassifierValue extends Model
 {
-    // use HasReadonlyAccess;
     use HasUuids;
-    use HasFactory;
+//    use HasFactory;
+    use HasCachedEntityDbSchema;
+    use HasCachedEntityFactory;
 
+//    protected $connection = 'pgsql_sync';
     protected $table = 'cached_classifier_values';
 }

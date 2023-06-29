@@ -20,7 +20,7 @@ class VendorBulkDeleteRequest extends FormRequest
             'id.*' => [
                 'uuid',
                 'distinct',
-                Rule::exists(app(Vendor::class)->getTable(), 'id'),
+                Rule::exists(Vendor::class, 'id'),
             ],
         ];
     }

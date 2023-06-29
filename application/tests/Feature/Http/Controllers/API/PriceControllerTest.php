@@ -4,7 +4,7 @@ namespace Tests\Feature\Http\Controllers\API;
 
 use App\Models\ClassifierValue;
 use App\Models\Price;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\AuthHelpers;
 use Tests\TestCase;
 use App\Models\Vendor;
 use Illuminate\Support\Str;
@@ -12,8 +12,6 @@ use Illuminate\Support\Str;
 
 class PriceControllerTest extends TestCase
 {
-    use RefreshDatabase;
-
     /**
      * A basic feature test example.
      */
@@ -23,7 +21,7 @@ class PriceControllerTest extends TestCase
         $testPrices = Price::factory(10)->create();
         $institutionId = $testPrices->first()->vendor->institutionUser->institution_id;
 
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'VIEW_VENDOR_DB',
             ],
@@ -64,7 +62,7 @@ class PriceControllerTest extends TestCase
         $sourceLang = ClassifierValue::factory()->language()->create();
         $destinationLang = ClassifierValue::factory()->language()->create();
 
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
             ],
@@ -118,7 +116,7 @@ class PriceControllerTest extends TestCase
             $price->refresh();
         });
 
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
             ],
@@ -151,13 +149,15 @@ class PriceControllerTest extends TestCase
         $institutionId = Str::orderedUuid();
         $testPrices = Price::factory(10)->create();
         $payloadPrices = $testPrices->random(2)->each(function ($price) use ($institutionId) {
+//            $price->load('vendor.institutionUser');
+//            dd($price);
             $institutionUser = $price->vendor->institutionUser;
             $institutionUser->institution_id = $institutionId;
             $institutionUser->save();
             $price->refresh();
         });
 
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
             ],

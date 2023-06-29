@@ -18,7 +18,7 @@ class PriceUpdateRequest extends FormRequest
         return [
             'id' => [
                 'required',
-                Rule::exists(app(Price::class)->getTable(), 'id'),
+                Rule::exists(Price::class, 'id'),
             ],
             'character_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
             'word_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',

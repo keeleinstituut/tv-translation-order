@@ -20,7 +20,7 @@ class PriceDeleteRequest extends FormRequest
             'id.*' => [
                 'uuid',
                 'distinct',
-                Rule::exists(app(Price::class)->getTable(), 'id'),
+                Rule::exists(Price::class, 'id'),
             ],
         ];
     }

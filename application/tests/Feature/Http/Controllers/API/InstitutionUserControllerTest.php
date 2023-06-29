@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\InstitutionUser;
@@ -14,8 +13,6 @@ use Illuminate\Support\Facades\DB;
 
 class InstitutionUserControllerTest extends TestCase
 {
-    use RefreshDatabase;
-
     /**
      * A basic feature test example.
      */
@@ -27,7 +24,7 @@ class InstitutionUserControllerTest extends TestCase
 //            ->create();
 //
 //        $institutionId = $testIUsers->first()->institution_id;
-//        $accessToken = $this->generateAccessToken([
+//        $accessToken = AuthHelpers::generateAccessToken([
 //            'privileges' => [
 //                'VIEW_VENDOR_DB',
 //            ],
@@ -66,7 +63,7 @@ class InstitutionUserControllerTest extends TestCase
 //            }),
 //        ];
 //
-//        $accessToken = $this->generateAccessToken([
+//        $accessToken = AuthHelpers::generateAccessToken([
 //            'privileges' => [
 //                'EDIT_VENDOR_DB',
 //            ],
@@ -103,7 +100,7 @@ class InstitutionUserControllerTest extends TestCase
 //            ->map(fn ($vendor) => 'id[]=' . $vendor->id)
 //            ->implode('&');
 //
-//        $accessToken = $this->generateAccessToken([
+//        $accessToken = AuthHelpers::generateAccessToken([
 //            'privileges' => [
 //                'EDIT_VENDOR_DB',
 //            ],

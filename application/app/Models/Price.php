@@ -11,6 +11,9 @@ class Price extends Model
     use HasUuids;
     use HasFactory;
 
+//    protected $connection = 'pgsql_app';
+    protected $table = 'prices';
+
     protected $fillable = [
         'vendor_id',
         //

@@ -7,14 +7,10 @@ use Firebase\JWT\JWT;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
-trait AuthHelpers
+readonly class AuthHelpers
 {
     public static function generateAccessToken(array $tolkevaravPayload = [], string $azp = null): string
     {
-        // TODO: would be good to have full example JWT here with
-        // TODO: all relevant claims to simulate real JWT.
-        // TODO: This JWT should be overwrittable to support
-        // TODO: different edge cases.
         $payload = collect([
             'azp' => $azp ?? Str::of(config('keycloak.accepted_authorized_parties'))
                 ->explode(',')
@@ -28,13 +24,6 @@ trait AuthHelpers
         ]);
 
         return static::createJwt($payload->toArray());
-    }
-
-    public function prepareAuthorizedRequest($accessToken)
-    {
-        return $this->withHeaders([
-            'Authorization' => "Bearer $accessToken",
-        ]);
     }
 
     private static function createJwt(array $payload): string
@@ -56,9 +45,9 @@ trait AuthHelpers
     /**
      * @param  array<PrivilegeKey>  $privileges
      */
-    public function createJsonHeaderWithTokenParams(string $institutionId, array $privileges): array
+    public static function createJsonHeaderWithTokenParams(string $institutionId, array $privileges): array
     {
-        $defaultToken = $this->generateAccessToken([
+        $defaultToken = self::generateAccessToken([
             'selectedInstitution' => ['id' => $institutionId],
             'privileges' => Arr::map($privileges, fn ($privilege) => $privilege->value),
         ]);

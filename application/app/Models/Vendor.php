@@ -12,6 +12,9 @@ class Vendor extends Model
     use HasFactory;
     use HasUuids;
 
+//    protected $connection = 'pgsql_app';
+    protected $table = 'vendors';
+
     protected $fillable = [
         'institution_user_id',
         'company_name',

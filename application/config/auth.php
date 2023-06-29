@@ -43,7 +43,7 @@ return [
         'api' => [
             'driver' => 'keycloak',
             'provider' => 'jwt-users',
-        ]
+        ],
     ],
 
     /*
@@ -66,7 +66,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            //'model' => App\Models\User::class,
         ],
 
         'jwt-users' => [

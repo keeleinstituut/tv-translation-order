@@ -10,10 +10,11 @@
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.8",
-        "keeleinstituut/tv-common-laravel-amqp": "0.0.3",
-        "keeleinstituut/tv-common-laravel-security": "0.0.10"
+        "keeleinstituut/tv-common-laravel-amqp": "0.0.15",
+        "keeleinstituut/tv-common-laravel-security": "0.0.13"
     },
     "require-dev": {
+        "barryvdh/laravel-ide-helper": "^2.13",
         "fakerphp/faker": "^1.9.1",
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.18",

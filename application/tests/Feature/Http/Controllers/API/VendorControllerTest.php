@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\AuthHelpers;
 use Tests\TestCase;
 use App\Models\InstitutionUser;
 use App\Models\Vendor;
@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 class VendorControllerTest extends TestCase
 {
-    use RefreshDatabase;
-
     /**
      * A basic feature test example.
      */
@@ -24,7 +22,7 @@ class VendorControllerTest extends TestCase
             ->create();
 
         $institutionId = $testIUsers->first()->institution_id;
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'VIEW_VENDOR_DB',
             ],
@@ -63,7 +61,7 @@ class VendorControllerTest extends TestCase
             })->toArray(),
         ];
 
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
             ],
@@ -98,7 +96,7 @@ class VendorControllerTest extends TestCase
 
         $randomVendors = collect($testVendors->random(3))->sortBy('created_at');
 
-        $accessToken = $this->generateAccessToken([
+        $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
             ],

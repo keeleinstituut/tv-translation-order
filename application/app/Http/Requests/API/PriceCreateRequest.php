@@ -23,7 +23,7 @@ class PriceCreateRequest extends FormRequest
             'vendor_id' => [
                 'required',
                 'uuid',
-                Rule::exists(app(Vendor::class)->getTable(), 'id')
+                Rule::exists(Vendor::class, 'id')
             ],
             //
             // TODO: add skill
@@ -31,13 +31,13 @@ class PriceCreateRequest extends FormRequest
             'src_lang_classifier_value_id' => [
                 'required',
                 'uuid',
-                Rule::exists(app(ClassifierValue::class)->getTable(), 'id')->where('type', 'LANGUAGE'),
+                Rule::exists(ClassifierValue::class, 'id')->where('type', 'LANGUAGE'),
             ],
             'dst_lang_classifier_value_id' => [
                 'required',
                 'uuid',
                 'different:src_lang_classifier_value_id',
-                Rule::exists(app(ClassifierValue::class)->getTable(), 'id')->where('type', 'LANGUAGE')
+                Rule::exists(ClassifierValue::class, 'id')->where('type', 'LANGUAGE')
             ],
             'character_fee' => 'required|decimal:0,2|between:0,99999999.99',
             'word_fee' => 'required|decimal:0,2|between:0,99999999.99',

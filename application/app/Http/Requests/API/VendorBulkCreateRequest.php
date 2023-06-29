@@ -22,8 +22,8 @@ class VendorBulkCreateRequest extends FormRequest
                 'required',
                 'uuid',
                 'distinct',
-                Rule::exists(app(InstitutionUser::class)->getTable(), 'id'),
-                Rule::unique(app(Vendor::class)->getTable(), 'institution_user_id'),
+                Rule::exists(InstitutionUser::class, 'id'),
+                Rule::unique(Vendor::class, 'institution_user_id'),
             ],
             'data.*.company_name' => [
                 'string',
