@@ -36,4 +36,9 @@ return new class extends Migration
     {
         Schema::dropIfExists('tags');
     }
+
+    private function getCachedInstitutionsTableName(): string
+    {
+        return config('pgsql-connection.sync.properties.schema').'.cached_institutions';
+    }
 };
