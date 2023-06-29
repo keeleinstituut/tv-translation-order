@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\InstitutionUser;
+use Closure;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Testing\WithFaker;
 
