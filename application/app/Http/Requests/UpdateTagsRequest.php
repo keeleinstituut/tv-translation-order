@@ -11,7 +11,30 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: ['type', 'tags'],
+        properties: [
+            new OA\Property(property: 'type', type: 'string', enum: TagType::class),
+            new OA\Property(
+                property: 'tags',
+                type: 'array',
+                items: new OA\Items(
+                    required: ['name'],
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid', nullable: true),
+                        new OA\Property(property: 'name', type: 'string'),
+                    ],
+                    type: 'object'
+                ),
+            ),
+        ]
+    )
+)]
 class UpdateTagsRequest extends FormRequest
 {
     /**
