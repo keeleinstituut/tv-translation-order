@@ -9,13 +9,14 @@ ENV APP_ROOT /app
 ENV WEB_ROOT /var/www/html
 ENV ENTRYPOINT /entrypoint.sh
 
-RUN apk add libpq-dev libsodium-dev
+RUN apk add libpq-dev libsodium-dev linux-headers
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
         docker-php-ext-install pgsql \
                                 pdo \
                                 pdo_pgsql \
                                 sodium \
-                                pcntl
+                                pcntl \
+                                sockets
 
 COPY --chown=www-data:www-data ./application ${APP_ROOT}
 WORKDIR $APP_ROOT
