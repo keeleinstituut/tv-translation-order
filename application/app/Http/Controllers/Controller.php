@@ -9,7 +9,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\OpenApi(security: [['WebClientBearerJwt' => []]])]
 #[OA\Server(
-    url: 'https://api.dev.tolkevarav.eki.ee/translation-order/api/v1',
+    url: 'https://api.dev.tolkevarav.eki.ee/translation-order/api/',
     description: 'Development Server’s Translation Order Service API Root'
 )]
 #[OA\Info(
