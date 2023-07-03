@@ -6,12 +6,10 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 use OpenApi\Attributes as OA;
+use App\Http\OpenApiHelpers as OAH;
 
 #[OA\OpenApi(security: [['WebClientBearerJwt' => []]])]
-#[OA\Server(
-    url: 'https://api.dev.tolkevarav.eki.ee/translation-order/api/',
-    description: 'Development Server’s Translation Order Service API Root'
-)]
+#[OAH\ApiServer]
 #[OA\Info(
     version: '0.0.1',
     title: 'Tõlkevärav Translation Order Service API',
