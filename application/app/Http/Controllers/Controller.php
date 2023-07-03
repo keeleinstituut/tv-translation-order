@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\OpenApiHelpers as OAH;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 
 #[OA\OpenApi(security: [['WebClientBearerJwt' => []]])]
 #[OAH\ApiServer]

@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 #[Attribute(Attribute::TARGET_CLASS)]
 class ApiServer extends OA\Server
 {
-    public function __construct(string $description = "API root")
+    public function __construct(string $description = 'API root')
     {
         parent::__construct(
             url: Str::of(Config::get('app.url'))
