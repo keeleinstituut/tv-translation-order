@@ -22,7 +22,7 @@ class Invalid extends OA\Response
                 ],
                 type: 'object',
                 example: [
-                    'message' => 'Request contents were not invalid because of <some reason>.',
+                    'message' => 'Request was invalid because of <some reason>.',
                     'errors' => [
                         'field_1' => ['The value of field_1 needs to satisfy <some requirement>.'],
                     ],
