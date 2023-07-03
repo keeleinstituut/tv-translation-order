@@ -5,13 +5,14 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 ENV APP_ROOT /app
 
-RUN apk add libpq-dev libsodium-dev
+RUN apk add libpq-dev libsodium-dev linux-headers
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
         docker-php-ext-install pgsql \
                                 pdo \
                                 pdo_pgsql \
                                 sodium \
-                                pcntl
+                                pcntl \
+                                sockets
 
 RUN mkdir $APP_ROOT
 WORKDIR $APP_ROOT
