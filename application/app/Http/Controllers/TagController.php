@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TagType;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\StoreTagsRequest;
 use App\Http\Requests\TagListRequest;
 use App\Http\Requests\UpdateTagsRequest;
@@ -16,6 +17,8 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class TagController extends Controller
@@ -23,6 +26,15 @@ class TagController extends Controller
     /**
      * @throws AuthorizationException
      */
+    #[OA\Get(
+        path: '/tags',
+        summary: 'List tags of current institution, optionally filtering by type (institution inferrred from JWT)',
+        parameters: [
+            new OA\QueryParameter(name: 'type', schema: new OA\Schema(enum: TagType::class, nullable: true)),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: TagResource::class, description: 'Filtered tags')]
     public function index(TagListRequest $request): ResourceCollection
     {
         $this->authorize('viewAny', Tag::class);
@@ -41,6 +53,13 @@ class TagController extends Controller
      * @throws AuthorizationException
      * @throws Throwable
      */
+    #[OA\Post(
+        path: '/tags/bulk-create',
+        summary: 'Bulk create a new tags',
+        requestBody: new OAH\RequestBody(StoreTagsRequest::class),
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: TagResource::class, description: 'Created tags', response: Response::HTTP_CREATED)]
     public function store(StoreTagsRequest $request)
     {
         $this->authorize('create', Tag::class);
@@ -62,6 +81,15 @@ class TagController extends Controller
      * @throws AuthorizationException
      * @throws Throwable
      */
+    #[OA\Post(
+        path: '/tags/bulk-update',
+        summary: 'Bulk create, delete and/or update tags of a given type. '.
+            'If ID left unspecified, the tag will be created. '.
+            'If a previously existing tag is not in request input, it will be deleted.',
+        requestBody: new OAH\RequestBody(UpdateTagsRequest::class),
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: TagResource::class, description: 'Array of modified and/or created tags')]
     public function update(UpdateTagsRequest $request)
     {
         if (collect($request->validated('tags'))->some(fn ($tag) => empty($tag['id']))) {

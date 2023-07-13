@@ -124,6 +124,9 @@ php artisan optimize
 echo "Running migrations"
 php artisan migrate --force
 
+echo "Generating OpenAPI document"
+php artisan l5-swagger:generate
+
 echo "Start application processes using supervisord..."
 exec "\$@"
 EOF
