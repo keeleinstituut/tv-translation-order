@@ -17,8 +17,9 @@ class InstitutionUserTest extends TestCase
         $id = InstitutionUser::factory()->create()->id;
 
         $this->expectException(QueryException::class);
-        $institution = InstitutionUser::query()->find($id)->first();
-        $institution->synced_at = Carbon::now();
-        $institution->save();
+        $institutionUser = InstitutionUser::query()->find($id)->first();
+        $institutionUser->setConnection(config('database.default'));
+        $institutionUser->synced_at = Carbon::now();
+        $institutionUser->save();
     }
 }

@@ -15,6 +15,8 @@ class ClassifierValueTest extends TestCase
 
         $this->expectException(QueryException::class);
         $classifierValue = ClassifierValue::query()->find($id)->first();
+        $classifierValue->setConnection(config('database.default'));
+
         $classifierValue->synced_at = Carbon::now();
         $classifierValue->save();
     }
