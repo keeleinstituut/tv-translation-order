@@ -4,6 +4,7 @@ services:
   app:
     depends_on:
       - postgres
+      - redis
 
   postgres:
     image: postgres:latest

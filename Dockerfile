@@ -15,7 +15,8 @@ RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
                                 pdo \
                                 pdo_pgsql \
                                 sodium \
-                                pcntl
+                                pcntl \
+                                redis
 
 COPY --chown=www-data:www-data ./application ${APP_ROOT}
 WORKDIR $APP_ROOT

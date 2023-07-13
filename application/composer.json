@@ -7,11 +7,12 @@
     "require": {
         "php": "^8.1",
         "guzzlehttp/guzzle": "^7.2",
+        "keeleinstituut/tv-common-laravel-amqp": "0.0.15",
+        "keeleinstituut/tv-common-laravel-security": "0.0.13",
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.8",
-        "keeleinstituut/tv-common-laravel-amqp": "0.0.15",
-        "keeleinstituut/tv-common-laravel-security": "0.0.13"
+        "predis/predis": "^2.2"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^2.13",
