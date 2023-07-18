@@ -23,4 +23,9 @@ enum PrivilegeKey: string
     case AddTag = 'ADD_TAG';
     case EditTag = 'EDIT_TAG';
     case DeleteTag = 'DELETE_TAG';
+
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
 }

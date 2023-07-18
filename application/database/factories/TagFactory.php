@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\TagType;
-use App\Models\Institution;
+use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
