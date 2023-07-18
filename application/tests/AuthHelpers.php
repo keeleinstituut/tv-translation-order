@@ -26,7 +26,7 @@ readonly class AuthHelpers
         return static::createJwt($payload->toArray());
     }
 
-    public static function generateServiceAccountJwt(?string $role = null, ?int $expiresIn = null): string
+    public static function generateServiceAccountJwt(string $role = null, int $expiresIn = null): string
     {
         return JWT::encode([
             'iss' => config('keycloak.base_url').'/realms/'.config('keycloak.realm'),
