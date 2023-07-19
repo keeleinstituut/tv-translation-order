@@ -3,23 +3,15 @@
 namespace Tests\Feature\Http\Controllers\API;
 
 use App\Models\CachedEntities\ClassifierValue;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\AuthHelpers;
 use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
-use App\Models\CachedEntities\InstitutionUser;
-use App\Models\Vendor;
-use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-
 
 class ClassifierValueControllerTest extends TestCase
 {
     /**
      * A basic feature test example.
      */
-
     public function test_list(): void
     {
         ClassifierValue::factory()
@@ -68,7 +60,7 @@ class ClassifierValueControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'data' => collect($expectedDataset)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray()
+                'data' => collect($expectedDataset)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray(),
             ])
             ->assertJsonCount($expectedDataset->count(), 'data');
     }

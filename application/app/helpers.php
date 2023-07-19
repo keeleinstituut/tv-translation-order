@@ -6,6 +6,7 @@ if (! function_exists('nullsafe_tap')) {
         if ($value) {
             return tap($value, $callback);
         }
+
         return $value;
     }
 }

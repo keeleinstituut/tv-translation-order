@@ -6,8 +6,8 @@ use App\Enums\TagType;
 use App\Models\Tag;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-
 use OpenApi\Attributes as OA;
+
 #[OA\RequestBody(
     request: self::class,
     required: true,

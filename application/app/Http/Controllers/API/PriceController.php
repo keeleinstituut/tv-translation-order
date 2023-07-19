@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\PriceBulkCreateRequest;
 use App\Http\Requests\API\PriceBulkDeleteRequest;
 use App\Http\Requests\API\PriceBulkUpdateRequest;
-use App\Http\Requests\API\PriceListRequest;
 use App\Http\Requests\API\PriceCreateRequest;
+use App\Http\Requests\API\PriceListRequest;
 use App\Http\Resources\API\PriceResource;
+use App\Models\Price;
 use App\Policies\PricePolicy;
 use Illuminate\Support\Facades\DB;
-use App\Models\Price;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
 
 class PriceController extends Controller
@@ -40,7 +40,7 @@ class PriceController extends Controller
     #[OAH\CollectionResponse(itemsRef: PriceResource::class)]
     public function index(PriceListRequest $request)
     {
-         $this->authorize('viewAny', Price::class);
+        $this->authorize('viewAny', Price::class);
 
         $params = collect($request->validated());
 
@@ -122,6 +122,7 @@ class PriceController extends Controller
                 $obj->fill($input);
                 $this->authorize('create', $obj);
                 $obj->save();
+
                 return $obj;
             });
 
@@ -166,14 +167,16 @@ class PriceController extends Controller
 
         return DB::transaction(function () use ($mappedById, $prices) {
             $data = collect($prices)->map(function ($price) use ($mappedById) {
-                 $this->authorize('update', $price);
+                $this->authorize('update', $price);
 
                 $input = $mappedById->get($price->id);
                 $price->fill($input);
 
                 $price->save();
+
                 return $price;
             });
+
             return PriceResource::collection($data);
         });
     }
@@ -214,6 +217,6 @@ class PriceController extends Controller
 
     private function getBaseQuery()
     {
-         return Price::getModel()->withGlobalScope('policy', PricePolicy::scope());
+        return Price::getModel()->withGlobalScope('policy', PricePolicy::scope());
     }
 }

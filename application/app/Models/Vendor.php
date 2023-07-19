@@ -16,6 +16,7 @@ class Vendor extends Model
     use SoftDeletes;
 
     protected $connection = 'pgsql_app';
+
     protected $table = 'vendors';
 
     protected $fillable = [

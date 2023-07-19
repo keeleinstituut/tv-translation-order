@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests\API;
 
+use App\Models\CachedEntities\ClassifierValue;
+use App\Models\Price;
 use App\Models\Skill;
+use App\Models\Vendor;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
-use App\Models\Vendor;
-use App\Models\CachedEntities\ClassifierValue;
-use App\Models\Price;
 use OpenApi\Attributes as OA;
 
 #[OA\RequestBody(
@@ -46,7 +46,7 @@ class PriceCreateRequest extends FormRequest
             'vendor_id' => [
                 'required',
                 'uuid',
-                Rule::exists(Vendor::class, 'id')
+                Rule::exists(Vendor::class, 'id'),
             ],
             'skill_id' => [
                 'required',
@@ -62,7 +62,7 @@ class PriceCreateRequest extends FormRequest
                 'required',
                 'uuid',
                 'different:src_lang_classifier_value_id',
-                Rule::exists(ClassifierValue::class, 'id')->where('type', 'LANGUAGE')
+                Rule::exists(ClassifierValue::class, 'id')->where('type', 'LANGUAGE'),
             ],
             'character_fee' => 'required|decimal:0,2|between:0,99999999.99',
             'word_fee' => 'required|decimal:0,2|between:0,99999999.99',
@@ -90,7 +90,7 @@ class PriceCreateRequest extends FormRequest
                         ->add('src_lang_classifier_value_id', $msg)
                         ->add('dst_lang_classifier_value_id', $msg);
                 }
-            }
+            },
         ];
     }
 }

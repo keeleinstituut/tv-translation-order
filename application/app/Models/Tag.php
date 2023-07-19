@@ -45,6 +45,7 @@ class Tag extends Model
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $connection = 'pgsql_app';
+
     protected $table = 'tags';
 
     protected $fillable = [

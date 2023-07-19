@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\SkillListRequest;
 use App\Http\Resources\API\SkillResource;
 use App\Models\Skill;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 
 class SkillController extends Controller
 {
@@ -26,6 +26,7 @@ class SkillController extends Controller
     {
         $query = $this->getBaseQuery();
         $data = $query->get();
+
         return SkillResource::collection($data);
     }
 

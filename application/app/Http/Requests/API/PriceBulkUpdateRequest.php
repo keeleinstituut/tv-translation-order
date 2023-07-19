@@ -57,7 +57,7 @@ class PriceBulkUpdateRequest extends FormRequest
                         ->validate()
                         ->setMessagesToValidator($validator, "data.$index");
                 });
-            }
+            },
         ];
     }
 }

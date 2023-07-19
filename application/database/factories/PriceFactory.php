@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\Skill;
-use Illuminate\Database\Eloquent\Factories\Factory;
-use App\Models\Vendor;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\Skill;
+use App\Models\Vendor;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Price>

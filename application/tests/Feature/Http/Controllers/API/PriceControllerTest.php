@@ -5,12 +5,11 @@ namespace Tests\Feature\Http\Controllers\API;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Price;
 use App\Models\Skill;
+use App\Models\Vendor;
+use Illuminate\Support\Str;
 use Tests\AuthHelpers;
 use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
-use App\Models\Vendor;
-use Illuminate\Support\Str;
-
 
 class PriceControllerTest extends TestCase
 {
@@ -53,7 +52,7 @@ class PriceControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'data' => collect($savedPrices)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray()
+                'data' => collect($savedPrices)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray(),
             ])
             ->assertJsonCount(count($randomPrices), 'data');
     }
@@ -81,7 +80,7 @@ class PriceControllerTest extends TestCase
 
         // WHEN
         $payload = [
-            "data" => collect($payloadVendors)->map(function ($vendor) {
+            'data' => collect($payloadVendors)->map(function ($vendor) {
                 return [
                     'vendor_id' => $vendor->id,
                     'skill_id' => fake()->randomElement(Skill::pluck('id')),
@@ -110,7 +109,7 @@ class PriceControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertExactJson([
-                'data' => collect($savedPrices)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray()
+                'data' => collect($savedPrices)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray(),
             ])
             ->assertJson($payload);
     }
@@ -138,10 +137,10 @@ class PriceControllerTest extends TestCase
 
         // WHEN
         $payload = $payloadPriceIds
-            ->map(fn ($id) => 'id[]=' . $id)
+            ->map(fn ($id) => 'id[]='.$id)
             ->implode('&');
 
-        $response = $this->prepareAuthorizedRequest($accessToken)->deleteJson('/api/prices/bulk?' . $payload);
+        $response = $this->prepareAuthorizedRequest($accessToken)->deleteJson('/api/prices/bulk?'.$payload);
 
         // THEN
         $payloadPrices = Price::getModel()
@@ -152,11 +151,10 @@ class PriceControllerTest extends TestCase
             ->orderBy('created_at', 'asc')
             ->get();
 
-
         $response
             ->assertStatus(200)
             ->assertExactJson([
-                'data' => collect($payloadPrices)->map(fn ($price) => $this->constructRepresentation($price))->toArray()
+                'data' => collect($payloadPrices)->map(fn ($price) => $this->constructRepresentation($price))->toArray(),
             ]);
 
         $deletedVendors = Vendor::whereIn('id', $payloadPrices->pluck('id'))->get();
@@ -186,7 +184,7 @@ class PriceControllerTest extends TestCase
 
         // WHEN
         $payload = [
-            "data" => collect($payloadPrices)->map(function ($price) {
+            'data' => collect($payloadPrices)->map(function ($price) {
                 return [
                     'id' => $price->id,
                     'character_fee' => fake()->randomFloat(2, 0, 1000),
@@ -212,7 +210,7 @@ class PriceControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertExactJson([
-                'data' => collect($savedPrices)->map(fn ($price) => $this->constructRepresentation($price))->toArray()
+                'data' => collect($savedPrices)->map(fn ($price) => $this->constructRepresentation($price))->toArray(),
             ]);
     }
 

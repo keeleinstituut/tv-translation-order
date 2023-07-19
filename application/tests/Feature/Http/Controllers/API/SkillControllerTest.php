@@ -3,8 +3,6 @@
 namespace Tests\Feature\Http\Controllers\API;
 
 use App\Models\Skill;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\AuthHelpers;
 use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
@@ -28,7 +26,7 @@ class SkillControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'data' => collect($existingSkills)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray()
+                'data' => collect($existingSkills)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray(),
             ])
             ->assertJsonCount($existingSkills->count(), 'data');
     }

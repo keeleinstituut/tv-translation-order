@@ -2,10 +2,10 @@
 
 namespace App\Http\Requests\API;
 
+use App\Models\CachedEntities\InstitutionUser;
+use App\Models\Vendor;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\Vendor;
-use App\Models\CachedEntities\InstitutionUser;
 use OpenApi\Attributes as OA;
 
 #[OA\RequestBody(

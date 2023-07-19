@@ -14,7 +14,7 @@ class ClassifierValueListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => 'sometimes|string'
+            'type' => 'sometimes|string',
         ];
     }
 }

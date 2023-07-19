@@ -2,10 +2,8 @@
 
 namespace App\Policies;
 
-use App\Enums\PrivilegeKey;
 use App\Models\Vendor;
 use BadMethodCallException;
-use Illuminate\Auth\Access\Response;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -87,23 +85,26 @@ class VendorPolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope() {
+    public static function scope()
+    {
         return new Scope\VendorScope();
     }
 }
 
 // Scope resides in the same file with Policy to enforce scope creation with policy creation.
+
 namespace App\Policies\Scope;
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope as IScope;
+use Illuminate\Support\Facades\Auth;
 
-class VendorScope implements IScope {
+class VendorScope implements IScope
+{
     /**
-    * Apply the scope to a given Eloquent query builder.
-    */
+     * Apply the scope to a given Eloquent query builder.
+     */
     public function apply(Builder $builder, Model $model): void
     {
         $builder->whereRelation('institutionUser', 'institution->id', Auth::user()->institutionId);

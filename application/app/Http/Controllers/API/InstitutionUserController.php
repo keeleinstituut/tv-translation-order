@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\InstitutionUserListRequest;
 use App\Http\Resources\API\InstitutionUserResource;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Policies\InstitutionUserPolicy;
-use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 
 class InstitutionUserController extends Controller
 {

@@ -16,18 +16,23 @@ class NestedFormRequestValidator
         $this->formRequest = $formRequest;
     }
 
-    public static function formRequest(FormRequest $formRequest) {
+    public static function formRequest(FormRequest $formRequest)
+    {
         return new static($formRequest);
     }
 
-    public function setData($data) {
+    public function setData($data)
+    {
         $this->formRequest->merge($data);
+
         return $this;
     }
 
-    public function validate() {
+    public function validate()
+    {
         $validator = $this->getValidatorInstance();
         $validator->fails();
+
         return $this;
     }
 
@@ -55,6 +60,7 @@ class NestedFormRequestValidator
         // of the application.
         $reflection = new \ReflectionMethod(FormRequest::class, 'getValidatorInstance');
         $reflection->setAccessible(true);
+
         return $reflection->invoke($this->formRequest);
     }
 }

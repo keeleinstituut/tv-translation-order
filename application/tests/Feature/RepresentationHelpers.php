@@ -108,7 +108,7 @@ class RepresentationHelpers
 
     private static function transformRelation(Model $model, string $relation, callable $callable)
     {
-        if (!$model->relationLoaded($relation)) {
+        if (! $model->relationLoaded($relation)) {
             return new MissingValue;
         }
 

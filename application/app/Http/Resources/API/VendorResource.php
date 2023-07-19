@@ -54,7 +54,8 @@ class VendorResource extends JsonResource
         ];
     }
 
-    private function discounts() {
+    private function discounts()
+    {
         // TODO: figure out how to conditionally render certain
         // TODO: json fields based on controllers input.
         // TODO: ideally should be recursive to nested resources as well.

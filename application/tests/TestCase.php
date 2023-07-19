@@ -10,9 +10,8 @@ abstract class TestCase extends BaseTestCase
     use CreatesApplication;
     use RefreshDatabaseWithCachedEntitySchema;
 
-
     protected function prepareAuthorizedRequest($accessToken): TestCase
     {
-        return $this->withHeader('Authorization', 'Bearer ' . $accessToken);
+        return $this->withHeader('Authorization', 'Bearer '.$accessToken);
     }
 }

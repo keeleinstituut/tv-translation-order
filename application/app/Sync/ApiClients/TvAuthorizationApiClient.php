@@ -33,7 +33,7 @@ class TvAuthorizationApiClient
             ->json('data');
     }
 
-    public function getInstitutionUsers(?int $page = null): array
+    public function getInstitutionUsers(int $page = null): array
     {
         return $this->getBaseRequest()->get("$this->baseUrl/sync/institution-users", [
             'page' => $page ?: 1,

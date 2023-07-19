@@ -2,10 +2,7 @@
 
 namespace App\Policies;
 
-use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\ClassifierValue;
-use Illuminate\Auth\Access\Response;
-use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class ClassifierValuePolicy
@@ -80,23 +77,25 @@ class ClassifierValuePolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope() {
+    public static function scope()
+    {
         return new Scope\ClassifierValueScope();
     }
 }
 
 // Scope resides in the same file with Policy to enforce scope creation with policy creation.
+
 namespace App\Policies\Scope;
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope as IScope;
 
-class ClassifierValueScope implements IScope {
+class ClassifierValueScope implements IScope
+{
     /**
-    * Apply the scope to a given Eloquent query builder.
-    */
+     * Apply the scope to a given Eloquent query builder.
+     */
     public function apply(Builder $builder, Model $model): void
     {
         // No filters applied

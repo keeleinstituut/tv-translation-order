@@ -3,18 +3,16 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\API\VendorUpdateRequest;
-use App\Models\CachedEntities\InstitutionUser;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use App\Http\Requests\API\VendorListRequest;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\VendorBulkCreateRequest;
 use App\Http\Requests\API\VendorBulkDeleteRequest;
+use App\Http\Requests\API\VendorListRequest;
+use App\Http\Requests\API\VendorUpdateRequest;
 use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
 
 class VendorController extends Controller
@@ -39,7 +37,7 @@ class VendorController extends Controller
     #[OAH\CollectionResponse(itemsRef: VendorResource::class)]
     public function index(VendorListRequest $request)
     {
-         $this->authorize('viewAny', Vendor::class);
+        $this->authorize('viewAny', Vendor::class);
 
         $params = collect($request->validated());
 
@@ -152,6 +150,7 @@ class VendorController extends Controller
                 $this->authorize('create', $vendor);
 
                 $vendor->save();
+
                 return $vendor;
             });
 

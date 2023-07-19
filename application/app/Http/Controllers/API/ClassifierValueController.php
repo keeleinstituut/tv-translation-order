@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ClassifierValueListRequest;
 use App\Http\Resources\API\ClassifierValueResource;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Policies\ClassifierValuePolicy;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 
 class ClassifierValueController extends Controller
 {
@@ -45,7 +45,8 @@ class ClassifierValueController extends Controller
         return ClassifierValueResource::collection($data);
     }
 
-    private function getBaseQuery() {
+    private function getBaseQuery()
+    {
         return ClassifierValue::getModel()->withGlobalScope('policy', ClassifierValuePolicy::scope());
     }
 }

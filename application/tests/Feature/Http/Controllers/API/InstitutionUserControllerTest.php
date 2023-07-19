@@ -8,13 +8,11 @@ use Tests\AuthHelpers;
 use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
 
-
 class InstitutionUserControllerTest extends TestCase
 {
     /**
      * A basic feature test example.
      */
-
     public function test_list(): void
     {
         $institutionId = Str::orderedUuid();
@@ -56,11 +54,10 @@ class InstitutionUserControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'data' => collect($expectedDataset)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray()
+                'data' => collect($expectedDataset)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray(),
             ])
             ->assertJsonCount($expectedDataset->count(), 'data');
     }
-
 
     public static function constructRepresentation($obj): array
     {
