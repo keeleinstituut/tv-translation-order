@@ -49,7 +49,7 @@ class UpdateTagsRequest extends FormRequest
             'tags' => ['present', 'array', 'max:10000'],
             'tags.*.name' => ['required', 'string'],
             'tags.*.id' => ['sometimes', 'nullable', 'uuid',
-                Rule::exists(app(Tag::class)->getTable(), 'id')->where(function (Builder $query) {
+                Rule::exists(Tag::class, 'id')->where(function (Builder $query) {
                     $query->where('type', $this->input('type'))
                         ->where('institution_id', $this->getActingUserInstitutionId());
 

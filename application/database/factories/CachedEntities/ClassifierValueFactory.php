@@ -31,6 +31,11 @@ class ClassifierValueFactory extends Factory
         ];
     }
 
+    public function language(): Factory
+    {
+        return $this->withType(ClassifierValueType::Language);
+    }
+
     public function withType(ClassifierValueType $type): Factory
     {
         return $this->state(fn () => [

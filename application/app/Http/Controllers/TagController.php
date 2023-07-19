@@ -29,6 +29,7 @@ class TagController extends Controller
     #[OA\Get(
         path: '/tags',
         summary: 'List tags of current institution, optionally filtering by type (institution inferrred from JWT)',
+        tags: ['Tag management'],
         parameters: [
             new OA\QueryParameter(name: 'type', schema: new OA\Schema(enum: TagType::class, nullable: true)),
         ],
@@ -57,6 +58,7 @@ class TagController extends Controller
         path: '/tags/bulk-create',
         summary: 'Bulk create a new tags',
         requestBody: new OAH\RequestBody(StoreTagsRequest::class),
+        tags: ['Tag management'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\CollectionResponse(itemsRef: TagResource::class, description: 'Created tags', response: Response::HTTP_CREATED)]
@@ -87,6 +89,7 @@ class TagController extends Controller
             'If ID left unspecified, the tag will be created. '.
             'If a previously existing tag is not in request input, it will be deleted.',
         requestBody: new OAH\RequestBody(UpdateTagsRequest::class),
+        tags: ['Tag management'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\CollectionResponse(itemsRef: TagResource::class, description: 'Array of modified and/or created tags')]

@@ -2,6 +2,8 @@
 
 namespace App\Models\CachedEntities;
 
+use App\Models\Vendor;
+use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,9 +19,14 @@ class InstitutionUser extends Model
     public $timestamps = false;
 
     protected $casts = [
-        'user' => 'array',
-        'institution' => 'array',
-        'department' => 'array',
-        'roles' => 'array',
+        'user' => AsArrayObject::class,
+        'institution' => AsArrayObject::class,
+        'department' => AsArrayObject::class,
+        'roles' => AsArrayObject::class,
     ];
+
+    public function vendor()
+    {
+        return $this->hasOne(Vendor::class);
+    }
 }

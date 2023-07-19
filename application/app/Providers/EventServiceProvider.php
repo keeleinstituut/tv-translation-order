@@ -14,6 +14,8 @@ use App\Listeners\Institutions\DeleteInstitutionListener;
 use App\Listeners\Institutions\SaveInstitutionListener;
 use App\Listeners\InstitutionUsers\DeleteInstitutionUserListener;
 use App\Listeners\InstitutionUsers\SaveInstitutionUserListener;
+use App\Models;
+use App\Observers;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -49,6 +51,7 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Models\Vendor::observe(Observers\VendorObserver::class);
     }
 
     /**

@@ -102,7 +102,7 @@ trait ApiResponseHelpers
         ];
     }
 
-    protected function generateClassifierValueResponseData(?string $id = null): array
+    protected function generateClassifierValueResponseData(string $id = null): array
     {
         $classifierValueAttributes = ClassifierValue::factory()->make()->getAttributes();
         $classifierValueAttributes['id'] = $id ?: Str::orderedUuid()->toString();
@@ -114,7 +114,7 @@ trait ApiResponseHelpers
         return $classifierValueAttributes;
     }
 
-    protected function generateInstitutionResponseData(?string $id = null, bool $isDeleted = false): array
+    protected function generateInstitutionResponseData(string $id = null, bool $isDeleted = false): array
     {
         $institutionAttributes = Institution::factory()->make()->getAttributes();
 
@@ -124,7 +124,7 @@ trait ApiResponseHelpers
         return $institutionAttributes;
     }
 
-    protected function generateInstitutionUserResponseData(?string $id = null, bool $isDeleted = false): array
+    protected function generateInstitutionUserResponseData(string $id = null, bool $isDeleted = false): array
     {
         $institutionUser = InstitutionUser::factory()->make();
         $institutionUserAttributes = $institutionUser->getAttributes();

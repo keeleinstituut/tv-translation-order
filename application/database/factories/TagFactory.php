@@ -27,10 +27,12 @@ class TagFactory extends Factory
 
     public function vendorSkills(): TagFactory
     {
-        return $this->state(fn () => [
-            'type' => TagType::VendorSkill,
-            'institution_id' => null,
-        ]);
+        return $this->withType(TagType::VendorSkill);
+    }
+
+    public function typeVendor(): TagFactory
+    {
+        return $this->withType(TagType::Vendor);
     }
 
     public function withType(TagType $type): TagFactory

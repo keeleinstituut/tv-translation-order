@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tags', function (Blueprint $table) {
-            $table->uuid('id');
+            $table->uuid('id')->primary();
             $table->string('name', 50);
             $table->enum('type', TagType::values());
             $table->foreignUuid('institution_id')->nullable()->constrained(
