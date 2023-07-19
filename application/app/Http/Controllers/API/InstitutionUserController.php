@@ -20,7 +20,7 @@ class InstitutionUserController extends Controller
         summary: 'List Institution Users',
         tags: ['Cached entities'],
         parameters: [
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]

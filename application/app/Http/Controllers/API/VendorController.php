@@ -30,7 +30,7 @@ class VendorController extends Controller
             new OA\QueryParameter(name: 'tag_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string'))),
             new OA\QueryParameter(name: 'src_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', maximum: 10, nullable: true)),
+            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]

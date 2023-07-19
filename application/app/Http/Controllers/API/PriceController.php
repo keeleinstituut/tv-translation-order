@@ -31,9 +31,9 @@ class PriceController extends Controller
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'institution_user_name', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'skill_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', maximum: 10, nullable: true)),
-            new OA\QueryParameter(name: 'order_by', schema: new OA\Schema(type: 'string', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee'])),
-            new OA\QueryParameter(name: 'order_direction', schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'])),
+            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'order_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
+            new OA\QueryParameter(name: 'order_direction', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -88,8 +88,8 @@ class PriceController extends Controller
         return DB::transaction(function () use ($params) {
             $obj = new Price();
             $obj->fill($params->toArray());
-            $obj->save();
             $this->authorize('create', $obj);
+            $obj->save();
 
             $obj
                 ->load('vendor')

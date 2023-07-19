@@ -57,6 +57,57 @@ class PriceControllerTest extends TestCase
             ->assertJsonCount(count($randomPrices), 'data');
     }
 
+    public function test_create(): void
+    {
+        // GIVEN
+        $institutionId = Str::orderedUuid();
+        $testVendor = Vendor::factory()->create();
+        $testVendor->institutionUser->institution['id'] = $institutionId;
+        $testVendor->institutionUser->save();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => $institutionId,
+            ],
+        ]);
+
+        // WHEN
+        $payload = [
+            'vendor_id' => $testVendor->id,
+            'skill_id' => fake()->randomElement(Skill::pluck('id')),
+            'src_lang_classifier_value_id' => ClassifierValue::factory()->language()->create()->id,
+            'dst_lang_classifier_value_id' => ClassifierValue::factory()->language()->create()->id,
+            'character_fee' => fake()->randomFloat(2, 0, 1000),
+            'word_fee' => fake()->randomFloat(2, 0, 1000),
+            'page_fee' => fake()->randomFloat(2, 0, 1000),
+            'minute_fee' => fake()->randomFloat(2, 0, 1000),
+            'hour_fee' => fake()->randomFloat(2, 0, 1000),
+            'minimal_fee' => fake()->randomFloat(2, 0, 1000),
+        ];
+
+        $response = $this->prepareAuthorizedRequest($accessToken)->postJson('/api/prices', $payload);
+
+        // THEN
+        $savedPrice = Price::getModel()
+            ->where('vendor_id', $testVendor->id)
+            ->with('vendor', 'vendor.institutionUser')
+            ->with('skill', 'sourceLanguageClassifierValue', 'destinationLanguageClassifierValue')
+            ->orderBy('created_at', 'asc')
+            ->first();
+
+        $response
+            ->assertStatus(201)
+            ->assertExactJson([
+                'data' => $this->constructRepresentation($savedPrice),
+            ])
+            ->assertJson([
+                'data' => $payload,
+            ]);
+    }
+
     public function test_bulk_create(): void
     {
         // GIVEN
