@@ -112,6 +112,39 @@ stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
+
+[program:laravel-classifiers-sync]
+process_name=%(program_name)s
+command=php /app/artisan amqp:consume tv-translation-order.classifier-value # see application/config/amqp.php
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:laravel-institutions-sync]
+process_name=%(program_name)s
+command=php /app/artisan amqp:consume tv-translation-order.institution  # see application/config/amqp.php
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:laravel-institution-users-sync]
+process_name=%(program_name)s
+command=php /app/artisan amqp:consume tv-translation-order.institution-user  # see /application/config/amqp.php
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 EOF
 
 RUN <<EOF cat > ${ENTRYPOINT}
