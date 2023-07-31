@@ -258,6 +258,15 @@ class VendorControllerTest extends TestCase
         $payload = [
             'tags' => $testTags->pluck('id')->toArray(),
             'comment' => fake()->text(),
+            'company_name' => fake()->text(),
+            'discount_percentage_101' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_repetitions' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_100' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_95_99' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_85_94' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_75_84' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_50_74' => fake()->randomFloat(2, 0, 100),
+            'discount_percentage_0_49' => fake()->randomFloat(2, 0, 100),
         ];
 
         $response = $this->prepareAuthorizedRequest($accessToken)->putJson("/api/vendors/$testVendor->id", $payload);

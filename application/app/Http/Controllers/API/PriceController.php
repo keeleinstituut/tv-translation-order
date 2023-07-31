@@ -27,10 +27,10 @@ class PriceController extends Controller
         tags: ['Vendor management'],
         parameters: [
             new OA\QueryParameter(name: 'vendor_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'src_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'dst_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'institution_user_name', schema: new OA\Schema(type: 'string', nullable: true)),
-            new OA\QueryParameter(name: 'skill_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
+            new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'skill_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'order_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
             new OA\QueryParameter(name: 'order_direction', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
@@ -56,11 +56,15 @@ class PriceController extends Controller
         }
 
         if ($param = $params->get('src_lang_classifier_value_id')) {
-            $query = $query->whereRelation('sourceLanguageClassifierValue', 'id', $param);
+            $query = $query->whereRelation('sourceLanguageClassifierValue', function ($query) use ($param) {
+                $query->whereIn('id', $param);
+            });
         }
 
         if ($param = $params->get('dst_lang_classifier_value_id')) {
-            $query = $query->whereRelation('destinationLanguageClassifierValue', 'id', $param);
+            $query = $query->whereRelation('destinationLanguageClassifierValue', function ($query) use ($param) {
+                $query->whereIn('id', $param);
+            });
         }
 
         if ($param = $params->get('institution_user_name')) {
@@ -68,7 +72,7 @@ class PriceController extends Controller
         }
 
         if ($param = $params->get('skill_id')) {
-            $query = $query->where('skill_id', $param);
+            $query = $query->whereIn('skill_id', $param);
         }
 
         $data = $query

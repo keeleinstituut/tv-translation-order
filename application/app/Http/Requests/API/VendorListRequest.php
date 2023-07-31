@@ -20,7 +20,8 @@ class VendorListRequest extends FormRequest
             'src_lang_classifier_value_id.*' => 'uuid',
             'dst_lang_classifier_value_id' => 'sometimes|array',
             'dst_lang_classifier_value_id.*' => 'uuid',
-            'role_id' => 'sometimes|uuid',
+            'role_id' => 'sometimes|array',
+            'role_id.*' => 'uuid',
             'tag_id' => 'sometimes|array',
             'tag_id.*' => 'uuid',
         ];

@@ -12,9 +12,18 @@ use OpenApi\Attributes as OA;
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['comment', 'tags'],
+        required: [],
         properties: [
             new OA\Property(property: 'comment', type: 'string'),
+            new OA\Property(property: 'company_name', type: 'string'),
+            new OA\Property(property: 'discount_percentage_101', type: 'string'),
+            new OA\Property(property: 'discount_percentage_repetitions', type: 'string'),
+            new OA\Property(property: 'discount_percentage_100', type: 'string'),
+            new OA\Property(property: 'discount_percentage_95_99', type: 'string'),
+            new OA\Property(property: 'discount_percentage_85_94', type: 'string'),
+            new OA\Property(property: 'discount_percentage_75_84', type: 'string'),
+            new OA\Property(property: 'discount_percentage_50_74', type: 'string'),
+            new OA\Property(property: 'discount_percentage_0_49', type: 'string'),
             new OA\Property(
                 property: 'tags',
                 type: 'array',
@@ -36,6 +45,8 @@ class VendorUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $percentageRule = 'sometimes|decimal:0,2|between:0,100.00';
+
         return [
             'tags' => 'sometimes|array',
             'tags.*' => [
@@ -43,6 +54,16 @@ class VendorUpdateRequest extends FormRequest
                 Rule::exists(Tag::class, 'id')->where('type', TagType::Vendor->value),
             ],
             'comment' => 'sometimes|string',
+            'company_name' => 'sometimes|string',
+
+            'discount_percentage_101' => $percentageRule,
+            'discount_percentage_repetitions' => $percentageRule,
+            'discount_percentage_100' => $percentageRule,
+            'discount_percentage_95_99' => $percentageRule,
+            'discount_percentage_85_94' => $percentageRule,
+            'discount_percentage_75_84' => $percentageRule,
+            'discount_percentage_50_74' => $percentageRule,
+            'discount_percentage_0_49' => $percentageRule,
         ];
     }
 }

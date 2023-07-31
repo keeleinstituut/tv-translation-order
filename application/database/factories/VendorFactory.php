@@ -20,6 +20,7 @@ class VendorFactory extends Factory
         return [
             'institution_user_id' => InstitutionUser::factory(),
             'company_name' => fake()->company(),
+            'comment' => fake()->text(),
             'discount_percentage_101' => fake()->randomFloat(2, 0, 100),
             'discount_percentage_repetitions' => fake()->randomFloat(2, 0, 100),
             'discount_percentage_100' => fake()->randomFloat(2, 0, 100),

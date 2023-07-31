@@ -22,6 +22,7 @@ class Vendor extends Model
     protected $fillable = [
         'institution_user_id',
         'company_name',
+        'comment',
         'discount_percentage_101',
         'discount_percentage_repetitions',
         'discount_percentage_100',
