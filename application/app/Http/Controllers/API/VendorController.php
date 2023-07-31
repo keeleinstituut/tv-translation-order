@@ -26,10 +26,10 @@ class VendorController extends Controller
         tags: ['Vendor management'],
         parameters: [
             new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
-            new OA\QueryParameter(name: 'role_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'tag_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string'))),
-            new OA\QueryParameter(name: 'src_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'dst_lang_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
+            new OA\QueryParameter(name: 'role_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'tag_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -56,13 +56,16 @@ class VendorController extends Controller
 
         if ($param = $params->get('role_id')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
-                $query->where('roles', '@>', "[{ \"id\": \"$param\"}]");
+                // Constructs SQL OR statement to check roleId existence in roles array
+                collect($param)->each(function ($roleId) use ($query) {
+                    $query->orWhere('roles', '@>', "[{ \"id\": \"$roleId\"}]");
+                });
             });
         }
 
         if ($param = $params->get('tag_id')) {
             $query = $query->whereRelation('tags', function ($query) use ($param) {
-                $query->whereIn('id', $param);
+                $query->whereIn('tags.id', $param);
             });
         }
 
@@ -108,10 +111,20 @@ class VendorController extends Controller
         $this->authorize('update', $vendor);
 
         return DB::transaction(function () use ($vendor, $params) {
-
-            if ($commentInput = $params->get('comment')) {
-                $vendor->comment = $commentInput;
-            }
+            // Collect certain keys from input params, filter null values
+            // and fill model with result from filter
+            tap(collect($params)->only([
+                'comment',
+                'company_name',
+                'discount_percentage_101',
+                'discount_percentage_repetitions',
+                'discount_percentage_100',
+                'discount_percentage_95_99',
+                'discount_percentage_85_94',
+                'discount_percentage_75_84',
+                'discount_percentage_50_74',
+                'discount_percentage_0_49',
+            ])->filter()->toArray(), $vendor->fill(...));
 
             $vendor->save();
 
