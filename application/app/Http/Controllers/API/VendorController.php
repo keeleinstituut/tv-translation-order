@@ -57,8 +57,12 @@ class VendorController extends Controller
         if ($param = $params->get('role_id')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
                 // Constructs SQL OR statement to check roleId existence in roles array
-                collect($param)->each(function ($roleId) use ($query) {
-                    $query->orWhere('roles', '@>', "[{ \"id\": \"$roleId\"}]");
+                $constructValue = fn ($value) => "[{ \"id\": \"$value\"}]";
+                $roleIds = collect($param);
+                $query->where('roles', '@>', $constructValue($roleIds->shift()));
+
+                collect($roleIds)->each(function ($roleId) use ($query, $constructValue) {
+                    $query->orWhere('roles', '@>', $constructValue($roleId));
                 });
             });
         }
