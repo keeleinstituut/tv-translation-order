@@ -88,7 +88,7 @@ class VendorControllerTest extends TestCase
                     ->has(
                         Price::factory()
                             ->count(1)
-                            ->state(new Sequence(fn (Sequence $seq) => [
+                            ->state(new Sequence(fn(Sequence $seq) => [
                                 'src_lang_classifier_value_id' => $testSourceLanguageClassifiers->random(),
                                 'dst_lang_classifier_value_id' => $testDestinationLanguageClassifiers->random(),
                             ])),
@@ -101,15 +101,15 @@ class VendorControllerTest extends TestCase
             ])
             ->create();
 
-        collect()->times(30)->each(fn () => DB::statement("select '1'"));
+        collect()->times(30)->each(fn() => DB::statement("select '1'"));
 
         $requestedSourceLangs = fake()->randomElements($testSourceLanguageClassifiers->pluck('id'), 2);
         $requestedDestinationLangs = fake()->randomElements($testDestinationLanguageClassifiers->pluck('id'), 2);
 
         $expectedVendors = Vendor::getModel()
             ->whereRelation('institutionUser', 'institution->id', $institutionId)
-            ->whereRelation('prices.sourceLanguageClassifierValue', fn ($query) => $query->whereIn('id', $requestedSourceLangs))
-            ->whereRelation('prices.destinationLanguageClassifierValue', fn ($query) => $query->whereIn('id', $requestedDestinationLangs))
+            ->whereRelation('prices.sourceLanguageClassifierValue', fn($query) => $query->whereIn('id', $requestedSourceLangs))
+            ->whereRelation('prices.destinationLanguageClassifierValue', fn($query) => $query->whereIn('id', $requestedDestinationLangs))
             ->join('entity_cache.cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
             ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') ASC")
             ->select('vendors.*')
@@ -139,9 +139,54 @@ class VendorControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'data' => collect($expectedDataset)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray(),
+                'data' => collect($expectedDataset)->map(fn($vendor) => $this->constructRepresentation($vendor))->toArray(),
             ])
             ->assertJsonCount($expectedDataset->count(), 'data');
+    }
+
+    public function test_showing(): void
+    {
+        $institutionUser = InstitutionUser::factory()->has(
+            Vendor::factory()
+                ->has(Tag::factory()->typeVendor())
+        )->create();
+        $institutionId = $institutionUser->institution['id'];
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => $institutionId,
+            ],
+        ]);
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/vendors/' . $institutionUser->vendor->id)
+            ->assertStatus(200)
+            ->assertJson([
+                'data' => $this->constructRepresentation($institutionUser->vendor),
+            ]);
+    }
+
+    public function test_showing_vendor_from_another_institution(): void
+    {
+        $institutionUser = InstitutionUser::factory()->has(
+            Vendor::factory()
+                ->has(Tag::factory()->typeVendor())
+        )->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => Str::orderedUuid(),
+            ],
+        ]);
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/vendors/' . $institutionUser->vendor->id)
+            ->assertStatus(404);
     }
 
     public function test_bulk_create(): void
@@ -177,7 +222,7 @@ class VendorControllerTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'data' => collect($savedVendors)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray(),
+                'data' => collect($savedVendors)->map(fn($vendor) => $this->constructRepresentation($vendor))->toArray(),
             ])
             ->assertJson($payload);
     }
@@ -212,15 +257,15 @@ class VendorControllerTest extends TestCase
         ]);
 
         $payload = $randomVendors
-            ->map(fn ($vendor) => 'id[]='.$vendor->id)
+            ->map(fn($vendor) => 'id[]=' . $vendor->id)
             ->implode('&');
 
-        $response = $this->prepareAuthorizedRequest($accessToken)->deleteJson('/api/vendors/bulk?'.$payload);
+        $response = $this->prepareAuthorizedRequest($accessToken)->deleteJson('/api/vendors/bulk?' . $payload);
 
         $response
             ->assertStatus(200)
             ->assertSimilarJson([
-                'data' => collect($randomVendors)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray(),
+                'data' => collect($randomVendors)->map(fn($vendor) => $this->constructRepresentation($vendor))->toArray(),
             ]);
 
         $deletedVendors = Vendor::whereIn('id', $randomVendors->pluck('id'))->get();
