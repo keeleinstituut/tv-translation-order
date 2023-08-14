@@ -154,12 +154,9 @@ class VendorController extends Controller
     #[OAH\ResourceResponse(dataRef: VendorResource::class, description: 'Vendor resource', response: Response::HTTP_OK)]
     public function show(Request $request): VendorResource
     {
-        $this->authorize('view', Vendor::class);
-        return new VendorResource(
-            $this->getBaseQuery()->findOrFail(
-                $request->route('id')
-            )
-        );
+        $vendor = $this->getBaseQuery()->findOrFail($request->route('id'));
+        $this->authorize('view', $vendor);
+        return new VendorResource($vendor);
     }
 
     /**
