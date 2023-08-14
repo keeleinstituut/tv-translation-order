@@ -51,7 +51,7 @@ class VendorController extends Controller
 
         if ($param = $params->get('fullname')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
-                $query->where(DB::raw("CONCAT(\"user\"->>'forename', \"user\"->>'surname')"), 'ILIKE', "%$param%");
+                $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$param%");
             });
         }
 

@@ -36,7 +36,7 @@ class InstitutionUserController extends Controller
         $query = $this->getBaseQuery();
 
         if ($fullName = $params->get('fullname')) {
-            $query->where(DB::raw("CONCAT(\"user\"->>'forename', \"user\"->>'surname')"), 'ILIKE', "%$fullName%");
+            $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$fullName%");
         }
 
         $data = $query
