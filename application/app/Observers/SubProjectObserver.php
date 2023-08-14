@@ -13,7 +13,7 @@ class SubProjectObserver
     {
         $subProject->ext_id = collect([
             $subProject->project->ext_id,
-            $subProject->sourceLanguageClassifierValue->value . $subProject->destinationLanguageClassifierValue->value,
+            $subProject->sourceLanguageClassifierValue->value.$subProject->destinationLanguageClassifierValue->value,
             $subProject->project->subProjectSequence->incrementCurrentValue(),
         ])->implode('-');
     }

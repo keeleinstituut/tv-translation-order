@@ -25,8 +25,10 @@ class ProjectTypeConfigFactory extends Factory
         ];
     }
 
-    public function getFeatures() {
+    public function getFeatures()
+    {
         $possibleFeatures = Feature::values();
+
         return fake()->randomElements($possibleFeatures, count($possibleFeatures));
     }
 }

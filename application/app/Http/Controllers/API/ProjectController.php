@@ -15,12 +15,13 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        $data =  Project::getModel()
+        $data = Project::getModel()
             ->with('typeClassifierValue')
             ->with('subProjects')
             ->with('subProjects.sourceLanguageClassifierValue')
             ->with('subProjects.destinationLanguageClassifierValue')
             ->paginate();
+
         return ProjectResource::collection($data);
     }
 
@@ -46,7 +47,7 @@ class ProjectController extends Controller
             });
 
             collect($params->get('help_files', []))->each(function ($file, $i) use ($project, $params) {
-                $type = $params->get("help_file_types")[$i];
+                $type = $params->get('help_file_types')[$i];
                 $project->addMedia($file)
                     ->withCustomProperties([
                         'type' => $type,
@@ -77,6 +78,7 @@ class ProjectController extends Controller
             ->with('subProjects.sourceLanguageClassifierValue')
             ->with('subProjects.destinationLanguageClassifierValue')
             ->find($id);
+
         return new ProjectResource($data);
     }
 

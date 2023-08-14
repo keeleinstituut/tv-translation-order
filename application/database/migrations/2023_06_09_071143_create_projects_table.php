@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignUuid('type_classifier_value_id')
                 ->references('id')
                 ->on('entity_cache.cached_classifier_values');
-            $table->text('comments')->default("");
+            $table->text('comments')->default('');
             $table->string('workflow_template_id')->nullable();
             $table->string('workflow_instance_ref')->nullable();
             $table->timestampTz('deadline_at')->nullable();
@@ -41,9 +41,6 @@ return new class extends Migration
             // files MULTIPLE
             // client_id
             // translation_manager_id
-
-
-
 
             // SUBORDERS
             // ---------------------

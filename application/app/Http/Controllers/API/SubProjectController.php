@@ -17,6 +17,7 @@ class SubProjectController extends Controller
     {
         $data = SubProject::getModel()
             ->paginate();
+
         return SubProjectResource::collection($data);
     }
 
@@ -41,6 +42,7 @@ class SubProjectController extends Controller
             ->with('assignments.candidates.vendor.institutionUser')
             ->with('assignments.assignee.institutionUser')
             ->find($id) ?? abort(404);
+
         return new SubProjectResource($data);
     }
 
@@ -66,6 +68,7 @@ class SubProjectController extends Controller
         if (collect($subProject->cat_metadata)->isNotEmpty()) {
             abort(400, 'Cat project already created');
         }
+
         return $subProject->cat()->createProject();
     }
 

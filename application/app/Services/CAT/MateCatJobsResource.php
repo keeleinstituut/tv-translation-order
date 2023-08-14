@@ -20,7 +20,7 @@ class MateCatJobsResource extends JsonResource
             'original_download_url' => $this['job']['original_download_url'],
             'translation_download_url' => $this['job']['translation_download_url'],
             'xliff_download_url' => $this['job']['xliff_download_url'],
-//            'password' => $this['password'],
+            //            'password' => $this['password'],
             'translate_url' => $this['translate_url'],
             'revisions' => $this['revise_urls'],
         ];

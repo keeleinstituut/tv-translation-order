@@ -28,7 +28,7 @@ return new class extends Migration
             $table->foreignUuid('destination_language_classifier_value_id')
                 ->references('id')
                 ->on('entity_cache.cached_classifier_values');
-            $table->json('cat_metadata')->default("{}");
+            $table->json('cat_metadata')->default('{}');
 
             $table->timestampsTz();
         });

@@ -7,7 +7,6 @@ use App\Jobs\MateCatCheckProjectStatusJob;
 use App\Models\SubProject;
 use Illuminate\Support\Str;
 
-
 // Needs refactoring
 // should be responsible for communicating with MateCAT,
 // providing generalized information from CAT to be used in unified way by other parts of the code.
@@ -19,10 +18,13 @@ class MateCatService
     public const ANALYSIS_STATUS_DONE = 'DONE';
 
     private const RESPONSE_CREATE_PROJECT = 'response_create_project';
+
     private const RESPONSE_STATUS = 'response_status';
+
     private const RESPONSE_URLS = 'response_urls';
 
-    public function __construct(SubProject $subProject) {
+    public function __construct(SubProject $subProject)
+    {
         $this->subProject = $subProject;
     }
 
@@ -39,6 +41,7 @@ class MateCatService
         $this->subProject->save();
 
         MateCatCheckProjectStatusJob::dispatch($this->subProject);
+
         return $result;
     }
 
@@ -46,6 +49,7 @@ class MateCatService
     {
         $result = MateCatServiceBase::urls($this->getProjectId(), $this->getProjectPass());
         $this->setToStorage(self::RESPONSE_URLS, $result);
+
         return $result;
     }
 
@@ -53,25 +57,28 @@ class MateCatService
     {
         $result = MateCatServiceBase::status($this->getProjectId(), $this->getProjectPass());
         $this->setToStorage(self::RESPONSE_STATUS, $result);
+
         return $result;
     }
 
     public function getProjectId()
     {
-        return $this->getFromStorage(self::RESPONSE_CREATE_PROJECT . ".id_project");
+        return $this->getFromStorage(self::RESPONSE_CREATE_PROJECT.'.id_project');
     }
 
     public function getProjectPass()
     {
-        return $this->getFromStorage(self::RESPONSE_CREATE_PROJECT . ".project_pass");
+        return $this->getFromStorage(self::RESPONSE_CREATE_PROJECT.'.project_pass');
     }
 
-    public function getAnalyzisStatus() {
-        return $this->getFromStorage(self::RESPONSE_STATUS . ".status");
+    public function getAnalyzisStatus()
+    {
+        return $this->getFromStorage(self::RESPONSE_STATUS.'.status');
     }
 
-    public function getJobs() {
-        $jobs = collect($this->getFromStorage(self::RESPONSE_URLS . ".urls.jobs"));
+    public function getJobs()
+    {
+        $jobs = collect($this->getFromStorage(self::RESPONSE_URLS.'.urls.jobs'));
         if ($jobs->isEmpty()) {
             return null;
         }
@@ -82,6 +89,7 @@ class MateCatService
                     $chunk['job'] = $job;
                     $acc->push($chunk);
                 });
+
                 return $acc;
             }, collect())
             ->map(function ($chunk) {
@@ -90,14 +98,14 @@ class MateCatService
             ->pipe(function ($collection) {
                 return json_decode($collection->toJson(), true);
             });
-//        return collect($jobs)->pluck('chunks')->collapse()->map(function ($chunk) {
-//            return new MateCatJobsResource($chunk);
-//        });
+        //        return collect($jobs)->pluck('chunks')->collapse()->map(function ($chunk) {
+        //            return new MateCatJobsResource($chunk);
+        //        });
     }
 
     public function getFiles()
     {
-        return $this->getFromStorage(self::RESPONSE_URLS . ".urls.files");
+        return $this->getFromStorage(self::RESPONSE_URLS.'.urls.files');
     }
 
     private function getStorage()
@@ -108,23 +116,28 @@ class MateCatService
     private function getFromStorage(string $key, $fallback = null)
     {
         $storage = $this->getStorage();
+
         return data_get($storage, $key, $fallback);
     }
 
     private function setToStorage($key, $value, $overwrite = true)
     {
         $storage = $this->getStorage();
+
         return data_set($storage, $key, $value, $overwrite);
     }
 
-    public function getAnalyzis2(){
-        $jobs = $this->getFromStorage(self::RESPONSE_STATUS . ".data.jobs");
+    public function getAnalyzis2()
+    {
+        $jobs = $this->getFromStorage(self::RESPONSE_STATUS.'.data.jobs');
+
         return collect($jobs)->pluck('totals');
     }
 
     public function getAnalyzis()
     {
-        $jobs = $this->getFromStorage(self::RESPONSE_STATUS . ".data.jobs");
+        $jobs = $this->getFromStorage(self::RESPONSE_STATUS.'.data.jobs');
+
         return collect($jobs)->pluck('totals')->reduce(function ($acc, $value) {
             collect($value)->each(function ($chunk, $chunkId) use ($acc) {
                 $values = [
@@ -145,6 +158,7 @@ class MateCatService
                     ...$values,
                 ]);
             });
+
             return $acc;
         }, collect());
     }
@@ -154,7 +168,8 @@ class MateCatService
         return $this->getFromStorage(self::RESPONSE_URLS);
     }
 
-    public static function getSupportedFeatures($prefix = '') {
+    public static function getSupportedFeatures($prefix = '')
+    {
         return collect([
             Feature::JOB_TRANSLATION,
             Feature::JOB_REVISION,
@@ -162,6 +177,7 @@ class MateCatService
             if ($prefix) {
                 return Str::startsWith($elem->value, $prefix);
             }
+
             return true;
         });
     }

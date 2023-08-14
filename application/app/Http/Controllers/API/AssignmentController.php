@@ -18,6 +18,7 @@ class AssignmentController extends Controller
             ->with('candidates.vendor.institutionUser')
 //            ->with('assignedVendor')
             ->paginate();
+
         return AssignmentResource::collection($data);
     }
 

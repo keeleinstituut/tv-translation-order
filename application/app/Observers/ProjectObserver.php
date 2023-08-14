@@ -16,10 +16,10 @@ class ProjectObserver
         if ($project->ext_id == null) {
             $project->ext_id = collect([
                 $project->institution->short_name,
-                Carbon::now()->format("Y-m"),
+                Carbon::now()->format('Y-m'),
                 'K',
                 $project->institution->institutionProjectSequence->incrementCurrentValue(),
-            ])->implode("-");
+            ])->implode('-');
         }
     }
 

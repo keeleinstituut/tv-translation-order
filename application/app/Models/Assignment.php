@@ -11,15 +11,18 @@ class Assignment extends Model
     use HasUuids;
     use HasFactory;
 
-    public function subProject() {
+    public function subProject()
+    {
         return $this->belongsTo(SubProject::class);
     }
 
-    public function candidates() {
+    public function candidates()
+    {
         return $this->hasMany(Candidate::class);
     }
 
-    public function assignee() {
+    public function assignee()
+    {
         return $this->belongsTo(Vendor::class, 'assigned_vendor_id');
     }
 }

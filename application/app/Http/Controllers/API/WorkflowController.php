@@ -21,11 +21,11 @@ class WorkflowController extends Controller
         $pageName = 'page';
 
         $currentPage = Paginator::resolveCurrentPage($pageName);
-//        dd(($currentPage - 1) * $perPage);
+        //        dd(($currentPage - 1) * $perPage);
 
         $params = [
-//            'sortBy' => 'id',
-//            'sortOrder' => 'asc',
+            //            'sortBy' => 'id',
+            //            'sortOrder' => 'asc',
             'firstResult' => ($currentPage - 1) * $perPage,
             'maxResults' => $perPage,
         ];
@@ -42,11 +42,13 @@ class WorkflowController extends Controller
         $paginator = Container::getInstance()->makeWith(LengthAwarePaginator::class, compact(
             'items', 'total', 'perPage', 'currentPage', 'options'
         ));
+
         return TaskResource::collection($paginator);
-//        return WorkflowService::getTask();
+        //        return WorkflowService::getTask();
     }
 
-    private function paginate($items, $perPage, $currentPage, $options = []) {
+    private function paginate($items, $perPage, $currentPage, $options = [])
+    {
         return new LengthAwarePaginator($items, $total, $perPage, $currentPage, $options);
     }
 
@@ -66,14 +68,15 @@ class WorkflowController extends Controller
         $paginator = Container::getInstance()->makeWith(LengthAwarePaginator::class, compact(
             'items', 'total', 'perPage', 'currentPage', 'options'
         ));
+
         return TaskResource::collection($paginator);
-//        return TaskResource::collection($items);
+        //        return TaskResource::collection($items);
     }
 
-    public function getTask(String $id)
+    public function getTask(string $id)
     {
         return WorkflowService::getTask([
-            "taskId" => $id
+            'taskId' => $id,
         ]);
     }
 

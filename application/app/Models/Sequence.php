@@ -13,6 +13,7 @@ class Sequence extends Model
     use HasUuids;
 
     public const INSTITUTION_PROJECT_SEQ = 'INSTITUTION_PROJECT_SEQUENCE';
+
     public const PROJECT_SUBPROJECT_SEQ = 'PROJECT_SUBPROJECT_SEQ';
 
     public function sequenceable()
@@ -20,11 +21,13 @@ class Sequence extends Model
         return $this->morphTo();
     }
 
-    public function incrementCurrentValue() {
+    public function incrementCurrentValue()
+    {
         return DB::transaction(function () {
             $value = $this->current_value;
             $this->current_value += 1;
             $this->save();
+
             return $value;
         });
     }

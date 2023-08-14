@@ -14,30 +14,32 @@ class RedirectController extends Controller
     public function __invoke(Request $request)
     {
         $params = $request->all();
+
         return $this->processByFeature($params);
     }
 
-    public function processByFeature(array $params) {
+    public function processByFeature(array $params)
+    {
         $feature = $params['feature'];
 
         return match ($feature) {
             Feature::JOB_TRANSLATION->value => $this->processTranslationFeature($params),
             Feature::JOB_REVISION->value => $this->processRevisionFeature($params),
-            default => throw new \Exception("Unprocessable redirect", 1),
+            default => throw new \Exception('Unprocessable redirect', 1),
         };
     }
 
     public function processTranslationFeature($params)
     {
         return [
-            'href' => 'translation'
+            'href' => 'translation',
         ];
     }
 
     public function processRevisionFeature($params)
     {
         return [
-            'href' => 'revision'
+            'href' => 'revision',
         ];
     }
 }

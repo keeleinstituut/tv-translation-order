@@ -5,8 +5,6 @@ namespace Database\Seeders;
 use App\Enums\ClassifierValueType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\ProjectTypeConfig;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Database\Seeder;
 
 class ClassifierValueSeeder extends Seeder
@@ -41,7 +39,8 @@ class ClassifierValueSeeder extends Seeder
             ->create();
     }
 
-    private function parseMatecatLanguages() {
+    private function parseMatecatLanguages()
+    {
         return json_decode(self::MATECAT_LANGUAGES, true);
     }
 }

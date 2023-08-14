@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('name');
             $table->uuidMorphs('sequenceable');
-            $table->unsignedBigInteger("current_value")->default(1);
+            $table->unsignedBigInteger('current_value')->default(1);
             $table->timestampsTz();
         });
     }

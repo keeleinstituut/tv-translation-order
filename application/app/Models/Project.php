@@ -14,8 +14,11 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class Project extends Model implements HasMedia
 {
     public const SOURCE_FILES_COLLECTION = 'source';
+
     public const HELP_FILES_COLLECTION = 'help';
+
     public const FINAL_FILES_COLLECTION = 'final';
+
     public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
     use HasFactory;
@@ -68,8 +71,8 @@ class Project extends Model implements HasMedia
         collect($destinationLanguages)->each(function ($destinationLanguage) use ($sourceLanguage) {
             $subProject = new SubProject();
             $subProject->project_id = $this->id;
-            $subProject->file_collection = self::INTERMEDIATE_FILES_COLLECTION_PREFIX . "/$sourceLanguage->value/$destinationLanguage->value";
-            $subProject->file_collection_final = self::FINAL_FILES_COLLECTION . "/$sourceLanguage->value/$destinationLanguage->value";
+            $subProject->file_collection = self::INTERMEDIATE_FILES_COLLECTION_PREFIX."/$sourceLanguage->value/$destinationLanguage->value";
+            $subProject->file_collection_final = self::FINAL_FILES_COLLECTION."/$sourceLanguage->value/$destinationLanguage->value";
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->save();

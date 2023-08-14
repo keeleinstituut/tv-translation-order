@@ -21,8 +21,8 @@ return new class extends Migration
                 ->references('id')
                 ->on('vendors');
             $table->timestampTz('deadline_at')->nullable();
-            $table->text('comments')->default("");
-            $table->text('assignee_comments')->default("");
+            $table->text('comments')->default('');
+            $table->text('assignee_comments')->default('');
             $table->string('feature');
             $table->timestampsTz();
         });

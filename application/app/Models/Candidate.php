@@ -11,11 +11,13 @@ class Candidate extends Model
     use HasUuids;
     use HasFactory;
 
-    public function vendor() {
+    public function vendor()
+    {
         return $this->belongsTo(Vendor::class);
     }
 
-    public function assignment() {
+    public function assignment()
+    {
         return $this->belongsTo(Assignment::class);
     }
 }

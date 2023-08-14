@@ -3,14 +3,12 @@
 namespace App\Jobs;
 
 use App\Models\SubProject;
+use App\Services\CAT\MateCatService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Order;
-use App\Services\CAT\MateCatService;
 
 class MateCatCheckProjectStatusJob implements ShouldQueue
 {
@@ -37,7 +35,7 @@ class MateCatCheckProjectStatusJob implements ShouldQueue
     {
         $times = 3;
 
-        for ($i=0; $i < $times; $i++) {
+        for ($i = 0; $i < $times; $i++) {
             $successful = $this->checkDoneStatusAndUpdate();
 
             if ($successful) {
@@ -49,15 +47,18 @@ class MateCatCheckProjectStatusJob implements ShouldQueue
         self::dispatch($this->subProject)->delay(now()->addMinutes(1));
     }
 
-    private function checkDoneStatusAndUpdate() {
+    private function checkDoneStatusAndUpdate()
+    {
         $statusResponse = $this->subProject->cat()->propagateStatus();
         $status = $statusResponse['status'];
 
         if ($status == MateCatService::ANALYSIS_STATUS_DONE) {
             $this->subProject->cat()->propagateUrls();
             $this->subProject->save();
+
             return true;
         }
+
         return false;
     }
 }

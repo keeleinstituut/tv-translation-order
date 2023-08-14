@@ -14,9 +14,11 @@ use Illuminate\Database\Seeder;
 class ProjectSeeder extends Seeder
 {
     const SAMPLE_FILES_DIR = './database/seeders/sample-files/en';
+
     private $sampleFiles;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->sampleFiles = self::getSampleFiles();
     }
 
@@ -64,6 +66,7 @@ class ProjectSeeder extends Seeder
                 ->toMediaCollection(Project::SOURCE_FILES_COLLECTION);
         });
     }
+
     private function getRandomSampleFile()
     {
         return fake()->randomElement($this->sampleFiles);
@@ -79,11 +82,12 @@ class ProjectSeeder extends Seeder
         return collect(scandir(self::SAMPLE_FILES_DIR))
             ->reject(fn ($filename) => $filename == '.' || $filename == '..')
             ->map(function ($filename) {
-                return self::SAMPLE_FILES_DIR . '/' . $filename;
+                return self::SAMPLE_FILES_DIR.'/'.$filename;
             });
     }
 
-    private function setAssigneeOrCandidates(Assignment $assignment) {
+    private function setAssigneeOrCandidates(Assignment $assignment)
+    {
         $setAssignee = fake()->randomElement([false, false, true]);
 
         if ($setAssignee) {

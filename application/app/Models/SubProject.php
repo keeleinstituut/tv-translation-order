@@ -74,13 +74,14 @@ class SubProject extends Model
             });
     }
 
-//    public function sourceFiles2() {
-//        return $this->project->media()->where('collection_name', $this->file_collection);
-//    }
+    //    public function sourceFiles2() {
+    //        return $this->project->media()->where('collection_name', $this->file_collection);
+    //    }
 
     public function cat()
     {
         $catClass = CatPickerService::pick(CatPickerService::MATECAT);
+
         return new $catClass($this);
     }
 }

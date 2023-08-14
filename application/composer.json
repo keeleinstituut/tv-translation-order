@@ -16,7 +16,7 @@
         "spatie/laravel-medialibrary": "^10.0.0",
         "staudenmeir/eloquent-eager-limit": "^1.0",
         "staudenmeir/eloquent-has-many-deep": "^1.7",
-        "keeleinstituut/tv-common-laravel-amqp": "0.0.17",
+        "keeleinstituut/tv-common-laravel-amqp": "0.0.19",
         "keeleinstituut/tv-common-laravel-security": "0.0.14"
     },
     "require-dev": {
