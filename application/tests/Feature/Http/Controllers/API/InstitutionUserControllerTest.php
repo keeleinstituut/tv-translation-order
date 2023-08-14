@@ -21,7 +21,7 @@ class InstitutionUserControllerTest extends TestCase
             ->create();
 
         $expectedInstitutionUsers = InstitutionUser::getModel()
-            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
+            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->take(10)
             ->get()
             ->each(function ($iuser) use ($institutionId) {

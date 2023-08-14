@@ -33,7 +33,7 @@ class InstitutionUserController extends Controller
 
         $query = $this->getBaseQuery();
         $data = $query
-            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
+            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->paginate($params->get('limit', 10));
 
         return InstitutionUserResource::collection($data);
