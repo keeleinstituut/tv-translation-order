@@ -16,7 +16,7 @@ class MateCatAnalyzisResource extends JsonResource
     {
         // return parent::toArray($request);
         return [
-            'chunk_id' => $this['chunk_id']
+            'chunk_id' => $this['chunk_id'],
             '101' => $this->discount_percentage_101,
             'repetitions' => $this->discount_percentage_repetitions,
             '100' => $this->discount_percentage_100,
