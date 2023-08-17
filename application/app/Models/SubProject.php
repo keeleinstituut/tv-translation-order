@@ -71,6 +71,11 @@ class SubProject extends Model
                 $assignment->sub_project_id = $this->id;
                 $assignment->feature = $feature;
                 $assignment->save();
+
+                $assignment = new Assignment();
+                $assignment->sub_project_id = $this->id;
+                $assignment->feature = $feature;
+                $assignment->save();
             });
     }
 

@@ -11,6 +11,7 @@ class Assignment extends Model
     use HasUuids;
     use HasFactory;
 
+
     public function subProject()
     {
         return $this->belongsTo(SubProject::class);

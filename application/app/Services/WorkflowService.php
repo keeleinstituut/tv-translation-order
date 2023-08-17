@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 class WorkflowService
@@ -17,14 +18,24 @@ class WorkflowService
     {
         $response = static::client()->post("/process-definition/key/$key/start", $params);
 
-        return $response->throw()->json();
+        try {
+            return $response->throw()->json();
+        } catch (RequestException $e) {
+            var_dump($response->body());
+            throw $e;
+        }
     }
 
     public static function updateProcessInstanceVariable($processInstanceId, $variableName, $params = [])
     {
         $response = static::client()->put("/process-instance/$processInstanceId/variables/$variableName", $params);
-
         return $response->throw()->json();
+    }
+
+    public static function getProcessInstanceVariable($processInstanceId, $variableName, $params = [])
+    {
+        return static::client()->get("/process-instance/$processInstanceId/variables/$variableName", $params)
+            ->throw()->json();
     }
 
     public static function getTask($params = [])
@@ -44,8 +55,12 @@ class WorkflowService
     public static function completeTask($taskId, $params = [])
     {
         $response = static::client()->post("/task/$taskId/complete", $params);
-
-        return $response->throw()->json();
+        try {
+            return $response->throw()->json();
+        }catch (RequestException $e) {
+            echo $response->body(), PHP_EOL;
+            throw $e;
+        }
     }
 
     public static function getHistoryTask($params = [])

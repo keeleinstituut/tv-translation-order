@@ -30,20 +30,22 @@ class ProjectSeeder extends Seeder
         $projectTypes = ClassifierValue::where('type', ClassifierValueType::ProjectType)->get();
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
 
-        $projects = Project::factory()
-            ->count(10)
-            ->state(fn ($attrs) => [
-                'type_classifier_value_id' => fake()->randomElement($projectTypes),
-                'workflow_template_id' => 'Sample-project',
-            ])
-            ->create();
+        $projects = collect([
+            Project::factory()
+                ->state(fn($attrs) => [
+                    'type_classifier_value_id' => fake()->randomElement($projectTypes),
+                    'workflow_template_id' => 'Sample-project',
+                ])->create()
+        ]);
 
         $projects->each($this->addRandomFilesToProject(...));
         $projects->each(function (Project $project) use ($languages) {
-            $destinationLanguagesCount = fake()->numberBetween(1, 4);
+            $destinationLanguagesCount = 1; //fake()->numberBetween(1, 2);
             $languagesSelection = collect(fake()->randomElements($languages, $destinationLanguagesCount + 1));
             $sourceLanguage = $languagesSelection->get(0);
+            var_dump($sourceLanguage->value);
             $destinationLanguages = $languagesSelection->skip(1);
+            var_dump($destinationLanguages->map(fn (ClassifierValue $classifierValue) => $classifierValue->value));
             $project->initSubProjects($sourceLanguage, $destinationLanguages);
             $project->workflow()->startProcessInstance();
         });
@@ -54,7 +56,7 @@ class ProjectSeeder extends Seeder
             }
         });
 
-        Assignment::all()->each($this->setAssigneeOrCandidates(...));
+
     }
 
     private function addRandomFilesToProject(Project $project)
@@ -80,9 +82,9 @@ class ProjectSeeder extends Seeder
     private static function getSampleFiles()
     {
         return collect(scandir(self::SAMPLE_FILES_DIR))
-            ->reject(fn ($filename) => $filename == '.' || $filename == '..')
+            ->reject(fn($filename) => $filename == '.' || $filename == '..')
             ->map(function ($filename) {
-                return self::SAMPLE_FILES_DIR.'/'.$filename;
+                return self::SAMPLE_FILES_DIR . '/' . $filename;
             });
     }
 

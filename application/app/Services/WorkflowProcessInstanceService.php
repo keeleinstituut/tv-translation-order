@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\Feature;
+use App\Models\Assignment;
 use App\Models\Project;
 
 class WorkflowProcessInstanceService
@@ -27,69 +29,48 @@ class WorkflowProcessInstanceService
 
     public function startProcessInstance()
     {
-        return WorkflowService::startProcessDefinitionInstance($this->getProcessDefinitionId(), [
+        $params = [
             'businessKey' => $this->getBusinessKey(),
             'variables' => [
                 'subProjects' => [
-                    'value' => collect($this->project->subProjects)->map(function ($subProject) {
+                    "value" => collect($this->project->subProjects)->map(function ($subProject) {
                         return [
                             'workflow_definition_id' => 'Sample-subproject',
-                            'translations' => collect($subProject->assignments)->map(function ($assignment) {
-                                return [
-                                    'assignee' => $assignment->assigned_vendor_ ?? '',
-                                    'candidateUsers' => collect($assignment->caidndidates)->pluck('vendor_id'),
-                                ];
-                            }),
-                            'revisions' => [
-
-                            ],
-                            'overviews' => [
-
-                            ],
+                            'project_id' => $subProject->project_id,
+                            'sub_project_id' => $subProject->id,
+                            'translations' => collect($subProject->assignments)
+                                ->filter(fn(Assignment $assignment) => $assignment->feature === Feature::JOB_TRANSLATION->value)
+                                ->map(function ($assignment) {
+                                    return [
+                                        'assignee' => $assignment->assigned_vendor_id ?? '',
+                                        'candidateUsers' => collect($assignment->caidndidates)->pluck('vendor_id')->toArray(),
+                                    ];
+                                })->values()->toArray(),
+                            'revisions' => collect($subProject->assignments)
+                                ->filter(fn(Assignment $assignment) => $assignment->feature === Feature::JOB_REVISION->value)
+                                ->map(function ($assignment) {
+                                    return [
+                                        'assignee' => $assignment->assigned_vendor_id ?? '',
+                                        'candidateUsers' => collect($assignment->caidndidates)->pluck('vendor_id')->toArray(),
+                                    ];
+                                })->values()->toArray(),
+                            'overviews' => collect($subProject->assignments)
+                                ->filter(fn(Assignment $assignment) => $assignment->feature === Feature::JOB_OVERVIEW->value)
+                                ->map(function ($assignment) {
+                                    return [
+                                        'assignee' => $assignment->assigned_vendor_id ?? '',
+                                        'candidateUsers' => collect($assignment->caidndidates)->pluck('vendor_id')->toArray(),
+                                    ];
+                                })->values()->toArray(),
                         ];
-                    }),
-                ],
-                //                'subProjects' => [
-                //                    "value" => [
-                //                        [
-                //                            'workflow_definition_id' => 'Sample-subproject',
-                //                            'translations' => [
-                //                                [
-                ////                                    'assignee' => fake()->name(),
-                //                                    'assignee' => '',
-                //                                    'candidateUsers' => implode(',', [
-                //                                        fake()->name(),
-                //                                        fake()->name(),
-                //                                        fake()->name(),
-                //                                    ]),
-                //                                    'url' => fake()->url(),
-                //                                ],
-                //                                [
-                //                                    'assignee' => fake()->name(),
-                //                                    'candidateUsers' => '',
-                //                                    'url' => fake()->url(),
-                //                                ]
-                //                            ],
-                //                            'revisions' => [
-                //                                [
-                //                                    'assignee' => fake()->name(),
-                //                                    'url' => fake()->url(),
-                //                                    'candidateUsers' => '',
-                //                                ]
-                //                            ],
-                //                            'overviews' => [
-                //                                [
-                //                                    'assignee' => fake()->name(),
-                //                                    'url' => fake()->url(),
-                //                                    'candidateUsers' => '',
-                //                                ]
-                //                            ]
-                //                        ]
-                //                    ]
-                //                ]
-            ],
-        ]);
+                    })->toArray(),
+                ]
+            ]
+        ];
+
+        return WorkflowService::startProcessDefinitionInstance($this->getProcessDefinitionId(), $params);
     }
+
 
     private function getProcessDefinitionId()
     {
@@ -103,6 +84,6 @@ class WorkflowProcessInstanceService
 
     private function getBusinessKey()
     {
-        return 'workflow.'.$this->project->id;
+        return 'workflow.' . $this->project->id;
     }
 }
