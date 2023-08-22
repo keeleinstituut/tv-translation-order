@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
-use App\Services\WorkflowProcessInstanceService;
+use App\Services\Workflows\WorkflowProcessInstanceService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

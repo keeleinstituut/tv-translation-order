@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1ng3j8b" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.19.0">
+  <bpmn:process id="edited-translation-review" name="Tõlkimine sisemises CAT tööriistas koos toimetamisega" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_1ew5w0y</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="Activity_0fgke" name="Edited translation">
+      <bpmn:incoming>Flow_1ew5w0y</bpmn:incoming>
+      <bpmn:incoming>Flow_0453uzu</bpmn:incoming>
+      <bpmn:outgoing>Flow_0al9k3q</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${subProject.translations}" camunda:elementVariable="subProcess" />
+      <bpmn:startEvent id="Event_0bu4qkb">
+        <bpmn:outgoing>Flow_08qm9no</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="Event_0zb62mi">
+        <bpmn:incoming>Flow_0h7k7n3</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:userTask id="edited-translation" name="Tõlkimine sisemises CAT tööriistas koos toimetamisega" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="sub_project_id">${subProcess.sub_project_id}</camunda:inputParameter>
+            <camunda:inputParameter name="with_cat_tool">${subProcess.with_cat_tool}</camunda:inputParameter>
+            <camunda:inputParameter name="machine_translation">${subProcess.machine_translation}</camunda:inputParameter>
+            <camunda:inputParameter name="accepted_at">${subProcess.accepted_at}</camunda:inputParameter>
+            <camunda:inputParameter name="event_start_at">${subProcess.event_starts_at}</camunda:inputParameter>
+            <camunda:inputParameter name="deadline">${subProcess.deadline}</camunda:inputParameter>
+            <camunda:inputParameter name="price">${subProcess.price}</camunda:inputParameter>
+            <camunda:inputParameter name="volume">${subProcess.volume}</camunda:inputParameter>
+            <camunda:inputParameter name="completed_at">${subProcess.completed_at}</camunda:inputParameter>
+            <camunda:inputParameter name="job_url">${subProcess.url}</camunda:inputParameter>
+            <camunda:inputParameter name="input_files">${subProcess.input_files}</camunda:inputParameter>
+            <camunda:inputParameter name="output_files">${subProcess.output_files}</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_08qm9no</bpmn:incoming>
+        <bpmn:outgoing>Flow_0h7k7n3</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:sequenceFlow id="Flow_08qm9no" sourceRef="Event_0bu4qkb" targetRef="edited-translation" />
+      <bpmn:sequenceFlow id="Flow_0h7k7n3" sourceRef="edited-translation" targetRef="Event_0zb62mi" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_1ew5w0y" sourceRef="StartEvent_1" targetRef="Activity_0fgke" />
+    <bpmn:endEvent id="Event_0aesomw">
+      <bpmn:incoming>Flow_09do5fi</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Activity_0ta00sp" name="Overview">
+      <bpmn:incoming>Flow_0al9k3q</bpmn:incoming>
+      <bpmn:outgoing>Flow_1v8tohp</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${subProject.overviews}" camunda:elementVariable="subProcess" />
+      <bpmn:startEvent id="Event_04oqrew">
+        <bpmn:outgoing>Flow_1qbwfku</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="Event_07rqgpw">
+        <bpmn:incoming>Flow_12g73d5</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:userTask id="overview" name="Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="sub_project_id">${subProcess.sub_project_id}</camunda:inputParameter>
+            <camunda:inputParameter name="with_cat_tool">${subProcess.with_cat_tool}</camunda:inputParameter>
+            <camunda:inputParameter name="machine_translation">${subProcess.machine_translation}</camunda:inputParameter>
+            <camunda:inputParameter name="accepted_at">${subProcess.accepted_at}</camunda:inputParameter>
+            <camunda:inputParameter name="event_start_at">${subProcess.event_starts_at}</camunda:inputParameter>
+            <camunda:inputParameter name="deadline">${subProcess.deadline}</camunda:inputParameter>
+            <camunda:inputParameter name="price">${subProcess.price}</camunda:inputParameter>
+            <camunda:inputParameter name="volume">${subProcess.volume}</camunda:inputParameter>
+            <camunda:inputParameter name="completed_at">${subProcess.completed_at}</camunda:inputParameter>
+            <camunda:inputParameter name="job_url">${subProcess.url}</camunda:inputParameter>
+            <camunda:inputParameter name="input_files">${subProcess.input_files}</camunda:inputParameter>
+            <camunda:inputParameter name="output_files">${subProcess.output_files}</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_1qbwfku</bpmn:incoming>
+        <bpmn:outgoing>Flow_12g73d5</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:sequenceFlow id="Flow_1qbwfku" sourceRef="Event_04oqrew" targetRef="overview" />
+      <bpmn:sequenceFlow id="Flow_12g73d5" sourceRef="overview" targetRef="Event_07rqgpw" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_0al9k3q" sourceRef="Activity_0fgke" targetRef="Activity_0ta00sp" />
+    <bpmn:scriptTask id="Activity_0ynz6at" name="Calculate aggregated review result" scriptFormat="JavaScript" camunda:resultVariable="subProjectFinished">
+      <bpmn:incoming>Flow_1v8tohp</bpmn:incoming>
+      <bpmn:outgoing>Flow_13yzhq9</bpmn:outgoing>
+      <bpmn:script>var vars = execution.getVariables()
+var keys = vars.keySet().toArray()
+
+var subProjectFinished = true
+for (var i = 0; i &lt; keys.length; i++) {
+    var varName = keys[i]
+    if (varName.startsWith('subProjectPartFinished.')) {
+        subProjectFinished = subProjectFinished &amp;&amp; vars[varName]
+    }
+
+    execution.removeVariable(varName)
+}
+
+execution.setVariable('subProjectFinished', subProjectFinished)
+
+if (!subProjectFinished) {
+    execution.setVariable('needsRework', subProjectFinished)
+}</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:sequenceFlow id="Flow_1v8tohp" sourceRef="Activity_0ta00sp" targetRef="Activity_0ynz6at" />
+    <bpmn:exclusiveGateway id="Gateway_0xd8sxq" name="Sub project finished">
+      <bpmn:incoming>Flow_13yzhq9</bpmn:incoming>
+      <bpmn:outgoing>Flow_09do5fi</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0453uzu</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_13yzhq9" sourceRef="Activity_0ynz6at" targetRef="Gateway_0xd8sxq" />
+    <bpmn:sequenceFlow id="Flow_09do5fi" name="Yes" sourceRef="Gateway_0xd8sxq" targetRef="Event_0aesomw">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${subProjectFinished}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0453uzu" name="No" sourceRef="Gateway_0xd8sxq" targetRef="Activity_0fgke">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!subProjectFinished}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="edited-translation-review">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="339" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ynz6at_di" bpmnElement="Activity_0ynz6at">
+        <dc:Bounds x="1300" y="317" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0aesomw_di" bpmnElement="Event_0aesomw">
+        <dc:Bounds x="1582" y="339" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0xd8sxq_di" bpmnElement="Gateway_0xd8sxq" isMarkerVisible="true">
+        <dc:Bounds x="1465" y="332" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1463" y="389" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0hu2fjn" bpmnElement="Activity_0fgke" isExpanded="true">
+        <dc:Bounds x="280" y="210" width="400" height="281" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0ry7dwe" bpmnElement="Event_0bu4qkb">
+        <dc:Bounds x="332" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0hs0u90" bpmnElement="Event_0zb62mi">
+        <dc:Bounds x="612" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0e9o1o4" bpmnElement="edited-translation">
+        <dc:Bounds x="440" y="320" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_08qm9no_di" bpmnElement="Flow_08qm9no">
+        <di:waypoint x="368" y="360" />
+        <di:waypoint x="440" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0h7k7n3_di" bpmnElement="Flow_0h7k7n3">
+        <di:waypoint x="540" y="360" />
+        <di:waypoint x="612" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_162vj12" bpmnElement="Activity_0ta00sp" isExpanded="true">
+        <dc:Bounds x="810" y="210" width="400" height="281" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_14ooe4c" bpmnElement="Event_04oqrew">
+        <dc:Bounds x="862" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_03lezx1" bpmnElement="Event_07rqgpw">
+        <dc:Bounds x="1142" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1wib3qz" bpmnElement="overview">
+        <dc:Bounds x="970" y="320" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1qbwfku_di" bpmnElement="Flow_1qbwfku">
+        <di:waypoint x="898" y="360" />
+        <di:waypoint x="970" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12g73d5_di" bpmnElement="Flow_12g73d5">
+        <di:waypoint x="1070" y="360" />
+        <di:waypoint x="1142" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ew5w0y_di" bpmnElement="Flow_1ew5w0y">
+        <di:waypoint x="215" y="357" />
+        <di:waypoint x="280" y="357" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1v8tohp_di" bpmnElement="Flow_1v8tohp">
+        <di:waypoint x="1210" y="357" />
+        <di:waypoint x="1300" y="357" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13yzhq9_di" bpmnElement="Flow_13yzhq9">
+        <di:waypoint x="1400" y="357" />
+        <di:waypoint x="1465" y="357" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_09do5fi_di" bpmnElement="Flow_09do5fi">
+        <di:waypoint x="1515" y="357" />
+        <di:waypoint x="1582" y="357" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1540" y="339" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0453uzu_di" bpmnElement="Flow_0453uzu">
+        <di:waypoint x="1490" y="332" />
+        <di:waypoint x="1490" y="100" />
+        <di:waypoint x="480" y="100" />
+        <di:waypoint x="480" y="210" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="978" y="82" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0al9k3q_di" bpmnElement="Flow_0al9k3q">
+        <di:waypoint x="680" y="360" />
+        <di:waypoint x="810" y="360" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

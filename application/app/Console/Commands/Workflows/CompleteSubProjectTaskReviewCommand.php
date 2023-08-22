@@ -2,11 +2,11 @@
 
 namespace app\Console\Commands\Workflows;
 
-use App\Services\WorkflowService;
+use App\Services\Workflows\WorkflowService;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\RequestException;
 
-class CompleteSubProjectReviewCommand extends Command
+class CompleteSubProjectTaskReviewCommand extends Command
 {
     /**
      * The name and signature of the console command.
@@ -20,7 +20,7 @@ class CompleteSubProjectReviewCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Complete review of the sub-project';
+    protected $description = 'Complete review of the sub-project task';
 
     /**
      * Execute the console command.
@@ -31,7 +31,7 @@ class CompleteSubProjectReviewCommand extends Command
         $taskId = $this->argument('taskId');
         $response = WorkflowService::completeTask($taskId, [
             'variables' => [
-                "subProjectPartFinished.$taskId" => [
+                'subProjectFinished' => [
                     'value' => boolval($this->argument('successful')),
                 ]
             ],

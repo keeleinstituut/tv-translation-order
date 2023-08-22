@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\Feature;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Services\Workflows\SubProjectWorkflowTemplatePicker;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,7 +21,7 @@ class ProjectTypeConfigFactory extends Factory
     {
         return [
             'type_classifier_value_id' => ClassifierValue::factory(),
-            'workflow_process_definition_id' => fake()->uuid(),
+            'workflow_process_definition_id' => fake()->randomElement(SubProjectWorkflowTemplatePicker::getWorkflowTemplateIds()),
             'features' => $this->getFeatures(),
         ];
     }

@@ -9,6 +9,7 @@ use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
+use App\Services\Workflows\Templates\ProjectWorkflowTemplate;
 use Illuminate\Database\Seeder;
 
 class ProjectSeeder extends Seeder
@@ -30,12 +31,11 @@ class ProjectSeeder extends Seeder
         $projectTypes = ClassifierValue::where('type', ClassifierValueType::ProjectType)->get();
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
 
-        $projects = collect([
-            Project::factory()
-                ->state(fn($attrs) => [
-                    'type_classifier_value_id' => fake()->randomElement($projectTypes),
-                    'workflow_template_id' => 'Sample-project',
-                ])->create()
+        $projects = collect([Project::factory()
+            ->state(fn($attrs) => [
+                'type_classifier_value_id' => fake()->randomElement($projectTypes),
+                'workflow_template_id' => (new ProjectWorkflowTemplate())->getWorkflowProcessDefinitionId()
+            ])->create()
         ]);
 
         $projects->each($this->addRandomFilesToProject(...));
@@ -43,9 +43,7 @@ class ProjectSeeder extends Seeder
             $destinationLanguagesCount = 1; //fake()->numberBetween(1, 2);
             $languagesSelection = collect(fake()->randomElements($languages, $destinationLanguagesCount + 1));
             $sourceLanguage = $languagesSelection->get(0);
-            var_dump($sourceLanguage->value);
             $destinationLanguages = $languagesSelection->skip(1);
-            var_dump($destinationLanguages->map(fn (ClassifierValue $classifierValue) => $classifierValue->value));
             $project->initSubProjects($sourceLanguage, $destinationLanguages);
             $project->workflow()->startProcessInstance();
         });
@@ -55,8 +53,6 @@ class ProjectSeeder extends Seeder
                 $subProject->cat()->createProject();
             }
         });
-
-
     }
 
     private function addRandomFilesToProject(Project $project)
