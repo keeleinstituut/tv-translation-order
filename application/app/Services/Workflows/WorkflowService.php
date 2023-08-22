@@ -19,32 +19,21 @@ class WorkflowService
 
     public static function createDeployment(WorkflowTemplateInterface $workflowTemplate)
     {
-        try {
-            $response = static::client()->attach(
-                'data',
-                $workflowTemplate->getDefinition(),
-                "{$workflowTemplate->getWorkflowProcessDefinitionId()}.bpmn"
-            )->post('/deployment/create', [
-                'deploy-changed-only' => true
-            ]);
+        $response = static::client()->attach(
+            'data',
+            $workflowTemplate->getDefinition(),
+            "{$workflowTemplate->getWorkflowProcessDefinitionId()}.bpmn"
+        )->post('/deployment/create', [
+            'deploy-changed-only' => true
+        ]);
 
-            return $response->throw()->json();
-        } catch (\Exception $e) {
-            echo $response->body(), PHP_EOL;
-            throw $e;
-        }
+        return $response->throw()->json();
     }
 
     public static function startProcessDefinitionInstance($key, $params = [])
     {
         $response = static::client()->post("/process-definition/key/$key/start", $params);
-        try {
-            return $response->throw()->json();
-        } catch (\Exception $e) {
-            echo $response->body(), PHP_EOL;
-            var_dump($params);
-            throw $e;
-        }
+        return $response->throw()->json();
     }
 
     public static function updateProcessInstanceVariable($processInstanceId, $variableName, $params = [])
@@ -88,12 +77,7 @@ class WorkflowService
     public static function completeTask($taskId, $params = [])
     {
         $response = static::client()->post("/task/$taskId/complete", $params);
-        try {
-            return $response->throw()->json();
-        } catch (RequestException $e) {
-            echo $response->body(), PHP_EOL;
-            throw $e;
-        }
+        return $response->throw()->json();
     }
 
     public static function getHistoryTask($params = [])
