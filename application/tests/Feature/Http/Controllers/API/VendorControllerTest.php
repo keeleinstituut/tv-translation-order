@@ -144,6 +144,51 @@ class VendorControllerTest extends TestCase
             ->assertJsonCount($expectedDataset->count(), 'data');
     }
 
+    public function test_showing(): void
+    {
+        $institutionUser = InstitutionUser::factory()->has(
+            Vendor::factory()
+                ->has(Tag::factory()->typeVendor())
+        )->create();
+        $institutionId = $institutionUser->institution['id'];
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => $institutionId,
+            ],
+        ]);
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/vendors/'.$institutionUser->vendor->id)
+            ->assertStatus(200)
+            ->assertJson([
+                'data' => $this->constructRepresentation($institutionUser->vendor),
+            ]);
+    }
+
+    public function test_showing_vendor_from_another_institution(): void
+    {
+        $institutionUser = InstitutionUser::factory()->has(
+            Vendor::factory()
+                ->has(Tag::factory()->typeVendor())
+        )->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => Str::orderedUuid(),
+            ],
+        ]);
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/vendors/'.$institutionUser->vendor->id)
+            ->assertStatus(404);
+    }
+
     public function test_bulk_create(): void
     {
         $institutionId = Str::orderedUuid();

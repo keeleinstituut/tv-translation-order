@@ -11,6 +11,7 @@ use App\Http\Requests\API\VendorUpdateRequest;
 use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -141,6 +142,24 @@ class VendorController extends Controller
 
             return new VendorResource($vendor);
         });
+    }
+
+    #[OA\Get(
+        path: '/vendors/{id}',
+        summary: 'Get existing vendor',
+        tags: ['Vendor management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: VendorResource::class, description: 'Vendor resource', response: Response::HTTP_OK)]
+    public function show(Request $request): VendorResource
+    {
+        $this->authorize('view', Vendor::class);
+        return new VendorResource(
+            $this->getBaseQuery()->findOrFail(
+                $request->route('id')
+            )
+        );
     }
 
     /**

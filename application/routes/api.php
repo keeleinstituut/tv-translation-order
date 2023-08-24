@@ -38,6 +38,7 @@ Route::get('/institution-users', [API\InstitutionUserController::class, 'index']
 Route::get('/skills', [API\SkillController::class, 'index']);
 
 Route::get('/vendors', [API\VendorController::class, 'index']);
+Route::get('/vendors/{id}', [API\VendorController::class, 'show']);
 Route::put('/vendors/{id}', [API\VendorController::class, 'update']);
 Route::post('/vendors/bulk', [API\VendorController::class, 'bulkCreate']);
 Route::delete('/vendors/bulk', [API\VendorController::class, 'bulkDestroy']);
