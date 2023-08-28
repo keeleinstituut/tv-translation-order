@@ -25,10 +25,6 @@ use Throwable;
 
 class ProjectControllerStoreTest extends TestCase
 {
-    protected bool $seed = true;
-
-    protected string $seeder = ClassifiersAndProjectTypesSeeder::class;
-
     /** @return array<array{
      *     Closure(InstitutionUser): array,
      *     Closure(TestCase, TestResponse, array): void,
@@ -93,10 +89,10 @@ class ProjectControllerStoreTest extends TestCase
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'destination_language_classifier_value_ids' => ClassifierValue::where('type', ClassifierValueType::Language)
-                            ->whereNot('id', static::createExampleValidPayload()['source_language_classifier_value_id'])
-                            ->limit(3)
-                            ->pluck('id')
-                            ->all(),
+                        ->whereNot('id', static::createExampleValidPayload()['source_language_classifier_value_id'])
+                        ->limit(3)
+                        ->pluck('id')
+                        ->all(),
                 ],
                 function () {
                 },
@@ -158,6 +154,7 @@ class ProjectControllerStoreTest extends TestCase
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload, Closure $performExtraAssertions): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
 
         $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
 
@@ -349,7 +346,7 @@ class ProjectControllerStoreTest extends TestCase
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
-
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
         $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
 
         $response = $this
@@ -403,7 +400,7 @@ class ProjectControllerStoreTest extends TestCase
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
-
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
         $actingUser = $createActingUser();
 
         $response = $this
@@ -431,10 +428,10 @@ class ProjectControllerStoreTest extends TestCase
 
         return [
             'type_classifier_value_id' => ClassifierValue::where(['type' => ClassifierValueType::ProjectType, 'value' => 'T'])
-                    ->firstOrFail()
+                ->firstOrFail()
                 ->id,
             'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
-                    ->firstOrFail()
+                ->firstOrFail()
                 ->id,
             'deadline_at' => Date::now()->addWeek()->toIso8601ZuluString(),
             'source_language_classifier_value_id' => $sourceLanguage->id,
