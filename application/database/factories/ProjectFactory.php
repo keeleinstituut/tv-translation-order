@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\ClassifierValueType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
+use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -24,6 +25,7 @@ class ProjectFactory extends Factory
             'comments' => fake()->text(),
             'deadline_at' => fake()->dateTime(),
             'reference_number' => fake()->uuid(),
+            'client_institution_user_id' => InstitutionUser::factory(),
             'type_classifier_value_id' => ClassifierValue::factory()
                 ->withType(ClassifierValueType::ProjectType),
         ];

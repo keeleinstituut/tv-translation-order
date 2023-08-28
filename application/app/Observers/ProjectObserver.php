@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Project;
 use App\Models\Sequence;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 class ProjectObserver
 {
@@ -25,6 +26,8 @@ class ProjectObserver
 
     /**
      * Handle the Project "created" event.
+     *
+     * @throws Throwable
      */
     public function created(Project $project): void
     {
@@ -32,7 +35,7 @@ class ProjectObserver
         $seq->sequenceable_id = $project->id;
         $seq->sequenceable_type = Project::class;
         $seq->name = Sequence::PROJECT_SUBPROJECT_SEQ;
-        $seq->save();
+        $seq->saveOrFail();
     }
 
     /**

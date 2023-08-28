@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\Feature;
+use App\Models\Assignment;
 use App\Models\Project;
+use App\Models\SubProject;
 
 class WorkflowProcessInstanceService
 {
@@ -31,23 +34,33 @@ class WorkflowProcessInstanceService
             'businessKey' => $this->getBusinessKey(),
             'variables' => [
                 'subProjects' => [
-                    'value' => collect($this->project->subProjects)->map(function ($subProject) {
-                        return [
-                            'workflow_definition_id' => 'Sample-subproject',
-                            'translations' => collect($subProject->assignments)->map(function ($assignment) {
-                                return [
-                                    'assignee' => $assignment->assigned_vendor_ ?? '',
-                                    'candidateUsers' => collect($assignment->caidndidates)->pluck('vendor_id'),
-                                ];
-                            }),
-                            'revisions' => [
-
-                            ],
-                            'overviews' => [
-
-                            ],
-                        ];
-                    }),
+                    'value' => $this->project->subProjects->map(fn (SubProject $subProject) => [
+                        'workflow_definition_id' => 'Sample-subproject', // TODO: Figure out where the subproject process definition key should come from
+                        'translations' => $subProject->assignments
+//                            ->filter(fn (Assignment $assignment) => $assignment->feature === Feature::JOB_TRANSLATION->value)
+                            ->map(fn (Assignment $assignment) => [
+                                // TODO: Figure out which data needs to be sent upon initialization
+                                'assignee' => '',
+                                'candidateUsers' => [],
+                            ])
+                            ->all(),
+                        'revisions' => $subProject->assignments
+                            ->filter(fn (Assignment $assignment) => $assignment->feature === Feature::JOB_REVISION->value)
+                            ->map(fn (Assignment $assignment) => [
+                                // TODO: Figure out which data needs to be sent upon initialization
+                                'assignee' => '',
+                                'candidateUsers' => [],
+                            ])
+                            ->all(),
+                        'overviews' => $subProject->assignments
+                            ->filter(fn (Assignment $assignment) => $assignment->feature === Feature::JOB_OVERVIEW->value)
+                            ->map(fn (Assignment $assignment) => [
+                                // TODO: Figure out which data needs to be sent upon initialization
+                                'assignee' => '',
+                                'candidateUsers' => [],
+                            ])
+                            ->all(),
+                    ]),
                 ],
                 //                'subProjects' => [
                 //                    "value" => [

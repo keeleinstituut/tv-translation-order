@@ -6,6 +6,7 @@ use App\Enums\Feature;
 use App\Jobs\MateCatCheckProjectStatusJob;
 use App\Models\SubProject;
 use Illuminate\Support\Str;
+use Throwable;
 
 // Needs refactoring
 // should be responsible for communicating with MateCAT,
@@ -28,6 +29,7 @@ class MateCatService
         $this->subProject = $subProject;
     }
 
+    /** @throws Throwable */
     public function createProject()
     {
         $result = MateCatServiceBase::createProject([
@@ -38,7 +40,7 @@ class MateCatService
         ]);
 
         $this->setToStorage(self::RESPONSE_CREATE_PROJECT, $result);
-        $this->subProject->save();
+        $this->subProject->saveOrFail();
 
         MateCatCheckProjectStatusJob::dispatch($this->subProject);
 

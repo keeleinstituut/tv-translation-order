@@ -3,13 +3,16 @@
 namespace Database\Seeders;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use Illuminate\Database\Seeder;
+use Throwable;
 
 class ProjectSeeder extends Seeder
 {
@@ -24,9 +27,12 @@ class ProjectSeeder extends Seeder
 
     /**
      * Run the database seeds.
+     *
+     * @throws Throwable
      */
     public function run(): void
     {
+        $client = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
         $projectTypes = ClassifierValue::where('type', ClassifierValueType::ProjectType)->get();
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
 
@@ -35,6 +41,8 @@ class ProjectSeeder extends Seeder
             ->state(fn ($attrs) => [
                 'type_classifier_value_id' => fake()->randomElement($projectTypes),
                 'workflow_template_id' => 'Sample-project',
+                'client_institution_user_id' => $client->id,
+                'institution_id' => $client->institution['id'],
             ])
             ->create();
 

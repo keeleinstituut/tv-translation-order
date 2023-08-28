@@ -20,8 +20,9 @@ class ProjectTypeConfigFactory extends Factory
     {
         return [
             'type_classifier_value_id' => ClassifierValue::factory(),
-            'workflow_process_definition_id' => fake()->uuid(),
+            'workflow_process_definition_id' => 'Sample-project',
             'features' => $this->getFeatures(),
+            'is_start_date_supported' => false,
         ];
     }
 
