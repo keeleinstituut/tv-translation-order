@@ -28,6 +28,8 @@ class ProjectFactory extends Factory
             'client_institution_user_id' => InstitutionUser::factory(),
             'type_classifier_value_id' => ClassifierValue::factory()
                 ->withType(ClassifierValueType::ProjectType),
+            'translation_domain_classifier_value_id' => ClassifierValue::factory()
+                ->withType(ClassifierValueType::TranslationDomain),
         ];
     }
 }

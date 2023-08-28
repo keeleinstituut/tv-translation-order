@@ -286,7 +286,7 @@ class ProjectControllerStoreTest extends TestCase
                 ...static::createExampleValidPayload(),
                 'source_files' => ['file.pdf'],
             ]],
-            'source_files contains a uploaded file with wrong extension' => [fn () => [ // TODO
+            'source_files contains a uploaded file with wrong extension' => [fn () => [
                 ...static::createExampleValidPayload(),
                 'source_files' => [UploadedFile::fake()->create('source.zip', 1024, 'application/zip')],
             ]],
