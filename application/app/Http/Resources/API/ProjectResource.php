@@ -36,6 +36,8 @@ use OpenApi\Attributes as OA;
         'tags',
         'source_language_classifier_value',
         'destination_language_classifier_values',
+        'status',
+        'cost',
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
@@ -59,6 +61,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'source_language_classifier_value', ref: ClassifierValueResource::class),
         new OA\Property(property: 'destination_languages_classifier_values', type: 'array', items: new OA\Items(ref: ClassifierValueResource::class)),
         new OA\Property(property: 'status', description: 'TODO (computation/enumeration of statuses is unclear for now)', anyOf: [new OA\Schema(const: null)]),
+        new OA\Property(property: 'cost', description: 'TODO (computation/enumeration of costs is unclear for now)', anyOf: [new OA\Schema(const: null)]),
     ],
     type: 'object'
 )
@@ -97,6 +100,7 @@ use OpenApi\Attributes as OA;
             'source_language_classifier_value' => ClassifierValueResource::make($this->getSourceLanguageClassifierValue()),
             'destination_language_classifier_values' => ClassifierValueResource::collection($this->getDestinationLanguageClassifierValues()),
             'status' => $this->computeStatus(),
+            'cost' => $this->computeCost(),
         ];
     }
 }
