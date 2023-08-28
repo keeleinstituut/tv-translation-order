@@ -10,7 +10,6 @@ use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class ProjectPolicy
 {
-
     /**
      * Determine whether the user can create models.
      */
