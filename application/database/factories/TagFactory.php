@@ -35,6 +35,11 @@ class TagFactory extends Factory
         return $this->withType(TagType::Vendor);
     }
 
+    public function typeOrder(): TagFactory
+    {
+        return $this->withType(TagType::Order);
+    }
+
     public function withType(TagType $type): TagFactory
     {
         if ($type === TagType::VendorSkill) {

@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 class MateCatCheckProjectStatusJob implements ShouldQueue
 {
@@ -47,6 +48,7 @@ class MateCatCheckProjectStatusJob implements ShouldQueue
         self::dispatch($this->subProject)->delay(now()->addMinutes(1));
     }
 
+    /** @throws Throwable */
     private function checkDoneStatusAndUpdate()
     {
         $statusResponse = $this->subProject->cat()->propagateStatus();
@@ -54,7 +56,7 @@ class MateCatCheckProjectStatusJob implements ShouldQueue
 
         if ($status == MateCatService::ANALYSIS_STATUS_DONE) {
             $this->subProject->cat()->propagateUrls();
-            $this->subProject->save();
+            $this->subProject->saveOrFail();
 
             return true;
         }
