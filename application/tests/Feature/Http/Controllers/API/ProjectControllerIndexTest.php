@@ -21,10 +21,6 @@ use Throwable;
 
 class ProjectControllerIndexTest extends TestCase
 {
-    protected bool $seed = true;
-
-    protected string $seeder = ClassifiersAndProjectTypesSeeder::class;
-
     /** @return array<array{
      *     Closure(Collection, InstitutionUser): array,
      *     Closure(TestCase, TestResponse, array, Collection, InstitutionUser): void,
@@ -307,6 +303,7 @@ class ProjectControllerIndexTest extends TestCase
     public function test_expected_subset_of_projects_returned_for_valid_payloads(Closure $createValidPayload, Closure $performAssertions): void
     {
         $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ViewInstitutionProjectList);
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
         $projects = static::populateDatabaseWithData($actingUser);
         $payload = $createValidPayload($projects, $actingUser);
 
@@ -365,6 +362,7 @@ class ProjectControllerIndexTest extends TestCase
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $actingUser = $createActingUser();
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
 
         $response = $this
             ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
@@ -417,9 +415,9 @@ class ProjectControllerIndexTest extends TestCase
         Tag::factory()
             ->typeOrder()
             ->state(['institution_id' => $actingUser->institution['id']])
-            ->count($projects->count() / 3)
+            ->count(floor($projects->count() / 3))
             ->create()
-            ->zip($projects->split($projects->count() / 3))
+            ->zip($projects->split(floor($projects->count() / 3)))
             ->eachSpread(function (Tag $tag, Collection $projects) {
                 $tag->projects()->sync($projects);
             });

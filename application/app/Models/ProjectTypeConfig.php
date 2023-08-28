@@ -40,6 +40,8 @@ class ProjectTypeConfig extends Model
     use HasUuids;
     use HasFactory;
 
+    protected $guarded = [];
+
     protected $connection = 'pgsql_app';
 
     protected $table = 'project_type_configs';
