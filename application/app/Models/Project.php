@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -42,6 +43,7 @@ use Throwable;
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
  * @property string|null $translation_domain_classifier_value_id
+ * @property ProjectStatus $status
  * @property-read Institution|null $institution
  * @property-read MediaCollection<int, Media> $media
  * @property-read int|null $media_count
@@ -77,6 +79,7 @@ use Throwable;
  * @method static Builder|Project whereUpdatedAt($value)
  * @method static Builder|Project whereWorkflowInstanceRef($value)
  * @method static Builder|Project whereWorkflowTemplateId($value)
+ * @method static Builder|Project whereStatus($value)
  * @method static Builder|Project onlyTrashed()
  * @method static Builder|Project whereEventStartAt($value)
  * @method static Builder|Project withTrashed()
@@ -113,6 +116,7 @@ class Project extends Model implements HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'status' => ProjectStatus::class,
     ];
 
     public function institution(): BelongsTo
@@ -204,12 +208,6 @@ class Project extends Model implements HasMedia
     public function getDestinationLanguageClassifierValues(): Collection
     {
         return $this->subProjects->map(fn (SubProject $subProject) => $subProject->destinationLanguageClassifierValue);
-    }
-
-    public function computeStatus(): null
-    {
-        // TODO: Compute status of project (derived from workflow/subproject/task data)
-        return null;
     }
 
     public function computeCost(): null

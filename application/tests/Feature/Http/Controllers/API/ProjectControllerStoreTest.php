@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ProjectStatus;
 use App\Http\Controllers\API\ProjectController;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
@@ -14,8 +15,8 @@ use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Testing\File;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -106,8 +107,7 @@ class ProjectControllerStoreTest extends TestCase
                     ],
                 ],
                 function (TestCase $testCase, TestResponse $testResponse) {
-                    $project = Project::find($testResponse->json('data.id'));
-                    $testCase->assertModelExists($project);
+                    $project = Project::findOrFail($testResponse->json('data.id'));
                     $testCase->assertCount(2, $project->getSourceFiles());
                     $project->getSourceFiles()->each(function (Media $media) use ($testCase) {
                         $testCase->assertEquals(Project::SOURCE_FILES_COLLECTION, $media->collection_name);
@@ -125,8 +125,7 @@ class ProjectControllerStoreTest extends TestCase
                     'help_file_types' => ['REFERENCE_FILE', 'STYLE_GUIDE'],
                 ],
                 function (TestCase $testCase, TestResponse $testResponse, array $sentPayload) {
-                    $project = Project::find($testResponse->json('data.id'));
-                    $testCase->assertModelExists($project);
+                    $project = Project::findOrFail($testResponse->json('data.id'));
                     $testCase->assertCount(2, $project->getHelpFiles());
                     collect($sentPayload['help_files'])
                         ->zip($sentPayload['help_file_types'])
@@ -158,12 +157,12 @@ class ProjectControllerStoreTest extends TestCase
 
         $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
 
-        $payload = $createValidPayload($actingUser);
+        $payload = collect($createValidPayload($actingUser));
         $response = $this
             ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
             ->postJson(
                 action([ProjectController::class, 'store']),
-                $payload
+                $payload->all()
             );
 
         $response->assertCreated();
@@ -173,18 +172,21 @@ class ProjectControllerStoreTest extends TestCase
 
         $this->assertArrayHasSubsetIgnoringOrder(
             [
-                'reference_number' => Arr::get($payload, 'reference_number'),
+                'reference_number' => $payload->get('reference_number'),
                 'institution_id' => $actingUser->institution['id'],
-                'type_classifier_value_id' => Arr::get($payload, 'type_classifier_value_id'),
-                'workflow_template_id' => ClassifierValue::findOrFail(Arr::get($payload, 'type_classifier_value_id'))->projectTypeConfig->workflow_process_definition_id,
-                'translation_domain_classifier_value_id' => Arr::get($payload, 'translation_domain_classifier_value_id'),
-                'comments' => Arr::get($payload, 'comments'),
-                'deadline_at' => Carbon::parse(Arr::get($payload, 'deadline_at'))->toIso8601ZuluString('microsecond'),
-                'event_start_at' => Arr::has($payload, 'event_start_at')
-                    ? Carbon::parse(Arr::get($payload, 'event_start_at'))->toIso8601ZuluString('microsecond')
+                'type_classifier_value_id' => $payload->get('type_classifier_value_id'),
+                'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
+                'translation_domain_classifier_value_id' => $payload->get('translation_domain_classifier_value_id'),
+                'comments' => $payload->get('comments'),
+                'deadline_at' => Carbon::parse($payload->get('deadline_at'))->toIso8601ZuluString('microsecond'),
+                'event_start_at' => $payload->has('event_start_at')
+                    ? Carbon::parse($payload->get('event_start_at'))->toIso8601ZuluString('microsecond')
                     : null,
-                'manager_institution_user_id' => Arr::get($payload, 'manager_institution_user_id'),
-                'client_institution_user_id' => Arr::get($payload, 'client_institution_user_id', $actingUser->id),
+                'manager_institution_user_id' => $payload->get('manager_institution_user_id'),
+                'client_institution_user_id' => $payload->get('client_institution_user_id', $actingUser->id),
+                'status' => $payload->has('manager_institution_user_id')
+                    ? ProjectStatus::Registered->value
+                    : ProjectStatus::New->value,
             ],
             $project->jsonSerialize()
         );
@@ -205,6 +207,8 @@ class ProjectControllerStoreTest extends TestCase
                     ? ['id' => $project->manager_institution_user_id]
                     : null,
                 'client_institution_user' => ['id' => $project->client_institution_user_id],
+                'status' => $project->status->value,
+                'cost' => $project->computeCost(),
             ],
             $response->json('data')
         );
@@ -227,7 +231,7 @@ class ProjectControllerStoreTest extends TestCase
                 );
             });
 
-        $performExtraAssertions($this, $response, $payload);
+        $performExtraAssertions($this, $response, $payload->all());
     }
 
     /** @return array<array{Closure(InstitutionUser): array}>
