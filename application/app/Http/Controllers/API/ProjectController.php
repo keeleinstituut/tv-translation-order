@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
-use App\Models\ProjectTypeConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -49,19 +50,20 @@ class ProjectController extends Controller
     public function store(ProjectCreateRequest $request): ProjectResource
     {
         return DB::transaction(function () use ($request) {
-            $projectTypeConfig = ProjectTypeConfig::where('type_classifier_value_id', $request->validated('type_classifier_value_id'))->firstOrFail();
-
             $project = Project::make([
                 'institution_id' => Auth::user()->institutionId,
                 'type_classifier_value_id' => $request->validated('type_classifier_value_id'),
                 'translation_domain_classifier_value_id' => $request->validated('translation_domain_classifier_value_id'),
                 'reference_number' => $request->validated('reference_number'),
                 'manager_institution_user_id' => $request->validated('manager_institution_user_id'),
-                'client_institution_user_id' => $request->validated('client_institution_user_id') ?? Auth::user()->institutionUserId,
+                'client_institution_user_id' => $request->validated('client_institution_user_id', Auth::user()->institutionUserId),
                 'deadline_at' => $request->validated('deadline_at'),
                 'comments' => $request->validated('comments'),
                 'event_start_at' => $request->validated('event_start_at'),
-                'workflow_template_id' => $projectTypeConfig->workflow_process_definition_id,
+                'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
+                'status' => $request->safe()->has('manager_institution_user_id')
+                    ? ProjectStatus::Registered
+                    : ProjectStatus::New,
             ]);
 
             $this->authorize('create', $project);

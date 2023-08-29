@@ -178,7 +178,7 @@ class ProjectCreateRequest extends FormRequest
             fn () => Auth::user()?->institutionId,
             actualInstitutionIdRetriever: fn (InstitutionUser $institutionUser) => $institutionUser->institution['id']
         )
-                ->addExtraValidation(fn (InstitutionUser $institutionUser) => collect()
+            ->addExtraValidation(fn (InstitutionUser $institutionUser) => collect()
                 ->when(
                     $institutionUser->isArchived(),
                     fn (Collection $errors) => $errors->push('The user referenced by :attribute may not be archived.')
