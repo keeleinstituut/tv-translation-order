@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ProjectStatus;
 use App\Http\Controllers\API\ProjectController;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
@@ -14,6 +15,7 @@ use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -68,31 +70,43 @@ class ProjectControllerIndexTest extends TestCase
                     $testCase->assertEquals($expectedIds, $actualIds);
                 },
             ],
-            'Hardcoded ext_id: "TestExtId1"' => [
+            'Selecting a specific ext_id' => [
                 function (Collection $projects) {
-                    throw_unless($projects->pluck('ext_id')->contains('TestExtId1'), 'Test data set is invalid');
+                    $singleMatchExtId = $projects->groupBy('ext_id')
+                        ->filter(fn (Collection $extIdProjects) => $extIdProjects->count() === 1)
+                        ->map(fn (Collection $extIdProjects) => $extIdProjects->first())
+                        ->firstOrFail()
+                        ->ext_id;
 
-                    return ['ext_id' => 'testextid1', 'only_show_personal_projects' => false];
+                    return ['ext_id' => $singleMatchExtId, 'only_show_personal_projects' => false];
                 },
-                function (TestCase $testCase, TestResponse $response) {
+                function (TestCase $testCase, TestResponse $response, array $payload) {
                     $response->assertJsonCount(1, 'data');
-                    $response->assertJsonPath('data.0.ext_id', 'TestExtId1');
+                    $response->assertJsonPath('data.0.ext_id', $payload['ext_id']);
                 },
             ],
-            'Hardcoded ext_id: "TestExtId"' => [
+            'Hardcoded prefix of ext_id, with different casing' => [
                 function (Collection $projects) {
                     throw_unless(
-                        $projects->pluck('ext_id')->intersect(['TestExtId1', 'TestExtId2'])->count() === 2,
+                        $projects->pluck('ext_id')->filter(fn ($extId) => str_contains($extId, 'HardcodedPrefix'))->count() > 1,
                         'Test data set is invalid'
                     );
 
-                    return ['ext_id' => 'TESTextID', 'only_show_personal_projects' => false];
+                    return ['ext_id' => 'hardcodedprefiX', 'only_show_personal_projects' => false, 'per_page' => 50];
                 },
-                function (TestCase $testCase, TestResponse $response) {
-                    $response->assertJsonCount(2, 'data');
-                    collect($response->json('data'))->pluck('ext_id')->each(function (string $ext_id) use ($testCase) {
-                        $testCase->assertStringStartsWith('TestExtId', $ext_id);
+                function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
+                    $matchingProjectIds = $projects
+                        ->filter(fn (Project $project) => str_contains($project->ext_id, 'HardcodedPrefix'))
+                        ->pluck('id');
+
+                    collect($response->json('data'))->each(function (array $responseProject) use ($matchingProjectIds, $testCase) {
+                        $testCase->assertContains($responseProject['id'], $matchingProjectIds);
                     });
+
+                    $response->assertJsonCount(
+                        min($payload['per_page'], $matchingProjectIds->count()),
+                        'data'
+                    );
                 },
             ],
             'Non-existent ext_id' => [
@@ -289,6 +303,48 @@ class ProjectControllerIndexTest extends TestCase
                     );
                 },
             ],
+            'Filter by single status' => [
+                fn (Collection $projects) => [
+                    'per_page' => 50,
+                    'only_show_personal_projects' => false,
+                    'statuses' => [ProjectStatus::New->value],
+                ],
+                function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
+                    $specifiedStatusProjectIds = $projects
+                        ->filter(fn (Project $project) => collect($payload['statuses'])->contains($project->status->value))
+                        ->pluck('id');
+
+                    collect($response->json('data'))->each(function (array $responseProject) use ($specifiedStatusProjectIds, $testCase) {
+                        $testCase->assertContains($responseProject['id'], $specifiedStatusProjectIds);
+                    });
+
+                    $response->assertJsonCount(
+                        min($payload['per_page'], $specifiedStatusProjectIds->count()),
+                        'data'
+                    );
+                },
+            ],
+            'Filter by multiple statuses' => [
+                fn (Collection $projects) => [
+                    'per_page' => 50,
+                    'only_show_personal_projects' => false,
+                    'statuses' => [ProjectStatus::New->value, ProjectStatus::Registered->value],
+                ],
+                function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
+                    $specifiedStatusProjectIds = $projects
+                        ->filter(fn (Project $project) => collect($payload['statuses'])->contains($project->status->value))
+                        ->pluck('id');
+
+                    collect($response->json('data'))->each(function (array $responseProject) use ($specifiedStatusProjectIds, $testCase) {
+                        $testCase->assertContains($responseProject['id'], $specifiedStatusProjectIds);
+                    });
+
+                    $response->assertJsonCount(
+                        min($payload['per_page'], $specifiedStatusProjectIds->count()),
+                        'data'
+                    );
+                },
+            ],
         ];
     }
 
@@ -385,8 +441,10 @@ class ProjectControllerIndexTest extends TestCase
                 'translation_domain_classifier_value_id' => ClassifierValue::firstWhere('type', ClassifierValueType::TranslationDomain)->id,
             ])
             ->forEachSequence(
-                ['ext_id' => 'TestExtId1'],
-                ['ext_id' => 'TestExtId2'],
+                ['ext_id' => 'HardcodedPrefix'.Str::random(8)],
+                ['ext_id' => 'HardcodedPrefix'.Str::random(8)],
+                ['status' => ProjectStatus::New],
+                ['status' => ProjectStatus::Registered],
                 ['manager_institution_user_id' => $actingUser->id],
                 ['client_institution_user_id' => $actingUser->id],
                 ...ClassifierValue::where('type', ClassifierValueType::ProjectType)
