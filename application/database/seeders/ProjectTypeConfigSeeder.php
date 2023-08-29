@@ -19,7 +19,7 @@ class ProjectTypeConfigSeeder extends Seeder
             ->each(function (ClassifierValue $projectTypeClassifierValue) {
                 ProjectTypeConfig::create([
                     'type_classifier_value_id' => $projectTypeClassifierValue->id,
-                    'workflow_process_definition_id' => 'Sample-project',
+                    'workflow_process_definition_id' => 'Sample-subproject',
                     'features' => Feature::values(),
                     'is_start_date_supported' => in_array($projectTypeClassifierValue->value, ['S', 'JÄ', 'SÜ', 'VK']),
                 ]);

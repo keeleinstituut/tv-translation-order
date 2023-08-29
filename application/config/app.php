@@ -212,4 +212,15 @@ return [
         // 'ExampleClass' => App\Example\ExampleClass::class,
     ])->toArray(),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Custom application-specific configuration parameters
+    |--------------------------------------------------------------------------
+    */
+
+    'workflows' => [
+        'process_definitions' => [
+            'project' => env('PROJECT_CAMUNDA_PROCESS_DEFINITION_KEY', 'Sample-project'),
+        ],
+    ],
 ];
