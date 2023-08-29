@@ -35,7 +35,7 @@ class WorkflowProcessInstanceService
             'variables' => [
                 'subProjects' => [
                     'value' => $this->project->subProjects->map(fn (SubProject $subProject) => [
-                        'workflow_definition_id' => 'Sample-subproject', // TODO: Figure out where the subproject process definition key should come from
+                        'workflow_definition_id' => $subProject->project->typeClassifierValue->projectTypeConfig->workflow_process_definition_id,
                         'translations' => $subProject->assignments
 //                            ->filter(fn (Assignment $assignment) => $assignment->feature === Feature::JOB_TRANSLATION->value)
                             ->map(fn (Assignment $assignment) => [
