@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\ProjectStatus;
 use App\Http\Resources\MediaResource;
 use App\Http\Resources\TagResource;
 use App\Models\Project;
@@ -60,7 +61,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'tags', type: 'array', items: new OA\Items(ref: TagResource::class)),
         new OA\Property(property: 'source_language_classifier_value', ref: ClassifierValueResource::class),
         new OA\Property(property: 'destination_languages_classifier_values', type: 'array', items: new OA\Items(ref: ClassifierValueResource::class)),
-        new OA\Property(property: 'status', description: 'TODO (computation/enumeration of statuses is unclear for now)', anyOf: [new OA\Schema(const: null)]),
+        new OA\Property(property: 'status', type: 'string', enum: ProjectStatus::class),
         new OA\Property(property: 'cost', description: 'TODO (computation/enumeration of costs is unclear for now)', anyOf: [new OA\Schema(const: null)]),
     ],
     type: 'object'
@@ -85,6 +86,7 @@ use OpenApi\Attributes as OA;
                 'workflow_instance_ref',
                 'deadline_at',
                 'event_start_at',
+                'status',
                 'created_at',
                 'updated_at',
             ),
@@ -99,7 +101,6 @@ use OpenApi\Attributes as OA;
             'tags' => TagResource::collection($this->tags),
             'source_language_classifier_value' => ClassifierValueResource::make($this->getSourceLanguageClassifierValue()),
             'destination_language_classifier_values' => ClassifierValueResource::collection($this->getDestinationLanguageClassifierValues()),
-            'status' => $this->computeStatus(),
             'cost' => $this->computeCost(),
         ];
     }

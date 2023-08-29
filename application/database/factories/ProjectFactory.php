@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\ProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -26,6 +27,7 @@ class ProjectFactory extends Factory
             'deadline_at' => fake()->dateTime(),
             'reference_number' => fake()->uuid(),
             'client_institution_user_id' => InstitutionUser::factory(),
+            'status' => fake()->randomElement(ProjectStatus::cases()),
             'type_classifier_value_id' => ClassifierValue::factory()
                 ->withType(ClassifierValueType::ProjectType),
             'translation_domain_classifier_value_id' => ClassifierValue::factory()
