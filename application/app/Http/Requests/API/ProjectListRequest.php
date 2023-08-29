@@ -3,6 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\ProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\ProjectTypeConfig;
 use App\Models\Tag;
@@ -38,7 +39,7 @@ class ProjectListRequest extends FormRequest
             'ext_id' => 'string',
             'only_show_personal_projects' => 'boolean',
             'statuses' => 'array',
-            'statuses.*' => 'string',
+            'statuses.*' => Rule::enum(ProjectStatus::class),
             'type_classifier_value_ids' => 'array',
             'type_classifier_value_ids.*' => [
                 'uuid',

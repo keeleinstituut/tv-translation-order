@@ -47,11 +47,7 @@ class ProjectController extends Controller
                 description: 'Filter the result set to projects which have any of the specified statuses.',
                 schema: new OA\Schema(
                     type: 'array',
-                    items: new OA\Items(
-                        description: 'TODO (computation/enumeration of statuses is unclear for now)',
-                        type: 'string',
-                        enum: [null]
-                    )
+                    items: new OA\Items(type: 'string', enum: ProjectStatus::class)
                 )
             ),
             new OA\QueryParameter(
@@ -93,7 +89,7 @@ class ProjectController extends Controller
 
         $paginatedQuery = static::getBaseQuery()
             ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'asc'))
-            ->when($request->has('ext_id'), function (Builder $builder) use ($request) {
+            ->when($request->safe()->has('ext_id'), function (Builder $builder) use ($request) {
                 $builder->where(
                     'ext_id',
                     'ilike',
@@ -107,8 +103,8 @@ class ProjectController extends Controller
                         ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
                 });
             })
-            ->when(filled($request->validated('statuses')), function (Builder $builder) {
-                // TODO: Filter by statuses, ideally by creating a scopeStatuses method in Project
+            ->when(filled($request->validated('statuses')), function (Builder $builder) use ($request) {
+                $builder->whereIn('status', $request->validated('statuses'));
             })
             ->when(filled($request->validated('type_classifier_value_ids')), function (Builder $builder) use ($request) {
                 $builder->whereIn('type_classifier_value_id', $request->validated('type_classifier_value_ids'));
