@@ -40,6 +40,24 @@ class ProjectPolicy
     }
 
     /**
+     * Determine whether the user can create models.
+     */
+    public function create(JwtPayloadUser $user, Project $project): bool
+    {
+        $currentInstitutionUserId = Auth::user()?->institutionUserId;
+
+        if (empty($currentInstitutionUserId)) {
+            return false;
+        }
+
+        return Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
+            && (
+                $project->client_institution_user_id === $currentInstitutionUserId
+                || Auth::hasPrivilege(PrivilegeKey::ChangeClient->value)
+            );
+    }
+
+    /**
      * Determine whether the user can update the model.
      */
     public function update(JwtPayloadUser $user, Project $project): bool

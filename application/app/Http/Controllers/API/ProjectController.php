@@ -5,9 +5,11 @@ namespace App\Http\Controllers\API;
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Requests\API\ProjectListRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,8 +17,12 @@ use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class ProjectController extends Controller
 {
@@ -125,41 +131,60 @@ class ProjectController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     *
+     * @throws Throwable
      */
-    public function store(Request $request)
+    #[OA\Post(
+        path: '/projects',
+        summary: 'Create a new project',
+        requestBody: new OAH\RequestBody(ProjectCreateRequest::class),
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Created project', response: Response::HTTP_CREATED)]
+    public function store(ProjectCreateRequest $request): ProjectResource
     {
-        $params = collect($request->all());
+        return DB::transaction(function () use ($request) {
+            $project = Project::make([
+                'institution_id' => Auth::user()->institutionId,
+                'type_classifier_value_id' => $request->validated('type_classifier_value_id'),
+                'translation_domain_classifier_value_id' => $request->validated('translation_domain_classifier_value_id'),
+                'reference_number' => $request->validated('reference_number'),
+                'manager_institution_user_id' => $request->validated('manager_institution_user_id'),
+                'client_institution_user_id' => $request->validated('client_institution_user_id', Auth::user()->institutionUserId),
+                'deadline_at' => $request->validated('deadline_at'),
+                'comments' => $request->validated('comments'),
+                'event_start_at' => $request->validated('event_start_at'),
+                'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
+                'status' => $request->safe()->has('manager_institution_user_id')
+                    ? ProjectStatus::Registered
+                    : ProjectStatus::New,
+            ]);
 
-        return DB::transaction(function () use ($params) {
-            $project = new Project();
-            $project->institution_id = $params->get('institution_id');
-            $project->type_classifier_value_id = $params->get('type_classifier_value_id');
-            $project->reference_number = $params->get('reference_number');
-            $project->workflow_template_id = 'Sample-project';
-            $project->deadline_at = $params->get('deadline_at');
-            $project->save();
+            $this->authorize('create', $project);
 
-            collect($params->get('source_files'))->each(function ($file) use ($project) {
-                $project->addMedia($file)
-                    ->toMediaCollection(Project::SOURCE_FILES_COLLECTION);
-            });
+            $project->saveOrFail();
 
-            collect($params->get('help_files', []))->each(function ($file, $i) use ($project, $params) {
-                $type = $params->get('help_file_types')[$i];
-                $project->addMedia($file)
-                    ->withCustomProperties([
-                        'type' => $type,
-                    ])
-                    ->toMediaCollection(Project::HELP_FILES_COLLECTION);
-            });
+            collect($request->validated('source_files', []))
+                ->each(function (UploadedFile $file) use ($project) {
+                    $project->addMedia($file)->toMediaCollection(Project::SOURCE_FILES_COLLECTION);
+                });
 
-            $project->initSubProjects($params->get('source_language_classifier_value_id'), $params->get('destination_language_classifier_value_id'));
+            collect($request->validated('help_files', []))
+                ->zip($request->validated('help_file_types', []))
+                ->eachSpread(function (UploadedFile $file, string $type) use ($project) {
+                    $project->addMedia($file)
+                        ->withCustomProperties(['type' => $type])
+                        ->toMediaCollection(Project::HELP_FILES_COLLECTION);
+                });
+
+            $project->initSubProjects(
+                ClassifierValue::findOrFail($request->validated('source_language_classifier_value_id')),
+                ClassifierValue::findMany($request->validated('destination_language_classifier_value_ids'))
+            );
+
             $project->workflow()->startProcessInstance();
 
-            $project->refresh();
-            $project->load('subProjects', 'sourceFiles', 'helpFiles');
-
-            return new ProjectResource($project);
+            return new ProjectResource($project->refresh()->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects'));
         });
     }
 
