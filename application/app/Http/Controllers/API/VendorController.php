@@ -155,7 +155,6 @@ class VendorController extends Controller
     public function show(Request $request): VendorResource
     {
         $this->authorize('view', Vendor::class);
-
         return new VendorResource(
             $this->getBaseQuery()->findOrFail(
                 $request->route('id')
