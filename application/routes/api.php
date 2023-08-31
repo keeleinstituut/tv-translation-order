@@ -51,6 +51,10 @@ Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy']);
 
 Route::get('/projects', [API\ProjectController::class, 'index']);
 Route::post('/projects', [API\ProjectController::class, 'store']);
+Route::get(
+    '/projects/is-project-type-start-date-compatible',
+    [API\ProjectController::class, 'isProjectTypeStartDateCompatible']
+);
 Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
 
 Route::get('/assignments', [API\AssignmentController::class, 'index']);
