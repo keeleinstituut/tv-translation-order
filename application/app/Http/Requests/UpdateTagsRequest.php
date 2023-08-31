@@ -11,7 +11,30 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: ['type', 'tags'],
+        properties: [
+            new OA\Property(property: 'type', type: 'string', enum: TagType::class),
+            new OA\Property(
+                property: 'tags',
+                type: 'array',
+                items: new OA\Items(
+                    required: ['name'],
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid', nullable: true),
+                        new OA\Property(property: 'name', type: 'string'),
+                    ],
+                    type: 'object'
+                ),
+            ),
+        ]
+    )
+)]
 class UpdateTagsRequest extends FormRequest
 {
     /**
@@ -26,7 +49,7 @@ class UpdateTagsRequest extends FormRequest
             'tags' => ['present', 'array', 'max:10000'],
             'tags.*.name' => ['required', 'string'],
             'tags.*.id' => ['sometimes', 'nullable', 'uuid',
-                Rule::exists(app(Tag::class)->getTable(), 'id')->where(function (Builder $query) {
+                Rule::exists(Tag::class, 'id')->where(function (Builder $query) {
                     $query->where('type', $this->input('type'))
                         ->where('institution_id', $this->getActingUserInstitutionId());
 

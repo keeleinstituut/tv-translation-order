@@ -5,6 +5,7 @@
 /public/storage
 /storage/*.key
 /vendor
+/storage/api-docs/api-docs.json
 .env
 .env.backup
 .env.production
@@ -17,5 +18,5 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
-.phpstorm.meta.php
-_ide_helper.php
+/.phpstorm.meta.php
+/_ide_helper.php

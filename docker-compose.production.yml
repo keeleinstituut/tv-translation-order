@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - postgres
-      - redis
+      - rabbitmq
     ports:
       - 8000:80
     environment:
@@ -19,12 +19,18 @@ services:
       - LOG_CHANNEL=stderr
       - LOG_DEPRECATIONS_CHANNEL=null
       - LOG_LEVEL=debug
-      - DB_CONNECTION=pgsql
+      - DB_CONNECTION=pgsql_app
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_DATABASE=app
       - DB_USERNAME=user
       - DB_PASSWORD=pass
+      - PG_APP_USERNAME=app_user
+      - PG_APP_SCHEMA=application
+      - PG_SYNC_USERNAME=sync_user
+      - PG_SYNC_SCHEMA=entity_cache
+      - PG_SYNC_CONNECTION_NAME=pgsql_sync
+      - PG_ADMIN_CONNECTION_NAME=pgsql_admin
       - BROADCAST_DRIVER=log
       - CACHE_DRIVER=file
       - FILESYSTEM_DISK=local
@@ -32,3 +38,4 @@ services:
       - SESSION_DRIVER=file
       - SESSION_LIFETIME=120
       - MEMCACHED_HOST=127.0.0.1
+      - L5_SWAGGER_GENERATE_ALWAYS=true

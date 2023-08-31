@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\TagType;
+use App\Models\CachedEntities\Institution;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,10 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tags', function (Blueprint $table) {
-            $table->uuid('id');
+            $table->uuid('id')->primary();
             $table->string('name', 50);
             $table->enum('type', TagType::values());
-            $table->foreignUuid('institution_id')->nullable()->constrained('entity_cache.cached_institutions');
+            $table->foreignUuid('institution_id')->nullable()->constrained(
+                app()->make(Institution::class)->getTable()
+            );
             $table->timestampsTz();
             $table->softDeletesTz();
         });

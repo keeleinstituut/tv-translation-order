@@ -9,14 +9,15 @@ ENV APP_ROOT /app
 ENV WEB_ROOT /var/www/html
 ENV ENTRYPOINT /entrypoint.sh
 
-RUN apk add libpq-dev libsodium-dev
+RUN apk add libpq-dev libsodium-dev linux-headers
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
         docker-php-ext-install pgsql \
                                 pdo \
                                 pdo_pgsql \
                                 sodium \
                                 pcntl \
-                                redis
+                                sockets \
+                                exif
 
 COPY --chown=www-data:www-data ./application ${APP_ROOT}
 WORKDIR $APP_ROOT
@@ -112,6 +113,39 @@ stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
+
+[program:laravel-classifiers-sync]
+process_name=%(program_name)s
+command=php /app/artisan amqp:consume tv-translation-order.classifier-value # see application/config/amqp.php
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:laravel-institutions-sync]
+process_name=%(program_name)s
+command=php /app/artisan amqp:consume tv-translation-order.institution  # see application/config/amqp.php
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:laravel-institution-users-sync]
+process_name=%(program_name)s
+command=php /app/artisan amqp:consume tv-translation-order.institution-user  # see /application/config/amqp.php
+autostart=true
+autorestart=true
+numprocs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 EOF
 
 RUN <<EOF cat > ${ENTRYPOINT}
@@ -123,6 +157,9 @@ php artisan optimize
 
 echo "Running migrations"
 php artisan migrate --force
+
+echo "Generating OpenAPI document"
+php artisan l5-swagger:generate
 
 echo "Start application processes using supervisord..."
 exec "\$@"

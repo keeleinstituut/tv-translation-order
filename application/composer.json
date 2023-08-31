@@ -5,14 +5,19 @@
     "keywords": ["framework", "laravel"],
     "license": "MIT",
     "require": {
-        "php": "^8.1",
+        "php": "^8.2",
+        "darkaonline/l5-swagger": "^8.5",
         "guzzlehttp/guzzle": "^7.2",
-        "keeleinstituut/tv-common-laravel-amqp": "0.0.15",
-        "keeleinstituut/tv-common-laravel-security": "0.0.13",
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.8",
-        "predis/predis": "^2.2"
+        "league/flysystem-aws-s3-v3": "^3.15",
+        "predis/predis": "^2.2",
+        "spatie/laravel-medialibrary": "^10.0.0",
+        "staudenmeir/eloquent-eager-limit": "^1.0",
+        "staudenmeir/eloquent-has-many-deep": "^1.7",
+        "keeleinstituut/tv-common-laravel-amqp": "0.0.19",
+        "keeleinstituut/tv-common-laravel-security": "0.0.14"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^2.13",
@@ -29,7 +34,10 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "files": [
+            "app/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

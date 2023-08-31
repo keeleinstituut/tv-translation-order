@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Enums\PrivilegeKey;
+use App\Models\CachedEntities\InstitutionUser;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -24,6 +25,17 @@ readonly class AuthHelpers
         ]);
 
         return static::createJwt($payload->toArray());
+    }
+
+    public static function generateServiceAccountJwt(string $role = null, int $expiresIn = null): string
+    {
+        return JWT::encode([
+            'iss' => config('keycloak.base_url').'/realms/'.config('keycloak.realm'),
+            'exp' => time() + ($expiresIn ?: 300),
+            'realm_access' => [
+                'roles' => [$role ?: config('keycloak.service_account_sync_role')],
+            ],
+        ], static::getPrivateKey(), 'RS256');
     }
 
     private static function createJwt(array $payload): string
@@ -55,6 +67,48 @@ readonly class AuthHelpers
         return [
             'Authorization' => "Bearer $defaultToken",
             'Accept' => 'application/json',
+        ];
+    }
+
+    public static function createHeadersForInstitutionUser(InstitutionUser $institutionUser): array
+    {
+        $accessToken = self::generateAccessToken(
+            self::makeTolkevaravClaimsForInstitutionUser($institutionUser)
+        );
+
+        return [
+            'Authorization' => "Bearer $accessToken",
+        ];
+    }
+
+    /** @return array{
+     *     personalIdentificationCode: string,
+     *     userId: string,
+     *     institutionUserId: string,
+     *     forename: string,
+     *     surname: string,
+     *     selectedInstitution: array{
+     *         id: string,
+     *         name: string
+     *     },
+     *     privileges: array<string>
+     * } */
+    public static function makeTolkevaravClaimsForInstitutionUser(InstitutionUser $institutionUser): array
+    {
+        return [
+            'institutionUserId' => $institutionUser->id,
+            'personalIdentificationCode' => $institutionUser->user['personal_identification_code'],
+            'userId' => $institutionUser->user['id'],
+            'forename' => $institutionUser->user['forename'],
+            'surname' => $institutionUser->user['surname'],
+            'selectedInstitution' => [
+                'id' => $institutionUser->institution['id'],
+                'name' => $institutionUser->institution['name'],
+            ],
+            'privileges' => collect($institutionUser->roles)
+                ->flatMap(fn (array $role) => $role['privileges'])
+                ->unique()
+                ->all(),
         ];
     }
 }

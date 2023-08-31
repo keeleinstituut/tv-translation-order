@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\TagType;
-use App\Models\Institution;
+use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -27,10 +27,17 @@ class TagFactory extends Factory
 
     public function vendorSkills(): TagFactory
     {
-        return $this->state(fn () => [
-            'type' => TagType::VendorSkill,
-            'institution_id' => null,
-        ]);
+        return $this->withType(TagType::VendorSkill);
+    }
+
+    public function typeVendor(): TagFactory
+    {
+        return $this->withType(TagType::Vendor);
+    }
+
+    public function typeOrder(): TagFactory
+    {
+        return $this->withType(TagType::Order);
     }
 
     public function withType(TagType $type): TagFactory

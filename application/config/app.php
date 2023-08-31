@@ -185,7 +185,7 @@ return [
         /*
          * Package Service Providers...
          */
-
+        SyncTools\SyncToolsServiceProvider::class,
         /*
          * Application Service Providers...
          */
@@ -194,7 +194,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-
+        App\Providers\FakerServiceProvider::class,
     ],
 
     /*
@@ -212,4 +212,15 @@ return [
         // 'ExampleClass' => App\Example\ExampleClass::class,
     ])->toArray(),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Custom application-specific configuration parameters
+    |--------------------------------------------------------------------------
+    */
+
+    'workflows' => [
+        'process_definitions' => [
+            'project' => env('PROJECT_CAMUNDA_PROCESS_DEFINITION_KEY', 'Sample-project'),
+        ],
+    ],
 ];

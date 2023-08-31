@@ -2,10 +2,21 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use App\Events\ClassifierValues\ClassifierValueDeleted;
+use App\Events\ClassifierValues\ClassifierValueSaved;
+use App\Events\Institutions\InstitutionDeleted;
+use App\Events\Institutions\InstitutionSaved;
+use App\Events\InstitutionUsers\InstitutionUserDeleted;
+use App\Events\InstitutionUsers\InstitutionUserSaved;
+use App\Listeners\ClassifierValues\DeleteClassifierValueListener;
+use App\Listeners\ClassifierValues\SaveClassifierValueListener;
+use App\Listeners\Institutions\DeleteInstitutionListener;
+use App\Listeners\Institutions\SaveInstitutionListener;
+use App\Listeners\InstitutionUsers\DeleteInstitutionUserListener;
+use App\Listeners\InstitutionUsers\SaveInstitutionUserListener;
+use App\Models;
+use App\Observers;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Event;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -15,8 +26,23 @@ class EventServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        Registered::class => [
-            SendEmailVerificationNotification::class,
+        ClassifierValueSaved::class => [
+            SaveClassifierValueListener::class,
+        ],
+        ClassifierValueDeleted::class => [
+            DeleteClassifierValueListener::class,
+        ],
+        InstitutionSaved::class => [
+            SaveInstitutionListener::class,
+        ],
+        InstitutionDeleted::class => [
+            DeleteInstitutionListener::class,
+        ],
+        InstitutionUserSaved::class => [
+            SaveInstitutionUserListener::class,
+        ],
+        InstitutionUserDeleted::class => [
+            DeleteInstitutionUserListener::class,
         ],
     ];
 
@@ -25,7 +51,10 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Models\Vendor::observe(Observers\VendorObserver::class);
+        Models\Project::observe(Observers\ProjectObserver::class);
+        Models\SubProject::observe(Observers\SubProjectObserver::class);
+        Models\CachedEntities\Institution::observe(Observers\InstitutionObserver::class);
     }
 
     /**

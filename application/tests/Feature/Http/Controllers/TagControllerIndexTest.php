@@ -5,7 +5,7 @@ namespace Tests\Feature\Http\Controllers;
 use App\Enums\PrivilegeKey;
 use App\Enums\TagType;
 use App\Http\Controllers\TagController;
-use App\Models\Institution;
+use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
 use Illuminate\Testing\TestResponse;
 use Tests\AuthHelpers;
