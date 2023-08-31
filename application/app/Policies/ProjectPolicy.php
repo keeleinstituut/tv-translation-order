@@ -10,24 +10,6 @@ use KeycloakAuthGuard\Models\JwtPayloadUser;
 class ProjectPolicy
 {
     /**
-     * Determine whether the user can create models.
-     */
-    public function create(JwtPayloadUser $user, Project $project): bool
-    {
-        $currentInstitutionUserId = Auth::user()?->institutionUserId;
-
-        if (empty($currentInstitutionUserId)) {
-            return false;
-        }
-
-        return Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
-            && (
-                $project->client_institution_user_id === $currentInstitutionUserId
-                || Auth::hasPrivilege(PrivilegeKey::ChangeClient->value)
-            );
-    }
-
-    /**
      * Determine whether the user can view any models.
      */
     public function viewAny(JwtPayloadUser $user, bool $onlyPersonalProjectsRequested): bool
@@ -55,6 +37,24 @@ class ProjectPolicy
         }
 
         return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
+    }
+
+    /**
+     * Determine whether the user can create models.
+     */
+    public function create(JwtPayloadUser $user, Project $project): bool
+    {
+        $currentInstitutionUserId = Auth::user()?->institutionUserId;
+
+        if (empty($currentInstitutionUserId)) {
+            return false;
+        }
+
+        return Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
+            && (
+                $project->client_institution_user_id === $currentInstitutionUserId
+                || Auth::hasPrivilege(PrivilegeKey::ChangeClient->value)
+            );
     }
 
     /**

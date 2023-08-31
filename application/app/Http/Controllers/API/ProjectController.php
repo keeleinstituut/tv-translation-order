@@ -7,15 +7,18 @@ use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Requests\API\ProjectListRequest;
+use App\Http\Requests\API\ProjectTypeStartTimeSupportRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
+use App\Models\ProjectTypeConfig;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -229,6 +232,35 @@ class ProjectController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    #[OA\Get(
+        path: '/projects/is-project-type-start-date-compatible',
+        summary: 'Check whether the project type corresponding to the input PROJECT_TYPE classifier value supports specifying a start date',
+        parameters: [
+            new OA\QueryParameter('type_classifier_value_id', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [new OAH\NotFound, new OAH\Invalid]
+    )]
+    #[OA\Response(
+        response: Response::HTTP_OK,
+        content: new OA\JsonContent(
+            required: ['data'],
+            properties: [new OA\Property(
+                property: 'data',
+                required: ['is_start_date_supported'],
+                properties: [new OA\Property(property: 'is_start_date_supported', type: 'boolean')],
+                type: 'object'
+            )],
+            type: 'object'
+        )
+    )]
+    public function isProjectTypeStartDateCompatible(ProjectTypeStartTimeSupportRequest $request): JsonResource
+    {
+        $projectTypeConfig = ProjectTypeConfig::where('type_classifier_value_id', $request->validated('type_classifier_value_id'))
+                ->firstOrFail();
+
+        return new JsonResource(['is_start_date_supported' => $projectTypeConfig->is_start_date_supported]);
     }
 
     public static function getBaseQuery(): Builder
