@@ -61,6 +61,10 @@ Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
 Route::post('/subprojects/{id}/send-to-cat', [API\SubProjectController::class, 'sendToCat']);
 Route::post('/subprojects/{id}/send-to-work', [API\SubProjectController::class, 'sendToWork']);
 
+Route::get('/cat-tool/{id}/download-original', [API\CatToolController::class, 'downloadOriginal'])->withoutMiddleware([
+    'auth:api'
+]);
+
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
 Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);

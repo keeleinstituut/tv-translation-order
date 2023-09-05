@@ -39,7 +39,7 @@ readonly class MateCatApiClient
         $request = $this->getBasePendingRequest();
         $files->map(fn(Media $file) => $request->attach(
             'files[]',
-            $file->getContent(),
+            $file->stream(),
             $file->file_name
         ));
 
@@ -71,6 +71,22 @@ readonly class MateCatApiClient
     }
 
     /**
+     * @param int $id
+     * @param string $password
+     * @return array
+     * @throws RequestException
+     */
+    public function retrieveProjectInfo(int $id, string $password): array
+    {
+        return $this->getBasePendingRequest()
+            ->get("/v2/projects/$id/$password")
+            ->throw()->json();
+    }
+
+    /**
+     * @param int $id
+     * @param string $password
+     * @return array
      * @throws RequestException
      */
     public function retrieveProjectStatus(int $id, string $password): array
@@ -79,6 +95,52 @@ readonly class MateCatApiClient
             'id_project' => $id,
             'project_pass' => $password,
         ])->throw()->json();
+    }
+
+    /**
+     * @param int $id
+     * @param string $password
+     * @param int $jobId
+     * @param string $jobPassword
+     * @param int $numSplit
+     * @return array
+     * @throws RequestException
+     */
+    public function checkSplitPossibility(int $id, string $password, int $jobId, string $jobPassword, int $numSplit): array
+    {
+        return $this->getBasePendingRequest()
+            ->post("/v2/projects/$id/$password/jobs/$jobId/$jobPassword/split/$numSplit/check")
+            ->throw()->json();
+    }
+
+    /**
+     * @param int $id
+     * @param string $password
+     * @param int $jobId
+     * @param string $jobPassword
+     * @param int $numSplit
+     * @return array
+     * @throws RequestException
+     */
+    public function split(int $id, string $password, int $jobId, string $jobPassword, int $numSplit): array
+    {
+        return $this->getBasePendingRequest()
+            ->post("/v2/projects/$id/$password/jobs/$jobId/$jobPassword/split/$numSplit/apply")
+            ->throw()->json();
+    }
+
+    /**
+     * @param int $id
+     * @param string $password
+     * @param int $jobId
+     * @return array
+     * @throws RequestException
+     */
+    public function merge(int $id, string $password, int $jobId): array
+    {
+        return $this->getBasePendingRequest()
+            ->post("/v2/projects/$id/$password/jobs/$jobId/merge")
+            ->throw()->json();
     }
 
     /**

@@ -28,13 +28,13 @@ class TrackMateCatProjectAnalyzingStatus implements ShouldQueue
         $service = new MateCatService($this->subProject);
         foreach (range(1, self::RETRY_COUNT) as $_) {
             if ($service->checkProjectAnalyzingStatusUpdate()) {
-                $service->storeProjectTranslationUrls();
+                $service->updateProjectTranslationUrls();
+                $service->updateProjectInfo();
                 return;
             }
 
             sleep(self::SECONDS_BETWEEN_TRY);
         }
-
         $this->release(self::REQUEUE_DELAY_SECONDS);
     }
 
