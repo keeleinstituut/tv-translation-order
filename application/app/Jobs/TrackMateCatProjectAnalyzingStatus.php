@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\CatTools\MateCat\MateCatService;
-use App\CatTools\SubOrder;
+use App\Models\SubProject;
+use App\Services\CatTools\MateCat\MateCatService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,24 +16,19 @@ class TrackMateCatProjectAnalyzingStatus implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     const RETRY_COUNT = 3;
-
     const SECONDS_BETWEEN_TRY = 5;
-
     const REQUEUE_DELAY_SECONDS = 10;
 
-    public function __construct(private readonly array $subOrderMeta)
+    public function __construct(private readonly SubProject $subProject)
     {
     }
 
     public function handle(): void
     {
-        $service = new MateCatService(
-            new SubOrder($this->subOrderMeta)
-        );
-
+        $service = new MateCatService($this->subProject);
         foreach (range(1, self::RETRY_COUNT) as $_) {
-            if ($service->handleProjectAnalyzingStatusUpdate()) {
-                $service->updateProjectTranslationUrls();
+            if ($service->checkProjectAnalyzingStatusUpdate()) {
+                $service->storeProjectTranslationUrls();
                 return;
             }
 

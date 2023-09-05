@@ -38,7 +38,7 @@ class ProjectSeeder extends Seeder
 
         $projects = Project::factory()
             ->count(10)
-            ->state(fn ($attrs) => [
+            ->state(fn($attrs) => [
                 'type_classifier_value_id' => fake()->randomElement($projectTypes),
                 'workflow_template_id' => 'Sample-project',
                 'client_institution_user_id' => $client->id,
@@ -57,9 +57,9 @@ class ProjectSeeder extends Seeder
         });
 
         $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
-            if (fake()->randomElement([0, 0, 1]) == 1) {
-                $subProject->cat()->createProject();
-            }
+            $subProject->cat()->createProject(
+                $subProject->sourceFiles->pluck('id')->toArray()
+            );
         });
 
         Assignment::all()->each($this->setAssigneeOrCandidates(...));
@@ -88,9 +88,9 @@ class ProjectSeeder extends Seeder
     private static function getSampleFiles()
     {
         return collect(scandir(self::SAMPLE_FILES_DIR))
-            ->reject(fn ($filename) => $filename == '.' || $filename == '..')
+            ->reject(fn($filename) => $filename == '.' || $filename == '..')
             ->map(function ($filename) {
-                return self::SAMPLE_FILES_DIR.'/'.$filename;
+                return self::SAMPLE_FILES_DIR . '/' . $filename;
             });
     }
 

@@ -62,8 +62,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
  */
 class Media extends BaseMedia
 {
-    public function getContent($conversionName = '')
+    public function getContent(): ?string
     {
-        return Storage::disk($this->disk)->get($this->getUrl($conversionName));
+        return stream_get_contents($this->stream());
     }
 }

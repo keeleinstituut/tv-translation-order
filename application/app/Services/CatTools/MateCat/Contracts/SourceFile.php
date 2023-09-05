@@ -1,6 +1,6 @@
 <?php
 
-namespace App\CatTools\MateCat\Contracts;
+namespace App\Services\CatTools\MateCat\Contracts;
 
 interface SourceFile
 {

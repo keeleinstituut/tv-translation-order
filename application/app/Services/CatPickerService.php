@@ -2,20 +2,20 @@
 
 namespace App\Services;
 
-use App\Services\CAT\MateCatService;
+
+
+use App\Services\CatTools\MateCat\MateCatService;
+use RuntimeException;
 
 class CatPickerService
 {
     public const MATECAT = 'matecat';
 
-    /**
-     * @throws \Exception
-     */
     public static function pick($catName): string
     {
         return match ($catName) {
             static::MATECAT => MateCatService::class,
-            default => throw new \Exception("No CAT service with name \"{$catName}\" exists", 1),
+            default => throw new RuntimeException("No CAT service with name \"$catName\" exists"),
         };
     }
 }

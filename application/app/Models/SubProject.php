@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatPickerService;
+use App\Services\CatTools\Contracts\CatToolService;
+use App\Services\CatTools\MateCat\MateCatService;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -39,6 +41,8 @@ use Throwable;
  * @property-read ClassifierValue|null $destinationLanguageClassifierValue
  * @property-read Project|null $project
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
+ * @property-read Collection<int, Media> $sourceFiles
+ * @property-read Collection<int, Media> $finalFiles
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -124,14 +128,9 @@ class SubProject extends Model
             });
     }
 
-    //    public function sourceFiles2() {
-    //        return $this->project->media()->where('collection_name', $this->file_collection);
-    //    }
-
-    public function cat()
+    public function cat(): CatToolService
     {
         $catClass = CatPickerService::pick(CatPickerService::MATECAT);
-
         return new $catClass($this);
     }
 }

@@ -1,15 +1,15 @@
 <?php
 
-namespace App\CatTools\MateCat;
+namespace App\Services\CatTools\MateCat;
 
-use App\CatTools\MateCat\Contracts\SourceFile;
+use App\Models\Media;
 use Http;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
-readonly class ApiClient
+readonly class MateCatApiClient
 {
     private int $timeout;
     private int $connectionTimeout;
@@ -24,6 +24,9 @@ readonly class ApiClient
     }
 
     /**
+     * @param array $params
+     * @param Collection<int, Media> $files
+     * @return array
      * @throws RequestException
      */
     public function createProject(array $params, Collection $files): array
@@ -34,10 +37,10 @@ readonly class ApiClient
         }
 
         $request = $this->getBasePendingRequest();
-        $files->map(fn(SourceFile $file) => $request->attach(
+        $files->map(fn(Media $file) => $request->attach(
             'files[]',
             $file->getContent(),
-            $file->getName()
+            $file->file_name
         ));
 
         return $request->post('/v1/new', [
@@ -78,11 +81,13 @@ readonly class ApiClient
         ])->throw()->json();
     }
 
+    /**
+     * @return PendingRequest
+     */
     protected function getBasePendingRequest(): PendingRequest
     {
         return Http::baseUrl($this->baseUrl)
             ->timeout($this->timeout)
-            ->connectTimeout($this->connectionTimeout)
-            ->throw();
+            ->connectTimeout($this->connectionTimeout);
     }
 }

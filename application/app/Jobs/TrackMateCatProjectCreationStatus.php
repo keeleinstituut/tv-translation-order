@@ -2,10 +2,8 @@
 
 namespace App\Jobs;
 
-use App\CatTools\MateCat\MateCatService;
-use App\CatTools\SubOrder;
+use App\Models\SubProject;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -21,18 +19,15 @@ class TrackMateCatProjectCreationStatus implements ShouldQueue
 
     const REQUEUE_DELAY = 10;
 
-    public function __construct(private readonly array $subOrderMeta)
+    public function __construct(private readonly SubProject $subProject)
     {
     }
 
     public function handle(): void
     {
-        $service = new MateCatService(
-            new SubOrder($this->subOrderMeta)
-        );
-
+        $service = $this->subProject->cat();
         foreach (range(1, self::RETRY_COUNT) as $_) {
-            if ($service->handleProjectCreationStatusUpdate()) {
+            if ($service->checkProjectCreationStatusUpdate()) {
                 return;
             }
 
