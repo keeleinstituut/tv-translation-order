@@ -43,6 +43,7 @@ use Throwable;
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
  * @property-read Collection<int, Media> $sourceFiles
  * @property-read Collection<int, Media> $finalFiles
+ * @property-read Collection<int, CatToolJob> $catToolJobs
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -113,6 +114,11 @@ class SubProject extends Model
     public function assignments()
     {
         return $this->hasMany(Assignment::class);
+    }
+
+    public function catToolJobs()
+    {
+        return $this->hasMany(CatToolJob::class);
     }
 
     /** @throws Throwable */

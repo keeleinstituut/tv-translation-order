@@ -6,33 +6,31 @@ use App\Jobs\TrackMateCatProjectAnalyzingStatus;
 use App\Jobs\TrackMateCatProjectCreationStatus;
 use App\Jobs\TrackMateCatProjectProgress;
 use App\Models\SubProject;
-use App\Services\CatTools\CatToolUserTask;
-use App\Services\CatTools\Contracts\SplittableCatTools;
+use App\Services\CatTools\Contracts\SplittableCatToolJobs;
 use App\Services\CatTools\Exceptions\ProjectCreationFailedException;
 use DomainException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use RuntimeException;
 
-readonly class MateCatService implements SplittableCatTools
+readonly class MateCatService implements SplittableCatToolJobs
 {
     private MateCatApiClient $apiClient;
-    private MateCatDataStorage $storage;
+    private MateCatProjectMetaDataStorage $storage;
 
     public function __construct(private SubProject $subProject)
     {
         $this->apiClient = new MateCatApiClient();
-        $this->storage = new MateCatDataStorage($subProject);
+        $this->storage = new MateCatProjectMetaDataStorage($subProject);
     }
 
     /**
      * @inheritDoc
      */
-    public function createProject(): void
+    public function setupJobs(): void
     {
         try {
             $response = $this->apiClient->createProject([
@@ -60,42 +58,10 @@ readonly class MateCatService implements SplittableCatTools
     /**
      * @inheritDoc
      */
-    public function getUserTasks(): Collection
-    {
-        return collect(array_map(fn(array $jobData) => new CatToolUserTask(
-            $jobData['id'],
-            data_get($jobData, 'stats.PROGRESS_PERC'),
-            data_get($jobData, 'urls.translate_url'),
-            data_get($jobData, 'urls.revise_urls.0.url'),
-            data_get($jobData, 'urls.xliff_download_url'),
-            data_get($jobData, 'urls.translation_download_url'), [
-                'password' => $jobData['password']
-            ]
-        ), $this->storage->getJobs()));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function getAnalysisResults(): Collection
-    {
-        return collect($this->storage->getAnalyzingResults());
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function getXliffFileStreamedDownloadResponse(): Response
     {
-        /** @var CatToolUserTask $job */
-        $job = $this->getUserTasks()->first();
-
-        if (empty($job)) {
-            throw new RuntimeException();
-        }
-
         return Http::withOptions(['stream' => true])
-            ->get($job->xliffDownloadUrl)
+            ->get($this->storage->getXLIFFDownloadUrl())
             ->throw();
     }
 
@@ -104,15 +70,8 @@ readonly class MateCatService implements SplittableCatTools
      */
     public function getTranslationFileStreamedDownloadResponse(): Response
     {
-        /** @var CatToolUserTask $job */
-        $job = $this->getUserTasks()->first();
-
-        if (empty($job)) {
-            throw new RuntimeException();
-        }
-
         return Http::withOptions(['stream' => true])
-            ->get($job->translationDownloadUrl)
+            ->get($this->storage->getTranslationsDownloadUrl())
             ->throw();
     }
 
@@ -193,12 +152,26 @@ readonly class MateCatService implements SplittableCatTools
         $this->storage->storeProjectInfo($response);
     }
 
+    public function updateProjectProgress(): void
+    {
+        $response = $this->apiClient->retrieveProjectInfo(
+            $this->storage->getProjectId(),
+            $this->storage->getProjectPassword()
+        );
+
+        if (!isset($response['project'])) {
+            throw new RuntimeException("Unexpected project info response format");
+        }
+
+        $this->storage->storeProjectProgress($response);
+    }
+
     /**
      * @inheritDoc
      */
-    public function split(int $chunksCount): void
+    public function split(int $jobsCount): void
     {
-        if ($chunksCount < 1) {
+        if ($jobsCount < 1) {
             throw new InvalidArgumentException("Chunks count should be gather than 1");
         }
 
@@ -214,14 +187,14 @@ readonly class MateCatService implements SplittableCatTools
                 $this->storage->getProjectPassword(),
                 $job['id'],
                 $job['password'],
-                $chunksCount
+                $jobsCount
             );
         } catch (RequestException $e) {
             throw new RuntimeException("", 0, $e);
         }
 
         if (empty($checkSplitPossibilityResponse['data']['chunks'])) {
-            throw new RuntimeException("Split in $chunksCount chunks is not available");
+            throw new RuntimeException("Split in $jobsCount chunks is not available");
         }
 
 
@@ -230,7 +203,7 @@ readonly class MateCatService implements SplittableCatTools
             $this->storage->getProjectPassword(),
             $job['id'],
             $job['password'],
-            $chunksCount
+            $jobsCount
         );
 
         $this->storage->storeSplittingResult($splitResponse);
@@ -263,6 +236,8 @@ readonly class MateCatService implements SplittableCatTools
 
         $this->storage->storeMergingResult($response);
 
-        TrackMateCatProjectAnalyzingStatus::dispatch($this->subProject);
+        if ($response['success']) {
+            TrackMateCatProjectAnalyzingStatus::dispatch($this->subProject);
+        }
     }
 }

@@ -26,9 +26,9 @@ class TrackMateCatProjectProgress implements ShouldQueue
     public function handle(): void
     {
         $service = new MateCatService($this->subProject);
-        $service->updateProjectInfo();
-        foreach ($service->getUserTasks() as $job) {
-            if ($job->progressPercentage < 100) {
+        $service->updateProjectProgress();
+        foreach ($this->subProject->catToolJobs as $job) {
+            if ($job->progress_percentage < 100) {
                 $this->release(self::REQUEUE_DELAY_SECONDS);
                 return;
             }
