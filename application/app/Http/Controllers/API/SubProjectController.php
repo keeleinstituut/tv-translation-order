@@ -69,7 +69,7 @@ class SubProjectController extends Controller
             abort(400, 'Cat project already created');
         }
 
-        return $subProject->cat()->setupJobs();
+        return $subProject->cat()->setupCatToolJobs();
     }
 
     public function sendToWork(string $id)

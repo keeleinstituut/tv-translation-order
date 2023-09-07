@@ -9,14 +9,23 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CatToolController extends Controller
 {
-    public function downloadOriginal(string $id, string $jobId): StreamedResponse
+    public function downloadXLIFFs(string $subProjectId): StreamedResponse
     {
-        $subProject = SubProject::where('id', $id)->first();
+        $subProject = SubProject::where('id', $subProjectId)->first();
+        $file = $subProject->cat()->getDownloadableXLIFFsFile();
+        return response()->streamDownload(
+            fn() => $file->getContent(),
+            $file->getName()
+        );
+    }
 
-        $response = $subProject->cat()->getXliffFileStreamedDownloadResponse();
-
-        return response()->streamDownload(function () use ($response) {
-            echo $response->toPsrResponse()->getBody()->getContents();
-        }, '19.zip');
+    public function downloadTranslations(string $subProjectId): StreamedResponse
+    {
+        $subProject = SubProject::where('id', $subProjectId)->first();
+        $file = $subProject->cat()->getDownloadableTranslationsFile();
+        return response()->streamDownload(
+            fn() => $file->getContent(),
+            $file->getName()
+        );
     }
 }

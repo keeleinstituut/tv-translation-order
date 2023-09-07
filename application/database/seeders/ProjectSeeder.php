@@ -57,7 +57,7 @@ class ProjectSeeder extends Seeder
         });
 
         $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
-            $subProject->cat()->setupJobs();
+            $subProject->cat()->setupCatToolJobs();
         });
 
         Assignment::all()->each($this->setAssigneeOrCandidates(...));

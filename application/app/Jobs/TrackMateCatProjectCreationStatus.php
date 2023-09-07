@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\SubProject;
+use App\Services\CatTools\MateCat\MateCatService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,9 +26,11 @@ class TrackMateCatProjectCreationStatus implements ShouldQueue
 
     public function handle(): void
     {
-        $service = $this->subProject->cat();
+        $service = new MateCatService($this->subProject);
         foreach (range(1, self::RETRY_COUNT) as $_) {
-            if ($service->checkProjectCreationStatusUpdate()) {
+            if ($service->checkProjectCreated()) {
+                $service->updateProjectTranslationUrls();
+                $service->updateProjectInfo();
                 return;
             }
 

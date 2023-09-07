@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Services\CatTools\MateCat\Contracts;
+namespace App\Services\CatTools\Contracts;
 
-interface SourceFile
+interface DownloadableFile
 {
     public function getName(): string;
+
     public function getContent(): string;
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CatTools\CatAnalysisResult;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsArrayObject;
@@ -20,11 +21,11 @@ use Illuminate\Support\Carbon;
  * @property string $translate_url
  * @property string $progress_percentage
  * @property mixed $volume_analysis
- * @property mixed $meta
+ * @property mixed $metadata
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  *
- * @property-read SubProject|null $subProject
+ * @property-read SubProject $subProject
  *
  * @method static Builder|CatToolJob newModelQuery()
  * @method static Builder|CatToolJob newQuery()
@@ -47,12 +48,21 @@ class CatToolJob extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'meta' => AsArrayObject::class,
+        'metadata' => AsArrayObject::class,
         'volume_analysis' => AsArrayObject::class,
     ];
 
     public function subProject()
     {
         return $this->belongsTo(SubProject::class);
+    }
+
+    public function getVolumeAnalysis(): ?CatAnalysisResult
+    {
+        if (empty($this->volume_analysis)) {
+            return null;
+        }
+
+        return new CatAnalysisResult($this->volume_analysis);
     }
 }

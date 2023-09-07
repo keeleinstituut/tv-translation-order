@@ -8,19 +8,20 @@ interface CatToolService
 {
     /**
      * Method for setting up the translation in external CAT tool
+     * @param string[] $filesIds
      * @return void
      */
-    public function setupJobs(): void;
+    public function setupCatToolJobs(array $filesIds = null): void;
 
     /**
      * Returns response from XLIFF files download request
-     * @return Response
+     * @return DownloadableFile
      */
-    public function getXliffFileStreamedDownloadResponse(): Response;
+    public function getDownloadableXLIFFsFile(): DownloadableFile;
 
     /**
      * Returns response from the translation files download request
-     * @return Response
+     * @return DownloadableFile
      */
-    public function getTranslationFileStreamedDownloadResponse(): Response;
+    public function getDownloadableTranslationsFile(): DownloadableFile;
 }
