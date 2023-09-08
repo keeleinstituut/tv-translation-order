@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -27,7 +29,8 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
  * @property-read SubProject $subProject
- *
+ * @property-read Collection<int, Volume> $volumes
+ * @property-read int|null $volumes_count
  * @method static AssignmentFactory factory($count = null, $state = [])
  * @method static Builder|Assignment newModelQuery()
  * @method static Builder|Assignment newQuery()
@@ -41,7 +44,6 @@ use Illuminate\Support\Carbon;
  * @method static Builder|Assignment whereId($value)
  * @method static Builder|Assignment whereSubProjectId($value)
  * @method static Builder|Assignment whereUpdatedAt($value)
- *
  * @mixin Eloquent
  */
 class Assignment extends Model
@@ -49,18 +51,23 @@ class Assignment extends Model
     use HasUuids;
     use HasFactory;
 
-    public function subProject()
+    public function subProject(): BelongsTo
     {
         return $this->belongsTo(SubProject::class);
     }
 
-    public function candidates()
+    public function candidates(): HasMany
     {
         return $this->hasMany(Candidate::class);
     }
 
-    public function assignee()
+    public function assignee(): BelongsTo
     {
         return $this->belongsTo(Vendor::class, 'assigned_vendor_id');
+    }
+
+    public function volumes(): HasMany
+    {
+        return $this->hasMany(Volume::class, 'assignment_id');
     }
 }
