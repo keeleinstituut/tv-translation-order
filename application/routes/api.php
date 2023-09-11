@@ -61,9 +61,19 @@ Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
 Route::post('/subprojects/{id}/send-to-cat', [API\SubProjectController::class, 'sendToCat']);
 Route::post('/subprojects/{id}/send-to-work', [API\SubProjectController::class, 'sendToWork']);
 
-Route::get('/cat-tool/{id}/download-original', [API\CatToolController::class, 'downloadOriginal'])->withoutMiddleware([
-    'auth:api'
-]);
+Route::prefix('/cat-tool')
+    ->controller(API\CatToolController::class)
+    ->withoutMiddleware([
+        'auth:api'
+    ])->group(function (): void {
+        Route::post('/setup', 'setup');
+        Route::post('/split', 'split');
+        Route::post('/merge', 'merge');
+        Route::get('/jobs', 'jobsIndex');
+        Route::get('/volume-analysis', 'volumeAnalysis');
+        Route::get('/download-xliff', 'downloadXLIFFs');
+        Route::get('/download-translated', 'downloadTranslations');
+    });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);

@@ -3,10 +3,13 @@
 namespace App\Services\CatTools\MateCat;
 
 use App\Models\CatToolJob;
+use App\Models\Media;
 use App\Models\SubProject;
 use App\Services\CatTools\CatAnalysisResult;
+use App\Services\CatTools\Exceptions\StorageException;
 use DB;
 use DomainException;
+use Illuminate\Database\Eloquent\Collection;
 use RuntimeException;
 use Throwable;
 
@@ -28,6 +31,16 @@ readonly class MateCatProjectMetaDataStorage
         ]);
     }
 
+    public function storeProjectCreationStatus(array $meta): void
+    {
+        $this->store($this->getProjectCreationStatusKey(), $meta);
+    }
+
+    public function storeProjectFiles(array $filesIds): void
+    {
+        $this->store($this->getProjectFilesKey(), $filesIds);
+    }
+
     public function storeAnalyzingResults(array $meta): void
     {
         $jobsAnalyzingResults = data_get($meta, 'data.jobs');
@@ -36,7 +49,7 @@ readonly class MateCatProjectMetaDataStorage
             foreach (data_get($jobAnalyzingData, 'totals', []) as $jobPassword => $data) {
                 $analyzingResults->put(
                     $this->composeJobExternalId($jobId, $jobPassword),
-                    $this->mapAnalysisResult($data)
+                    $this->normalizeAnalysisResult($data)
                 );
             }
         }
@@ -55,10 +68,13 @@ readonly class MateCatProjectMetaDataStorage
                 }
             }, self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-
+            throw new StorageException("Saving of the project analysis results failed", previous: $e);
         }
 
-        $this->store($this->getProjectAnalyzingKey(), $analyzingResults->toArray());
+        $this->store($this->getProjectAnalyzingKey(), [
+            'status' => $meta['status'],
+            'data' => $analyzingResults->toArray()
+        ]);
     }
 
     public function storeProjectUrls(array $meta): void
@@ -70,6 +86,26 @@ readonly class MateCatProjectMetaDataStorage
     {
         return data_get($this->subProject->cat_metadata, $this->getProjectUrlsKey() . '.urls') ?:
             throw new DomainException("Accessing of ProjectId for not created project");
+    }
+
+    public function getAnalyzingStatus(): string
+    {
+        return data_get($this->subProject->cat_metadata, $this->getProjectAnalyzingKey() . '.status', '');
+    }
+
+    public function getCreationStatus(): string
+    {
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey() . '.status', '');
+    }
+
+    public function getCreationError(): string
+    {
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey() . '.errors.0.message', '');
+    }
+
+    public function getProjectSourceFilesIds(): array
+    {
+        return data_get($this->getProjectFilesKey(), []);
     }
 
     public function getTranslationsDownloadUrl()
@@ -122,7 +158,7 @@ readonly class MateCatProjectMetaDataStorage
 
             }, self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new RuntimeException("Saving of the jobs data failed", previous: $e);
+            throw new StorageException("Saving of the jobs data failed", previous: $e);
         }
     }
 
@@ -145,7 +181,7 @@ readonly class MateCatProjectMetaDataStorage
                 }
             }, self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new RuntimeException("Storing of the jobs data failed", previous: $e);
+            throw new StorageException("Storing of the jobs data failed", previous: $e);
         }
     }
 
@@ -182,7 +218,7 @@ readonly class MateCatProjectMetaDataStorage
         try {
             DB::transaction(fn() => $this->subProject->saveOrFail(), self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new RuntimeException("Saving of the project URLs failed", previous: $e);
+            throw new StorageException("Saving of the project data failed", previous: $e);
         }
     }
 
@@ -195,6 +231,16 @@ readonly class MateCatProjectMetaDataStorage
     private function getProjectCreationKey(): string
     {
         return 'project-create-response';
+    }
+
+    private function getProjectCreationStatusKey(): string
+    {
+        return 'project-create-status-response';
+    }
+
+    private function getProjectFilesKey(): string
+    {
+        return 'project-files';
     }
 
     private function getProjectAnalyzingKey(): string
@@ -227,7 +273,7 @@ readonly class MateCatProjectMetaDataStorage
         return "$id-$password";
     }
 
-    private function mapAnalysisResult(array $analysisResult): CatAnalysisResult
+    private function normalizeAnalysisResult(array $analysisResult): CatAnalysisResult
     {
         return new CatAnalysisResult([
             'total' => data_get($analysisResult, 'TOTAL_PAYABLE.0', 0),

@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('ext_id')->unique();
             $table->string('name');
             $table->string('translate_url');
-            $table->string('revise_url')->nullable();
             $table->string('progress_percentage')->default(0);
             $table->json('volume_analysis')->default('{}');
             $table->json('metadata')->default('{}');

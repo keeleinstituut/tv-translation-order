@@ -50,14 +50,11 @@ readonly class MateCatApiClient
         ])->throw()->json();
     }
 
-    /**
-     * @throws RequestException
-     */
     public function retrieveCreationStatus(int $id, string $password): array
     {
         return $this->getBasePendingRequest()
             ->get("/v2/projects/$id/$password/creation_status")
-            ->throw()->json();
+            ->json();
     }
 
     /**
@@ -89,7 +86,7 @@ readonly class MateCatApiClient
      * @return array
      * @throws RequestException
      */
-    public function retrieveProjectStatus(int $id, string $password): array
+    public function retrieveProjectAnalyzingStatus(int $id, string $password): array
     {
         return $this->getBasePendingRequest()->get('/status', [
             'id_project' => $id,

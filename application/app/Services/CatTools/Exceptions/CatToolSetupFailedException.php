@@ -4,7 +4,7 @@ namespace App\Services\CatTools\Exceptions;
 
 use RuntimeException;
 
-class ServiceNotAvailableException extends RuntimeException
+class CatToolSetupFailedException extends RuntimeException
 {
 
 }

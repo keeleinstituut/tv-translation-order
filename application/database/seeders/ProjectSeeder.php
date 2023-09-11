@@ -56,9 +56,9 @@ class ProjectSeeder extends Seeder
             //$project->workflow()->startProcessInstance();
         });
 
-        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
-            $subProject->cat()->setupCatToolJobs();
-        });
+//        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
+//            $subProject->cat()->setupJobs();
+//        });
 
         Assignment::all()->each($this->setAssigneeOrCandidates(...));
     }
