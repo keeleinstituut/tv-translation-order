@@ -11,14 +11,14 @@ interface CatToolService
 {
     /**
      * Method for setting up the translation in external CAT tool
-     * @param string[] $filesIds
-     * @return void
+     *
+     * @param  string[]  $filesIds
+     *
      * @throws CatToolSetupFailedException
      */
     public function setupJobs(array $filesIds = null): void;
 
     /**
-     * @param int $jobsCount
      * @return Collection<int, CatToolJob>
      */
     public function split(int $jobsCount): Collection;
@@ -35,23 +35,17 @@ interface CatToolService
 
     /**
      * Returns response from XLIFF files download request
-     * @return DownloadableFile
      */
     public function getDownloadableXLIFFsFile(): DownloadableFile;
 
     /**
      * Returns response from the translation files download request
-     * @return DownloadableFile
      */
     public function getDownloadableTranslationsFile(): DownloadableFile;
 
-    /**
-     * @return bool
-     */
     public function isAnalyzed(): bool;
 
     /**
-     * @return bool
      * @throws CatToolSetupFailedException
      */
     public function isCreated(): bool;

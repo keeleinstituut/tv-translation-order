@@ -2,22 +2,29 @@
 
 namespace App\Services\CatTools;
 
-
 use JsonSerializable;
 
 readonly class CatAnalysisResult implements JsonSerializable
 {
     public int $total;
+
     public int $tm_101;
+
     public int $repetitions;
+
     public int $tm_100;
+
     public int $tm_95_99;
+
     public int $tm_85_94;
+
     public int $tm_75_84;
+
     public int $tm_50_74;
+
     public int $tm_0_49;
 
-    public function __construct(array $params)
+    public function __construct($params)
     {
         $this->total = data_get($params, 'total', 0);
         $this->tm_101 = data_get($params, 'tm_101', 0);
@@ -29,7 +36,6 @@ readonly class CatAnalysisResult implements JsonSerializable
         $this->tm_50_74 = data_get($params, 'tm_50_74', 0);
         $this->tm_0_49 = data_get($params, 'tm_0_49', 0);
     }
-
 
     public function jsonSerialize(): array
     {

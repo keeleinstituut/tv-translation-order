@@ -14,10 +14,10 @@ readonly class MateCatDownloadableFile implements DownloadableFile
 
     public function getName(): string
     {
-        return "{$this->name}-" . time() . '.' . $this->getFileExtension();
+        return "{$this->name}-".time().'.'.$this->getFileExtension();
     }
 
-    public function getContent(): string
+    public function getContent(): mixed
     {
         return $this->response->toPsrResponse()->getBody()->getContents();
     }

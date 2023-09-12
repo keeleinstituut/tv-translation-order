@@ -3,14 +3,11 @@
 namespace App\Services\CatTools\MateCat;
 
 use App\Models\CatToolJob;
-use App\Models\Media;
 use App\Models\SubProject;
 use App\Services\CatTools\CatAnalysisResult;
 use App\Services\CatTools\Exceptions\StorageException;
 use DB;
 use DomainException;
-use Illuminate\Database\Eloquent\Collection;
-use RuntimeException;
 use Throwable;
 
 readonly class MateCatProjectMetaDataStorage
@@ -27,7 +24,7 @@ readonly class MateCatProjectMetaDataStorage
             'id' => $meta['id_project'],
             'password' => $meta['project_pass'],
             'analyze_url' => $meta['analyze_url'],
-            'new_keys' => $meta['new_keys']
+            'new_keys' => $meta['new_keys'],
         ]);
     }
 
@@ -68,12 +65,12 @@ readonly class MateCatProjectMetaDataStorage
                 }
             }, self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new StorageException("Saving of the project analysis results failed", previous: $e);
+            throw new StorageException('Saving of the project analysis results failed', previous: $e);
         }
 
         $this->store($this->getProjectAnalyzingKey(), [
             'status' => $meta['status'],
-            'data' => $analyzingResults->toArray()
+            'data' => $analyzingResults->toArray(),
         ]);
     }
 
@@ -84,42 +81,41 @@ readonly class MateCatProjectMetaDataStorage
 
     public function getProjectUrls(): array
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectUrlsKey() . '.urls') ?:
-            throw new DomainException("Accessing of ProjectId for not created project");
+        return data_get($this->subProject->cat_metadata, $this->getProjectUrlsKey().'.urls') ?:
+            throw new DomainException('Accessing of ProjectId for not created project');
     }
 
     public function getAnalyzingStatus(): string
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectAnalyzingKey() . '.status', '');
+        return data_get($this->subProject->cat_metadata, $this->getProjectAnalyzingKey().'.status', '');
     }
 
     public function getCreationStatus(): string
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey() . '.status', '');
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey().'.status', '');
     }
 
     public function getCreationError(): string
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey() . '.errors.0.message', '');
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey().'.errors.0.message', '');
     }
 
     public function getProjectSourceFilesIds(): array
     {
-        return data_get($this->getProjectFilesKey(), []);
+        return data_get($this->subProject->cat_metadata, $this->getProjectFilesKey(), []);
     }
 
     public function getTranslationsDownloadUrl()
     {
-        return data_get($this->getProjectUrls(), 'translation_download_url') ?:
-            throw new DomainException("Accessing of Project translations download URL for not created project");
+        return data_get($this->getProjectUrls(), 'jobs.0.translation_download_url') ?:
+            throw new DomainException('Accessing of Project translations download URL for not created project');
     }
 
     public function getXLIFFsDownloadUrl()
     {
-        return data_get($this->getProjectUrls(), 'xliff_download_url') ?:
-            throw new DomainException("Accessing of Project XLIFF download URL for not created project");
+        return data_get($this->getProjectUrls(), 'jobs.0.xliff_download_url') ?:
+            throw new DomainException('Accessing of Project XLIFF download URL for not created project');
     }
-
 
     public function storeProjectInfo(array $meta): void
     {
@@ -143,9 +139,8 @@ readonly class MateCatProjectMetaDataStorage
                     $job->fill([
                         'sub_project_id' => $this->subProject->id,
                         'ext_id' => $jobIdentifier,
-                        'name' => join('-', [$this->subProject->ext_id, $idx + 1]),
+                        'name' => implode('-', [$this->subProject->ext_id, $idx + 1]),
                         'translate_url' => data_get($jobData, 'urls.translate_url'),
-                        'revise_url' => data_get($jobData, 'urls.revise_urls.0.url'),
                         'progress_percentage' => data_get($jobData, 'stats.PROGRESS_PERC'),
                         'metadata' => $jobData,
                     ])->saveOrFail();
@@ -155,11 +150,12 @@ readonly class MateCatProjectMetaDataStorage
 
                 $jobsIdsToDelete = $catToolJobs->pluck('id')->diff($jobsIds);
                 CatToolJob::whereIn('id', $jobsIdsToDelete)->delete();
-
             }, self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new StorageException("Saving of the jobs data failed", previous: $e);
+            throw new StorageException('Saving of the jobs data failed', previous: $e);
         }
+
+        $this->subProject->load('catToolJobs');
     }
 
     public function storeProjectProgress(array $meta): void
@@ -181,8 +177,10 @@ readonly class MateCatProjectMetaDataStorage
                 }
             }, self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new StorageException("Storing of the jobs data failed", previous: $e);
+            throw new StorageException('Storing of the jobs data failed', previous: $e);
         }
+
+        $this->subProject->load('catToolJobs');
     }
 
     public function storeSplittingResult(array $meta): void
@@ -197,14 +195,14 @@ readonly class MateCatProjectMetaDataStorage
 
     public function getProjectId(): int
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectCreationKey() . '.id') ?:
-            throw new DomainException("Accessing of ProjectId for not created project");
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationKey().'.id') ?:
+            throw new DomainException('Accessing of ProjectId for not created project');
     }
 
     public function getProjectPassword(): string
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectCreationKey() . '.password') ?:
-            throw new DomainException("Accessing of ProjectId for not created project");
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationKey().'.password') ?:
+            throw new DomainException('Accessing of ProjectId for not created project');
     }
 
     public function wasSplit(): bool
@@ -216,16 +214,16 @@ readonly class MateCatProjectMetaDataStorage
     {
         $this->subProject->cat_metadata[$key] = $value;
         try {
-            DB::transaction(fn() => $this->subProject->saveOrFail(), self::RETRY_ATTEMPTS);
+            DB::transaction(fn () => $this->subProject->saveOrFail(), self::RETRY_ATTEMPTS);
         } catch (Throwable $e) {
-            throw new StorageException("Saving of the project data failed", previous: $e);
+            throw new StorageException('Saving of the project data failed', previous: $e);
         }
     }
 
     private function getJobs(): array
     {
-        return data_get($this->subProject->cat_metadata, $this->getProjectInfoKey() . '.project.jobs') ?:
-            throw new DomainException("Accessing of Jobs for not created project");
+        return data_get($this->subProject->cat_metadata, $this->getProjectInfoKey().'.project.jobs') ?:
+            throw new DomainException('Accessing of Jobs for not created project');
     }
 
     private function getProjectCreationKey(): string

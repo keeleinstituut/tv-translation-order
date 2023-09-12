@@ -38,7 +38,7 @@ class ProjectSeeder extends Seeder
 
         $projects = Project::factory()
             ->count(1)
-            ->state(fn($attrs) => [
+            ->state(fn ($attrs) => [
                 'type_classifier_value_id' => fake()->randomElement($projectTypes),
                 'workflow_template_id' => 'Sample-project',
                 'client_institution_user_id' => $client->id,
@@ -48,7 +48,7 @@ class ProjectSeeder extends Seeder
 
         $projects->each($this->addRandomFilesToProject(...));
         $projects->each(function (Project $project) use ($languages) {
-            $destinationLanguagesCount = 1;//fake()->numberBetween(1, 1);
+            $destinationLanguagesCount = 1; //fake()->numberBetween(1, 1);
             $languagesSelection = collect(fake()->randomElements($languages, $destinationLanguagesCount + 1));
             $sourceLanguage = $languagesSelection->get(0);
             $destinationLanguages = $languagesSelection->skip(1);
@@ -56,9 +56,9 @@ class ProjectSeeder extends Seeder
             //$project->workflow()->startProcessInstance();
         });
 
-//        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
-//            $subProject->cat()->setupJobs();
-//        });
+        //        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
+        //            $subProject->cat()->setupJobs();
+        //        });
 
         Assignment::all()->each($this->setAssigneeOrCandidates(...));
     }
@@ -86,9 +86,9 @@ class ProjectSeeder extends Seeder
     private static function getSampleFiles()
     {
         return collect(scandir(self::SAMPLE_FILES_DIR))
-            ->reject(fn($filename) => $filename == '.' || $filename == '..')
+            ->reject(fn ($filename) => $filename == '.' || $filename == '..')
             ->map(function ($filename) {
-                return self::SAMPLE_FILES_DIR . '/' . $filename;
+                return self::SAMPLE_FILES_DIR.'/'.$filename;
             });
     }
 

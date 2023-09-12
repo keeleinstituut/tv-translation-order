@@ -6,5 +6,5 @@ interface DownloadableFile
 {
     public function getName(): string;
 
-    public function getContent(): string;
+    public function getContent(): mixed;
 }

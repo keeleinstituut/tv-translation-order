@@ -2,11 +2,25 @@
 
 namespace App\Http\Requests\API;
 
-use App\Models\SubProject;
+use App\Rules\SubProjectExistsRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: [
+            'sub_project_id',
+            'chunks_count',
+        ],
+        properties: [
+            new OA\Property(property: 'sub_project_id', type: 'string', format: 'uuid'),
+            new OA\Property(property: 'chunks_count', type: 'integer'),
+        ]
+    )
+)]
 class CatToolSplitRequest extends FormRequest
 {
     /**
@@ -20,13 +34,13 @@ class CatToolSplitRequest extends FormRequest
             'sub_project_id' => [
                 'required',
                 'uuid',
-                Rule::exists(SubProject::class, 'id'),
+                new SubProjectExistsRule,
             ],
             'chunks_count' => [
                 'required',
                 'integer',
-                'between:2,50'
-            ]
+                'between:2,50',
+            ],
         ];
     }
 }

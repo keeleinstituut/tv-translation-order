@@ -12,6 +12,7 @@ use InvalidArgumentException;
 readonly class MateCatApiClient
 {
     private int $timeout;
+
     private int $connectionTimeout;
 
     private string $baseUrl;
@@ -24,20 +25,19 @@ readonly class MateCatApiClient
     }
 
     /**
-     * @param array $params
-     * @param Collection<int, Media> $files
-     * @return array
+     * @param  Collection<int, Media>  $files
+     *
      * @throws RequestException
      */
     public function createProject(array $params, Collection $files): array
     {
         $params = collect($params);
-        if (!$params->has('name', 'source_lang', 'target_lang')) {
+        if (! $params->has('name', 'source_lang', 'target_lang')) {
             throw new InvalidArgumentException("'name', 'source_lang', 'target_lang' params are required");
         }
 
         $request = $this->getBasePendingRequest();
-        $files->map(fn(Media $file) => $request->attach(
+        $files->map(fn (Media $file) => $request->attach(
             'files[]',
             $file->stream(),
             $file->file_name
@@ -46,7 +46,7 @@ readonly class MateCatApiClient
         return $request->post('/v1/new', [
             'project_name' => $params->get('name'),
             'source_lang' => $params->get('source_lang'),
-            'target_lang' => $params->get('target_lang')
+            'target_lang' => $params->get('target_lang'),
         ])->throw()->json();
     }
 
@@ -68,9 +68,6 @@ readonly class MateCatApiClient
     }
 
     /**
-     * @param int $id
-     * @param string $password
-     * @return array
      * @throws RequestException
      */
     public function retrieveProjectInfo(int $id, string $password): array
@@ -81,9 +78,6 @@ readonly class MateCatApiClient
     }
 
     /**
-     * @param int $id
-     * @param string $password
-     * @return array
      * @throws RequestException
      */
     public function retrieveProjectAnalyzingStatus(int $id, string $password): array
@@ -95,12 +89,6 @@ readonly class MateCatApiClient
     }
 
     /**
-     * @param int $id
-     * @param string $password
-     * @param int $jobId
-     * @param string $jobPassword
-     * @param int $numSplit
-     * @return array
      * @throws RequestException
      */
     public function checkSplitPossibility(int $id, string $password, int $jobId, string $jobPassword, int $numSplit): array
@@ -111,12 +99,6 @@ readonly class MateCatApiClient
     }
 
     /**
-     * @param int $id
-     * @param string $password
-     * @param int $jobId
-     * @param string $jobPassword
-     * @param int $numSplit
-     * @return array
      * @throws RequestException
      */
     public function split(int $id, string $password, int $jobId, string $jobPassword, int $numSplit): array
@@ -127,10 +109,6 @@ readonly class MateCatApiClient
     }
 
     /**
-     * @param int $id
-     * @param string $password
-     * @param int $jobId
-     * @return array
      * @throws RequestException
      */
     public function merge(int $id, string $password, int $jobId): array
@@ -140,9 +118,6 @@ readonly class MateCatApiClient
             ->throw()->json();
     }
 
-    /**
-     * @return PendingRequest
-     */
     protected function getBasePendingRequest(): PendingRequest
     {
         return Http::baseUrl($this->baseUrl)

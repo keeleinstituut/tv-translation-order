@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use App\Models\CachedEntities\ClassifierValue;
-use App\Services\CatPickerService;
+use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
-use App\Services\CatTools\MateCat\MateCatService;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -29,7 +28,6 @@ use Throwable;
  * @property string|null $project_id
  * @property string|null $file_collection
  * @property string|null $file_collection_final
- * @property string|null $matecat_job_id
  * @property string|null $workflow_ref
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
@@ -118,7 +116,7 @@ class SubProject extends Model
 
     public function catToolJobs()
     {
-        return $this->hasMany(CatToolJob::class);
+        return $this->hasMany(CatToolJob::class)->orderBy('id');
     }
 
     /** @throws Throwable */
@@ -136,7 +134,6 @@ class SubProject extends Model
 
     public function cat(): CatToolService
     {
-        $catClass = CatPickerService::pick(CatPickerService::MATECAT);
-        return new $catClass($this);
+        return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
     }
 }

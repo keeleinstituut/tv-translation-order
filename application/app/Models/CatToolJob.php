@@ -24,7 +24,6 @@ use Illuminate\Support\Carbon;
  * @property mixed $metadata
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- *
  * @property-read SubProject $subProject
  *
  * @method static Builder|CatToolJob newModelQuery()
@@ -39,6 +38,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder|CatToolJob whereTranslateUrl($value)
  * @method static Builder|CatToolJob whereUpdatedAt($value)
  * @method static Builder|CatToolJob whereVolumeAnalysis($value)
+ *
  * @mixin Eloquent
  */
 class CatToolJob extends Model

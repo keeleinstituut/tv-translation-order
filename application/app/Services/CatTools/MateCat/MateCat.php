@@ -21,9 +21,10 @@ use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use RuntimeException;
 
-readonly class MateCatService implements CatToolService
+readonly class MateCat implements CatToolService
 {
     private MateCatApiClient $apiClient;
+
     private MateCatProjectMetaDataStorage $storage;
 
     public function __construct(private SubProject $subProject)
@@ -33,8 +34,8 @@ readonly class MateCatService implements CatToolService
     }
 
     /**
-     * @param array $filesIds
-     * @inheritDoc
+     * @param  array  $filesIds
+     * {@inheritDoc}
      */
     public function setupJobs(array $filesIds = null): void
     {
@@ -45,10 +46,10 @@ readonly class MateCatService implements CatToolService
         }
 
         if ($isCreated) {
-            throw new BadMethodCallException("Cat tool is already setup");
+            throw new BadMethodCallException('Cat tool is already setup');
         }
 
-        if (!empty($this->subProject->cat_metadata)) {
+        if (! empty($this->subProject->cat_metadata)) {
             $this->subProject->cat_metadata = [];
             $this->subProject->save();
         }
@@ -57,12 +58,12 @@ readonly class MateCatService implements CatToolService
             $files = $this->subProject->sourceFiles;
         } else {
             $files = $this->subProject->sourceFiles->filter(
-                fn(Media $sourceFile) => in_array($sourceFile->id, $filesIds)
+                fn (Media $sourceFile) => in_array($sourceFile->id, $filesIds)
             )->values();
         }
 
-        if (!is_null($filesIds) && count($filesIds) !== count($files)) {
-            throw new InvalidArgumentException("Incorrect files IDs");
+        if (! is_null($filesIds) && count($filesIds) !== count($files)) {
+            throw new InvalidArgumentException('Incorrect files IDs');
         }
 
         try {
@@ -72,11 +73,11 @@ readonly class MateCatService implements CatToolService
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
             ], $files);
         } catch (RequestException $e) {
-            throw new CatToolSetupFailedException("Project not created", previous: $e);
+            throw new CatToolSetupFailedException('Project not created', previous: $e);
         }
 
         if ($response['status'] !== 'OK') {
-            throw new CatToolSetupFailedException("Project creation failed");
+            throw new CatToolSetupFailedException('Project creation failed');
         }
 
         $this->storage->storeCreatedProjectMeta($response);
@@ -85,12 +86,12 @@ readonly class MateCatService implements CatToolService
         Bus::chain([
             new TrackMateCatProjectCreationStatus($this->subProject),
             new TrackMateCatProjectAnalyzingStatus($this->subProject),
-            new TrackMateCatProjectProgress($this->subProject)
+            new TrackMateCatProjectProgress($this->subProject),
         ])->dispatch();
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getDownloadableXLIFFsFile(): DownloadableFile
     {
@@ -99,7 +100,7 @@ readonly class MateCatService implements CatToolService
                 ->get($this->storage->getXLIFFsDownloadUrl())
                 ->throw();
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("Retrieving of XLIFF files failed.", previous: $e);
+            throw new CatToolRetrievingException('Retrieving of XLIFF files failed.', previous: $e);
         }
 
         return new MateCatDownloadableFile(
@@ -109,7 +110,7 @@ readonly class MateCatService implements CatToolService
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getDownloadableTranslationsFile(): DownloadableFile
     {
@@ -118,7 +119,7 @@ readonly class MateCatService implements CatToolService
                 ->get($this->storage->getTranslationsDownloadUrl())
                 ->throw();
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("Retrieving of translations files failed.", previous: $e);
+            throw new CatToolRetrievingException('Retrieving of translations files failed.', previous: $e);
         }
 
         return new MateCatDownloadableFile(
@@ -128,16 +129,16 @@ readonly class MateCatService implements CatToolService
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function split(int $jobsCount): Collection
     {
         if ($jobsCount < 1) {
-            throw new InvalidArgumentException("Chunks count should be gather than 1");
+            throw new InvalidArgumentException('Chunks count should be gather than 1');
         }
 
-        if (!$job = $this->subProject->catToolJobs->first()) {
-            throw new DomainException("Job not found for the project");
+        if (! $job = $this->subProject->catToolJobs->first()) {
+            throw new DomainException('Job not found for the project');
         }
 
         try {
@@ -153,11 +154,16 @@ readonly class MateCatService implements CatToolService
                 throw new InvalidArgumentException("Not possible to split job with $jobsCount chunks. Please try another amount.");
             }
 
-            throw new CatToolRetrievingException("Check splitting possibility failed.", previous: $e);
+            throw new CatToolRetrievingException('Check splitting possibility failed.', previous: $e);
         }
 
         if (empty($checkSplitPossibilityResponse['data']['chunks'])) {
-            throw new UnexpectedResponseFormatException("Unexpected response format from split possibility check");
+            throw new UnexpectedResponseFormatException('Unexpected response format from split possibility check.');
+        }
+
+        $availableChunksCount = count($checkSplitPossibilityResponse['data']['chunks']);
+        if ($availableChunksCount !== $jobsCount) {
+            throw new InvalidArgumentException("Not possible to split job with $jobsCount chunks. Please try to split with amount less or equal to $availableChunksCount.");
         }
 
         try {
@@ -169,26 +175,27 @@ readonly class MateCatService implements CatToolService
                 $jobsCount
             );
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("Splitting failed.", previous: $e);
+            throw new CatToolRetrievingException('Splitting failed.', previous: $e);
         }
 
         $this->storage->storeSplittingResult($splitResponse);
         $this->updateProjectInfo();
         TrackMateCatProjectAnalyzingStatus::dispatch($this->subProject);
+
         return $this->subProject->catToolJobs;
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function merge(): Collection
     {
-        if (!$this->storage->wasSplit()) {
+        if (! $this->storage->wasSplit()) {
             throw new DomainException("Can't merge project that wasn't split before");
         }
 
         if (empty($job = $this->subProject->catToolJobs->first())) {
-            throw new DomainException("Job not found for the project");
+            throw new DomainException('Job not found for the project');
         }
 
         try {
@@ -198,11 +205,11 @@ readonly class MateCatService implements CatToolService
                 $job->metadata['id']
             );
         } catch (RequestException $e) {
-            throw new RuntimeException("", 0, $e);
+            throw new RuntimeException('', 0, $e);
         }
 
-        if (!isset($response['success'])) {
-            throw new UnexpectedResponseFormatException("Unexpected merge project jobs response format");
+        if (! isset($response['success'])) {
+            throw new UnexpectedResponseFormatException('Unexpected merge project jobs response format');
         }
 
         $this->storage->storeMergingResult($response);
@@ -233,7 +240,7 @@ readonly class MateCatService implements CatToolService
             return false;
         }
 
-        throw new UnexpectedResponseFormatException("Retrieving of project creation status responded with unexpected response");
+        throw new UnexpectedResponseFormatException('Retrieving of project creation status responded with unexpected response');
     }
 
     public function checkProjectAnalyzed(): bool
@@ -244,7 +251,7 @@ readonly class MateCatService implements CatToolService
                 $this->storage->getProjectPassword()
             );
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("Retrieving of CAT analysis status failed.", previous: $e);
+            throw new CatToolRetrievingException('Retrieving of CAT analysis status failed.', previous: $e);
         }
 
         $this->storage->storeAnalyzingResults($response);
@@ -257,7 +264,7 @@ readonly class MateCatService implements CatToolService
             return false;
         }
 
-        throw new UnexpectedResponseFormatException("Unexpected project analyzing response status");
+        throw new UnexpectedResponseFormatException('Unexpected project analyzing response status');
     }
 
     public function updateProjectTranslationUrls(): void
@@ -268,11 +275,11 @@ readonly class MateCatService implements CatToolService
                 $this->storage->getProjectPassword()
             );
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("CAT urls retrieving failed.", previous: $e);
+            throw new CatToolRetrievingException('CAT urls retrieving failed.', previous: $e);
         }
 
         if (empty($response['urls'])) {
-            throw new UnexpectedResponseFormatException("Unexpected project URLs response format");
+            throw new UnexpectedResponseFormatException('Unexpected project URLs response format');
         }
 
         $this->storage->storeProjectUrls($response);
@@ -286,11 +293,11 @@ readonly class MateCatService implements CatToolService
                 $this->storage->getProjectPassword()
             );
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("CAT data retrieving failed.", previous: $e);
+            throw new CatToolRetrievingException('CAT data retrieving failed.', previous: $e);
         }
 
-        if (!isset($response['project'])) {
-            throw new UnexpectedResponseFormatException("Unexpected project info response format");
+        if (! isset($response['project'])) {
+            throw new UnexpectedResponseFormatException('Unexpected project info response format');
         }
 
         $this->storage->storeProjectInfo($response);
@@ -304,11 +311,11 @@ readonly class MateCatService implements CatToolService
                 $this->storage->getProjectPassword()
             );
         } catch (RequestException $e) {
-            throw new CatToolRetrievingException("Translation progress retrieving failed.", previous: $e);
+            throw new CatToolRetrievingException('Translation progress retrieving failed.', previous: $e);
         }
 
-        if (!isset($response['project'])) {
-            throw new UnexpectedResponseFormatException("Unexpected project info response format");
+        if (! isset($response['project'])) {
+            throw new UnexpectedResponseFormatException('Unexpected project info response format');
         }
 
         $this->storage->storeProjectProgress($response);
@@ -322,18 +329,19 @@ readonly class MateCatService implements CatToolService
     public function getSourceFiles(): Collection
     {
         $sourceFilesIds = $this->storage->getProjectSourceFilesIds();
+
         return $this->subProject->sourceFiles->filter(
-            fn(Media $sourceFile) => in_array($sourceFile->id, $sourceFilesIds)
+            fn (Media $sourceFile) => in_array($sourceFile->id, $sourceFilesIds)
         )->values();
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function isCreated(): bool
     {
         $creationStatus = $this->storage->getCreationStatus();
-        if (empty($creationStatus) && !empty($this->storage->getCreationError())) {
+        if (empty($creationStatus) && ! empty($this->storage->getCreationError())) {
             throw new CatToolSetupFailedException($this->storage->getCreationError());
         }
 

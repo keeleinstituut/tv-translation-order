@@ -3,22 +3,22 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CatToolMergeRequest;
 use App\Http\Requests\API\CatToolSetupRequest;
 use App\Http\Requests\API\CatToolSplitRequest;
 use App\Http\Resources\API\CatToolJobResource;
-use App\Http\Resources\API\CatToolVolumeAnalysisResource;
+use App\Http\Resources\API\SubProjectCatToolVolumeAnalysisResource;
 use App\Models\SubProject;
+use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use InvalidArgumentException;
+use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use App\Http\OpenApiHelpers as OAH;
-use OpenApi\Attributes as OA;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 class CatToolController extends Controller
@@ -31,15 +31,15 @@ class CatToolController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_CREATED, description: 'CAT tool was setup')]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_UNPROCESSABLE_ENTITY, description: 'Wrong input data passed')]
     public function setup(CatToolSetupRequest $request): Response
     {
         try {
             $this->getSubProject($request->validated('sub_project_id'))
                 ->cat()->setupJobs($request->validated('source_files_ids'));
         } catch (InvalidArgumentException $e) {
-            abort(422, $e->getMessage());
+            throw new UnprocessableEntityHttpException($e->getMessage(), previous: $e);
         }
+
         return response()->noContent(201);
     }
 
@@ -75,55 +75,56 @@ class CatToolController extends Controller
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
         $jobs = $subProject->cat()->merge();
+
         return CatToolJobResource::collection($jobs);
     }
 
     #[OA\Get(
-        path: '/cat-tool/jobs',
+        path: '/cat-tool/jobs/{subProjectId}',
         summary: 'List CAT tool jobs of specified sub-project',
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('subProjectId')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\CollectionResponse(itemsRef: CatToolJobResource::class, description: 'CAT tool jobs')]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool project creation is in progress')]
+    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool setup is in progress, retry request in a few seconds')]
     public function jobsIndex(Request $request): AnonymousResourceCollection|Response
     {
         $subProject = $this->getSubProject($request->route('subProjectId'));
 
         try {
-            if (!$subProject->cat()->isCreated()) {
+            if (! $subProject->cat()->isCreated()) {
                 return response()->noContent();
             }
         } catch (CatToolSetupFailedException $e) {
-            throw new HttpException(500, "CAT tool setup failed. Reason: " . $e->getMessage(), $e);
+            throw new HttpException(500, 'CAT tool setup failed. Reason: '.$e->getMessage(), $e);
         }
 
         return CatToolJobResource::collection($subProject->catToolJobs);
     }
 
     #[OA\Get(
-        path: '/cat-tool/volume-analysis',
+        path: '/cat-tool/volume-analysis/{subProjectId}',
         summary: 'List CAT tool jobs volume analysis of specified sub-project',
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('subProjectId')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: CatToolVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool analysis is in progress')]
-    public function volumeAnalysis(Request $request): AnonymousResourceCollection|Response
+    #[OAH\CollectionResponse(itemsRef: SubProjectCatToolVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
+    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
+    public function volumeAnalysis(Request $request): SubProjectCatToolVolumeAnalysisResource|Response
     {
         $subProject = $this->getSubProject($request->route('subProjectId'));
 
-        if (!$subProject->cat()->isAnalyzed()) {
+        if (! $subProject->cat()->isAnalyzed()) {
             return response()->noContent();
         }
 
-        return CatToolVolumeAnalysisResource::collection($subProject);
+        return new SubProjectCatToolVolumeAnalysisResource($subProject);
     }
 
     #[OA\Get(
-        path: '/cat-tool/download-xliff',
+        path: '/cat-tool/download-xliff/{subProjectId}',
         summary: 'Download xliff files of sub-project',
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('subProjectId')],
@@ -142,14 +143,13 @@ class CatToolController extends Controller
         $file = $this->getSubProject($request->route('subProjectId'))
             ->cat()->getDownloadableXLIFFsFile();
 
-        return response()->streamDownload(
-            fn() => $file->getContent(),
-            $file->getName()
-        );
+        return response()->streamDownload(function () use ($file) {
+            echo $file->getContent();
+        }, $file->getName());
     }
 
     #[OA\Get(
-        path: '/cat-tool/download-translated',
+        path: '/cat-tool/download-translated/{subProjectId}',
         summary: 'Download translated files of sub-project',
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('subProjectId')],
@@ -168,15 +168,14 @@ class CatToolController extends Controller
         $file = $this->getSubProject($request->route('subProjectId'))
             ->cat()->getDownloadableTranslationsFile();
 
-        return response()->streamDownload(
-            fn() => $file->getContent(),
-            $file->getName()
-        );
+        return response()->streamDownload(function () use ($file) {
+            echo $file->getContent();
+        }, $file->getName());
     }
-
 
     private function getSubProject(string $subProjectId): SubProject
     {
-        return SubProject::where('id', $subProjectId)->first();
+        return SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->find($subProjectId) ?? abort(404);
     }
 }

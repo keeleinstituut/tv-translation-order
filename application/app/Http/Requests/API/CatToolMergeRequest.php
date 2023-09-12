@@ -2,27 +2,38 @@
 
 namespace App\Http\Requests\API;
 
+use App\Rules\SubProjectExistsRule;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: [
+            'sub_project_id',
+        ],
+        properties: [
+            new OA\Property(property: 'sub_project_id', type: 'string', format: 'uuid'),
+        ]
+    )
+)]
 class CatToolMergeRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return false;
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
+     * @return array<string, ValidationRule|array|string>
      */
     public function rules(): array
     {
         return [
-            //
+            'sub_project_id' => [
+                'required',
+                'uuid',
+                new SubProjectExistsRule,
+            ],
         ];
     }
 }
