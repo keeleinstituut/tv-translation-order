@@ -207,6 +207,9 @@ class CatToolController extends Controller
         }, $file->getName());
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/cat-tool/download-volume-analysis/{subProjectId}',
         summary: 'Download .txt file with CAT tool volume analysis for the sub-project',
@@ -226,6 +229,8 @@ class CatToolController extends Controller
     public function downloadVolumeAnalysisReport(Request $request): StreamedResponse|Response
     {
         $subProject = $this->getSubProject($request->route('subProjectId'));
+        $this->authorize('manageCatTool', $subProject);
+
         if (! $subProject->cat()->isAnalyzed()) {
             return response()->noContent();
         }
