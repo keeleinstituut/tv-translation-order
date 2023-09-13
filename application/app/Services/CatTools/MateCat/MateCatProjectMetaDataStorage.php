@@ -49,7 +49,7 @@ readonly class MateCatProjectMetaDataStorage
             }
 
             foreach (data_get($jobAnalyzingData, 'totals', []) as $jobPassword => $data) {
-                $externalId =  $this->composeJobExternalId($jobId, $jobPassword);
+                $externalId = $this->composeJobExternalId($jobId, $jobPassword);
                 $analyzingResults->put(
                     $this->composeJobExternalId($jobId, $jobPassword),
                     $this->normalizeAnalysisResult($data, $files[$externalId] ?? [])
@@ -290,7 +290,7 @@ readonly class MateCatProjectMetaDataStorage
             data_get($analysisResult, 'INTERNAL_MATCHES.0', 0),
             data_get($analysisResult, 'TM_50_74.0', 0),
             data_get($analysisResult, 'NEW.0', 0),
-            data_get($analysisResult, 'MT.0', 0)
+            data_get($analysisResult, 'MT.0', 0),
         ]);
 
         return new CatAnalysisResult([

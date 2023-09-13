@@ -24,7 +24,7 @@ readonly class CatToolAnalysisReport
         );
 
         return new VolumeAnalysisReportFile(
-            join($this->getSectionSeparator(), $contents),
+            implode($this->getSectionSeparator(), $contents),
             "{$this->subProject->ext_id}.txt"
         );
     }
@@ -37,27 +37,27 @@ readonly class CatToolAnalysisReport
             return $sectionContent;
         }
 
-        if (!empty($volumeAnalysis->files_names)) {
-            $sectionContent .= join('', [
-                str_pad("Files: ", 23),
-                join(', ', $volumeAnalysis->files_names),
-                PHP_EOL
+        if (! empty($volumeAnalysis->files_names)) {
+            $sectionContent .= implode('', [
+                str_pad('Files: ', 23),
+                implode(', ', $volumeAnalysis->files_names),
+                PHP_EOL,
             ]);
         }
 
-        $sectionContent .= join('', [
-            str_pad("Job: ", 23),
+        $sectionContent .= implode('', [
+            str_pad('Job: ', 23),
             $job->name,
-            PHP_EOL
+            PHP_EOL,
         ]);
 
-        $sectionContent .= join('', [
-            str_pad("Language direction: ", 23),
-            join(' > ', [
+        $sectionContent .= implode('', [
+            str_pad('Language direction: ', 23),
+            implode(' > ', [
                 $this->subProject->sourceLanguageClassifierValue->value,
                 $this->subProject->destinationLanguageClassifierValue->value,
             ]),
-            PHP_EOL
+            PHP_EOL,
         ]);
 
         $sectionContent .= $this->composeMatchTable($volumeAnalysis);
@@ -67,12 +67,12 @@ readonly class CatToolAnalysisReport
 
     private function composeMatchTable(CatAnalysisResult $volumeAnalysis): string
     {
-        $tableContent = join('', [
+        $tableContent = implode('', [
             PHP_EOL,
-            str_pad("Match Types", 16),
-            str_pad("Words", 12, pad_type: STR_PAD_LEFT),
-            str_pad("Percent", 14, pad_type: STR_PAD_LEFT),
-            PHP_EOL
+            str_pad('Match Types', 16),
+            str_pad('Words', 12, pad_type: STR_PAD_LEFT),
+            str_pad('Percent', 14, pad_type: STR_PAD_LEFT),
+            PHP_EOL,
         ]);
 
         $tableContent .= $this->composeMatchTableLine(
@@ -142,22 +142,22 @@ readonly class CatToolAnalysisReport
 
     private function composeMatchTableLine(string $matchTypeLabel, int $wordsCount, int $total): string
     {
-        return join('', [
+        return implode('', [
             str_pad($matchTypeLabel, 16),
             str_pad($wordsCount, 12, pad_type: STR_PAD_LEFT),
             str_pad(number_format($wordsCount / $total * 100, 2, '.', ''), 14, pad_type: STR_PAD_LEFT),
-            PHP_EOL
+            PHP_EOL,
         ]);
     }
 
     private function getSectionSeparator(): string
     {
-        return join('', [
+        return implode('', [
             PHP_EOL,
             PHP_EOL,
             '--------------------------------------------------------------------------------',
             PHP_EOL,
-            PHP_EOL
+            PHP_EOL,
         ]);
     }
 }

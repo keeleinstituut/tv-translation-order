@@ -236,6 +236,7 @@ class CatToolController extends Controller
         }
 
         $file = (new CatToolAnalysisReport($subProject))->getReport();
+
         return response()->streamDownload(function () use ($file) {
             echo $file->getContent();
         }, $file->getName());
