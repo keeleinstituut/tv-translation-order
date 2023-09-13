@@ -13,6 +13,7 @@ use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -24,6 +25,9 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 class CatToolController extends Controller
 {
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Post(
         path: '/cat-tool/setup',
         summary: 'Setup CAT tool',
@@ -34,9 +38,10 @@ class CatToolController extends Controller
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_CREATED, description: 'CAT tool was setup')]
     public function setup(CatToolSetupRequest $request): Response
     {
+        $subProject = $this->getSubProject($request->validated('sub_project_id'));
+        $this->authorize('manageCatTool', $subProject);
         try {
-            $this->getSubProject($request->validated('sub_project_id'))
-                ->cat()->setupJobs($request->validated('source_files_ids'));
+            $subProject->cat()->setupJobs($request->validated('source_files_ids'));
         } catch (InvalidArgumentException $e) {
             throw new UnprocessableEntityHttpException($e->getMessage(), previous: $e);
         }
@@ -44,6 +49,9 @@ class CatToolController extends Controller
         return response()->noContent(201);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Post(
         path: '/cat-tool/split',
         summary: 'Split CAT tool jobs',
@@ -55,6 +63,8 @@ class CatToolController extends Controller
     public function split(CatToolSplitRequest $request): AnonymousResourceCollection
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
+        $this->authorize('manageCatTool', $subProject);
+
         try {
             $jobs = $subProject->cat()->split($request->validated('chunks_count'));
         } catch (InvalidArgumentException $e) {
@@ -64,6 +74,9 @@ class CatToolController extends Controller
         return CatToolJobResource::collection($jobs);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Post(
         path: '/cat-tool/merge',
         summary: 'Merge CAT tool jobs into one.',
@@ -75,11 +88,16 @@ class CatToolController extends Controller
     public function merge(CatToolMergeRequest $request): AnonymousResourceCollection
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
+        $this->authorize('manageCatTool', $subProject);
+
         $jobs = $subProject->cat()->merge();
 
         return CatToolJobResource::collection($jobs);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/cat-tool/jobs/{subProjectId}',
         summary: 'List CAT tool jobs of specified sub-project',
@@ -92,6 +110,7 @@ class CatToolController extends Controller
     public function jobsIndex(Request $request): AnonymousResourceCollection|Response
     {
         $subProject = $this->getSubProject($request->route('subProjectId'));
+        $this->authorize('manageCatTool', $subProject);
 
         try {
             if (! $subProject->cat()->isCreated()) {
@@ -104,6 +123,9 @@ class CatToolController extends Controller
         return CatToolJobResource::collection($subProject->catToolJobs);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/cat-tool/volume-analysis/{subProjectId}',
         summary: 'List CAT tool jobs volume analysis of specified sub-project',
@@ -116,6 +138,7 @@ class CatToolController extends Controller
     public function volumeAnalysis(Request $request): SubProjectCatToolVolumeAnalysisResource|Response
     {
         $subProject = $this->getSubProject($request->route('subProjectId'));
+        $this->authorize('manageCatTool', $subProject);
 
         if (! $subProject->cat()->isAnalyzed()) {
             return response()->noContent();
@@ -124,6 +147,9 @@ class CatToolController extends Controller
         return new SubProjectCatToolVolumeAnalysisResource($subProject);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/cat-tool/download-xliff/{subProjectId}',
         summary: 'Download xliff files of sub-project',
@@ -141,14 +167,19 @@ class CatToolController extends Controller
     )]
     public function downloadXLIFFs(Request $request): StreamedResponse
     {
-        $file = $this->getSubProject($request->route('subProjectId'))
-            ->cat()->getDownloadableXLIFFsFile();
+        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $this->authorize('downloadXliff', $subProject);
+
+        $file = $subProject->cat()->getDownloadableXLIFFsFile();
 
         return response()->streamDownload(function () use ($file) {
             echo $file->getContent();
         }, $file->getName());
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/cat-tool/download-translated/{subProjectId}',
         summary: 'Download translated files of sub-project',
@@ -166,8 +197,10 @@ class CatToolController extends Controller
     )]
     public function downloadTranslations(Request $request): StreamedResponse
     {
-        $file = $this->getSubProject($request->route('subProjectId'))
-            ->cat()->getDownloadableTranslationsFile();
+        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $this->authorize('downloadTranslations', $subProject);
+
+        $file = $subProject->cat()->getDownloadableTranslationsFile();
 
         return response()->streamDownload(function () use ($file) {
             echo $file->getContent();

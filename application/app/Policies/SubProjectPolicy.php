@@ -2,7 +2,11 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
+use App\Models\Assignment;
+use App\Models\Project;
 use App\Models\SubProject;
+use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class SubProjectPolicy
@@ -37,6 +41,50 @@ class SubProjectPolicy
     public function update(JwtPayloadUser $user, SubProject $subProject): bool
     {
         return true;
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function manageCatTool(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($subProject) &&
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+    }
+
+    public function downloadXliff(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+    }
+
+    public function downloadTranslations(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+    }
+
+    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject): bool
+    {
+        if (! $this->isInSameInstitutionAsCurrentUser($subProject)) {
+            return false;
+        }
+
+        if (empty($currentInstitutionUserId = Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
+            return true;
+        }
+
+        return Assignment::where('assigned_vendor_id', $currentInstitutionUserId)
+            ->where('sub_project_id', $subProject->id)->exists();
+    }
+
+    private function isInSameInstitutionAsCurrentUser(SubProject $subProject): bool
+    {
+        return filled($currentInstitutionId = Auth::user()?->institutionId)
+            && $currentInstitutionId === $subProject->project->institution_id &&
+            filled($currentInstitutionId = Auth::user()?->institutionUserId);
     }
 
     // Should serve as an query enhancement to Eloquent queries
