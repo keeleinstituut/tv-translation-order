@@ -43,10 +43,16 @@ readonly class MateCatProjectMetaDataStorage
         $jobsAnalyzingResults = data_get($meta, 'data.jobs');
         $analyzingResults = collect();
         foreach ($jobsAnalyzingResults as $jobId => $jobAnalyzingData) {
+            $files = [];
+            foreach (data_get($jobAnalyzingData, 'chunks', []) as $jobPassword => $fileData) {
+                $files[$this->composeJobExternalId($jobId, $jobPassword)] = data_get($fileData, '*.FILENAME');
+            }
+
             foreach (data_get($jobAnalyzingData, 'totals', []) as $jobPassword => $data) {
+                $externalId =  $this->composeJobExternalId($jobId, $jobPassword);
                 $analyzingResults->put(
                     $this->composeJobExternalId($jobId, $jobPassword),
-                    $this->normalizeAnalysisResult($data)
+                    $this->normalizeAnalysisResult($data, $files[$externalId] ?? [])
                 );
             }
         }
@@ -271,10 +277,25 @@ readonly class MateCatProjectMetaDataStorage
         return "$id-$password";
     }
 
-    private function normalizeAnalysisResult(array $analysisResult): CatAnalysisResult
+    private function normalizeAnalysisResult(array $analysisResult, array $filesNames): CatAnalysisResult
     {
+        $total = array_sum([
+            data_get($analysisResult, 'ICE.0', 0),
+            data_get($analysisResult, 'REPETITIONS.0', 0),
+            data_get($analysisResult, 'TM_100_PUBLIC.0', 0),
+            data_get($analysisResult, 'TM_100.0', 0),
+            data_get($analysisResult, 'TM_95_99.0', 0),
+            data_get($analysisResult, 'TM_85_94.0', 0),
+            data_get($analysisResult, 'TM_75_84.0', 0),
+            data_get($analysisResult, 'INTERNAL_MATCHES.0', 0),
+            data_get($analysisResult, 'TM_50_74.0', 0),
+            data_get($analysisResult, 'NEW.0', 0),
+            data_get($analysisResult, 'MT.0', 0)
+        ]);
+
         return new CatAnalysisResult([
-            'total' => data_get($analysisResult, 'TOTAL_PAYABLE.0', 0),
+            'total' => $total,
+            'files_names' => $filesNames,
             'tm_101' => data_get($analysisResult, 'ICE.0', 0),
             'repetitions' => data_get($analysisResult, 'REPETITIONS.0', 0),
             'tm_100' => data_get($analysisResult, 'TM_100_PUBLIC.0', 0) + data_get($analysisResult, 'TM_100.0', 0),

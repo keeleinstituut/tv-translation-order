@@ -68,6 +68,7 @@ Route::prefix('/cat-tool')
         Route::get('/volume-analysis/{subProjectId}', 'volumeAnalysis');
         Route::get('/download-xliff/{subProjectId}', 'downloadXLIFFs');
         Route::get('/download-translated/{subProjectId}', 'downloadTranslations');
+        Route::get('/download-volume-analysis/{subProjectId}', 'downloadVolumeAnalysisReport');
     });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);

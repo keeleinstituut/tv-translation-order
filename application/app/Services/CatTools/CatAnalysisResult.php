@@ -24,6 +24,11 @@ readonly class CatAnalysisResult implements JsonSerializable
 
     public int $tm_0_49;
 
+    /**
+     * @var string[]
+     */
+    public array $files_names;
+
     public function __construct($params)
     {
         $this->total = data_get($params, 'total', 0);
@@ -35,6 +40,7 @@ readonly class CatAnalysisResult implements JsonSerializable
         $this->tm_75_84 = data_get($params, 'tm_75_84', 0);
         $this->tm_50_74 = data_get($params, 'tm_50_74', 0);
         $this->tm_0_49 = data_get($params, 'tm_0_49', 0);
+        $this->files_names = data_get($params, 'files_names', []);
     }
 
     public function jsonSerialize(): array
@@ -49,6 +55,7 @@ readonly class CatAnalysisResult implements JsonSerializable
             'tm_75_84' => $this->tm_75_84,
             'tm_50_74' => $this->tm_50_74,
             'tm_0_49' => $this->tm_0_49,
+            'files_names' => $this->files_names,
         ];
     }
 }

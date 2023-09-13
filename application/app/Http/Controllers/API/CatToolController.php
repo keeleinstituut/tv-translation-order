@@ -11,6 +11,7 @@ use App\Http\Resources\API\CatToolJobResource;
 use App\Http\Resources\API\SubProjectCatToolVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
+use App\Services\CatTools\CatToolAnalysisReport;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -168,6 +169,35 @@ class CatToolController extends Controller
         $file = $this->getSubProject($request->route('subProjectId'))
             ->cat()->getDownloadableTranslationsFile();
 
+        return response()->streamDownload(function () use ($file) {
+            echo $file->getContent();
+        }, $file->getName());
+    }
+
+    #[OA\Get(
+        path: '/cat-tool/download-volume-analysis/{subProjectId}',
+        summary: 'Download .txt file with CAT tool volume analysis for the sub-project',
+        tags: ['CAT tool'],
+        parameters: [new OAH\UuidPath('subProjectId')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OA\Response(
+        response: \Symfony\Component\HttpFoundation\Response::HTTP_OK,
+        description: 'File archive of CAT tool translated files',
+        content: new OA\MediaType(
+            mediaType: 'text/plain',
+            schema: new OA\Schema(type: 'string'),
+        )
+    )]
+    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
+    public function downloadVolumeAnalysisReport(Request $request): StreamedResponse|Response
+    {
+        $subProject = $this->getSubProject($request->route('subProjectId'));
+        if (! $subProject->cat()->isAnalyzed()) {
+            return response()->noContent();
+        }
+
+        $file = (new CatToolAnalysisReport($subProject))->getReport();
         return response()->streamDownload(function () use ($file) {
             echo $file->getContent();
         }, $file->getName());
