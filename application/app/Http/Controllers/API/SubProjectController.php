@@ -16,6 +16,10 @@ class SubProjectController extends Controller
     public function index()
     {
         $data = SubProject::getModel()
+            ->with('project')
+            ->with('project.typeClassifierValue')
+            ->with('sourceLanguageClassifierValue')
+            ->with('destinationLanguageClassifierValue')
             ->paginate();
 
         return SubProjectResource::collection($data);

@@ -99,13 +99,13 @@ class ProjectController extends Controller
                     '%'.$request->validated('ext_id').'%'
                 );
             })
-            ->when($showOnlyPersonalProjects, function (Builder $builder) {
-                $builder->where(function (Builder $projectClause) {
-                    $projectClause
-                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
-                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
-                });
-            })
+//            ->when($showOnlyPersonalProjects, function (Builder $builder) {
+//                $builder->where(function (Builder $projectClause) {
+//                    $projectClause
+//                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
+//                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
+//                });
+//            })
             ->when(filled($request->validated('statuses')), function (Builder $builder) use ($request) {
                 $builder->whereIn('status', $request->validated('statuses'));
             })
@@ -124,11 +124,13 @@ class ProjectController extends Controller
                 'typeClassifierValue',
                 'tags',
                 'subProjects',
+                'subProjects.sourceLanguageClassifierValue',
+                'subProjects.destinationLanguageClassifierValue',
             ])
             ->paginate(perPage: $request->validated('per_page', 10), page: $request->validated('page', 1))
             ->appends($request->validated());
 
-        return ProjectSummaryResource::collection($paginatedQuery);
+        return ProjectResource::collection($paginatedQuery);
 
     }
 
@@ -209,8 +211,10 @@ class ProjectController extends Controller
             'managerInstitutionUser',
             'clientInstitutionUser',
             'typeClassifierValue',
-            'translationDomainClassifierValues',
+            'translationDomainClassifierValue',
             'subProjects',
+            'subProjects.sourceLanguageClassifierValue',
+            'subProjects.destinationLanguageClassifierValue',
         ])->findOrFail($id);
 
         $this->authorize('view', $project);
