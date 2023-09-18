@@ -21,14 +21,19 @@ class AssignmentController extends Controller
      * Display a listing of the resource.
      * @throws AuthorizationException
      */
-    public function index(): ResourceCollection
+    public function index(Request $request): ResourceCollection
     {
         $this->authorize('viewAny', Assignment::class);
 
-        $data = static::getBaseQuery()
-            ->with('candidates.vendor.institutionUser')
-//            ->with('assignedVendor')
-            ->paginate();
+        $data = static::getBaseQuery()->where(
+            'sub_project_id',
+            $request->route('subProjectId')
+        )->with(
+            'candidates.vendor.institutionUser',
+            'assignee.vendor.institutionUser',
+            'volumes',
+            'catToolJobs'
+        );
 
         return AssignmentResource::collection($data);
     }

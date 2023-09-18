@@ -122,9 +122,8 @@ class SubProject extends Model
     /** @throws Throwable */
     public function initAssignments()
     {
-        collect($this->project->typeClassifierValue->projectTypeConfig->features)
-            ->filter(fn ($elem) => Str::startsWith($elem, 'job'))
-            ->each(function ($feature) {
+        $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
+            ->each(function (string $feature) {
                 $assignment = new Assignment();
                 $assignment->sub_project_id = $this->id;
                 $assignment->feature = $feature;

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $id
  * @property string|null $sub_project_id
  * @property string|null $assigned_vendor_id
+ * @property string|null $ext_id
  * @property string|null $deadline_at
  * @property string|null $comments
  * @property string|null $assignee_comments
@@ -31,6 +33,8 @@ use Illuminate\Support\Carbon;
  * @property-read SubProject $subProject
  * @property-read Collection<int, Volume> $volumes
  * @property-read int|null $volumes_count
+ * @property-read Collection<int, CatToolJob> $catToolJobs
+ *
  * @method static AssignmentFactory factory($count = null, $state = [])
  * @method static Builder|Assignment newModelQuery()
  * @method static Builder|Assignment newQuery()
@@ -69,5 +73,11 @@ class Assignment extends Model
     public function volumes(): HasMany
     {
         return $this->hasMany(Volume::class, 'assignment_id');
+    }
+
+    public function catToolJobs(): BelongsToMany
+    {
+        return $this->belongsToMany(CatToolJob::class, AssignmentCatToolJob::class)
+            ->using(AssignmentCatToolJob::class);
     }
 }

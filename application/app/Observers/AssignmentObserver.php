@@ -3,59 +3,67 @@
 namespace App\Observers;
 
 use App\Models\Assignment;
-use App\Models\SubProject;
 
 class AssignmentObserver
 {
     /**
-     * Handle the SubProject "creating" event.
+     * Handle the Assignment "creating" event.
      * @param Assignment $assignment
      */
     public function creating(Assignment $assignment): void
     {
+        $idx = $assignment->subProject->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
+            ->search($assignment->feature);
+
+        if ($idx === false) {
+            $idx = 0;
+        }
+
         $assignment->ext_id = collect([
-            $assignment->subProject->ext_id,
-            // task (feature) number (in project type’s workflow)
-            // subtask number (one subtask for each vendor in current task)
-        ])->implode('-');
+            $assignment->subProject->ext_id, '/',
+            ++$idx,
+            '.',
+            Assignment::where('sub_project_id', $assignment->sub_project_id)
+                ->where('feature', $assignment->feature)->count() + 1
+        ])->implode('');
     }
 
     /**
-     * Handle the SubProject "created" event.
+     * Handle the Assignment "created" event.
      */
-    public function created(SubProject $subProject): void
+    public function created(Assignment $assignment): void
     {
         //
     }
 
     /**
-     * Handle the SubProject "updated" event.
+     * Handle the Assignment "updated" event.
      */
-    public function updated(SubProject $subProject): void
+    public function updated(Assignment $assignment): void
     {
         //
     }
 
     /**
-     * Handle the SubProject "deleted" event.
+     * Handle the Assignment "deleted" event.
      */
-    public function deleted(SubProject $subProject): void
+    public function deleted(Assignment $assignment): void
     {
         //
     }
 
     /**
-     * Handle the SubProject "restored" event.
+     * Handle the Assignment "restored" event.
      */
-    public function restored(SubProject $subProject): void
+    public function restored(Assignment $assignment): void
     {
         //
     }
 
     /**
-     * Handle the SubProject "force deleted" event.
+     * Handle the Assignment "force deleted" event.
      */
-    public function forceDeleted(SubProject $subProject): void
+    public function forceDeleted(Assignment $assignment): void
     {
         //
     }

@@ -11,11 +11,11 @@ use OpenApi\Attributes as OA;
 /** @mixin Volume */
 #[OA\Schema(
     title: 'Volume',
-    required: ['id', 'assignment_id', 'created_at', 'updated_at', 'cat_chunk_identifier', 'unit_type', 'unit_quantity', 'unit_fee'],
+    required: ['id', 'assignment_id', 'created_at', 'updated_at', 'cat_tool_job_id', 'unit_type', 'unit_quantity', 'unit_fee'],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'cat_chunk_identifier', type: 'string', nullable: true),
+        new OA\Property(property: 'cat_tool_job_id', type: 'string', nullable: true),
         new OA\Property(property: 'unit_type', type: 'string', enum: VolumeUnits::class),
         new OA\Property(property: 'unit_quantity', type: 'number', minimum: 0),
         new OA\Property(property: 'unit_fee', type: 'number', minimum: 0),

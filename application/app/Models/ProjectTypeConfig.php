@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * App\Models\ProjectTypeConfig
@@ -49,4 +51,11 @@ class ProjectTypeConfig extends Model
     protected $casts = [
         'features' => 'array',
     ];
+
+    public function getJobsFeatures(): Collection
+    {
+        return collect($this->features)
+            ->filter(fn($elem) => Str::startsWith($elem, 'job'))
+            ->values();
+    }
 }
