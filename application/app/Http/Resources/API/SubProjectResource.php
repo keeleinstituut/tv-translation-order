@@ -2,9 +2,14 @@
 
 namespace App\Http\Resources\API;
 
+use App\Http\Resources\MediaResource;
+use App\Models\SubProject;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin SubProject
+ */
 class SubProjectResource extends JsonResource
 {
     /**
@@ -19,11 +24,8 @@ class SubProjectResource extends JsonResource
                 ->except('cat_metadata')
                 ->toArray(),
             'features' => $this->project->typeClassifierValue->projectTypeConfig->features,
-            'cat_project_created' => collect($this->cat_metadata)->isNotEmpty(),
-            'cat_features' => $this->cat()->getSupportedFeatures(),
-            'cat_files' => $this->cat()->getFiles(),
-            'cat_jobs' => $this->cat()->getJobs(),
-            'cat_analyzis' => $this->cat()->getAnalyzis(),
+            'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
+            'cat_jobs' => CatToolJobResource::collection($this->catToolJobs),
         ];
     }
 }

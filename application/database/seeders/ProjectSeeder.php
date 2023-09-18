@@ -37,7 +37,7 @@ class ProjectSeeder extends Seeder
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
 
         $projects = Project::factory()
-            ->count(10)
+            ->count(1)
             ->state(fn ($attrs) => [
                 'type_classifier_value_id' => fake()->randomElement($projectTypes),
                 'workflow_template_id' => 'Sample-project',
@@ -48,19 +48,17 @@ class ProjectSeeder extends Seeder
 
         $projects->each($this->addRandomFilesToProject(...));
         $projects->each(function (Project $project) use ($languages) {
-            $destinationLanguagesCount = fake()->numberBetween(1, 4);
+            $destinationLanguagesCount = 1; //fake()->numberBetween(1, 1);
             $languagesSelection = collect(fake()->randomElements($languages, $destinationLanguagesCount + 1));
             $sourceLanguage = $languagesSelection->get(0);
             $destinationLanguages = $languagesSelection->skip(1);
             $project->initSubProjects($sourceLanguage, $destinationLanguages);
-            $project->workflow()->startProcessInstance();
+            //$project->workflow()->startProcessInstance();
         });
 
-        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
-            if (fake()->randomElement([0, 0, 1]) == 1) {
-                $subProject->cat()->createProject();
-            }
-        });
+        //        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
+        //            $subProject->cat()->setupJobs();
+        //        });
 
         Assignment::all()->each($this->setAssigneeOrCandidates(...));
     }

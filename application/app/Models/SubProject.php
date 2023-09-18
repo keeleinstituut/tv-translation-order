@@ -3,7 +3,8 @@
 namespace App\Models;
 
 use App\Models\CachedEntities\ClassifierValue;
-use App\Services\CatPickerService;
+use App\Services\CatTools\CatPickerService;
+use App\Services\CatTools\Contracts\CatToolService;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -27,7 +28,6 @@ use Throwable;
  * @property string|null $project_id
  * @property string|null $file_collection
  * @property string|null $file_collection_final
- * @property string|null $matecat_job_id
  * @property string|null $workflow_ref
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
@@ -39,6 +39,9 @@ use Throwable;
  * @property-read ClassifierValue|null $destinationLanguageClassifierValue
  * @property-read Project|null $project
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
+ * @property-read Collection<int, Media> $sourceFiles
+ * @property-read Collection<int, Media> $finalFiles
+ * @property-read Collection<int, CatToolJob> $catToolJobs
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -111,6 +114,11 @@ class SubProject extends Model
         return $this->hasMany(Assignment::class);
     }
 
+    public function catToolJobs()
+    {
+        return $this->hasMany(CatToolJob::class)->orderBy('id');
+    }
+
     /** @throws Throwable */
     public function initAssignments()
     {
@@ -124,14 +132,8 @@ class SubProject extends Model
             });
     }
 
-    //    public function sourceFiles2() {
-    //        return $this->project->media()->where('collection_name', $this->file_collection);
-    //    }
-
-    public function cat()
+    public function cat(): CatToolService
     {
-        $catClass = CatPickerService::pick(CatPickerService::MATECAT);
-
-        return new $catClass($this);
+        return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
     }
 }

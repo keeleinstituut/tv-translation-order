@@ -6,19 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\API\SubProjectResource;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Policies\SubProjectPolicy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SubProjectController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): AnonymousResourceCollection
     {
-        $data = SubProject::getModel()
-            ->paginate();
-
-        return SubProjectResource::collection($data);
+        return SubProjectResource::collection(
+            self::getBaseQuery()->paginate()
+        );
     }
 
     /**
@@ -32,18 +34,17 @@ class SubProjectController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $id): SubProjectResource
     {
-        $data = SubProject::getModel()
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('sourceFiles')
+        return new SubProjectResource(
+            self::getBaseQuery()->with('sourceLanguageClassifierValue')
+                ->with('destinationLanguageClassifierValue')
+                ->with('sourceFiles')
 //            ->with('project.typeClassifierValue.projectTypeConfig')
-            ->with('assignments.candidates.vendor.institutionUser')
-            ->with('assignments.assignee.institutionUser')
-            ->find($id) ?? abort(404);
-
-        return new SubProjectResource($data);
+                ->with('assignments.candidates.vendor.institutionUser')
+                ->with('assignments.assignee.institutionUser')
+                ->find($id) ?? abort(404)
+        );
     }
 
     /**
@@ -62,18 +63,8 @@ class SubProjectController extends Controller
         //
     }
 
-    public function sendToCat(string $id)
+    private static function getBaseQuery(): Builder
     {
-        $subProject = SubProject::find($id);
-        if (collect($subProject->cat_metadata)->isNotEmpty()) {
-            abort(400, 'Cat project already created');
-        }
-
-        return $subProject->cat()->createProject();
-    }
-
-    public function sendToWork(string $id)
-    {
-        $subProject = SubProject::find($id);
+        return SubProject::withGlobalScope('policy', SubProjectPolicy::scope());
     }
 }

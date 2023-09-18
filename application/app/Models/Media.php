@@ -6,7 +6,6 @@ use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
 
@@ -62,8 +61,4 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
  */
 class Media extends BaseMedia
 {
-    public function getContent($conversionName = '')
-    {
-        return Storage::disk($this->disk)->get($this->getUrl($conversionName));
-    }
 }
