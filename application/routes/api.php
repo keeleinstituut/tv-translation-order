@@ -71,29 +71,3 @@ Route::get('/workflow/history/tasks', [API\WorkflowController::class, 'getHistor
 //Route::get('/cat/urls/revise/{project_id}', []);
 // ??
 Route::get('/redirect', [API\RedirectController::class, '__invoke']);
-
-Route::get('/playground', function (Request $request) {
-    $response = [];
-    $project = Project::find('99a6d516-fb33-47c2-9291-ad3e0c512cc4');
-    $response['startProcessInstance'] = $project->workflow()->startProcessInstance();
-
-    //    dd($response);
-    $response['project'] = $project->refresh();
-
-    return $response;
-    //    return [
-    //        'name' => fake()->name(),
-    //    ];
-});
-
-Route::get('/playground2', function (Request $request) {
-    $response = [];
-    $projects = Project::getModel()
-        ->with('subProjects')
-        ->paginate();
-
-    return $projects;
-    $response['projects'] = $projects;
-
-    return $response;
-});
