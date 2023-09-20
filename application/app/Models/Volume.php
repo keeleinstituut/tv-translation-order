@@ -76,13 +76,14 @@ class Volume extends Model
         return $this->belongsTo(CatToolJob::class, 'cat_tool_job_id');
     }
 
-    public function getDiscounts(): ?VolumeAnalysisDiscount
+    public function getDiscount(?Vendor $assignee = null): ?VolumeAnalysisDiscount
     {
         if (empty($this->cat_tool_job_id)) {
             return null;
         }
 
-        if (filled($this->assignment->assignee)) {
+        $assignee = $assignee ?: $this->assignment->assignee;
+        if (filled($assignee)) {
             return new VolumeAnalysisDiscount(
                 array_merge($this->assignment->assignee?->only(
                     'discount_percentage_101',
