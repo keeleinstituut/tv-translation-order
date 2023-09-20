@@ -8,6 +8,7 @@ use App\Http\Requests\API\InstitutionUserListRequest;
 use App\Http\Resources\API\InstitutionUserResource;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Policies\InstitutionUserPolicy;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 class InstitutionUserController extends Controller
@@ -20,6 +21,7 @@ class InstitutionUserController extends Controller
         summary: 'List Institution Users',
         tags: ['Cached entities'],
         parameters: [
+            new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -32,6 +34,11 @@ class InstitutionUserController extends Controller
         $this->authorize('viewAny', InstitutionUser::class);
 
         $query = $this->getBaseQuery();
+
+        if ($fullName = $params->get('fullname')) {
+            $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$fullName%");
+        }
+
         $data = $query
             ->with('vendor')
             ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
