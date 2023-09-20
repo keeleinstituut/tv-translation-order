@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;

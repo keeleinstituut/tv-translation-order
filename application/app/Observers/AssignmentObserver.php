@@ -8,7 +8,6 @@ class AssignmentObserver
 {
     /**
      * Handle the Assignment "creating" event.
-     * @param Assignment $assignment
      */
     public function creating(Assignment $assignment): void
     {
@@ -24,7 +23,7 @@ class AssignmentObserver
             ++$idx,
             '.',
             Assignment::where('sub_project_id', $assignment->sub_project_id)
-                ->where('feature', $assignment->feature)->count() + 1
+                ->where('feature', $assignment->feature)->count() + 1,
         ])->implode('');
     }
 

@@ -2,10 +2,11 @@
 
 namespace App\Services\CatTools\MateCat;
 
+use App\Enums\VolumeUnits;
 use App\Models\CatToolJob;
 use App\Models\SubProject;
-use App\Services\CatTools\CatAnalysisResult;
 use App\Services\CatTools\Exceptions\StorageException;
+use App\Services\CatTools\VolumeAnalysis;
 use DB;
 use DomainException;
 use Throwable;
@@ -66,6 +67,7 @@ readonly class MateCatProjectMetaDataStorage
                     if ($catToolJobs->has($externalId)) {
                         $job = $catToolJobs->get($externalId);
                         $job->volume_analysis = $analyzingResult;
+                        $job->volume_unit_type = VolumeUnits::Words;
                         $job->saveOrFail();
                     }
                 }
@@ -277,24 +279,9 @@ readonly class MateCatProjectMetaDataStorage
         return "$id-$password";
     }
 
-    private function normalizeAnalysisResult(array $analysisResult, array $filesNames): CatAnalysisResult
+    private function normalizeAnalysisResult(array $analysisResult, array $filesNames): VolumeAnalysis
     {
-        $total = array_sum([
-            data_get($analysisResult, 'ICE.0', 0),
-            data_get($analysisResult, 'REPETITIONS.0', 0),
-            data_get($analysisResult, 'TM_100_PUBLIC.0', 0),
-            data_get($analysisResult, 'TM_100.0', 0),
-            data_get($analysisResult, 'TM_95_99.0', 0),
-            data_get($analysisResult, 'TM_85_94.0', 0),
-            data_get($analysisResult, 'TM_75_84.0', 0),
-            data_get($analysisResult, 'INTERNAL_MATCHES.0', 0),
-            data_get($analysisResult, 'TM_50_74.0', 0),
-            data_get($analysisResult, 'NEW.0', 0),
-            data_get($analysisResult, 'MT.0', 0),
-        ]);
-
-        return new CatAnalysisResult([
-            'total' => $total,
+        return new VolumeAnalysis([
             'files_names' => $filesNames,
             'tm_101' => data_get($analysisResult, 'ICE.0', 0),
             'repetitions' => data_get($analysisResult, 'REPETITIONS.0', 0),

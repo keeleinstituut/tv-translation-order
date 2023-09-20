@@ -55,7 +55,7 @@ class ProjectTypeConfig extends Model
     public function getJobsFeatures(): Collection
     {
         return collect($this->features)
-            ->filter(fn($elem) => Str::startsWith($elem, 'job'))
+            ->filter(fn ($elem) => Str::startsWith($elem, 'job'))
             ->values();
     }
 }

@@ -2,75 +2,66 @@
 
 namespace App\Policies;
 
-use App\Models\Assignment;
-use App\Models\Project;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
+use App\Models\CatToolJob;
+use App\Models\User;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
-class AssignmentPolicy
+class CatToolJobPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
         return false;
-
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $user, Assignment $assignment): bool
+    public function view(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
     {
-        return Gate::allows('view', $assignment->subProject->project);
+        return false;
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $user, Assignment $assignment): bool
+    public function create(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Gate::allows('create', $assignment->subProject->project);
+        return false;
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $user, Assignment $assignment): bool
+    public function update(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return false;
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, Project $project): bool
+    public function delete(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
     {
-        return false; // TODO
+        return false;
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, Project $project): bool
+    public function restore(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
     {
-        return false; // TODO
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, Project $project): bool
+    public function forceDelete(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
     {
-        return false; // TODO
-    }
-
-    public static function isInSameInstitutionAsCurrentUser(Assignment $assignment): bool
-    {
-        return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && $currentInstitutionId === $assignment->subProject->project->institution_id;
+        return false;
     }
 
     // Should serve as an query enhancement to Eloquent queries
@@ -89,7 +80,7 @@ class AssignmentPolicy
     //
     public static function scope()
     {
-        return new Scope\AssignmentScope();
+        return new Scope\CatToolJobScope();
     }
 }
 
@@ -102,7 +93,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope as IScope;
 use Illuminate\Support\Facades\Auth;
 
-class AssignmentScope implements IScope
+class CatToolJobScope implements IScope
 {
     /**
      * Apply the scope to a given Eloquent query builder.

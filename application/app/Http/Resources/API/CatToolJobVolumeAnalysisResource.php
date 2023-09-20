@@ -19,7 +19,7 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'name', type: 'string'),
-        new OA\Property(property: 'volume_analysis', ref: CatVolumeAnalysisResource::class, nullable: true),
+        new OA\Property(property: 'volume_analysis', ref: VolumeAnalysisResource::class, nullable: true),
     ],
     type: 'object'
 )]
@@ -38,7 +38,7 @@ class CatToolJobVolumeAnalysisResource extends JsonResource
                 'id',
                 'name',
             ]),
-            'volume_analysis' => CatVolumeAnalysisResource::make($this->getVolumeAnalysis()),
+            'volume_analysis' => VolumeAnalysisResource::make($this->getVolumeAnalysis()),
         ];
     }
 }

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\VolumeUnits;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +14,7 @@ return new class extends Migration
         Schema::create('volumes', function (Blueprint $table) {
             $table->uuid('id');
             $table->foreignUuid('assignment_id')->constrained('assignments');
-            $table->enum('unit_type', ['CHARACTER', 'WORD', 'PAGE', 'MINUTE', 'HOUR']);
+            $table->enum('unit_type', ['CHARACTERS', 'WORDS', 'PAGES', 'MINUTES', 'HOURS']);
             $table->unsignedDecimal('unit_quantity');
             $table->unsignedDecimal('unit_fee')->nullable();
             $table->foreignUuid('cat_tool_job_id')->nullable()->constrained('cat_tool_jobs');

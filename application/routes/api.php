@@ -71,6 +71,15 @@ Route::prefix('/cat-tool')
         Route::get('/download-volume-analysis/{subProjectId}', 'downloadVolumeAnalysisReport');
     });
 
+Route::prefix('/volumes')
+    ->controller(API\VolumeController::class)->group(function (): void {
+        Route::post('/', 'store');
+        Route::post('/cat-tool', 'storeCatToolVolume');
+        Route::put('/{id}', 'update');
+        Route::put('/cat-tool/{id}', 'updateCatToolVolume');
+        Route::delete('/{id}', 'destroy');
+    });
+
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
 Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);

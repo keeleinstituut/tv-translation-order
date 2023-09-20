@@ -2,26 +2,15 @@
 
 namespace App\Http\Resources\API;
 
-use App\Services\CatTools\CatAnalysisResult;
+use App\Services\CatTools\VolumeAnalysis;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
 /**
- * @mixin CatAnalysisResult
+ * @mixin VolumeAnalysis
  */
 #[OA\Schema(
-    required: [
-        'total',
-        'tm_101',
-        'repetitions',
-        'tm_100',
-        'tm_95_99',
-        'tm_85_94',
-        'tm_75_84',
-        'tm_50_74',
-        'tm_0_49',
-    ],
     properties: [
         new OA\Property(property: 'total', type: 'integer'),
         new OA\Property(property: 'tm_101', type: 'integer'),
@@ -32,10 +21,11 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'tm_75_84', type: 'integer'),
         new OA\Property(property: 'tm_50_74', type: 'integer'),
         new OA\Property(property: 'tm_0_49', type: 'integer'),
+        new OA\Property(property: 'files_names', type: 'array', items: new OA\Items(type: 'string')),
     ],
     type: 'object'
 )]
-class CatVolumeAnalysisResource extends JsonResource
+class VolumeAnalysisResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -54,6 +44,7 @@ class CatVolumeAnalysisResource extends JsonResource
             'tm_75_84' => $this->tm_75_84,
             'tm_50_74' => $this->tm_50_74,
             'tm_0_49' => $this->tm_0_49,
+            'files_names' => $this->files_names,
         ];
     }
 }

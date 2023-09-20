@@ -18,7 +18,6 @@ class AssignmentCatToolJob extends Model
         'assignment_id',
     ];
 
-
     public function catToolJob(): BelongsTo
     {
         return $this->belongsTo(CatToolJob::class, 'cat_tool_job_id');

@@ -11,14 +11,28 @@ use OpenApi\Attributes as OA;
 /** @mixin Volume */
 #[OA\Schema(
     title: 'Volume',
-    required: ['id', 'assignment_id', 'created_at', 'updated_at', 'cat_tool_job_id', 'unit_type', 'unit_quantity', 'unit_fee'],
+    required: [
+        'id',
+        'assignment_id',
+        'cat_tool_job_id',
+        'unit_type',
+        'unit_quantity',
+        'unit_fee',
+        'custom_volume_analysis',
+        'custom_discounts',
+        'created_at',
+        'updated_at',
+    ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'cat_tool_job_id', type: 'string', nullable: true),
+        new OA\Property(property: 'cat_tool_job_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'unit_type', type: 'string', enum: VolumeUnits::class),
         new OA\Property(property: 'unit_quantity', type: 'number', minimum: 0),
         new OA\Property(property: 'unit_fee', type: 'number', minimum: 0),
+        new OA\Property(property: 'job', ref: CatToolJobResource::class),
+        new OA\Property(property: 'volume_analysis', ref: VolumeAnalysisResource::class),
+        new OA\Property(property: 'discount', ref: VolumeAnalysisDiscountResource::class),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
     ],
@@ -33,15 +47,19 @@ class VolumeResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return $this->only(
-           'id',
-           'assignment_id',
-           'created_at',
-           'updated_at',
-           'cat_chunk_identifier',
-           'unit_type',
-           'unit_quantity',
-           'unit_fee',
-        );
+        return [
+            ...$this->only(
+                'id',
+                'assignment_id',
+                'unit_type',
+                'unit_quantity',
+                'unit_fee',
+                'updated_at',
+                'created_at'
+            ),
+            'job' => CatToolJobResource::make($this->catToolJob),
+            'volume_analysis' => VolumeAnalysisResource::make($this->getVolumeAnalysis()),
+            'discount' => VolumeAnalysisDiscountResource::make($this->getDiscounts()),
+        ];
     }
 }

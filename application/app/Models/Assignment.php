@@ -48,6 +48,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder|Assignment whereId($value)
  * @method static Builder|Assignment whereSubProjectId($value)
  * @method static Builder|Assignment whereUpdatedAt($value)
+ *
  * @mixin Eloquent
  */
 class Assignment extends Model

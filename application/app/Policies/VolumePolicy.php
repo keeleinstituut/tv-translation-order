@@ -2,75 +2,67 @@
 
 namespace App\Policies;
 
-use App\Models\Assignment;
-use App\Models\Project;
+use App\Enums\PrivilegeKey;
+use App\Models\Volume;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
-class AssignmentPolicy
+class VolumePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return false;
-
+        return true;
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $user, Assignment $assignment): bool
+    public function view(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
     {
-        return Gate::allows('view', $assignment->subProject->project);
+        return true;
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $user, Assignment $assignment): bool
+    public function create(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Gate::allows('create', $assignment->subProject->project);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $user, Assignment $assignment): bool
+    public function update(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, Project $project): bool
+    public function delete(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
     {
-        return false; // TODO
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, Project $project): bool
+    public function restore(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
     {
-        return false; // TODO
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, Project $project): bool
+    public function forceDelete(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
     {
-        return false; // TODO
-    }
-
-    public static function isInSameInstitutionAsCurrentUser(Assignment $assignment): bool
-    {
-        return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && $currentInstitutionId === $assignment->subProject->project->institution_id;
+        return false;
     }
 
     // Should serve as an query enhancement to Eloquent queries
@@ -89,7 +81,7 @@ class AssignmentPolicy
     //
     public static function scope()
     {
-        return new Scope\AssignmentScope();
+        return new Scope\VolumeScope();
     }
 }
 
@@ -97,22 +89,20 @@ class AssignmentPolicy
 
 namespace App\Policies\Scope;
 
+use App\Policies\AssignmentPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope as IScope;
-use Illuminate\Support\Facades\Auth;
 
-class AssignmentScope implements IScope
+class VolumeScope implements IScope
 {
     /**
      * Apply the scope to a given Eloquent query builder.
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->whereHas('subProject', function (Builder $subProjectQuery) {
-            $subProjectQuery->whereHas('project', function (Builder $projectQuery) {
-                $projectQuery->where('institution_id', Auth::user()->institutionId);
-            });
+        $builder->whereHas('assignment', function (Builder $assignmentQuery) {
+            $assignmentQuery->withGlobalScope('policy', AssignmentPolicy::scope());
         });
     }
 }

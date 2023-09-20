@@ -3,10 +3,8 @@
 namespace App\Models;
 
 use App\Enums\VolumeUnits;
-use App\Http\Resources\API\CatVolumeAnalysisResource;
-use App\Models\CachedEntities\ClassifierValue;
-use App\Services\CatTools\CatAnalysisResult;
-use Database\Factories\PriceFactory;
+use App\Models\Dto\VolumeAnalysisDiscount;
+use App\Services\CatTools\VolumeAnalysis;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsArrayObject;
@@ -33,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read Assignment $assignment
  * @property-read CatToolJob|null $catToolJob
+ *
  * @method static Builder|Volume newModelQuery()
  * @method static Builder|Volume newQuery()
  * @method static Builder|Volume onlyTrashed()
@@ -48,6 +47,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder|Volume whereUpdatedAt($value)
  * @method static Builder|Volume withTrashed()
  * @method static Builder|Volume withoutTrashed()
+ *
  * @mixin Eloquent
  */
 class Volume extends Model
@@ -63,7 +63,7 @@ class Volume extends Model
     protected $casts = [
         'unit_type' => VolumeUnits::class,
         'custom_volume_analysis' => AsArrayObject::class,
-        'custom_discounts' => AsArrayObject::class
+        'custom_discounts' => AsArrayObject::class,
     ];
 
     public function assignment(): BelongsTo
@@ -76,23 +76,29 @@ class Volume extends Model
         return $this->belongsTo(CatToolJob::class, 'cat_tool_job_id');
     }
 
-    public function getDiscounts(): array
+    public function getDiscounts(): ?VolumeAnalysisDiscount
     {
+        if (empty($this->cat_tool_job_id)) {
+            return null;
+        }
+
         if (filled($this->assignment->assignee)) {
-            return array_merge($this->assignment->assignee?->only(
-                'discount_percentage_101',
-                'discount_percentage_repetitions',
-                'discount_percentage_100',
-                'discount_percentage_95_99',
-                'discount_percentage_85_94',
-                'discount_percentage_75_84',
-                'discount_percentage_50_74',
-                'discount_percentage_0_49'
-            ) ?: [], $this->custom_discounts);
+            return new VolumeAnalysisDiscount(
+                array_merge($this->assignment->assignee?->only(
+                    'discount_percentage_101',
+                    'discount_percentage_repetitions',
+                    'discount_percentage_100',
+                    'discount_percentage_95_99',
+                    'discount_percentage_85_94',
+                    'discount_percentage_75_84',
+                    'discount_percentage_50_74',
+                    'discount_percentage_0_49'
+                ) ?: [], (array) $this->custom_discounts)
+            );
         }
 
         // TODO: use institution discounts in case if vendor is not assigned
-        return array_merge([
+        return new VolumeAnalysisDiscount(array_merge([
             'discount_percentage_101' => 0,
             'discount_percentage_repetitions' => 0,
             'discount_percentage_100' => 0,
@@ -101,18 +107,19 @@ class Volume extends Model
             'discount_percentage_75_84' => 0,
             'discount_percentage_50_74' => 0,
             'discount_percentage_0_49' => 0,
-        ], $this->custom_discounts);
+        ], (array) $this->custom_discounts)
+        );
     }
 
-    public function getVolumeAnalysis(): ?CatAnalysisResult
+    public function getVolumeAnalysis(): ?VolumeAnalysis
     {
         if (empty($this->cat_tool_job_id)) {
             return null;
         }
 
-        return new CatAnalysisResult(array_merge(
-            $this->catToolJob->volume_analysis,
-            $this->custom_volume_analysis
+        return new VolumeAnalysis(array_merge(
+            (array) $this->catToolJob->volume_analysis,
+            (array) $this->custom_volume_analysis
         ));
     }
 }
