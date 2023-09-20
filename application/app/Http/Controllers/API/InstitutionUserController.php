@@ -33,6 +33,7 @@ class InstitutionUserController extends Controller
 
         $query = $this->getBaseQuery();
         $data = $query
+            ->with('vendor')
             ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
             ->paginate($params->get('limit', 10));
 

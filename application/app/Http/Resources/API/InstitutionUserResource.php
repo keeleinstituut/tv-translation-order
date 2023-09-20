@@ -37,6 +37,7 @@ class InstitutionUserResource extends JsonResource
             'institution' => $this->institution,
             'department' => $this->department,
             'roles' => collect($this->roles)->map(fn ($role) => collect($role)->only('id', 'name')),
+            'vendor' => VendorResource::make($this->whenLoaded('vendor')),
         ];
     }
 }
