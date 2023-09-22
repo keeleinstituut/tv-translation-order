@@ -212,6 +212,9 @@ class ProjectController extends Controller
             'subProjects',
             'subProjects.sourceLanguageClassifierValue',
             'subProjects.destinationLanguageClassifierValue',
+            'sourceFiles',
+            'finalFiles',
+            'helpFiles',
         ])->findOrFail($id);
 
         $this->authorize('view', $project);

@@ -150,19 +150,19 @@ class Project extends Model implements HasMedia
         return new WorkflowProcessInstanceService($this);
     }
 
-    public function getSourceFiles(): MediaCollection
+    public function sourceFiles()
     {
-        return $this->media->filter(fn (Media $media) => $media->collection_name === self::SOURCE_FILES_COLLECTION);
+        return $this->media()->where('collection_name', self::SOURCE_FILES_COLLECTION);
     }
 
-    public function getHelpFiles(): MediaCollection
+    public function helpFiles()
     {
-        return $this->media->filter(fn (Media $media) => $media->collection_name === self::HELP_FILES_COLLECTION);
+        return $this->media()->where('collection_name', self::HELP_FILES_COLLECTION);
     }
 
-    public function getFinalFiles(): MediaCollection
+    public function finalFiles()
     {
-        return $this->media->filter(fn (Media $media) => $media->collection_name === self::FINAL_FILES_COLLECTION);
+        return $this->media()->where('collection_name', self::FINAL_FILES_COLLECTION);
     }
 
     /** @throws Throwable */
