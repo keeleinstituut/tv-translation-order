@@ -94,13 +94,10 @@ use OpenApi\Attributes as OA;
             'client_institution_user' => InstitutionUserResource::make($this->whenLoaded('clientInstitutionUser')),
             'type_classifier_value' => ClassifierValueResource::make($this->whenLoaded('typeClassifierValue')),
             'translation_domain_classifier_value' => ClassifierValueResource::make($this->whenLoaded('translationDomainClassifierValue')),
-//            'sub_project_ids' => $this->subProjects->modelKeys(),
             'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
             'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
             'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
-//            'source_language_classifier_value' => ClassifierValueResource::make($this->getSourceLanguageClassifierValue()),
-//            'destination_language_classifier_values' => ClassifierValueResource::collection($this->getDestinationLanguageClassifierValues()),
             'cost' => $this->computeCost(),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
         ];

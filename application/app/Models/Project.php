@@ -165,6 +165,27 @@ class Project extends Model implements HasMedia
         return $this->media()->where('collection_name', self::FINAL_FILES_COLLECTION);
     }
 
+    public function managerInstitutionUser(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionUser::class, 'manager_institution_user_id');
+    }
+
+    public function clientInstitutionUser(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionUser::class, 'client_institution_user_id');
+    }
+
+    public function tags(): MorphToMany
+    {
+        return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
+    }
+
+    public function computeCost(): null
+    {
+        // TODO: Compute cost of project (derived from workflow/subproject/task data)
+        return null;
+    }
+
     /** @throws Throwable */
     public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages): void
     {
@@ -183,37 +204,6 @@ class Project extends Model implements HasMedia
 
             $subProject->initAssignments();
         });
-    }
-
-    public function managerInstitutionUser(): BelongsTo
-    {
-        return $this->belongsTo(InstitutionUser::class, 'manager_institution_user_id');
-    }
-
-    public function clientInstitutionUser(): BelongsTo
-    {
-        return $this->belongsTo(InstitutionUser::class, 'client_institution_user_id');
-    }
-
-    public function tags(): MorphToMany
-    {
-        return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
-    }
-
-    public function getSourceLanguageClassifierValue(): ?ClassifierValue
-    {
-        return $this->subProjects->first()?->sourceLanguageClassifierValue;
-    }
-
-    public function getDestinationLanguageClassifierValues(): Collection
-    {
-        return $this->subProjects->map(fn (SubProject $subProject) => $subProject->destinationLanguageClassifierValue);
-    }
-
-    public function computeCost(): null
-    {
-        // TODO: Compute cost of project (derived from workflow/subproject/task data)
-        return null;
     }
 
     /**

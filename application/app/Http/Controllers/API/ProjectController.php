@@ -204,7 +204,6 @@ class ProjectController extends Controller
     public function show(string $id): ProjectResource
     {
         $project = static::getBaseQuery()->with([
-            'media',
             'managerInstitutionUser',
             'clientInstitutionUser',
             'typeClassifierValue',
