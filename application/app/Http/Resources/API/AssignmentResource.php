@@ -63,7 +63,7 @@ class AssignmentResource extends JsonResource
                 'updated_at',
             ),
             'assignee' => VendorResource::make($this->assignee),
-            'candidates' => VendorResource::collection($this->candidates),
+            'candidates' => CandidateResource::collection($this->candidates),
             'volumes' => VolumeResource::collection($this->volumes),
             'jobs' => CatToolJobResource::collection($this->catToolJobs),
         ];

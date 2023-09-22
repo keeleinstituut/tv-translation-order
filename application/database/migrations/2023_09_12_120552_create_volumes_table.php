@@ -18,8 +18,8 @@ return new class extends Migration
             $table->unsignedDecimal('unit_quantity');
             $table->unsignedDecimal('unit_fee')->nullable();
             $table->foreignUuid('cat_tool_job_id')->nullable()->constrained('cat_tool_jobs');
+            $table->json('discounts')->default('{}');
             $table->json('custom_volume_analysis')->default('{}');
-            $table->json('custom_discounts')->default('{}');
             $table->timestampsTz();
             $table->softDeletesTz();
         });

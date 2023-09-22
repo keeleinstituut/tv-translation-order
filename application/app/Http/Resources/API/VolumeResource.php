@@ -19,7 +19,7 @@ use OpenApi\Attributes as OA;
         'unit_quantity',
         'unit_fee',
         'custom_volume_analysis',
-        'custom_discounts',
+        'discounts',
         'created_at',
         'updated_at',
     ],

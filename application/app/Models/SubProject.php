@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
+use App\Services\Prices\PriceCalculator;
+use App\Services\Prices\SubProjectPriceCalculator;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -31,6 +33,7 @@ use Throwable;
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
  * @property ArrayObject|null $cat_metadata
+ * @property float|null $price
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
@@ -71,6 +74,7 @@ class SubProject extends Model
 
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
+        'price' => 'float'
     ];
 
     public function project()
@@ -133,5 +137,10 @@ class SubProject extends Model
     public function cat(): CatToolService
     {
         return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
+    }
+
+    public function getPriceCalculator(): PriceCalculator
+    {
+        return new SubProjectPriceCalculator($this);
     }
 }

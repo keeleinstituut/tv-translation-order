@@ -6,6 +6,8 @@ use App\Enums\ProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Services\Prices\PriceCalculator;
+use App\Services\Prices\ProjectPriceCalculator;
 use App\Services\WorkflowProcessInstanceService;
 use Database\Factories\ProjectFactory;
 use Eloquent;
@@ -35,6 +37,7 @@ use Throwable;
  * @property string|null $comments
  * @property string|null $workflow_template_id
  * @property string|null $workflow_instance_ref
+ * @property float|null $price
  * @property Carbon|null $deadline_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -116,6 +119,7 @@ class Project extends Model implements HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'price' => 'float',
         'status' => ProjectStatus::class,
     ];
 
@@ -210,12 +214,6 @@ class Project extends Model implements HasMedia
         return $this->subProjects->map(fn (SubProject $subProject) => $subProject->destinationLanguageClassifierValue);
     }
 
-    public function computeCost(): null
-    {
-        // TODO: Compute cost of project (derived from workflow/subproject/task data)
-        return null;
-    }
-
     /**
      * @noinspection PhpUnused
      *
@@ -233,5 +231,10 @@ class Project extends Model implements HasMedia
                 }
             );
         });
+    }
+
+    public function getPriceCalculator(): PriceCalculator
+    {
+        return new ProjectPriceCalculator($this);
     }
 }

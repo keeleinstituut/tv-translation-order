@@ -80,6 +80,16 @@ Route::prefix('/volumes')
         Route::delete('/{id}', 'destroy');
     });
 
+Route::prefix('/assignments')
+    ->controller(API\AssignmentController::class)->group(function (): void {
+        Route::get('/', 'index');
+        Route::get('/{id}', 'show');
+        Route::post('/cat-tool', 'storeCatToolVolume');
+        Route::put('/{id}', 'update');
+        Route::put('/cat-tool/{id}', 'updateCatToolVolume');
+        Route::delete('/{id}', 'destroy');
+    });
+
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
 Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);

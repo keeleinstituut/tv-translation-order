@@ -23,6 +23,7 @@ class SubProjectResource extends JsonResource
             ...collect(parent::toArray($request))
                 ->except('cat_metadata')
                 ->toArray(),
+            'price' => $this->price,
             'features' => $this->project->typeClassifierValue->projectTypeConfig->features,
             'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
             'cat_jobs' => CatToolJobResource::collection($this->catToolJobs),

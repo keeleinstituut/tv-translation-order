@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property string $unit_quantity
  * @property string $unit_fee
  * @property array|null $custom_volume_analysis
- * @property array|null $custom_discounts
+ * @property array|null $discounts
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -63,7 +63,8 @@ class Volume extends Model
     protected $casts = [
         'unit_type' => VolumeUnits::class,
         'custom_volume_analysis' => AsArrayObject::class,
-        'custom_discounts' => AsArrayObject::class,
+        'discounts' => AsArrayObject::class,
+        'unit_fee' => 'float'
     ];
 
     public function assignment(): BelongsTo
@@ -76,40 +77,16 @@ class Volume extends Model
         return $this->belongsTo(CatToolJob::class, 'cat_tool_job_id');
     }
 
-    public function getDiscount(?Vendor $assignee = null): ?VolumeAnalysisDiscount
+    public function getDiscount(): VolumeAnalysisDiscount
     {
-        if (empty($this->cat_tool_job_id)) {
-            return null;
-        }
-
-        $assignee = $assignee ?: $this->assignment->assignee;
-        if (filled($assignee)) {
-            return new VolumeAnalysisDiscount(
-                array_merge($this->assignment->assignee?->only(
-                    'discount_percentage_101',
-                    'discount_percentage_repetitions',
-                    'discount_percentage_100',
-                    'discount_percentage_95_99',
-                    'discount_percentage_85_94',
-                    'discount_percentage_75_84',
-                    'discount_percentage_50_74',
-                    'discount_percentage_0_49'
-                ) ?: [], (array) $this->custom_discounts)
-            );
+        // After confirmation that the vendor will work on the task his discounts will be set to
+        // Volume->discounts to prevent price override after changing of the vendor discounts.
+        if (filled($this->discounts)) {
+            return new VolumeAnalysisDiscount((array) $this->discounts);
         }
 
         // TODO: use institution discounts in case if vendor is not assigned
-        return new VolumeAnalysisDiscount(array_merge([
-            'discount_percentage_101' => 0,
-            'discount_percentage_repetitions' => 0,
-            'discount_percentage_100' => 0,
-            'discount_percentage_95_99' => 0,
-            'discount_percentage_85_94' => 0,
-            'discount_percentage_75_84' => 0,
-            'discount_percentage_50_74' => 0,
-            'discount_percentage_0_49' => 0,
-        ], (array) $this->custom_discounts)
-        );
+        return new VolumeAnalysisDiscount([]);
     }
 
     public function getVolumeAnalysis(): ?VolumeAnalysis
@@ -119,8 +96,8 @@ class Volume extends Model
         }
 
         return new VolumeAnalysis(array_merge(
-            (array) $this->catToolJob->volume_analysis,
-            (array) $this->custom_volume_analysis
+            (array)$this->catToolJob->volume_analysis,
+            (array)$this->custom_volume_analysis
         ));
     }
 }

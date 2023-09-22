@@ -116,6 +116,7 @@ class Vendor extends Model
 
     public function getDiscount(): VolumeAnalysisDiscount
     {
+        // TODO: add merging vendor discounts with institution discounts to use them in case of empty vendor discounts
         return new VolumeAnalysisDiscount($this->only([
             'discount_percentage_101',
             'discount_percentage_repetitions',
@@ -126,5 +127,23 @@ class Vendor extends Model
             'discount_percentage_50_74',
             'discount_percentage_0_49',
         ]));
+    }
+
+    /**
+     * TODO: add filtering by the skill
+     *
+     * @param $sourceLanguageId
+     * @param $destinationLanguageId
+     * @return Price|null
+     */
+    public function getPrice($sourceLanguageId, $destinationLanguageId): ?Price
+    {
+        return $this->prices()->where(
+            'src_lang_classifier_value_id',
+            $sourceLanguageId
+        )->where(
+            'dst_lang_classifier_value_id',
+            $destinationLanguageId
+        )->first();
     }
 }

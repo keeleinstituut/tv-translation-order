@@ -15,12 +15,12 @@ use OpenApi\Attributes as OA;
         required: [
             'unit_fee',
             'custom_volume_analysis',
-            'custom_discounts',
+            'discounts',
         ],
         properties: [
             new OA\Property(property: 'unit_fee', type: 'number', format: 'double', minimum: 0),
             new OA\Property(property: 'custom_volume_analysis', ref: VolumeAnalysisResource::class),
-            new OA\Property(property: 'custom_discounts', ref: VolumeAnalysisDiscountResource::class),
+            new OA\Property(property: 'discounts', ref: VolumeAnalysisDiscountResource::class),
         ]
     )
 )]
@@ -46,14 +46,14 @@ class CatToolVolumeUpdateRequest extends FormRequest
             'custom_volume_analysis.tm_75_84' => $unitQualityRule,
             'custom_volume_analysis.tm_50_74' => $unitQualityRule,
             'custom_volume_analysis.tm_0_49' => $unitQualityRule,
-            'custom_discounts.discount_percentage_101' => $percentageRule,
-            'custom_discounts.discount_percentage_repetitions' => $percentageRule,
-            'custom_discounts.discount_percentage_100' => $percentageRule,
-            'custom_discounts.discount_percentage_95_99' => $percentageRule,
-            'custom_discounts.discount_percentage_85_94' => $percentageRule,
-            'custom_discounts.discount_percentage_75_84' => $percentageRule,
-            'custom_discounts.discount_percentage_50_74' => $percentageRule,
-            'custom_discounts.discount_percentage_0_49' => $percentageRule,
+            'discounts.discount_percentage_101' => $percentageRule,
+            'discounts.discount_percentage_repetitions' => $percentageRule,
+            'discounts.discount_percentage_100' => $percentageRule,
+            'discounts.discount_percentage_95_99' => $percentageRule,
+            'discounts.discount_percentage_85_94' => $percentageRule,
+            'discounts.discount_percentage_75_84' => $percentageRule,
+            'discounts.discount_percentage_50_74' => $percentageRule,
+            'discounts.discount_percentage_0_49' => $percentageRule,
         ];
     }
 }

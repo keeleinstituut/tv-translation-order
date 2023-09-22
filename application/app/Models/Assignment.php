@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Prices\AssigneePriceCalculator;
 use Database\Factories\AssignmentFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;

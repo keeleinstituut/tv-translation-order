@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Assignment;
+use App\Models\Volume;
 
 class AssignmentObserver
 {
@@ -32,7 +33,7 @@ class AssignmentObserver
      */
     public function created(Assignment $assignment): void
     {
-        //
+        $this->updateVolumesAssigneeFields($assignment);
     }
 
     /**
@@ -40,7 +41,7 @@ class AssignmentObserver
      */
     public function updated(Assignment $assignment): void
     {
-        //
+        $this->updateVolumesAssigneeFields($assignment);
     }
 
     /**
@@ -65,5 +66,33 @@ class AssignmentObserver
     public function forceDeleted(Assignment $assignment): void
     {
         //
+    }
+
+    private function updateVolumesAssigneeFields(Assignment $assignment): void
+    {
+        if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
+            if (empty($assignment->volumes)) {
+                return;
+            }
+
+            Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
+                $volume->discounts = $assignment->assignee->getDiscount();
+                $volume->custom_volume_analysis = [];
+                $volume->unit_fee = $assignment->assignee->getPrice(
+                    $assignment->subProject->source_language_classifier_value_id,
+                    $assignment->subProject->destination_language_classifier_value_id
+                )?->getUnitFee($volume->unit_type);
+
+                $volume->save();
+            }));
+
+            $subProject = $assignment->subProject;
+            $subProject->price = $subProject->getPriceCalculator()->getPrice();
+            $subProject->save();
+
+            $project = $subProject->project;
+            $project->price = $project->getPriceCalculator()->getPrice();
+            $project->save();
+        }
     }
 }

@@ -73,29 +73,6 @@ class AssignmentController extends Controller
         //
     }
 
-    /**
-     * @throws AuthorizationException
-     */
-    public function indexVolumes(string $assignmentId): ResourceCollection
-    {
-        $assignment = static::getBaseQuery()->with('volumes')->findOrFail($assignmentId);
-        $this->authorize('viewVolumes', $assignment);
-
-        return VolumeResource::collection($assignment->volumes);
-    }
-
-    /**
-     * @throws AuthorizationException
-     */
-    public function showVolume(string $volumeId): VolumeResource
-    {
-        $volume = static::getBaseQuery()->volumes()->with('assignment')->findOrFail($volumeId);
-        $this->authorize('viewVolume', $volume->assignment);
-
-        return VolumeResource::make($volume);
-
-    }
-
     private static function getBaseQuery(): Assignment|Builder
     {
         return Assignment::getModel()->withGlobalScope('policy', AssignmentPolicy::scope());

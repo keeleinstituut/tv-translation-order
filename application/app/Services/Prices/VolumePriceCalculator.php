@@ -7,8 +7,8 @@ use App\Models\Volume;
 
 class VolumePriceCalculator implements PriceCalculator
 {
-    private ?VolumeAnalysisDiscount $discount;
-    private float $unitFee;
+    private ?VolumeAnalysisDiscount $discount = null;
+    private ?float $unitFee = null;
 
     public function __construct(readonly private Volume $volume)
     {
