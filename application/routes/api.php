@@ -64,11 +64,10 @@ Route::prefix('/cat-tool')
         Route::post('/setup', 'setup');
         Route::post('/split', 'split');
         Route::post('/merge', 'merge');
-        Route::get('/jobs/{subProjectId}', 'jobsIndex');
-        Route::get('/volume-analysis/{subProjectId}', 'volumeAnalysis');
-        Route::get('/download-xliff/{subProjectId}', 'downloadXLIFFs');
-        Route::get('/download-translated/{subProjectId}', 'downloadTranslations');
-        Route::get('/download-volume-analysis/{subProjectId}', 'downloadVolumeAnalysisReport');
+        Route::get('/jobs/{sub_project_id}', 'jobsIndex');
+        Route::get('/download-xliff/{sub_project_id}', 'downloadXLIFFs');
+        Route::get('/download-translated/{sub_project_id}', 'downloadTranslations');
+        Route::get('/download-volume-analysis/{sub_project_id}', 'downloadVolumeAnalysisReport');
     });
 
 Route::prefix('/volumes')
