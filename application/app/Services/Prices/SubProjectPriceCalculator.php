@@ -14,7 +14,8 @@ readonly class SubProjectPriceCalculator implements PriceCalculator
     public function getPrice(): ?float
     {
         $prices = $this->subProject->assignments->map(function (Assignment $assignment) {
-           return (new AssigneePriceCalculator($assignment))->getPrice();
+            return $assignment->getPriceCalculator()
+                ->getPrice();
         });
 
         if ($prices->search(null) === false) {

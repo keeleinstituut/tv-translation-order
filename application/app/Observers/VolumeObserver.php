@@ -6,13 +6,12 @@ use App\Models\Volume;
 
 class VolumeObserver
 {
-
     public function creating(Volume $volume): void
     {
         $assignee = $volume->assignment->assignee;
         if (filled($assignee)) {
             if (empty($volume->unit_fee)) {
-                $volume->unit_fee = $assignee->getPrice(
+                $volume->unit_fee = $assignee->getPriceList(
                     $volume->assignment->subProject->source_language_classifier_value_id,
                     $volume->assignment->subProject->destination_language_classifier_value_id,
                 )?->getUnitFee($volume->unit_type);

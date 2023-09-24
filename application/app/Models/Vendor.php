@@ -131,12 +131,8 @@ class Vendor extends Model
 
     /**
      * TODO: add filtering by the skill
-     *
-     * @param $sourceLanguageId
-     * @param $destinationLanguageId
-     * @return Price|null
      */
-    public function getPrice($sourceLanguageId, $destinationLanguageId): ?Price
+    public function getPriceList($sourceLanguageId, $destinationLanguageId): ?Price
     {
         return $this->prices()->where(
             'src_lang_classifier_value_id',

@@ -75,14 +75,12 @@ class AssignmentObserver
                 return;
             }
 
-            Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
+            Volume::withoutEvents(fn () => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
                 $volume->discounts = $assignment->assignee->getDiscount();
-                $volume->custom_volume_analysis = [];
-                $volume->unit_fee = $assignment->assignee->getPrice(
+                $volume->unit_fee = $assignment->assignee->getPriceList(
                     $assignment->subProject->source_language_classifier_value_id,
                     $assignment->subProject->destination_language_classifier_value_id
                 )?->getUnitFee($volume->unit_type);
-
                 $volume->save();
             }));
 

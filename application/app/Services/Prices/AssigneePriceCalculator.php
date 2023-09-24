@@ -3,6 +3,7 @@
 namespace App\Services\Prices;
 
 use App\Models\Assignment;
+use App\Models\Price;
 use App\Models\Volume;
 
 readonly class AssigneePriceCalculator implements PriceCalculator
@@ -18,13 +19,23 @@ readonly class AssigneePriceCalculator implements PriceCalculator
         }
 
         $prices = $this->assignment->volumes->map(function (Volume $volume) {
-            return (new VolumePriceCalculator($volume))->getPrice();
+            return $volume->getPriceCalculator()->getPrice();
         });
 
         if ($prices->search(null) === false) {
-            return $prices->sum();
+            $priceList = $this->getPriceList();
+
+            return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }
 
         return null;
+    }
+
+    private function getPriceList(): ?Price
+    {
+        return $this->assignment->assignee?->getPriceList(
+            $this->assignment->subProject->source_language_classifier_value_id,
+            $this->assignment->subProject->destination_language_classifier_value_id,
+        );
     }
 }

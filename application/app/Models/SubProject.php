@@ -74,7 +74,7 @@ class SubProject extends Model
 
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
-        'price' => 'float'
+        'price' => 'float',
     ];
 
     public function project()
