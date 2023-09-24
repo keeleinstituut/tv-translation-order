@@ -6,7 +6,6 @@ use App\Models\Project;
 
 readonly class ProjectPriceCalculator implements PriceCalculator
 {
-
     public function __construct(private Project $project)
     {
     }

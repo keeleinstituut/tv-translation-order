@@ -8,6 +8,7 @@ use App\Models\Volume;
 class VolumePriceCalculator implements PriceCalculator
 {
     private ?VolumeAnalysisDiscount $discount = null;
+
     private ?float $unitFee = null;
 
     public function __construct(readonly private Volume $volume)
@@ -30,12 +31,14 @@ class VolumePriceCalculator implements PriceCalculator
     public function setDiscount(?VolumeAnalysisDiscount $discount): static
     {
         $this->discount = $discount;
+
         return $this;
     }
 
     public function setUnitFee(?float $unitFee): static
     {
         $this->unitFee = $unitFee;
+
         return $this;
     }
 
@@ -45,7 +48,7 @@ class VolumePriceCalculator implements PriceCalculator
         $discount = $this->getDiscount();
 
         return array_sum(
-            array_map(fn($item) => $item * $this->getUnitFee(), [
+            array_map(fn ($item) => $item * $this->getUnitFee(), [
                 $volumeAnalysis->tm_101 * (100 - $discount->discount_percentage_101) / 100,
                 $volumeAnalysis->tm_100 * (100 - $discount->discount_percentage_100) / 100,
                 $volumeAnalysis->tm_95_99 * (100 - $discount->discount_percentage_95_99) / 100,

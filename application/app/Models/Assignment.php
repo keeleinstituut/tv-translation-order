@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Prices\AssigneePriceCalculator;
+use App\Services\Prices\PriceCalculator;
 use Database\Factories\AssignmentFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
@@ -81,5 +82,10 @@ class Assignment extends Model
     {
         return $this->belongsToMany(CatToolJob::class, AssignmentCatToolJob::class)
             ->using(AssignmentCatToolJob::class);
+    }
+
+    public function getPriceCalculator(): PriceCalculator
+    {
+        return new AssigneePriceCalculator($this);
     }
 }

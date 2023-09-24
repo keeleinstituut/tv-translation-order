@@ -2,8 +2,8 @@
 
 namespace App\Services\Prices;
 
-use App\Enums\VolumeUnits;
 use App\Models\Assignment;
+use App\Models\Price;
 use App\Models\Vendor;
 use App\Models\Volume;
 
@@ -19,26 +19,26 @@ readonly class CandidatePriceCalculator implements PriceCalculator
             return null;
         }
 
-
-        $prices = $this->assignment->volumes->map(function (Volume $volume) {
-            return (new VolumePriceCalculator($volume))
-                ->setUnitFee($this->getUnitFee($volume->unit_type))
+        $priceList = $this->getPriceList();
+        $prices = $this->assignment->volumes->map(function (Volume $volume) use ($priceList) {
+            return $volume->getPriceCalculator()
+                ->setUnitFee($priceList?->getUnitFee($volume->unit_type))
                 ->setDiscount($this->candidate->getDiscount())
                 ->getPrice();
         });
 
         if ($prices->search(null) === false) {
-            return $prices->sum();
+            return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }
 
         return null;
     }
 
-    private function getUnitFee(VolumeUnits $volumeUnit): ?float
+    private function getPriceList(): ?Price
     {
-        return $this->candidate->getPrice(
+        return $this->candidate->getPriceList(
             $this->assignment->subProject->source_language_classifier_value_id,
             $this->assignment->subProject->destination_language_classifier_value_id,
-        )?->getUnitFee($volumeUnit);
+        );
     }
 }

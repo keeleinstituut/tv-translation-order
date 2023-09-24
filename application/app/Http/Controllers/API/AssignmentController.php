@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\API\AssignmentResource;
-use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
 use App\Policies\AssignmentPolicy;
 use Illuminate\Auth\Access\AuthorizationException;

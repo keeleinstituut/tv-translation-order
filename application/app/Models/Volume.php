@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\VolumeUnits;
 use App\Models\Dto\VolumeAnalysisDiscount;
 use App\Services\CatTools\VolumeAnalysis;
+use App\Services\Prices\VolumePriceCalculator;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsArrayObject;
@@ -64,7 +65,7 @@ class Volume extends Model
         'unit_type' => VolumeUnits::class,
         'custom_volume_analysis' => AsArrayObject::class,
         'discounts' => AsArrayObject::class,
-        'unit_fee' => 'float'
+        'unit_fee' => 'float',
     ];
 
     public function assignment(): BelongsTo
@@ -96,8 +97,13 @@ class Volume extends Model
         }
 
         return new VolumeAnalysis(array_merge(
-            (array)$this->catToolJob->volume_analysis,
-            (array)$this->custom_volume_analysis
+            (array) $this->catToolJob->volume_analysis,
+            (array) $this->custom_volume_analysis
         ));
+    }
+
+    public function getPriceCalculator(): VolumePriceCalculator
+    {
+        return new VolumePriceCalculator($this);
     }
 }
