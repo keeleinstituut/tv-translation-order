@@ -22,7 +22,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'name', type: 'string'),
         new OA\Property(property: 'progress_percentage', type: 'integer'),
         new OA\Property(property: 'translate_url', type: 'string', format: 'url'),
-        new OA\Property(property: 'volume_analysis', ref: VolumeAnalysisResource::class, nullable: true),
     ],
     type: 'object'
 )]
@@ -42,7 +41,6 @@ class CatToolJobResource extends JsonResource
                 'progress_percentage',
                 'translate_url',
             ]),
-            'volume_analysis' => VolumeAnalysisResource::make($this->getVolumeAnalysis()),
         ];
     }
 }
