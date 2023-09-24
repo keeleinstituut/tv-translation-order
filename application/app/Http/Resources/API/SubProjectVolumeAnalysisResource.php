@@ -22,7 +22,7 @@ use OpenApi\Attributes as OA;
     ],
     type: 'object'
 )]
-class SubProjectCatToolVolumeAnalysisResource extends JsonResource
+class SubProjectVolumeAnalysisResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

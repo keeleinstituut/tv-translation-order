@@ -8,7 +8,7 @@ use App\Http\Requests\API\CatToolMergeRequest;
 use App\Http\Requests\API\CatToolSetupRequest;
 use App\Http\Requests\API\CatToolSplitRequest;
 use App\Http\Resources\API\CatToolJobResource;
-use App\Http\Resources\API\SubProjectCatToolVolumeAnalysisResource;
+use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
@@ -99,17 +99,17 @@ class CatToolController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/cat-tool/jobs/{subProjectId}',
+        path: '/cat-tool/jobs/{sub_project_id}',
         summary: 'List CAT tool jobs of specified sub-project',
         tags: ['CAT tool'],
-        parameters: [new OAH\UuidPath('subProjectId')],
+        parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\CollectionResponse(itemsRef: CatToolJobResource::class, description: 'CAT tool jobs')]
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool setup is in progress, retry request in a few seconds')]
     public function jobsIndex(Request $request): AnonymousResourceCollection|Response
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
         try {
@@ -127,34 +127,34 @@ class CatToolController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/cat-tool/volume-analysis/{subProjectId}',
+        path: '/cat-tool/volume-analysis/{sub_project_id}',
         summary: 'List CAT tool jobs volume analysis of specified sub-project',
         tags: ['CAT tool'],
-        parameters: [new OAH\UuidPath('subProjectId')],
+        parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: SubProjectCatToolVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
+    #[OAH\CollectionResponse(itemsRef: SubProjectVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
-    public function volumeAnalysis(Request $request): SubProjectCatToolVolumeAnalysisResource|Response
+    public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource|Response
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
         if (! $subProject->cat()->isAnalyzed()) {
             return response()->noContent();
         }
 
-        return new SubProjectCatToolVolumeAnalysisResource($subProject);
+        return new SubProjectVolumeAnalysisResource($subProject);
     }
 
     /**
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/cat-tool/download-xliff/{subProjectId}',
+        path: '/cat-tool/download-xliff/{sub_project_id}',
         summary: 'Download xliff files of sub-project',
         tags: ['CAT tool'],
-        parameters: [new OAH\UuidPath('subProjectId')],
+        parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(
@@ -167,7 +167,7 @@ class CatToolController extends Controller
     )]
     public function downloadXLIFFs(Request $request): StreamedResponse
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('downloadXliff', $subProject);
 
         $file = $subProject->cat()->getDownloadableXLIFFsFile();
@@ -181,10 +181,10 @@ class CatToolController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/cat-tool/download-translated/{subProjectId}',
+        path: '/cat-tool/download-translated/{sub_project_id}',
         summary: 'Download translated files of sub-project',
         tags: ['CAT tool'],
-        parameters: [new OAH\UuidPath('subProjectId')],
+        parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(
@@ -197,7 +197,7 @@ class CatToolController extends Controller
     )]
     public function downloadTranslations(Request $request): StreamedResponse
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('downloadTranslations', $subProject);
 
         $file = $subProject->cat()->getDownloadableTranslationsFile();
@@ -211,10 +211,10 @@ class CatToolController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/cat-tool/download-volume-analysis/{subProjectId}',
+        path: '/cat-tool/download-volume-analysis/{sub_project_id}',
         summary: 'Download .txt file with CAT tool volume analysis for the sub-project',
         tags: ['CAT tool'],
-        parameters: [new OAH\UuidPath('subProjectId')],
+        parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(
@@ -228,7 +228,7 @@ class CatToolController extends Controller
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
     public function downloadVolumeAnalysisReport(Request $request): StreamedResponse|Response
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
         if (! $subProject->cat()->isAnalyzed()) {
@@ -245,6 +245,6 @@ class CatToolController extends Controller
     private function getSubProject(string $subProjectId): SubProject
     {
         return SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-            ->find($subProjectId) ?? abort(404);
+            ->findOrFail($subProjectId);
     }
 }

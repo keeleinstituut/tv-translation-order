@@ -34,11 +34,13 @@ class CatToolJobResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return $this->only([
-            'id',
-            'name',
-            'progress_percentage',
-            'translate_url',
-        ]);
+        return [
+            ...$this->only([
+                'id',
+                'name',
+                'progress_percentage',
+                'translate_url',
+            ]),
+        ];
     }
 }

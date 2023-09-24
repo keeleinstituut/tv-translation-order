@@ -32,7 +32,6 @@ class CatToolJobVolumeAnalysisResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-
         return [
             ...$this->only([
                 'id',
