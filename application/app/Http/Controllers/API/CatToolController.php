@@ -8,6 +8,7 @@ use App\Http\Requests\API\CatToolMergeRequest;
 use App\Http\Requests\API\CatToolSetupRequest;
 use App\Http\Requests\API\CatToolSplitRequest;
 use App\Http\Resources\API\CatToolJobResource;
+use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
@@ -108,7 +109,7 @@ class CatToolController extends Controller
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool setup is in progress, retry request in a few seconds')]
     public function jobsIndex(Request $request): AnonymousResourceCollection|Response
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
         try {
@@ -120,6 +121,30 @@ class CatToolController extends Controller
         }
 
         return CatToolJobResource::collection($subProject->catToolJobs);
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Get(
+        path: '/cat-tool/volume-analysis/{sub_project_id}',
+        summary: 'List CAT tool jobs volume analysis of specified sub-project',
+        tags: ['CAT tool'],
+        parameters: [new OAH\UuidPath('sub_project_id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: SubProjectVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
+    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
+    public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource|Response
+    {
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
+        $this->authorize('manageCatTool', $subProject);
+
+        if (! $subProject->cat()->isAnalyzed()) {
+            return response()->noContent();
+        }
+
+        return new SubProjectVolumeAnalysisResource($subProject);
     }
 
     /**
@@ -142,7 +167,7 @@ class CatToolController extends Controller
     )]
     public function downloadXLIFFs(Request $request): StreamedResponse
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('downloadXliff', $subProject);
 
         $file = $subProject->cat()->getDownloadableXLIFFsFile();
@@ -186,7 +211,7 @@ class CatToolController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/cat-tool/download-volume-analysis/{subProjectId}',
+        path: '/cat-tool/download-volume-analysis/{sub_project_id}',
         summary: 'Download .txt file with CAT tool volume analysis for the sub-project',
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('sub_project_id')],
@@ -203,7 +228,7 @@ class CatToolController extends Controller
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
     public function downloadVolumeAnalysisReport(Request $request): StreamedResponse|Response
     {
-        $subProject = $this->getSubProject($request->route('subProjectId'));
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
         if (! $subProject->cat()->isAnalyzed()) {

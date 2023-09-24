@@ -35,7 +35,7 @@ use OpenApi\Attributes as OA;
     ],
     type: 'object'
 )]
-class CatVolumeAnalysisResource extends JsonResource
+class VolumeAnalysisResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
