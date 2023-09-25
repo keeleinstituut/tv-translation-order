@@ -53,14 +53,12 @@ Route::get('/projects', [API\ProjectController::class, 'index']);
 Route::post('/projects', [API\ProjectController::class, 'store']);
 Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
 
-Route::get('/assignments', [API\AssignmentController::class, 'index']);
-Route::put('/assignments/{id}', [API\AssignmentController::class, 'update']);
-
 Route::get('/subprojects', [API\SubProjectController::class, 'index']);
 Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
 
 Route::prefix('/cat-tool')
-    ->controller(API\CatToolController::class)->group(function (): void {
+    ->controller(API\CatToolController::class)
+    ->whereUuid('sub_project_id')->group(function (): void {
         Route::post('/setup', 'setup');
         Route::post('/split', 'split');
         Route::post('/merge', 'merge');
@@ -72,7 +70,8 @@ Route::prefix('/cat-tool')
     });
 
 Route::prefix('/volumes')
-    ->controller(API\VolumeController::class)->group(function (): void {
+    ->controller(API\VolumeController::class)
+    ->whereUuid('id')->group(function (): void {
         Route::post('/', 'store');
         Route::post('/cat-tool', 'storeCatToolVolume');
         Route::put('/{id}', 'update');
@@ -81,14 +80,15 @@ Route::prefix('/volumes')
     });
 
 Route::prefix('/assignments')
-    ->controller(API\AssignmentController::class)->group(function (): void {
-        Route::get('/', 'index');
-        Route::get('/{id}', 'show');
+    ->controller(API\AssignmentController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::get('/{sub_project_id}', 'index');
         Route::post('link-cat-tool-jobs', 'linkToCatToolJobs');
-        Route::post('/cat-tool', 'storeCatToolVolume');
         Route::put('/{id}', 'update');
-        Route::put('/cat-tool/{id}', 'updateCatToolVolume');
+        Route::put('/{id}/assignee-comment', 'updateAssigneeComment');
+        Route::put('/{id}/add-candidates', 'addCandidates');
         Route::delete('/{id}', 'destroy');
+        Route::delete('/{id}/delete-candidate', 'deleteCandidate');
     });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);

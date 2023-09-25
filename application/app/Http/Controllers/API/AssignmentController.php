@@ -2,16 +2,23 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\Feature;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\AssignmentAddCandidatesRequest;
 use App\Http\Requests\API\AssignmentCatToolJobBulkLinkRequest;
+use App\Http\Requests\API\AssignmentCreateRequest;
+use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
+use App\Http\Requests\API\AssignmentListRequest;
+use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
+use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
 use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
+use App\Models\Candidate;
 use App\Policies\AssignmentPolicy;
 use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -21,23 +28,35 @@ use OpenApi\Attributes as OA;
 class AssignmentController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     *
      * @throws AuthorizationException
      */
-    public function index(Request $request): ResourceCollection
+    #[OA\Get(
+        path: '/assignments/{sub_project_id}',
+        description: 'Endpoint that returns list of assignments of the sub-project with filtering by `feature`',
+        summary: 'list of assignments of the sub-project with filtering by `feature`',
+        parameters: [
+            new OAH\UuidPath('sub_project_id'),
+            new OA\QueryParameter(name: 'feature', schema: new OA\Schema(type: 'string', enum: Feature::class)),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'Filtered assignments of current sub-project')]
+    public function index(AssignmentListRequest $request): ResourceCollection
     {
-        $this->authorize('viewAny', Assignment::class);
+        //$this->authorize('viewAny', Assignment::class);
 
         $data = static::getBaseQuery()->where(
             'sub_project_id',
-            $request->route('subProjectId')
+            $request->route('sub_project_id')
+        )->when(
+            $request->validated('feature'),
+            fn(Builder $query, string $feature) => $query->where('feature', $feature)
         )->with(
             'candidates.vendor.institutionUser',
-            'assignee.vendor.institutionUser',
+            'assignee.institutionUser',
             'volumes',
             'catToolJobs'
-        );
+        )->get();
 
         return AssignmentResource::collection($data);
     }
@@ -46,8 +65,8 @@ class AssignmentController extends Controller
      * @throws Throwable
      */
     #[OA\Post(
-        path: '/link-cat-tool-jobs',
-        summary: 'Create/delete relations between CAT tool jobs and assignments (XLIFF assignment tab)',
+        path: '/assignments/link-cat-tool-jobs',
+        summary: 'Create/delete relations between CAT tool jobs and assignments (XLIFF assignment tab). Please note that not passed relations will be removed.',
         requestBody: new OAH\RequestBody(AssignmentCatToolJobBulkLinkRequest::class),
         tags: ['Assignment management'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -83,40 +102,149 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * @throws Throwable
      */
-    public function store(Request $request)
+    #[OA\Post(
+        path: '/assignments',
+        summary: 'Create a new assignment',
+        requestBody: new OAH\RequestBody(AssignmentCreateRequest::class),
+        tags: ['Assignment management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Created assignment', response: Response::HTTP_CREATED)]
+    public function store(AssignmentCreateRequest $request): AssignmentResource
     {
-        // create assignment under subproject?
+        return DB::transaction(function () use ($request) {
+            $assignment = new Assignment();
+            $assignment->fill($request->validated());
+            $assignment->save();
+
+            return AssignmentResource::make($assignment);
+        });
+    }
+
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Put(
+        path: '/assignment/{id}',
+        summary: 'Update the assignment',
+        requestBody: new OAH\RequestBody(AssignmentUpdateRequest::class),
+        tags: ['Assignment management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
+    public function update(AssignmentUpdateRequest $request)
+    {
+        return DB::transaction(function () use ($request) {
+            $assignment = self::getAssignmentOrFail($request->route('id'));
+            $assignment->fill($request->validated());
+            $assignment->save();
+
+            return AssignmentResource::make($assignment);
+        });
     }
 
     /**
-     * Display the specified resource.
-     *
-     * @throws AuthorizationException
+     * @throws Throwable
      */
-    public function show(string $id): AssignmentResource
+    #[OA\Put(
+        path: '/assignment/{id}/assignee-comment',
+        summary: 'Update assignee comment for an assignment',
+        requestBody: new OAH\RequestBody(AssignmentUpdateAssigneeCommentRequest::class),
+        tags: ['Assignment management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
+    public function updateAssigneeComment(AssignmentUpdateAssigneeCommentRequest $request)
     {
-        $assignment = static::getBaseQuery()->findOrFail($id);
-        $this->authorize('view', $assignment);
+        return DB::transaction(function () use ($request) {
+            $assignment = self::getAssignmentOrFail($request->route('id'));
+            $assignment->fill($request->validated());
+            $assignment->save();
 
-        return AssignmentResource::make($assignment);
+            return AssignmentResource::make($assignment);
+        });
     }
 
     /**
-     * Update the specified resource in storage.
+     * @throws Throwable
      */
-    public function update(Request $request, string $id)
+    #[OA\Put(
+        path: '/assignment/{id}/add-candidates',
+        summary: 'Add assignment candidates',
+        requestBody: new OAH\RequestBody(AssignmentAddCandidatesRequest::class),
+        tags: ['Assignment management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
+    public function addCandidates(AssignmentAddCandidatesRequest $request)
     {
-        //
+        return DB::transaction(function () use ($request) {
+            $assignment = self::getAssignmentOrFail($request->route('id'));
+            $assignment->candidates()->saveMany(
+                collect($request->validated('candidates'))->map(
+                    fn(string $candidateId) => new Candidate([
+                        'vendor_id' => $candidateId
+                    ])
+                )
+            );
+
+            return AssignmentResource::make($assignment);
+        });
     }
 
     /**
-     * Remove the specified resource from storage.
+     * @throws Throwable
      */
-    public function destroy(string $id)
+    #[OA\Delete(
+        path: '/assignment/{id}/delete-candidate',
+        summary: 'Delete assignment candidate',
+        requestBody: new OAH\RequestBody(AssignmentDeleteCandidateRequest::class),
+        tags: ['Assignment management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
+    public function deleteCandidate(AssignmentDeleteCandidateRequest $request)
     {
-        //
+        return DB::transaction(function () use ($request) {
+            $assignment = self::getAssignmentOrFail($request->route('id'));
+            $assignment->candidates()->where('vendor_id', $request->validated('vendor_id'))
+                ->each(fn (Candidate $candidate) => $candidate->delete());
+
+            return AssignmentResource::make($assignment);
+        });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Delete(
+        path: '/assignment/{id}',
+        summary: 'Delete assignment',
+        tags: ['Assignment management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
+    public function destroy(string $id): \Illuminate\Http\Response
+    {
+        DB::transaction(function () use ($id) {
+            $assignment = self::getAssignmentOrFail($id);
+            $assignment->delete();
+        });
+
+        return response()->noContent();
+    }
+
+    private static function getAssignmentOrFail(string $id): Assignment
+    {
+        if (!$assignment = self::getBaseQuery()->find($id)) {
+            abort(404, 'Assignment not found by ID');
+        }
+
+        return $assignment;
     }
 
     private static function getBaseQuery(): Assignment|Builder
