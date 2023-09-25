@@ -84,6 +84,7 @@ Route::prefix('/assignments')
     ->controller(API\AssignmentController::class)->group(function (): void {
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
+        Route::post('link-cat-tool-jobs', 'linkToCatToolJobs');
         Route::post('/cat-tool', 'storeCatToolVolume');
         Route::put('/{id}', 'update');
         Route::put('/cat-tool/{id}', 'updateCatToolVolume');
