@@ -17,7 +17,6 @@ use OpenApi\Attributes as OA;
 )]
 class AssignmentUpdateAssigneeCommentRequest extends FormRequest
 {
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -26,7 +25,7 @@ class AssignmentUpdateAssigneeCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'assignee_comments' => ['required', 'string']
+            'assignee_comments' => ['required', 'string'],
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Enums\Feature;
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\AssignmentAddCandidatesRequest;
 use App\Http\Requests\API\AssignmentCatToolJobBulkLinkRequest;
 use App\Http\Requests\API\AssignmentCreateRequest;
@@ -15,15 +16,16 @@ use App\Http\Resources\API\AssignmentResource;
 use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
+use App\Models\SubProject;
 use App\Policies\AssignmentPolicy;
+use App\Policies\SubProjectPolicy;
 use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
-use App\Http\OpenApiHelpers as OAH;
-use OpenApi\Attributes as OA;
 
 class AssignmentController extends Controller
 {
@@ -43,14 +45,17 @@ class AssignmentController extends Controller
     #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'Filtered assignments of current sub-project')]
     public function index(AssignmentListRequest $request): ResourceCollection
     {
-        //$this->authorize('viewAny', Assignment::class);
+        $this->authorize('viewAny', [
+            Assignment::class,
+            self::getSubProjectOrFail($request->route('sub_project_id')),
+        ]);
 
         $data = static::getBaseQuery()->where(
             'sub_project_id',
             $request->route('sub_project_id')
         )->when(
             $request->validated('feature'),
-            fn(Builder $query, string $feature) => $query->where('feature', $feature)
+            fn (Builder $query, string $feature) => $query->where('feature', $feature)
         )->with(
             'candidates.vendor.institutionUser',
             'assignee.institutionUser',
@@ -74,6 +79,8 @@ class AssignmentController extends Controller
     #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'List of affected assignments', response: Response::HTTP_OK)]
     public function linkToCatToolJobs(AssignmentCatToolJobBulkLinkRequest $request)
     {
+        $this->authorize('update', self::getSubProjectOrFail($request->validated('sub_project_id')));
+
         return DB::transaction(function () use ($request) {
             if (empty($request->validated('linking'))) {
                 $affectedAssignments = collect();
@@ -117,12 +124,12 @@ class AssignmentController extends Controller
         return DB::transaction(function () use ($request) {
             $assignment = new Assignment();
             $assignment->fill($request->validated());
+            $this->authorize('create', $assignment);
             $assignment->save();
 
             return AssignmentResource::make($assignment);
         });
     }
-
 
     /**
      * @throws Throwable
@@ -140,6 +147,7 @@ class AssignmentController extends Controller
         return DB::transaction(function () use ($request) {
             $assignment = self::getAssignmentOrFail($request->route('id'));
             $assignment->fill($request->validated());
+            $this->authorize('update', $assignment);
             $assignment->save();
 
             return AssignmentResource::make($assignment);
@@ -162,6 +170,7 @@ class AssignmentController extends Controller
         return DB::transaction(function () use ($request) {
             $assignment = self::getAssignmentOrFail($request->route('id'));
             $assignment->fill($request->validated());
+            $this->authorize('updateAssigneeComment', $assignment);
             $assignment->save();
 
             return AssignmentResource::make($assignment);
@@ -183,10 +192,11 @@ class AssignmentController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $assignment = self::getAssignmentOrFail($request->route('id'));
+            $this->authorize('update', $assignment);
             $assignment->candidates()->saveMany(
                 collect($request->validated('candidates'))->map(
-                    fn(string $candidateId) => new Candidate([
-                        'vendor_id' => $candidateId
+                    fn (string $candidateId) => new Candidate([
+                        'vendor_id' => $candidateId,
                     ])
                 )
             );
@@ -210,6 +220,7 @@ class AssignmentController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $assignment = self::getAssignmentOrFail($request->route('id'));
+            $this->authorize('update', $assignment);
             $assignment->candidates()->where('vendor_id', $request->validated('vendor_id'))
                 ->each(fn (Candidate $candidate) => $candidate->delete());
 
@@ -219,19 +230,22 @@ class AssignmentController extends Controller
 
     /**
      * @throws Throwable
+     * TODO: Implement logic of removing assignment in case if it's an additional assignment, not the main one.
+     * TODO: Implement interaction with Camunda
      */
-    #[OA\Delete(
-        path: '/assignment/{id}',
-        summary: 'Delete assignment',
-        tags: ['Assignment management'],
-        parameters: [new OAH\UuidPath('id')],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
+    //    #[OA\Delete(
+    //        path: '/assignment/{id}',
+    //        summary: 'Delete assignment',
+    //        tags: ['Assignment management'],
+    //        parameters: [new OAH\UuidPath('id')],
+    //        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    //    )]
+    //    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
     public function destroy(string $id): \Illuminate\Http\Response
     {
         DB::transaction(function () use ($id) {
             $assignment = self::getAssignmentOrFail($id);
+            $this->authorize('delete', $assignment);
             $assignment->delete();
         });
 
@@ -240,11 +254,20 @@ class AssignmentController extends Controller
 
     private static function getAssignmentOrFail(string $id): Assignment
     {
-        if (!$assignment = self::getBaseQuery()->find($id)) {
+        if (! $assignment = self::getBaseQuery()->find($id)) {
             abort(404, 'Assignment not found by ID');
         }
 
         return $assignment;
+    }
+
+    private static function getSubProjectOrFail(string $id): SubProject
+    {
+        if (! $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())->find($id)) {
+            abort(404, 'Sub-project not found by ID');
+        }
+
+        return $subProject;
     }
 
     private static function getBaseQuery(): Assignment|Builder

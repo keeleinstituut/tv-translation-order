@@ -83,7 +83,8 @@ Route::prefix('/assignments')
     ->controller(API\AssignmentController::class)
     ->whereUuid('id')->group(function (): void {
         Route::get('/{sub_project_id}', 'index');
-        Route::post('link-cat-tool-jobs', 'linkToCatToolJobs');
+        Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs');
+        Route::post('/', 'store');
         Route::put('/{id}', 'update');
         Route::put('/{id}/assignee-comment', 'updateAssigneeComment');
         Route::put('/{id}/add-candidates', 'addCandidates');

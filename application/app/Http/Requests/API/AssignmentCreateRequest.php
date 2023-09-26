@@ -18,7 +18,7 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(
         required: [
             'sub_project_id',
-            'feature'
+            'feature',
         ],
         properties: [
             new OA\Property(property: 'sub_project_id', type: 'string', format: 'uuid'),
@@ -56,9 +56,9 @@ class AssignmentCreateRequest extends FormRequest
                 $validator->errors()->addIf(
                     $this->validated('feature') !== $features->first(),
                     'feature',
-                    'Adding of assignments available only for the feature ' . $features->first()
+                    'Adding of assignments available only for the feature '.$features->first()
                 );
-            }
+            },
         ];
     }
 }

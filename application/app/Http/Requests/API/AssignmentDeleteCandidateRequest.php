@@ -35,11 +35,11 @@ class AssignmentDeleteCandidateRequest extends FormRequest
                     $exists = Vendor::withGlobalScope('policy', VendorPolicy::scope())
                         ->where('id', $value)->exists();
 
-                    if (!$exists) {
+                    if (! $exists) {
                         $fail('Vendor with such ID doesn\'t exist.');
                     }
-                }
-            ]
+                },
+            ],
         ];
     }
 }

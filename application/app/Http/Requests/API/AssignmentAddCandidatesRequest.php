@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API;
 
+use App\Models\Candidate;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -43,11 +44,18 @@ class AssignmentAddCandidatesRequest extends FormRequest
                     $exists = Vendor::withGlobalScope('policy', VendorPolicy::scope())
                         ->where('id', $value)->exists();
 
-                    if (!$exists) {
+                    if (! $exists) {
                         $fail('Vendor with such ID is not exists.');
                     }
-                }
-            ]
+
+                    $candidateExists = Candidate::where('assignment_id', $this->route('id'))
+                        ->where('vendor_id', $value)->exists();
+
+                    if ($candidateExists) {
+                        $fail('Selected vendor is already candidate.');
+                    }
+                },
+            ],
         ];
     }
 }

@@ -17,7 +17,7 @@ class AssignmentListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'feature' => ['sometimes', new Enum(Feature::class)]
+            'feature' => ['sometimes', new Enum(Feature::class)],
         ];
     }
 }

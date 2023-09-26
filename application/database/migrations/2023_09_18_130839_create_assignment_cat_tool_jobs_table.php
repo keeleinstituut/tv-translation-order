@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('assignment_cat_tool_jobs', function (Blueprint $table) {
             $table->uuid('id');
-            $table->foreignUuid('assignment_id')->constrained('assignments');
-            $table->foreignUuid('cat_tool_job_id')->constrained('cat_tool_jobs');
+            $table->foreignUuid('assignment_id')->constrained('assignments')
+                ->onDelete('cascade');
+            $table->foreignUuid('cat_tool_job_id')->constrained('cat_tool_jobs')
+                ->onDelete('cascade');
             $table->timestampsTz();
 
             $table->unique(['assignment_id', 'cat_tool_job_id']);

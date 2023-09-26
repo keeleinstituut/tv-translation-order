@@ -4,6 +4,8 @@ namespace App\Policies;
 
 use App\Models\Assignment;
 use App\Models\Project;
+use App\Models\SubProject;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
@@ -13,9 +15,9 @@ class AssignmentPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return false;
+        return Gate::allows('view', $subProject->project);
 
     }
 
@@ -32,7 +34,7 @@ class AssignmentPolicy
      */
     public function create(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('create', $assignment->subProject->project);
+        return Gate::allows('update', [$assignment->subProject->project]);
     }
 
     /**
@@ -41,6 +43,19 @@ class AssignmentPolicy
     public function update(JwtPayloadUser $user, Assignment $assignment): bool
     {
         return Gate::allows('update', [$assignment->subProject->project]);
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function updateAssigneeComment(JwtPayloadUser $user, Assignment $assignment): bool
+    {
+        if (empty($assignment->assigned_vendor_id) || empty($user->institutionUserId)) {
+            return false;
+        }
+
+        return Vendor::where('institution_user_id', $user->institutionUserId)
+            ->where('id', $assignment->assigned_vendor_id)->exists();
     }
 
     /**

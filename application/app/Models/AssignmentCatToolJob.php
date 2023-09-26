@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Assignment $assignment
  * @property-read CatToolJob $catToolJob
+ *
  * @method static Builder|AssignmentCatToolJob newModelQuery()
  * @method static Builder|AssignmentCatToolJob newQuery()
  * @method static Builder|AssignmentCatToolJob query()
@@ -28,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder|AssignmentCatToolJob whereCreatedAt($value)
  * @method static Builder|AssignmentCatToolJob whereId($value)
  * @method static Builder|AssignmentCatToolJob whereUpdatedAt($value)
+ *
  * @mixin Eloquent
  */
 class AssignmentCatToolJob extends Pivot

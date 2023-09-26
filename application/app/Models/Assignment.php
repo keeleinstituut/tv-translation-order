@@ -58,6 +58,8 @@ class Assignment extends Model
     use HasUuids;
     use HasFactory;
 
+    protected $guarded = [];
+
     public function subProject(): BelongsTo
     {
         return $this->belongsTo(SubProject::class);
