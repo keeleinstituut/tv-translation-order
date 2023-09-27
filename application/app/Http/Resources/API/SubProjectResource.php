@@ -26,6 +26,7 @@ class SubProjectResource extends JsonResource
             'features' => $this->project->typeClassifierValue->projectTypeConfig->features,
             'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
             'cat_jobs' => CatToolJobResource::collection($this->catToolJobs),
+            'mt_enabled' => $this->cat()->hasMTEnabled(),
         ];
     }
 }

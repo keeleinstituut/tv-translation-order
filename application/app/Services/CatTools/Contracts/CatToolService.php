@@ -49,4 +49,8 @@ interface CatToolService
      * @throws CatToolSetupFailedException
      */
     public function isCreated(): bool;
+
+    public function toggleMTEngine(bool $isEnabled): void;
+
+    public function hasMTEnabled(): bool;
 }

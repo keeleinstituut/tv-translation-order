@@ -118,6 +118,17 @@ readonly class MateCatApiClient
             ->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
+    public function toggleMTEngine(int $id, string $password, bool $isEnabled): array
+    {
+        return $this->getBasePendingRequest()
+            ->put("/v2/projects/$id/$password/set-mt-enabled", [
+                'enabled' => $isEnabled,
+            ])->throw()->json();
+    }
+
     protected function getBasePendingRequest(): PendingRequest
     {
         return Http::baseUrl($this->baseUrl)

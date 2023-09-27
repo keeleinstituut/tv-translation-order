@@ -18,6 +18,20 @@ readonly class MateCatProjectMetaDataStorage
     {
     }
 
+    public function isEmpty(): bool
+    {
+        return count($this->subProject->cat_metadata) === 1 && isset($this->subProject->cat_metadata[$this->getProjectMTEnabledFlagKey()]);
+    }
+
+    public function clean(): void
+    {
+        $this->subProject->cat_metadata = [
+            $this->getProjectMTEnabledFlagKey() => $this->hasMTEnabled(),
+        ];
+
+        $this->subProject->save();
+    }
+
     public function storeCreatedProjectMeta(array $meta): void
     {
         $this->store($this->getProjectCreationKey(), [
@@ -36,6 +50,11 @@ readonly class MateCatProjectMetaDataStorage
     public function storeProjectFiles(array $filesIds): void
     {
         $this->store($this->getProjectFilesKey(), $filesIds);
+    }
+
+    public function storeIsMTEnabled(bool $isEnabled): void
+    {
+        $this->store($this->getProjectMTEnabledFlagKey(), $isEnabled);
     }
 
     public function storeAnalyzingResults(array $meta): void
@@ -211,6 +230,11 @@ readonly class MateCatProjectMetaDataStorage
             throw new DomainException('Accessing of ProjectId for not created project');
     }
 
+    public function hasMTEnabled(): bool
+    {
+        return data_get($this->subProject->cat_metadata, $this->getProjectMTEnabledFlagKey(), true);
+    }
+
     public function wasSplit(): bool
     {
         return count($this->getJobs()) > 1;
@@ -245,6 +269,11 @@ readonly class MateCatProjectMetaDataStorage
     private function getProjectFilesKey(): string
     {
         return 'project-files';
+    }
+
+    private function getProjectMTEnabledFlagKey(): string
+    {
+        return 'project-mt-enabled';
     }
 
     private function getProjectAnalyzingKey(): string

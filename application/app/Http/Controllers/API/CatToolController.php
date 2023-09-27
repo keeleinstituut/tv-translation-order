@@ -7,13 +7,16 @@ use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CatToolMergeRequest;
 use App\Http\Requests\API\CatToolSetupRequest;
 use App\Http\Requests\API\CatToolSplitRequest;
+use App\Http\Requests\API\CatToolToggleMTEngineRequest;
 use App\Http\Resources\API\CatToolJobResource;
+use App\Http\Resources\API\CatToolMTEngineStatusResource;
 use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -145,6 +148,31 @@ class CatToolController extends Controller
         }
 
         return new SubProjectVolumeAnalysisResource($subProject);
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Put(
+        path: '/cat-tool/toggle-mt-engine/{sub_project_id}',
+        summary: 'Enable/Disable MT engine for CAT tool',
+        tags: ['CAT tool'],
+        parameters: [new OAH\UuidPath('sub_project_id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: CatToolMTEngineStatusResource::class, description: 'MT engine enabled flag', response: \Symfony\Component\HttpFoundation\Response::HTTP_OK)]
+    public function toggleMTEngine(CatToolToggleMTEngineRequest $request): CatToolMTEngineStatusResource
+    {
+        $subProject = $this->getSubProject($request->route('sub_project_id'));
+        $this->authorize('manageCatTool', $subProject);
+
+        try {
+            $subProject->cat()->toggleMTEngine($request->validated('mt_enabled'));
+        } catch (RequestException $e) {
+            throw new HttpException(500, 'Disabling/Enabling MT failed. Reason: '.$e->getMessage(), $e);
+        }
+
+        return CatToolMTEngineStatusResource::make($subProject);
     }
 
     /**
