@@ -65,7 +65,7 @@ Route::prefix('/cat-tool')
         Route::post('/split', 'split');
         Route::post('/merge', 'merge');
         Route::get('/jobs/{sub_project_id}', 'jobsIndex');
-        Route::get('/toggle-mt-engine/{sub_project_id}', 'toggleMTEngine');
+        Route::put('/toggle-mt-engine/{sub_project_id}', 'toggleMTEngine');
         Route::get('/volume-analysis/{sub_project_id}', 'volumeAnalysis');
         Route::get('/download-xliff/{sub_project_id}', 'downloadXLIFFs');
         Route::get('/download-translated/{sub_project_id}', 'downloadTranslations');

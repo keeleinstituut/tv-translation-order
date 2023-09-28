@@ -15,7 +15,7 @@ class CatToolToggleMTEngineRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mt_enabled' => ['require', 'boolean'],
+            'mt_enabled' => ['required', 'boolean'],
         ];
     }
 }
