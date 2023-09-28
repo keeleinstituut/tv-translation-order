@@ -79,6 +79,7 @@ class PriceCreateRequest extends FormRequest
             function (Validator $validator) {
                 $existing = Price::getModel()
                     ->where('vendor_id', $this->vendor_id)
+                    ->where('skill_id', $this->skill_id)
                     ->where('src_lang_classifier_value_id', $this->src_lang_classifier_value_id)
                     ->where('dst_lang_classifier_value_id', $this->dst_lang_classifier_value_id)
                     ->get();
@@ -87,6 +88,7 @@ class PriceCreateRequest extends FormRequest
                     $msg = 'Price already exists';
                     $validator->errors()
                         ->add('vendor_id', $msg)
+                        ->add('skill_id', $msg)
                         ->add('src_lang_classifier_value_id', $msg)
                         ->add('dst_lang_classifier_value_id', $msg);
                 }
