@@ -124,7 +124,7 @@ readonly class MateCatApiClient
     public function toggleMTEngine(int $id, string $password, bool $isEnabled): array
     {
         return $this->getBasePendingRequest()
-            ->put("/v2/projects/$id/$password/set-mt-enabled", [
+            ->put("/v2/projects/$id/$password/toggle-mt-enabled", [
                 'enabled' => $isEnabled,
             ])->throw()->json();
     }
