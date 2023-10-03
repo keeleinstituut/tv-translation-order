@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Http\Resources\MediaResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,6 +36,8 @@ class SubProjectResource extends JsonResource
             'destination_language_classifier_value_id' => $this->destination_language_classifier_value_id,
             'destination_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('destinationLanguageClassifierValue')),
             'assignments' => $this->whenLoaded('assignments'),
+            'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
+            'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
         ];
 
         return $result;

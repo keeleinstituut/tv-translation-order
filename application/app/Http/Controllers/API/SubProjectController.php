@@ -42,6 +42,7 @@ class SubProjectController extends Controller
             ->with('sourceLanguageClassifierValue')
             ->with('destinationLanguageClassifierValue')
             ->with('sourceFiles')
+            ->with('finalFiles')
 //            ->with('project.typeClassifierValue.projectTypeConfig')
             ->with('assignments.candidates.vendor.institutionUser')
             ->with('assignments.assignee.institutionUser')

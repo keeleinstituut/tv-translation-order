@@ -90,13 +90,17 @@ use Throwable;
  */
 class Project extends Model implements HasMedia
 {
-    public const SOURCE_FILES_COLLECTION = 'source';
-
-    protected $guarded = [];
+    use HasFactory;
+    use HasUuids;
+    use InteractsWithMedia;
+    use SoftDeletes;
 
     protected $table = 'projects';
 
+    public const SOURCE_FILES_COLLECTION = 'source';
     public const HELP_FILES_COLLECTION = 'help';
+    public const FINAL_FILES_COLLECTION = 'final';
+    public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
     public const HELP_FILE_TYPES = [
         'STYLE_GUIDE',
@@ -104,15 +108,9 @@ class Project extends Model implements HasMedia
         'REFERENCE_FILE',
     ];
 
-    public const FINAL_FILES_COLLECTION = 'final';
 
-    public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
-    use HasFactory;
-    use HasUuids;
-    use InteractsWithMedia;
-    use SoftDeletes;
-
+    protected $guarded = [];
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
@@ -145,11 +143,6 @@ class Project extends Model implements HasMedia
         return $this->hasMany(SubProject::class);
     }
 
-    public function workflow(): WorkflowProcessInstanceService
-    {
-        return new WorkflowProcessInstanceService($this);
-    }
-
     public function sourceFiles()
     {
         return $this->media()->where('collection_name', self::SOURCE_FILES_COLLECTION);
@@ -178,6 +171,11 @@ class Project extends Model implements HasMedia
     public function tags(): MorphToMany
     {
         return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
+    }
+
+    public function workflow(): WorkflowProcessInstanceService
+    {
+        return new WorkflowProcessInstanceService($this);
     }
 
     public function computeCost(): null
