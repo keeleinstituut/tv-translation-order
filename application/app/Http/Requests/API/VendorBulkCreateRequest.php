@@ -46,7 +46,7 @@ class VendorBulkCreateRequest extends FormRequest
                 'uuid',
                 'distinct',
                 Rule::exists(InstitutionUser::class, 'id'),
-                Rule::unique(Vendor::class, 'institution_user_id'),
+                Rule::unique(Vendor::class, 'institution_user_id')->whereNull('deleted_at'),
             ],
             'data.*.company_name' => [
                 'string',

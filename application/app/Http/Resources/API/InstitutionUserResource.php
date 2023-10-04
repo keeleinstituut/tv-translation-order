@@ -17,6 +17,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'institution', type: 'object'),
         new OA\Property(property: 'department', type: 'object'),
         new OA\Property(property: 'roles', type: 'object'),
+        new OA\Property(property: 'vendor', ref: VendorResource::class, type: 'object'),
     ],
     type: 'object'
 )]
@@ -37,6 +38,7 @@ class InstitutionUserResource extends JsonResource
             'institution' => $this->institution,
             'department' => $this->department,
             'roles' => collect($this->roles)->map(fn ($role) => collect($role)->only('id', 'name')),
+            'vendor' => VendorResource::make($this->whenLoaded('vendor')),
         ];
     }
 }

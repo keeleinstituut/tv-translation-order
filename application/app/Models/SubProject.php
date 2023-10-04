@@ -99,6 +99,16 @@ class SubProject extends Model
         );
     }
 
+    public function projectTypeConfig()
+    {
+        return $this->hasOneDeep(
+            ProjectTypeConfig::class,
+            [Project::class, ClassifierValue::class],
+            ['id', 'id', 'type_classifier_value_id'],
+            ['project_id', 'type_classifier_value_id', 'id']
+        );
+    }
+
     public function finalFiles()
     {
         return $this->hasManyDeep(
