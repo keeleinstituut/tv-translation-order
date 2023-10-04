@@ -84,50 +84,60 @@ class ProjectController extends Controller
     #[OAH\PaginatedCollectionResponse(itemsRef: ProjectSummaryResource::class, description: 'Filtered projects of current institution')]
     public function index(ProjectListRequest $request): AnonymousResourceCollection
     {
-        $showOnlyPersonalProjects = filter_var($request->validated('only_show_personal_projects', true), FILTER_VALIDATE_BOOLEAN);
+        $params = collect($request->validated());
+
+        $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', true), FILTER_VALIDATE_BOOLEAN);
+
         $this->authorize('viewAny', [Project::class, $showOnlyPersonalProjects]);
 
-        $paginatedQuery = static::getBaseQuery()
-            ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'asc'))
-            ->when($request->safe()->has('ext_id'), function (Builder $builder) use ($request) {
-                $builder->where(
-                    'ext_id',
-                    'ilike',
-                    '%'.$request->validated('ext_id').'%'
-                );
-            })
-//            ->when($showOnlyPersonalProjects, function (Builder $builder) {
-//                $builder->where(function (Builder $projectClause) {
-//                    $projectClause
-//                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
-//                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
-//                });
-//            })
-            ->when(filled($request->validated('statuses')), function (Builder $builder) use ($request) {
-                $builder->whereIn('status', $request->validated('statuses'));
-            })
-            ->when(filled($request->validated('type_classifier_value_ids')), function (Builder $builder) use ($request) {
-                $builder->whereIn('type_classifier_value_id', $request->validated('type_classifier_value_ids'));
-            })
-            ->when(filled($request->validated('tag_ids')), function (Builder $builder) use ($request) {
-                $builder->whereHas('tags', function (Builder $tagClause) use ($request) {
-                    $tagClause->whereIn('tags.id', $request->validated('tag_ids'));
-                });
-            })
-            ->when(filled($request->validated('language_directions')), function (Builder $builder) use ($request) {
-                $builder->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
-            })
+        $query = self::getBaseQuery()
             ->with([
                 'typeClassifierValue',
                 'tags',
                 'subProjects',
                 'subProjects.sourceLanguageClassifierValue',
                 'subProjects.destinationLanguageClassifierValue',
-            ])
-            ->paginate(perPage: $request->validated('per_page', 10), page: $request->validated('page', 1))
-            ->appends($request->validated());
+            ]);
 
-        return ProjectResource::collection($paginatedQuery);
+        if ($param = $params->get('ext_id')) {
+            $query = $query->where('ext_id', 'ilike', "%$param%");
+        }
+
+        if ($param = $params->get('statuses')) {
+            $query = $query->whereIn('status', $param);
+        }
+
+        if ($param = $params->get('statuses')) {
+            $query = $query->whereIn('status', $param);
+        }
+
+        if ($param = $params->get('type_classifier_value_ids')) {
+            $query = $query->whereIn('type_classifier_value_id', $param);
+        }
+
+        if ($param = $params->get('tag_ids')) {
+            $query = $query->whereHas('tags', function (Builder $builder) use ($param) {
+                $builder->whereIn('tags.id', $param);
+            });
+        }
+
+        if ($param = $params->get('language_directions')) {
+            $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
+        }
+
+////            ->when($showOnlyPersonalProjects, function (Builder $builder) {
+////                $builder->where(function (Builder $projectClause) {
+////                    $projectClause
+////                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
+////                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
+////                });
+////            })
+
+        $data = $query
+            ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'asc'))
+            ->paginate($params->get('per_page', 10));
+
+        return ProjectResource::collection($data);
 
     }
 
@@ -145,34 +155,36 @@ class ProjectController extends Controller
     #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Created project', response: Response::HTTP_CREATED)]
     public function store(ProjectCreateRequest $request): ProjectResource
     {
-        return DB::transaction(function () use ($request) {
+        $params = $request->validated();
+
+        return DB::transaction(function () use ($params) {
             $project = Project::make([
                 'institution_id' => Auth::user()->institutionId,
-                'type_classifier_value_id' => $request->validated('type_classifier_value_id'),
-                'translation_domain_classifier_value_id' => $request->validated('translation_domain_classifier_value_id'),
-                'reference_number' => $request->validated('reference_number'),
-                'manager_institution_user_id' => $request->validated('manager_institution_user_id'),
-                'client_institution_user_id' => $request->validated('client_institution_user_id', Auth::user()->institutionUserId),
-                'deadline_at' => $request->validated('deadline_at'),
-                'comments' => $request->validated('comments'),
-                'event_start_at' => $request->validated('event_start_at'),
-                'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
-                'status' => $request->safe()->has('manager_institution_user_id')
+                'type_classifier_value_id' => $params->get('type_classifier_value_id'),
+                'translation_domain_classifier_value_id' => $params->get('translation_domain_classifier_value_id'),
+                'reference_number' => $params->get('reference_number'),
+                'manager_institution_user_id' => $params->get('manager_institution_user_id'),
+                'client_institution_user_id' => $params->get('client_institution_user_id', Auth::user()->institutionUserId),
+                'deadline_at' => $params->get('deadline_at'),
+                'comments' => $params->get('comments'),
+                'event_start_at' => $params->get('event_start_at'),
+                'status' => !!$params->get('manager_institution_user_id')
                     ? ProjectStatus::Registered
                     : ProjectStatus::New,
+                'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
             ]);
 
             $this->authorize('create', $project);
 
             $project->saveOrFail();
 
-            collect($request->validated('source_files', []))
+            collect($params->get('source_files', []))
                 ->each(function (UploadedFile $file) use ($project) {
                     $project->addMedia($file)->toMediaCollection(Project::SOURCE_FILES_COLLECTION);
                 });
 
-            collect($request->validated('help_files', []))
-                ->zip($request->validated('help_file_types', []))
+            collect($params->get('help_files', []))
+                ->zip($params->get('help_file_types', []))
                 ->eachSpread(function (UploadedFile $file, string $type) use ($project) {
                     $project->addMedia($file)
                         ->withCustomProperties(['type' => $type])
@@ -180,13 +192,16 @@ class ProjectController extends Controller
                 });
 
             $project->initSubProjects(
-                ClassifierValue::findOrFail($request->validated('source_language_classifier_value_id')),
-                ClassifierValue::findMany($request->validated('destination_language_classifier_value_ids'))
+                ClassifierValue::findOrFail($params->get('source_language_classifier_value_id')),
+                ClassifierValue::findMany($params->get('destination_language_classifier_value_ids'))
             );
 
             $project->workflow()->startProcessInstance();
 
-            return new ProjectResource($project->refresh()->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects'));
+            $project->refresh();
+            $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');
+
+            return new ProjectResource($project);
         });
     }
 
