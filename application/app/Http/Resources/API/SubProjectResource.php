@@ -3,9 +3,13 @@
 namespace App\Http\Resources\API;
 
 use App\Http\Resources\MediaResource;
+use App\Models\SubProject;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin SubProject
+ */
 class SubProjectResource extends JsonResource
 {
     /**
@@ -21,6 +25,7 @@ class SubProjectResource extends JsonResource
             'project_id' => $this->project_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'price' => $this->price,
             'features' => $this->project->typeClassifierValue->projectTypeConfig->features,
             'project' => new ProjectResource($this->whenLoaded('project')),
             'source_language_classifier_value_id' => $this->source_language_classifier_value_id,

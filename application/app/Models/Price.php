@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VolumeUnits;
 use App\Models\CachedEntities\ClassifierValue;
 use Database\Factories\PriceFactory;
 use Eloquent;
@@ -108,5 +109,18 @@ class Price extends Model
     public function skill()
     {
         return $this->belongsTo(Skill::class, 'skill_id');
+    }
+
+    public function getUnitFee(VolumeUnits|string $unit): ?float
+    {
+        is_string($unit) && $unit = VolumeUnits::from($unit);
+
+        return match ($unit) {
+            VolumeUnits::Characters => $this->character_fee,
+            VolumeUnits::Words => $this->word_fee,
+            VolumeUnits::Pages => $this->page_fee,
+            VolumeUnits::Minutes => $this->minute_fee,
+            VolumeUnits::Hours => $this->hour_fee
+        };
     }
 }

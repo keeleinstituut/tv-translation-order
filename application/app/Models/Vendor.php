@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\Dto\VolumeAnalysisDiscount;
 use Database\Factories\VendorFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
@@ -69,8 +70,6 @@ class Vendor extends Model
     use HasUuids;
     use SoftDeletes;
 
-    protected $connection = 'pgsql_app';
-
     protected $table = 'vendors';
 
     protected $fillable = [
@@ -113,5 +112,34 @@ class Vendor extends Model
         return $this
             ->morphToMany(Tag::class, 'taggable')
             ->using(Taggable::class);
+    }
+
+    public function getDiscount(): VolumeAnalysisDiscount
+    {
+        // TODO: add merging vendor discounts with institution discounts to use them in case of empty vendor discounts
+        return new VolumeAnalysisDiscount($this->only([
+            'discount_percentage_101',
+            'discount_percentage_repetitions',
+            'discount_percentage_100',
+            'discount_percentage_95_99',
+            'discount_percentage_85_94',
+            'discount_percentage_75_84',
+            'discount_percentage_50_74',
+            'discount_percentage_0_49',
+        ]));
+    }
+
+    /**
+     * TODO: add filtering by the skill
+     */
+    public function getPriceList($sourceLanguageId, $destinationLanguageId): ?Price
+    {
+        return $this->prices()->where(
+            'src_lang_classifier_value_id',
+            $sourceLanguageId
+        )->where(
+            'dst_lang_classifier_value_id',
+            $destinationLanguageId
+        )->first();
     }
 }

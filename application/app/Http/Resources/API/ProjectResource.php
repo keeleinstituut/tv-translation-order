@@ -84,6 +84,7 @@ use OpenApi\Attributes as OA;
                 'comments',
                 'workflow_template_id',
                 'workflow_instance_ref',
+                'price',
                 'deadline_at',
                 'event_start_at',
                 'status',
@@ -101,7 +102,6 @@ use OpenApi\Attributes as OA;
             'tags' => TagResource::collection($this->whenLoaded('tags')),
 //            'source_language_classifier_value' => ClassifierValueResource::make($this->getSourceLanguageClassifierValue()),
 //            'destination_language_classifier_values' => ClassifierValueResource::collection($this->getDestinationLanguageClassifierValues()),
-            'cost' => $this->computeCost(),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
         ];
     }

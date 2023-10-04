@@ -65,7 +65,7 @@ readonly class CatToolAnalysisReport
         return $sectionContent;
     }
 
-    private function composeMatchTable(CatAnalysisResult $volumeAnalysis): string
+    private function composeMatchTable(VolumeAnalysis $volumeAnalysis): string
     {
         $tableContent = implode('', [
             PHP_EOL,
