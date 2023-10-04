@@ -35,6 +35,9 @@ Route::prefix('/tags')
 Route::get('/classifier-values', [API\ClassifierValueController::class, 'index']);
 Route::get('/institution-users', [API\InstitutionUserController::class, 'index']);
 
+Route::get('/institution-discounts', [API\InstitutionDiscountController::class, 'show']);
+Route::put('/institution-discounts', [API\InstitutionDiscountController::class, 'store']);
+
 Route::get('/skills', [API\SkillController::class, 'index']);
 
 Route::get('/vendors', [API\VendorController::class, 'index']);
