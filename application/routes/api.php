@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API;
 use App\Http\Controllers\TagController;
+use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,9 @@ Route::prefix('/tags')
 Route::get('/classifier-values', [API\ClassifierValueController::class, 'index']);
 Route::get('/institution-users', [API\InstitutionUserController::class, 'index']);
 
+Route::get('/institution-discounts', [API\InstitutionDiscountController::class, 'show']);
+Route::put('/institution-discounts', [API\InstitutionDiscountController::class, 'store']);
+
 Route::get('/skills', [API\SkillController::class, 'index']);
 
 Route::get('/vendors', [API\VendorController::class, 'index']);
@@ -47,3 +51,26 @@ Route::post('/prices', [API\PriceController::class, 'store']);
 Route::post('/prices/bulk', [API\PriceController::class, 'bulkStore']);
 Route::put('/prices/bulk', [API\PriceController::class, 'bulkUpdate']);
 Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy']);
+
+Route::get('/projects', [API\ProjectController::class, 'index']);
+Route::post('/projects', [API\ProjectController::class, 'store']);
+Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
+
+Route::get('/assignments', [API\AssignmentController::class, 'index']);
+Route::put('/assignments/{id}', [API\AssignmentController::class, 'update']);
+
+Route::get('/subprojects', [API\SubProjectController::class, 'index']);
+Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
+Route::post('/subprojects/{id}/send-to-cat', [API\SubProjectController::class, 'sendToCat']);
+Route::post('/subprojects/{id}/send-to-work', [API\SubProjectController::class, 'sendToWork']);
+
+Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
+Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
+Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);
+Route::get('/workflow/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
+
+// ??
+//Route::get('/cat/urls/translate/{project_id}', []);
+//Route::get('/cat/urls/revise/{project_id}', []);
+// ??
+Route::get('/redirect', [API\RedirectController::class, '__invoke']);

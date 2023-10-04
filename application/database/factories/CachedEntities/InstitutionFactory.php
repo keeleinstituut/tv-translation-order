@@ -4,6 +4,7 @@ namespace database\factories\CachedEntities;
 
 use App\Models\CachedEntities\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Institution>
@@ -19,9 +20,14 @@ class InstitutionFactory extends Factory
      */
     public function definition(): array
     {
+        $shortName = collect()
+            ->times(3, fake()->randomLetter(...))
+            ->map(Str::upper(...))
+            ->implode('');
+
         return [
             'name' => fake()->company(),
-            'short_name' => null,
+            'short_name' => $shortName,
             'phone' => null,
             'email' => fake()->companyEmail(),
             'logo_url' => fake()->url(),

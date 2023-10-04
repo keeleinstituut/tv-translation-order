@@ -1,0 +1,2 @@
+php artisan db:wipe --database=pgsql_app
+php artisan db:wipe --database=pgsql_sync

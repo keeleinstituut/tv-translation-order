@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Enums\PrivilegeKey;
+use App\Models\CachedEntities\InstitutionUser;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -66,6 +67,48 @@ readonly class AuthHelpers
         return [
             'Authorization' => "Bearer $defaultToken",
             'Accept' => 'application/json',
+        ];
+    }
+
+    public static function createHeadersForInstitutionUser(InstitutionUser $institutionUser): array
+    {
+        $accessToken = self::generateAccessToken(
+            self::makeTolkevaravClaimsForInstitutionUser($institutionUser)
+        );
+
+        return [
+            'Authorization' => "Bearer $accessToken",
+        ];
+    }
+
+    /** @return array{
+     *     personalIdentificationCode: string,
+     *     userId: string,
+     *     institutionUserId: string,
+     *     forename: string,
+     *     surname: string,
+     *     selectedInstitution: array{
+     *         id: string,
+     *         name: string
+     *     },
+     *     privileges: array<string>
+     * } */
+    public static function makeTolkevaravClaimsForInstitutionUser(InstitutionUser $institutionUser): array
+    {
+        return [
+            'institutionUserId' => $institutionUser->id,
+            'personalIdentificationCode' => $institutionUser->user['personal_identification_code'],
+            'userId' => $institutionUser->user['id'],
+            'forename' => $institutionUser->user['forename'],
+            'surname' => $institutionUser->user['surname'],
+            'selectedInstitution' => [
+                'id' => $institutionUser->institution['id'],
+                'name' => $institutionUser->institution['name'],
+            ],
+            'privileges' => collect($institutionUser->roles)
+                ->flatMap(fn (array $role) => $role['privileges'])
+                ->unique()
+                ->all(),
         ];
     }
 }

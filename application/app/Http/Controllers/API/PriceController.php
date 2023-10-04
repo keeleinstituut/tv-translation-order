@@ -68,7 +68,7 @@ class PriceController extends Controller
         }
 
         if ($param = $params->get('institution_user_name')) {
-            $query = $query->whereRelation('vendor.institutionUser', DB::raw("CONCAT(\"user\"->>'forename', \"user\"->>'surname')"), 'ILIKE', "%$param%");
+            $query = $query->whereRelation('vendor.institutionUser', DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$param%");
         }
 
         if ($param = $params->get('skill_id')) {

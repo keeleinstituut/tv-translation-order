@@ -8,6 +8,7 @@ use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * @extends Factory<InstitutionUser>
@@ -99,5 +100,36 @@ class InstitutionUserFactory extends Factory
                 ],
             ];
         });
+    }
+
+    /** @throws Throwable */
+    public function createWithPrivileges(PrivilegeKey ...$privileges): InstitutionUser
+    {
+        $institutionUser = $this->create();
+        [$newRole] = $this->generateRolesData($institutionUser->institution['id']);
+        $newRole['privileges'] = collect($privileges)->map(fn (PrivilegeKey $key) => $key->value)->all();
+
+        $institutionUser->updateOrFail([
+            'roles' => [$newRole],
+        ]);
+
+        return $institutionUser;
+    }
+
+    /** @throws Throwable */
+    public function createWithAllPrivilegesExcept(PrivilegeKey ...$privileges): InstitutionUser
+    {
+        $institutionUser = $this->create();
+        [$newRole] = $this->generateRolesData($institutionUser->institution['id']);
+        $newRole['privileges'] = collect(PrivilegeKey::cases())
+            ->reject(fn (PrivilegeKey $key) => in_array($key, $privileges))
+            ->map(fn (PrivilegeKey $key) => $key->value)
+            ->all();
+
+        $institutionUser->updateOrFail([
+            'roles' => [$newRole],
+        ]);
+
+        return $institutionUser;
     }
 }
