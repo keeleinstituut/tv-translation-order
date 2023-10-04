@@ -61,8 +61,18 @@ Route::put('/assignments/{id}', [API\AssignmentController::class, 'update']);
 
 Route::get('/subprojects', [API\SubProjectController::class, 'index']);
 Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
-Route::post('/subprojects/{id}/send-to-cat', [API\SubProjectController::class, 'sendToCat']);
-Route::post('/subprojects/{id}/send-to-work', [API\SubProjectController::class, 'sendToWork']);
+
+Route::prefix('/cat-tool')
+    ->controller(API\CatToolController::class)->group(function (): void {
+        Route::post('/setup', 'setup');
+        Route::post('/split', 'split');
+        Route::post('/merge', 'merge');
+        Route::get('/jobs/{sub_project_id}', 'jobsIndex');
+        Route::get('/volume-analysis/{sub_project_id}', 'volumeAnalysis');
+        Route::get('/download-xliff/{sub_project_id}', 'downloadXLIFFs');
+        Route::get('/download-translated/{sub_project_id}', 'downloadTranslations');
+        Route::get('/download-volume-analysis/{sub_project_id}', 'downloadVolumeAnalysisReport');
+    });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
