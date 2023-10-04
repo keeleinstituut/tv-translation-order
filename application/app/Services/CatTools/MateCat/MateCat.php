@@ -23,6 +23,8 @@ use RuntimeException;
 
 readonly class MateCat implements CatToolService
 {
+    const DUMMY_MT_ENGINE_ID = 0;
+
     private MateCatApiClient $apiClient;
 
     private MateCatProjectMetaDataStorage $storage;
@@ -37,7 +39,7 @@ readonly class MateCat implements CatToolService
      * @param  array  $filesIds
      * {@inheritDoc}
      */
-    public function setupJobs(array $filesIds = null): void
+    public function setupJobs(array $filesIds = null, bool $useMT = true): void
     {
         try {
             $isCreated = $this->isCreated();
@@ -49,9 +51,8 @@ readonly class MateCat implements CatToolService
             throw new BadMethodCallException('Cat tool is already setup');
         }
 
-        if (! empty($this->subProject->cat_metadata)) {
-            $this->subProject->cat_metadata = [];
-            $this->subProject->save();
+        if (! $this->storage->isEmpty()) {
+            $this->storage->clean();
         }
 
         if (is_null($filesIds)) {
@@ -67,11 +68,17 @@ readonly class MateCat implements CatToolService
         }
 
         try {
-            $response = $this->apiClient->createProject([
+            $params = [
                 'name' => $this->subProject->ext_id,
                 'source_lang' => $this->subProject->sourceLanguageClassifierValue->value,
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
-            ], $files);
+            ];
+
+            if (! $this->storage->hasMTEnabled()) {
+                $params['mt_engine'] = self::DUMMY_MT_ENGINE_ID;
+            }
+
+            $response = $this->apiClient->createProject($params, $files);
         } catch (RequestException $e) {
             throw new CatToolSetupFailedException('Project not created', previous: $e);
         }
@@ -346,5 +353,26 @@ readonly class MateCat implements CatToolService
         }
 
         return $creationStatus == 200;
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function toggleMTEngine(bool $isEnabled): void
+    {
+        if ($this->isCreated()) {
+            $this->apiClient->toggleMTEngine(
+                $this->storage->getProjectId(),
+                $this->storage->getProjectPassword(),
+                $isEnabled
+            );
+        }
+
+        $this->storage->storeIsMTEnabled($isEnabled);
+    }
+
+    public function hasMTEnabled(): bool
+    {
+        return $this->storage->hasMTEnabled();
     }
 }

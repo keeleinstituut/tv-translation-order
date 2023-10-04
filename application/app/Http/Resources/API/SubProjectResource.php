@@ -33,9 +33,10 @@ class SubProjectResource extends JsonResource
             'destination_language_classifier_value_id' => $this->destination_language_classifier_value_id,
             'destination_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('destinationLanguageClassifierValue')),
             'assignments' => $this->whenLoaded('assignments'),
+            'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
             'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
             'cat_jobs' => CatToolJobResource::collection($this->catToolJobs),
-            'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
+            'mt_enabled' => $this->cat()->hasMTEnabled(),
         ];
     }
 }
