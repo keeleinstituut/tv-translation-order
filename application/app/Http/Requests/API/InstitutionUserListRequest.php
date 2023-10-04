@@ -15,6 +15,7 @@ class InstitutionUserListRequest extends FormRequest
     {
         return [
             'limit' => 'sometimes|integer|max:50',
+            'fullname' => 'sometimes|string',
         ];
     }
 }

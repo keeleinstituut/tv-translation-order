@@ -42,7 +42,7 @@ class Sequence extends Model
 
     public const INSTITUTION_PROJECT_SEQ = 'INSTITUTION_PROJECT_SEQUENCE';
 
-    public const PROJECT_SUBPROJECT_SEQ = 'PROJECT_SUBPROJECT_SEQ';
+    public const PROJECT_SUBPROJECT_SEQ = 'PROJECT_SUBPROJECT_SEQUENCE';
 
     public function sequenceable()
     {

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
+use App\Services\Prices\PriceCalculator;
+use App\Services\Prices\SubProjectPriceCalculator;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -15,7 +17,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
@@ -32,6 +33,7 @@ use Throwable;
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
  * @property ArrayObject|null $cat_metadata
+ * @property float|null $price
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
@@ -72,6 +74,7 @@ class SubProject extends Model
 
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
+        'price' => 'float',
     ];
 
     public function project()
@@ -99,6 +102,16 @@ class SubProject extends Model
         );
     }
 
+    public function projectTypeConfig()
+    {
+        return $this->hasOneDeep(
+            ProjectTypeConfig::class,
+            [Project::class, ClassifierValue::class],
+            ['id', 'id', 'type_classifier_value_id'],
+            ['project_id', 'type_classifier_value_id', 'id']
+        );
+    }
+
     public function finalFiles()
     {
         return $this->hasManyDeep(
@@ -122,9 +135,8 @@ class SubProject extends Model
     /** @throws Throwable */
     public function initAssignments()
     {
-        collect($this->project->typeClassifierValue->projectTypeConfig->features)
-            ->filter(fn ($elem) => Str::startsWith($elem, 'job'))
-            ->each(function ($feature) {
+        $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
+            ->each(function (string $feature) {
                 $assignment = new Assignment();
                 $assignment->sub_project_id = $this->id;
                 $assignment->feature = $feature;
@@ -135,5 +147,10 @@ class SubProject extends Model
     public function cat(): CatToolService
     {
         return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
+    }
+
+    public function getPriceCalculator(): PriceCalculator
+    {
+        return new SubProjectPriceCalculator($this);
     }
 }

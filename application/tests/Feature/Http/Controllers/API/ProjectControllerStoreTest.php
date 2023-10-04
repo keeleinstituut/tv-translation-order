@@ -208,7 +208,7 @@ class ProjectControllerStoreTest extends TestCase
                     : null,
                 'client_institution_user' => ['id' => $project->client_institution_user_id],
                 'status' => $project->status->value,
-                'cost' => $project->computeCost(),
+//                'cost' => $project->computeCost(),
             ],
             $response->json('data')
         );

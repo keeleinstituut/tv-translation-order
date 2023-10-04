@@ -44,7 +44,7 @@ class VendorControllerTest extends TestCase
             ->whereIn('institution_user_id', $randomTestIUserIds)
             ->with('prices', 'institutionUser', 'tags')
             ->join('entity_cache.cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
-            ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') ASC")
+            ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
             ->get();
 
@@ -154,6 +154,7 @@ class VendorControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
+                'VIEW_VENDOR_DB'
             ],
             'selectedInstitution' => [
                 'id' => $institutionId,
