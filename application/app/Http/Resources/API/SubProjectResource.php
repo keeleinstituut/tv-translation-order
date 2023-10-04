@@ -34,6 +34,7 @@ class SubProjectResource extends JsonResource
             'destination_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('destinationLanguageClassifierValue')),
             'assignments' => $this->whenLoaded('assignments'),
             'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
+            'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
             'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
             'cat_jobs' => CatToolJobResource::collection($this->catToolJobs),
             'mt_enabled' => $this->cat()->hasMTEnabled(),

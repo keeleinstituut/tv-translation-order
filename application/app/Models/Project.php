@@ -93,13 +93,17 @@ use Throwable;
  */
 class Project extends Model implements HasMedia
 {
-    public const SOURCE_FILES_COLLECTION = 'source';
-
-    protected $guarded = [];
+    use HasFactory;
+    use HasUuids;
+    use InteractsWithMedia;
+    use SoftDeletes;
 
     protected $table = 'projects';
 
+    public const SOURCE_FILES_COLLECTION = 'source';
     public const HELP_FILES_COLLECTION = 'help';
+    public const FINAL_FILES_COLLECTION = 'final';
+    public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
     public const HELP_FILE_TYPES = [
         'STYLE_GUIDE',
@@ -107,15 +111,9 @@ class Project extends Model implements HasMedia
         'REFERENCE_FILE',
     ];
 
-    public const FINAL_FILES_COLLECTION = 'final';
 
-    public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
-    use HasFactory;
-    use HasUuids;
-    use InteractsWithMedia;
-    use SoftDeletes;
-
+    protected $guarded = [];
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
@@ -149,24 +147,39 @@ class Project extends Model implements HasMedia
         return $this->hasMany(SubProject::class);
     }
 
+    public function sourceFiles()
+    {
+        return $this->media()->where('collection_name', self::SOURCE_FILES_COLLECTION);
+    }
+
+    public function helpFiles()
+    {
+        return $this->media()->where('collection_name', self::HELP_FILES_COLLECTION);
+    }
+
+    public function finalFiles()
+    {
+        return $this->media()->where('collection_name', self::FINAL_FILES_COLLECTION);
+    }
+
+    public function managerInstitutionUser(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionUser::class, 'manager_institution_user_id');
+    }
+
+    public function clientInstitutionUser(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionUser::class, 'client_institution_user_id');
+    }
+
+    public function tags(): MorphToMany
+    {
+        return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
+    }
+
     public function workflow(): WorkflowProcessInstanceService
     {
         return new WorkflowProcessInstanceService($this);
-    }
-
-    public function getSourceFiles(): MediaCollection
-    {
-        return $this->media->filter(fn (Media $media) => $media->collection_name === self::SOURCE_FILES_COLLECTION);
-    }
-
-    public function getHelpFiles(): MediaCollection
-    {
-        return $this->media->filter(fn (Media $media) => $media->collection_name === self::HELP_FILES_COLLECTION);
-    }
-
-    public function getFinalFiles(): MediaCollection
-    {
-        return $this->media->filter(fn (Media $media) => $media->collection_name === self::FINAL_FILES_COLLECTION);
     }
 
     /** @throws Throwable */
@@ -187,31 +200,6 @@ class Project extends Model implements HasMedia
 
             $subProject->initAssignments();
         });
-    }
-
-    public function managerInstitutionUser(): BelongsTo
-    {
-        return $this->belongsTo(InstitutionUser::class, 'manager_institution_user_id');
-    }
-
-    public function clientInstitutionUser(): BelongsTo
-    {
-        return $this->belongsTo(InstitutionUser::class, 'client_institution_user_id');
-    }
-
-    public function tags(): MorphToMany
-    {
-        return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
-    }
-
-    public function getSourceLanguageClassifierValue(): ?ClassifierValue
-    {
-        return $this->subProjects->first()?->sourceLanguageClassifierValue;
-    }
-
-    public function getDestinationLanguageClassifierValues(): Collection
-    {
-        return $this->subProjects->map(fn (SubProject $subProject) => $subProject->destinationLanguageClassifierValue);
     }
 
     /**
