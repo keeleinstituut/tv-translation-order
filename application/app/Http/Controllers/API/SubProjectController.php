@@ -4,23 +4,26 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\API\SubProjectResource;
-use App\Models\Project;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SubProjectController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(): AnonymousResourceCollection
+    public function index()
     {
-        return SubProjectResource::collection(
-            self::getBaseQuery()->paginate()
-        );
+        $data = SubProject::getModel()
+            ->with('project')
+            ->with('project.typeClassifierValue')
+            ->with('sourceLanguageClassifierValue')
+            ->with('destinationLanguageClassifierValue')
+            ->paginate();
+
+        return SubProjectResource::collection($data);
     }
 
     /**
@@ -34,17 +37,18 @@ class SubProjectController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id): SubProjectResource
+    public function show(string $id)
     {
-        return new SubProjectResource(
-            self::getBaseQuery()->with('sourceLanguageClassifierValue')
-                ->with('destinationLanguageClassifierValue')
-                ->with('sourceFiles')
+        $data = SubProject::getModel()
+            ->with('sourceLanguageClassifierValue')
+            ->with('destinationLanguageClassifierValue')
+            ->with('sourceFiles')
 //            ->with('project.typeClassifierValue.projectTypeConfig')
-                ->with('assignments.candidates.vendor.institutionUser')
-                ->with('assignments.assignee.institutionUser')
-                ->find($id) ?? abort(404)
-        );
+            ->with('assignments.candidates.vendor.institutionUser')
+            ->with('assignments.assignee.institutionUser')
+            ->find($id) ?? abort(404);
+
+        return new SubProjectResource($data);
     }
 
     /**

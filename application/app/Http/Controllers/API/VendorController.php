@@ -51,7 +51,7 @@ class VendorController extends Controller
 
         if ($param = $params->get('fullname')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
-                $query->where(DB::raw("CONCAT(\"user\"->>'forename', \"user\"->>'surname')"), 'ILIKE', "%$param%");
+                $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$param%");
             });
         }
 
@@ -88,7 +88,7 @@ class VendorController extends Controller
 
         $data = $query
             ->join('entity_cache.cached_institution_users', 'vendors.institution_user_id', '=', 'entity_cache.cached_institution_users.id')
-            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
+            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
             ->paginate($params->get('limit', 10));
 
@@ -154,13 +154,9 @@ class VendorController extends Controller
     #[OAH\ResourceResponse(dataRef: VendorResource::class, description: 'Vendor resource', response: Response::HTTP_OK)]
     public function show(Request $request): VendorResource
     {
-        $this->authorize('view', Vendor::class);
-
-        return new VendorResource(
-            $this->getBaseQuery()->findOrFail(
-                $request->route('id')
-            )
-        );
+        $vendor = $this->getBaseQuery()->findOrFail($request->route('id'));
+        $this->authorize('view', $vendor);
+        return new VendorResource($vendor);
     }
 
     /**
