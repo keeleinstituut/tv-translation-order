@@ -3,7 +3,10 @@
 namespace App\Models;
 
 use App\Models\CachedEntities\ClassifierValue;
-use App\Services\CatPickerService;
+use App\Services\CatTools\CatPickerService;
+use App\Services\CatTools\Contracts\CatToolService;
+use App\Services\Prices\PriceCalculator;
+use App\Services\Prices\SubProjectPriceCalculator;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -14,7 +17,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
@@ -27,11 +29,11 @@ use Throwable;
  * @property string|null $project_id
  * @property string|null $file_collection
  * @property string|null $file_collection_final
- * @property string|null $matecat_job_id
  * @property string|null $workflow_ref
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
  * @property ArrayObject|null $cat_metadata
+ * @property float|null $price
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
@@ -39,6 +41,9 @@ use Throwable;
  * @property-read ClassifierValue|null $destinationLanguageClassifierValue
  * @property-read Project|null $project
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
+ * @property-read Collection<int, Media> $sourceFiles
+ * @property-read Collection<int, Media> $finalFiles
+ * @property-read Collection<int, CatToolJob> $catToolJobs
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -69,6 +74,7 @@ class SubProject extends Model
 
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
+        'price' => 'float',
     ];
 
     public function project()
@@ -121,12 +127,16 @@ class SubProject extends Model
         return $this->hasMany(Assignment::class);
     }
 
+    public function catToolJobs()
+    {
+        return $this->hasMany(CatToolJob::class)->orderBy('id');
+    }
+
     /** @throws Throwable */
     public function initAssignments()
     {
-        collect($this->project->typeClassifierValue->projectTypeConfig->features)
-            ->filter(fn ($elem) => Str::startsWith($elem, 'job'))
-            ->each(function ($feature) {
+        $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
+            ->each(function (string $feature) {
                 $assignment = new Assignment();
                 $assignment->sub_project_id = $this->id;
                 $assignment->feature = $feature;
@@ -134,10 +144,13 @@ class SubProject extends Model
             });
     }
 
-    public function cat()
+    public function cat(): CatToolService
     {
-        $catClass = CatPickerService::pick(CatPickerService::MATECAT);
+        return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
+    }
 
-        return new $catClass($this);
+    public function getPriceCalculator(): PriceCalculator
+    {
+        return new SubProjectPriceCalculator($this);
     }
 }

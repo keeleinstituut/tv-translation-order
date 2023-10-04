@@ -84,6 +84,7 @@ use OpenApi\Attributes as OA;
                 'comments',
                 'workflow_template_id',
                 'workflow_instance_ref',
+                'price',
                 'deadline_at',
                 'event_start_at',
                 'status',
@@ -98,7 +99,6 @@ use OpenApi\Attributes as OA;
             'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
             'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
-            'cost' => $this->computeCost(),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
         ];
     }

@@ -4,8 +4,9 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\API\SubProjectResource;
-use App\Models\Project;
 use App\Models\SubProject;
+use App\Policies\SubProjectPolicy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class SubProjectController extends Controller
@@ -67,18 +68,8 @@ class SubProjectController extends Controller
         //
     }
 
-    public function sendToCat(string $id)
+    private static function getBaseQuery(): Builder
     {
-        $subProject = SubProject::find($id);
-        if (collect($subProject->cat_metadata)->isNotEmpty()) {
-            abort(400, 'Cat project already created');
-        }
-
-        return $subProject->cat()->createProject();
-    }
-
-    public function sendToWork(string $id)
-    {
-        $subProject = SubProject::find($id);
+        return SubProject::withGlobalScope('policy', SubProjectPolicy::scope());
     }
 }

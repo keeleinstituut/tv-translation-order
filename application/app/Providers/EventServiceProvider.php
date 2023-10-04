@@ -54,7 +54,11 @@ class EventServiceProvider extends ServiceProvider
         Models\Vendor::observe(Observers\VendorObserver::class);
         Models\Project::observe(Observers\ProjectObserver::class);
         Models\SubProject::observe(Observers\SubProjectObserver::class);
+        Models\Assignment::observe(Observers\AssignmentObserver::class);
+        Models\Volume::observe(Observers\VolumeObserver::class);
+        Models\CatToolJob::observe(Observers\CatToolJobObserver::class);
         Models\CachedEntities\Institution::observe(Observers\InstitutionObserver::class);
+        Models\AssignmentCatToolJob::observe(Observers\AssignmentCatToolJobObserver::class);
     }
 
     /**

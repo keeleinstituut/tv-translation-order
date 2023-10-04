@@ -2,12 +2,14 @@
 
 namespace App\Models\CachedEntities;
 
+use App\Models\InstitutionDiscount;
 use App\Models\Sequence;
 use Database\Factories\CachedEntities\InstitutionFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use SyncTools\Traits\HasCachedEntityFactory;
@@ -25,6 +27,7 @@ use SyncTools\Traits\IsCachedEntity;
  * @property string|null $synced_at
  * @property Carbon|null $deleted_at
  * @property-read Sequence|null $institutionProjectSequence
+ * @property-read InstitutionDiscount|null $institutionDiscount
  *
  * @method static InstitutionFactory factory($count = null, $state = [])
  * @method static Builder|Institution newModelQuery()
@@ -56,5 +59,10 @@ class Institution extends Model
     {
         return $this->morphOne(Sequence::class, 'sequenceable')
             ->where('name', Sequence::INSTITUTION_PROJECT_SEQ);
+    }
+
+    public function institutionDiscount(): HasOne
+    {
+        return $this->hasOne(InstitutionDiscount::class);
     }
 }
