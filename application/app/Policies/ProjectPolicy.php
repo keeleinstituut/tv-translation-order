@@ -62,7 +62,8 @@ class ProjectPolicy
      */
     public function update(JwtPayloadUser $user, Project $project): bool
     {
-        return false; // TODO
+        return $this->isInSameInstitutionAsCurrentUser($project) &&
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**

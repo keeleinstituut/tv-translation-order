@@ -38,6 +38,8 @@ class Candidate extends Model
     use HasUuids;
     use HasFactory;
 
+    protected $guarded = [];
+
     public function vendor()
     {
         return $this->belongsTo(Vendor::class);

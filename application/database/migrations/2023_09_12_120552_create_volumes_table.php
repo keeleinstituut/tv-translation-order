@@ -13,11 +13,13 @@ return new class extends Migration
     {
         Schema::create('volumes', function (Blueprint $table) {
             $table->uuid('id');
-            $table->foreignUuid('assignment_id')->constrained('assignments');
+            $table->foreignUuid('assignment_id')->constrained('assignments')
+                ->onDelete('cascade');
             $table->enum('unit_type', ['CHARACTERS', 'WORDS', 'PAGES', 'MINUTES', 'HOURS']);
             $table->unsignedDecimal('unit_quantity');
             $table->unsignedDecimal('unit_fee')->nullable();
-            $table->foreignUuid('cat_tool_job_id')->nullable()->constrained('cat_tool_jobs');
+            $table->foreignUuid('cat_tool_job_id')->nullable()
+                ->constrained('cat_tool_jobs')->onDelete('cascade');
             $table->json('discounts')->default('{}');
             $table->json('custom_volume_analysis')->default('{}');
             $table->timestampsTz();
