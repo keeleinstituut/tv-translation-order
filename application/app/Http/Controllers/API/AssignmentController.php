@@ -19,10 +19,10 @@ use App\Models\Candidate;
 use App\Models\SubProject;
 use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
-use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -36,6 +36,7 @@ class AssignmentController extends Controller
         path: '/assignments/{sub_project_id}',
         description: 'Endpoint that returns list of assignments of the sub-project with filtering by `feature`',
         summary: 'list of assignments of the sub-project with filtering by `feature`',
+        tags: ['Assignment management'],
         parameters: [
             new OAH\UuidPath('sub_project_id'),
             new OA\QueryParameter(name: 'feature', schema: new OA\Schema(type: 'string', enum: Feature::class)),
@@ -135,7 +136,7 @@ class AssignmentController extends Controller
      * @throws Throwable
      */
     #[OA\Put(
-        path: '/assignment/{id}',
+        path: '/assignments/{id}',
         summary: 'Update the assignment',
         requestBody: new OAH\RequestBody(AssignmentUpdateRequest::class),
         tags: ['Assignment management'],
@@ -158,7 +159,7 @@ class AssignmentController extends Controller
      * @throws Throwable
      */
     #[OA\Put(
-        path: '/assignment/{id}/assignee-comment',
+        path: '/assignments/{id}/assignee-comment',
         summary: 'Update assignee comment for an assignment',
         requestBody: new OAH\RequestBody(AssignmentUpdateAssigneeCommentRequest::class),
         tags: ['Assignment management'],
@@ -180,9 +181,9 @@ class AssignmentController extends Controller
     /**
      * @throws Throwable
      */
-    #[OA\Put(
-        path: '/assignment/{id}/add-candidates',
-        summary: 'Add assignment candidates',
+    #[OA\Post(
+        path: '/assignments/{id}/candidates/bulk',
+        summary: 'Add candidates to assignment',
         requestBody: new OAH\RequestBody(AssignmentAddCandidatesRequest::class),
         tags: ['Assignment management'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -190,17 +191,18 @@ class AssignmentController extends Controller
     #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
     public function addCandidates(AssignmentAddCandidatesRequest $request)
     {
-        return DB::transaction(function () use ($request) {
-            $assignment = self::getAssignmentOrFail($request->route('id'));
-            $this->authorize('update', $assignment);
-            $assignment->candidates()->saveMany(
-                collect($request->validated('candidates'))->map(
-                    fn (string $candidateId) => new Candidate([
-                        'vendor_id' => $candidateId,
-                    ])
-                )
-            );
+        $assignmentId = $request->route('id');
+        $params = collect($request->validated());
 
+        return DB::transaction(function () use ($assignmentId, $params) {
+            $assignment = self::getAssignmentOrFail($assignmentId);
+            $this->authorize('update', $assignment);
+
+            $candidates = collect($params->get('data'))->map(Candidate::make(...));
+
+            $assignment->candidates()->saveMany($candidates);
+
+            $assignment->load('candidates.vendor.institutionUser');
             return AssignmentResource::make($assignment);
         });
     }
@@ -209,7 +211,7 @@ class AssignmentController extends Controller
      * @throws Throwable
      */
     #[OA\Delete(
-        path: '/assignment/{id}/delete-candidate',
+        path: '/assignments/{id}/candidates/bulk',
         summary: 'Delete assignment candidate',
         requestBody: new OAH\RequestBody(AssignmentDeleteCandidateRequest::class),
         tags: ['Assignment management'],
@@ -218,12 +220,20 @@ class AssignmentController extends Controller
     #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
     public function deleteCandidate(AssignmentDeleteCandidateRequest $request)
     {
-        return DB::transaction(function () use ($request) {
-            $assignment = self::getAssignmentOrFail($request->route('id'));
+        $assignmentId = $request->route('id');
+        $params = collect($request->validated());
+
+        return DB::transaction(function () use ($assignmentId, $params) {
+            $assignment = self::getAssignmentOrFail($assignmentId);
             $this->authorize('update', $assignment);
-            $assignment->candidates()->where('vendor_id', $request->validated('vendor_id'))
+
+            $vendorIds = collect($params->get('data'))->pluck('vendor_id');
+
+            $assignment->candidates()
+                ->whereIn('vendor_id', $vendorIds)
                 ->each(fn (Candidate $candidate) => $candidate->delete());
 
+            $assignment->load('candidates.vendor.institutionUser');
             return AssignmentResource::make($assignment);
         });
     }

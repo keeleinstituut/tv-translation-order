@@ -2,19 +2,30 @@
 
 namespace App\Http\Requests\API;
 
+use App\Models\Candidate;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
+use Ramsey\Uuid\Uuid;
 
 #[OA\RequestBody(
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['vendor_id'],
+        required: ['data'],
         properties: [
-            new OA\Property(property: 'vendor_id', type: 'string', format: 'uuid'),
+            new OA\Property(
+                property: 'data',
+                type: 'array',
+                items: new OA\Items(
+                    properties: [
+                        new OA\Property(property: 'vendor_id', type: 'string', format: 'uuid'),
+                    ]
+                ),
+                minItems: 1
+            ),
         ]
     )
 )]
@@ -28,15 +39,29 @@ class AssignmentDeleteCandidateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'vendor_id' => [
+            'data' => ['required', 'array', 'min:1'],
+            'data.*.vendor_id' => [
                 'required',
                 'uuid',
                 function ($attribute, $value, $fail) {
-                    $exists = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+                    try {
+                        Uuid::fromString($value);
+                    } catch (\Exception $e) {
+                        return;
+                    }
+
+                    $vendorExists = Vendor::withGlobalScope('policy', VendorPolicy::scope())
                         ->where('id', $value)->exists();
 
-                    if (! $exists) {
-                        $fail('Vendor with such ID doesn\'t exist.');
+                    if (! $vendorExists) {
+                        $fail('Vendor with such ID does not exist');
+                    }
+
+                    $candidateExists = Candidate::where('assignment_id', $this->route('id'))
+                        ->where('vendor_id', $value)->exists();
+
+                    if (! $candidateExists) {
+                        $fail('Candidate for vendor does not exist');
                     }
                 },
             ],
