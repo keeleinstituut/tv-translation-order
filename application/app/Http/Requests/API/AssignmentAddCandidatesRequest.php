@@ -7,20 +7,23 @@ use App\Models\Vendor;
 use App\Policies\VendorPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
+use Ramsey\Uuid\Uuid;
 
 #[OA\RequestBody(
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['candidates'],
+        required: ['data'],
         properties: [
             new OA\Property(
-                property: 'candidates',
+                property: 'data',
                 type: 'array',
                 items: new OA\Items(
-                    type: 'string',
-                    format: 'uuid',
+                    properties: [
+                        new OA\Property(property: 'vendor_id', type: 'string', format: 'uuid'),
+                    ]
                 ),
                 minItems: 1
             ),
@@ -37,22 +40,29 @@ class AssignmentAddCandidatesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'candidates' => ['required', 'array', 'min:1'],
-            'candidates.*' => [
+            'data' => ['required', 'array', 'min:1'],
+            'data.*.vendor_id' => [
+                'required',
                 'uuid',
                 function ($attribute, $value, $fail) {
+                    try {
+                        Uuid::fromString($value);
+                    } catch (\Exception $e) {
+                        return;
+                    }
+
                     $exists = Vendor::withGlobalScope('policy', VendorPolicy::scope())
                         ->where('id', $value)->exists();
 
                     if (! $exists) {
-                        $fail('Vendor with such ID is not exists.');
+                        $fail('Vendor with such ID does not exist');
                     }
 
                     $candidateExists = Candidate::where('assignment_id', $this->route('id'))
                         ->where('vendor_id', $value)->exists();
 
                     if ($candidateExists) {
-                        $fail('Selected vendor is already candidate.');
+                        $fail('Selected vendor is already a candidate');
                     }
                 },
             ],

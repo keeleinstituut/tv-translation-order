@@ -35,6 +35,7 @@ class ProjectController extends Controller
         path: '/projects',
         description: 'If there are multiple types of filtering conditions, they will be joined with the "AND" operand.',
         summary: 'List and optionally filter projects belonging to the current institution (inferred from JWT)',
+        tags: ['Projects'],
         parameters: [
             new OA\QueryParameter(name: 'page', schema: new OA\Schema(type: 'integer', default: 1)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'integer', default: 10)),
@@ -150,6 +151,7 @@ class ProjectController extends Controller
         path: '/projects',
         summary: 'Create a new project',
         requestBody: new OAH\RequestBody(ProjectCreateRequest::class),
+        tags: ['Projects'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Created project', response: Response::HTTP_CREATED)]
@@ -212,6 +214,7 @@ class ProjectController extends Controller
      */
     #[OA\Get(
         path: '/projects/{id}',
+        tags: ['Projects'],
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
     )]

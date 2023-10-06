@@ -90,10 +90,10 @@ Route::prefix('/assignments')
         Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs');
         Route::post('/', 'store');
         Route::put('/{id}', 'update');
-        Route::put('/{id}/assignee-comment', 'updateAssigneeComment');
-        Route::put('/{id}/add-candidates', 'addCandidates');
         Route::delete('/{id}', 'destroy');
-        Route::delete('/{id}/delete-candidate', 'deleteCandidate');
+        Route::put('/{id}/assignee-comment', 'updateAssigneeComment');
+        Route::post('/{id}/candidates/bulk', 'addCandidates');
+        Route::delete('/{id}/candidates/bulk', 'deleteCandidate');
     });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
