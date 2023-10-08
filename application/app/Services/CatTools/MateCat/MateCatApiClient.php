@@ -129,6 +129,36 @@ readonly class MateCatApiClient
             ])->throw()->json();
     }
 
+    /**
+     * @param int $id
+     * @param string $password
+     * @param array $tmKeys
+     * @return array
+     * @throws RequestException
+     */
+    public function addTM(int $id, string $password, array $tmKeys): array
+    {
+        return $this->getBasePendingRequest()
+            ->put("/v2/projects/$id/$password/add-tm-keys", [
+                'tm_keys' => join(',', $tmKeys),
+            ])->throw()->json();
+    }
+
+    /**
+     * @param int $id
+     * @param string $password
+     * @param array $tmKeys
+     * @return array
+     * @throws RequestException
+     */
+    public function deleteTM(int $id, string $password, array $tmKeys): array
+    {
+        return $this->getBasePendingRequest()
+            ->put("/v2/projects/$id/$password/remove-tm-keys", [
+                'tm_keys' => join(',', $tmKeys),
+            ])->throw()->json();
+    }
+
     protected function getBasePendingRequest(): PendingRequest
     {
         return Http::baseUrl($this->baseUrl)

@@ -44,6 +44,7 @@ use Throwable;
  * @property-read Collection<int, Media> $sourceFiles
  * @property-read Collection<int, Media> $finalFiles
  * @property-read Collection<int, CatToolJob> $catToolJobs
+ * @property-read Collection<int, CatToolTm> $catToolTms
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -130,6 +131,11 @@ class SubProject extends Model
     public function catToolJobs()
     {
         return $this->hasMany(CatToolJob::class)->orderBy('id');
+    }
+
+    public function catToolTms()
+    {
+        return $this->hasMany(CatToolTm::class);
     }
 
     /** @throws Throwable */

@@ -3,6 +3,7 @@
 namespace App\Services\CatTools\Contracts;
 
 use App\Models\CatToolJob;
+use App\Models\CatToolTm;
 use App\Models\Media;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Database\Eloquent\Collection;
@@ -53,4 +54,8 @@ interface CatToolService
     public function toggleMTEngine(bool $isEnabled): void;
 
     public function hasMTEnabled(): bool;
+
+    public function addTM(CatToolTm $tm): void;
+
+    public function deleteTM(CatToolTm $tm): void;
 }

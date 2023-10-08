@@ -5,6 +5,7 @@ namespace App\Services\CatTools\MateCat;
 use App\Jobs\TrackMateCatProjectAnalyzingStatus;
 use App\Jobs\TrackMateCatProjectCreationStatus;
 use App\Jobs\TrackMateCatProjectProgress;
+use App\Models\CatToolTm;
 use App\Models\Media;
 use App\Models\SubProject;
 use App\Services\CatTools\Contracts\CatToolService;
@@ -65,6 +66,10 @@ readonly class MateCat implements CatToolService
 
         if (! is_null($filesIds) && count($filesIds) !== count($files)) {
             throw new InvalidArgumentException('Incorrect files IDs');
+        }
+
+        if (empty($this->subProject->catToolTms)) {
+            throw new InvalidArgumentException('Could not setup CAT tool without translation memories');
         }
 
         try {
@@ -374,5 +379,29 @@ readonly class MateCat implements CatToolService
     public function hasMTEnabled(): bool
     {
         return $this->storage->hasMTEnabled();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function addTM(CatToolTm $tm): void
+    {
+        $this->apiClient->addTM(
+            $this->storage->getProjectId(),
+            $this->storage->getProjectPassword(),
+            [TmKeyComposer::compose($tm)]
+        );
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function deleteTM(CatToolTm $tm): void
+    {
+        $this->apiClient->deleteTM(
+            $this->storage->getProjectId(),
+            $this->storage->getProjectPassword(),
+            [$tm->tm_id]
+        );
     }
 }
