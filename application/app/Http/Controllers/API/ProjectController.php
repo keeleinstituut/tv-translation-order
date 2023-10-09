@@ -108,10 +108,6 @@ class ProjectController extends Controller
             $query = $query->whereIn('status', $param);
         }
 
-        if ($param = $params->get('statuses')) {
-            $query = $query->whereIn('status', $param);
-        }
-
         if ($param = $params->get('type_classifier_value_ids')) {
             $query = $query->whereIn('type_classifier_value_id', $param);
         }
@@ -126,13 +122,13 @@ class ProjectController extends Controller
             $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
         }
 
-////            ->when($showOnlyPersonalProjects, function (Builder $builder) {
-////                $builder->where(function (Builder $projectClause) {
-////                    $projectClause
-////                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
-////                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
-////                });
-////            })
+        ////            ->when($showOnlyPersonalProjects, function (Builder $builder) {
+        ////                $builder->where(function (Builder $projectClause) {
+        ////                    $projectClause
+        ////                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
+        ////                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
+        ////                });
+        ////            })
 
         $data = $query
             ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'asc'))
@@ -170,7 +166,7 @@ class ProjectController extends Controller
                 'deadline_at' => $params->get('deadline_at'),
                 'comments' => $params->get('comments'),
                 'event_start_at' => $params->get('event_start_at'),
-                'status' => !!$params->get('manager_institution_user_id')
+                'status' => (bool) $params->get('manager_institution_user_id')
                     ? ProjectStatus::Registered
                     : ProjectStatus::New,
                 'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),

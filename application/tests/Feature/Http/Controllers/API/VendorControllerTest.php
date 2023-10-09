@@ -154,7 +154,7 @@ class VendorControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
                 'EDIT_VENDOR_DB',
-                'VIEW_VENDOR_DB'
+                'VIEW_VENDOR_DB',
             ],
             'selectedInstitution' => [
                 'id' => $institutionId,

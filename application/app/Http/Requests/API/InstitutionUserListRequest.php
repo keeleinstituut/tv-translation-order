@@ -16,7 +16,7 @@ class InstitutionUserListRequest extends FormRequest
         return [
             'limit' => 'sometimes|integer|max:50',
             'fullname' => 'sometimes|string',
-            'project_role' => 'sometimes|in:client,manager'
+            'project_role' => 'sometimes|in:client,manager',
         ];
     }
 }

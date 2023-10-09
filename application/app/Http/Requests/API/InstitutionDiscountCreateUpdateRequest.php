@@ -34,7 +34,6 @@ use OpenApi\Attributes as OA;
 )]
 class InstitutionDiscountCreateUpdateRequest extends FormRequest
 {
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -43,6 +42,7 @@ class InstitutionDiscountCreateUpdateRequest extends FormRequest
     public function rules(): array
     {
         $percentageRule = ['required', 'decimal:0,2', 'between:0,100.00'];
+
         return [
             'discount_percentage_101' => $percentageRule,
             'discount_percentage_repetitions' => $percentageRule,

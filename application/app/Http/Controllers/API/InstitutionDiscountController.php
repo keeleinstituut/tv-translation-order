@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Enums\PrivilegeKey;
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\InstitutionDiscountCreateUpdateRequest;
 use App\Http\Resources\API\InstitutionDiscountResource;
 use App\Models\CachedEntities\Institution;
@@ -12,7 +13,6 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 
 class InstitutionDiscountController extends Controller
 {
@@ -35,6 +35,7 @@ class InstitutionDiscountController extends Controller
         if (empty($institutionDiscount = self::getInstitution()->institutionDiscount)) {
             return response()->noContent();
         }
+
         return InstitutionDiscountResource::make($institutionDiscount);
     }
 
@@ -60,7 +61,7 @@ class InstitutionDiscountController extends Controller
 
     private static function getInstitution(): Institution
     {
-        if (!$institution = Institution::find(Auth::user()->institutionId)) {
+        if (! $institution = Institution::find(Auth::user()->institutionId)) {
             abort(401);
         }
 

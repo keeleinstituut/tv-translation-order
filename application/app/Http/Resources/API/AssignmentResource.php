@@ -62,10 +62,10 @@ class AssignmentResource extends JsonResource
                 'created_at',
                 'updated_at',
             ),
-            'assignee' => VendorResource::make($this->assignee),
-            'candidates' => CandidateResource::collection($this->candidates),
-            'volumes' => VolumeResource::collection($this->volumes),
-            'jobs' => CatToolJobResource::collection($this->catToolJobs),
+            'assignee' => VendorResource::make($this->whenLoaded('assignee')),
+            'candidates' => CandidateResource::collection($this->whenLoaded('candidates')),
+            'volumes' => VolumeResource::collection($this->whenLoaded('volumes')),
+            'jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
         ];
     }
 }

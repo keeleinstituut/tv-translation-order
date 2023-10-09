@@ -89,9 +89,15 @@ class AssignmentController extends Controller
                 AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
                     $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
                         ->where('feature', $request->validated('feature'));
-                })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignments) {
-                    $affectedAssignments->add($assignmentCatToolJob->assignment);
+                })->with([
+                    'assignment.candidates.vendor.institutionUser',
+                    'assignment.assignee.institutionUser',
+                    'assignment.volumes',
+                ])->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignments) {
+                    $assignment = $assignmentCatToolJob->assignment;
+                    $affectedAssignments->add($assignment);
                     $assignmentCatToolJob->delete();
+                    $assignment->load('catToolJobs');
                 });
 
                 return AssignmentResource::collection($affectedAssignments);
@@ -103,6 +109,7 @@ class AssignmentController extends Controller
             })->each(function ($catToolJobsIds, string $assignmentId) use ($affectedAssignments) {
                 $assignment = $affectedAssignments->get($assignmentId);
                 $assignment->catToolJobs()->sync($catToolJobsIds);
+                $assignment->load('catToolJobs');
             });
 
             return AssignmentResource::collection($affectedAssignments->values());
@@ -126,7 +133,8 @@ class AssignmentController extends Controller
             $assignment = new Assignment();
             $assignment->fill($request->validated());
             $this->authorize('create', $assignment);
-            $assignment->save();
+            $assignment->saveOrFail();
+            $assignment->refresh();
 
             return AssignmentResource::make($assignment);
         });
@@ -149,7 +157,8 @@ class AssignmentController extends Controller
             $assignment = self::getAssignmentOrFail($request->route('id'));
             $assignment->fill($request->validated());
             $this->authorize('update', $assignment);
-            $assignment->save();
+            $assignment->saveOrFail();
+            $assignment->refresh();
 
             return AssignmentResource::make($assignment);
         });
@@ -172,7 +181,7 @@ class AssignmentController extends Controller
             $assignment = self::getAssignmentOrFail($request->route('id'));
             $assignment->fill($request->validated());
             $this->authorize('updateAssigneeComment', $assignment);
-            $assignment->save();
+            $assignment->saveOrFail();
 
             return AssignmentResource::make($assignment);
         });
@@ -203,6 +212,7 @@ class AssignmentController extends Controller
             $assignment->candidates()->saveMany($candidates);
 
             $assignment->load('candidates.vendor.institutionUser');
+
             return AssignmentResource::make($assignment);
         });
     }
@@ -234,6 +244,7 @@ class AssignmentController extends Controller
                 ->each(fn (Candidate $candidate) => $candidate->delete());
 
             $assignment->load('candidates.vendor.institutionUser');
+
             return AssignmentResource::make($assignment);
         });
     }
@@ -264,18 +275,22 @@ class AssignmentController extends Controller
 
     private static function getAssignmentOrFail(string $id): Assignment
     {
-        if (! $assignment = self::getBaseQuery()->find($id)) {
-            abort(404, 'Assignment not found by ID');
-        }
+        /** @var Assignment $assignment */
+        $assignment = self::getBaseQuery()->with([
+            'assignee',
+            'candidates',
+            'volumes',
+            'catToolJobs',
+        ])->findOrFail($id);
 
         return $assignment;
     }
 
     private static function getSubProjectOrFail(string $id): SubProject
     {
-        if (! $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())->find($id)) {
-            abort(404, 'Sub-project not found by ID');
-        }
+        /** @var SubProject $subProject */
+        $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->findOrFail($id);
 
         return $subProject;
     }

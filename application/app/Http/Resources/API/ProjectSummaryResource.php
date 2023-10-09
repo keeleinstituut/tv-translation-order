@@ -63,7 +63,7 @@ class ProjectSummaryResource extends JsonResource
             'tags' => TagResource::collection($this->tags),
             'source_language_classifier_value' => ClassifierValueResource::make($this->getSourceLanguageClassifierValue()),
             'destination_language_classifier_values' => ClassifierValueResource::collection($this->getDestinationLanguageClassifierValues()),
-//            'cost' => $this->computeCost(),
+            //            'cost' => $this->computeCost(),
         ];
     }
 }

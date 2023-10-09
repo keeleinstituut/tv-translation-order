@@ -65,8 +65,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'cost', description: 'TODO (computation/enumeration of costs is unclear for now)', anyOf: [new OA\Schema(const: null)]),
     ],
     type: 'object'
-)
-] class ProjectResource extends JsonResource
+)]
+class ProjectResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
