@@ -22,6 +22,7 @@ use App\Policies\SubProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -56,7 +57,7 @@ class AssignmentController extends Controller
             $request->route('sub_project_id')
         )->when(
             $request->validated('feature'),
-            fn (Builder $query, string $feature) => $query->where('feature', $feature)
+            fn(Builder $query, string $feature) => $query->where('feature', $feature)
         )->with(
             'candidates.vendor.institutionUser',
             'assignee.institutionUser',
@@ -84,35 +85,28 @@ class AssignmentController extends Controller
 
         return DB::transaction(function () use ($request) {
             if (empty($request->validated('linking'))) {
-                $affectedAssignments = collect();
+                $affectedAssignmentIds = collect();
                 // Delete all relations between assignments and CAT tool jobs in case if empty linking passed.
                 AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
                     $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
                         ->where('feature', $request->validated('feature'));
-                })->with([
-                    'assignment.candidates.vendor.institutionUser',
-                    'assignment.assignee.institutionUser',
-                    'assignment.volumes',
-                ])->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignments) {
-                    $assignment = $assignmentCatToolJob->assignment;
-                    $affectedAssignments->add($assignment);
+                })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
+                    $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
                     $assignmentCatToolJob->delete();
-                    $assignment->load('catToolJobs');
                 });
 
-                return AssignmentResource::collection($affectedAssignments);
+                return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
             }
 
-            $affectedAssignments = $request->getAssignments();
+            $assignmentsIndexedById = $request->getAssignments();
             collect($request->validated('linking'))->mapToGroups(function (array $item) {
                 return [$item['assignment_id'] => $item['cat_tool_job_id']];
-            })->each(function ($catToolJobsIds, string $assignmentId) use ($affectedAssignments) {
-                $assignment = $affectedAssignments->get($assignmentId);
+            })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById) {
+                $assignment = $assignmentsIndexedById->get($assignmentId);
                 $assignment->catToolJobs()->sync($catToolJobsIds);
-                $assignment->load('catToolJobs');
             });
 
-            return AssignmentResource::collection($affectedAssignments->values());
+            return AssignmentResource::collection(self::getAssignmentsByIds($assignmentsIndexedById->keys()));
         });
     }
 
@@ -241,7 +235,7 @@ class AssignmentController extends Controller
 
             $assignment->candidates()
                 ->whereIn('vendor_id', $vendorIds)
-                ->each(fn (Candidate $candidate) => $candidate->delete());
+                ->each(fn(Candidate $candidate) => $candidate->delete());
 
             $assignment->load('candidates.vendor.institutionUser');
 
@@ -298,5 +292,16 @@ class AssignmentController extends Controller
     private static function getBaseQuery(): Assignment|Builder
     {
         return Assignment::getModel()->withGlobalScope('policy', AssignmentPolicy::scope());
+    }
+
+    private static function getAssignmentsByIds(Collection $ids): mixed
+    {
+        return Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
+            ->whereIn('id', $ids)->with([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs'
+            ])->get();
     }
 }

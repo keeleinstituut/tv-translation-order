@@ -28,10 +28,10 @@ class SubProjectListRequest extends FormRequest
             'sort_order' => Rule::in(['asc', 'desc']),
             'ext_id' => 'string',
             'only_show_personal_sub_projects' => 'boolean',
-            'statuses' => 'array',
-            'statuses.*' => Rule::enum(SubProjectStatus::class),
-            'type_classifier_value_ids' => 'array',
-            'type_classifier_value_ids.*' => [
+            'status' => 'array',
+            'status.*' => Rule::enum(SubProjectStatus::class),
+            'type_classifier_value_id' => 'array',
+            'type_classifier_value_id.*' => [
                 'uuid',
                 'bail',
                 Rule::exists(ProjectTypeConfig::class, 'type_classifier_value_id'),
@@ -41,8 +41,8 @@ class SubProjectListRequest extends FormRequest
                 'bail',
                 Rule::exists(Project::class, 'id'),
             ],
-            'language_directions' => 'array',
-            'language_directions.*' => [
+            'language_direction' => 'array',
+            'language_direction.*' => [
                 self::getLanguageDirectionValidationRegex(),
                 'bail',
                 static::validateLanguageDirectionExists(...),
@@ -52,6 +52,6 @@ class SubProjectListRequest extends FormRequest
 
     protected function getLanguageDirections(): array
     {
-        return $this->validated('language_directions');
+        return $this->validated('language_direction');
     }
 }

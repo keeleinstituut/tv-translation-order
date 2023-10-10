@@ -123,6 +123,15 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                             'linking.' . $idx . '.assignment_id',
                             'Assignment belongs to another sub-project'
                         );
+
+                        $assignmentHasWrongFeature = $this->getAssignments()->get($linking['assignment_id'])
+                                ?->feature !== $this->validated('feature');
+
+                        $validator->errors()->addIf(
+                            $assignmentHasWrongFeature,
+                            'linking.' . $idx . '.assignment_id',
+                            'Assignment belongs to another feature'
+                        );
                     }
                 );
             },
@@ -167,10 +176,7 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
         }
 
         return $this->assignments = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
-            ->whereIn('id', $this->validated('linking.*.assignment_id'))->with([
-                'assignment.candidates.vendor.institutionUser',
-                'assignment.assignee.institutionUser',
-                'assignment.volumes',
-            ])->get()->keyBy('id');
+            ->whereIn('id', $this->validated('linking.*.assignment_id'))
+            ->get()->keyBy('id');
     }
 }

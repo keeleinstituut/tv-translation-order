@@ -36,7 +36,7 @@ class SubProjectController extends Controller
             new OA\QueryParameter(name: 'ext_id', schema: new OA\Schema(type: 'string')),
             new OA\QueryParameter(name: 'only_show_personal_sub_projects', schema: new OA\Schema(type: 'boolean', default: true)),
             new OA\QueryParameter(
-                name: 'statuses',
+                name: 'status',
                 description: 'Filter the result set to projects which have any of the specified statuses. TODO: add filtering on the BE',
                 schema: new OA\Schema(
                     type: 'array',
@@ -49,7 +49,7 @@ class SubProjectController extends Controller
                 schema: new OA\Schema(type: 'string', format: 'uuid')
             ),
             new OA\QueryParameter(
-                name: 'type_classifier_value_ids',
+                name: 'type_classifier_value_id',
                 description: 'Filter the result set to projects which have any of the specified types.',
                 schema: new OA\Schema(
                     type: 'array',
@@ -57,7 +57,7 @@ class SubProjectController extends Controller
                 )
             ),
             new OA\QueryParameter(
-                name: 'language_directions',
+                name: 'language_direction',
                 description: 'Filter the result set to projects which have any of the specified language directions.',
                 schema: new OA\Schema(
                     type: 'array',
@@ -94,18 +94,18 @@ class SubProjectController extends Controller
             $query = $query->where('project_id', $param);
         }
 
-        //        if ($param = $params->get('statuses')) {
+        //        if ($param = $params->get('status')) {
         //            $query = $query->whereIn('status', $param);
         //        }
 
-        if ($param = $params->get('type_classifier_value_ids')) {
+        if ($param = $params->get('type_classifier_value_id')) {
             $query = $query->whereRelation(
                 'project',
                 fn (Builder $projectQuery) => $projectQuery->whereIn('type_classifier_value_id', $param)
             );
         }
 
-        if ($params->get('language_directions')) {
+        if ($params->get('language_direction')) {
             $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
         }
 
