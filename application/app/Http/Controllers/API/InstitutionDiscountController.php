@@ -52,18 +52,19 @@ class InstitutionDiscountController extends Controller
     {
         Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::EditInstitutionPriceRate->value));
 
-        $institutionDiscount = self::getInstitution()->institutionDiscount()
-            ->updateOrCreate($request->validated());
+        $institution = self::getInstitution();
+        $institutionDiscount = $institution->institutionDiscount()->firstOrNew();
+
+        $institutionDiscount->fill([
+            ...$request->validated(),
+            'institution_id' => $institution->id
+        ]);
 
         return InstitutionDiscountResource::make($institutionDiscount);
     }
 
     private static function getInstitution(): Institution
     {
-        if (!$institution = Institution::find(Auth::user()->institutionId)) {
-            abort(401);
-        }
-
-        return $institution;
+        return Institution::findOrFail(Auth::user()->institutionId);
     }
 }
