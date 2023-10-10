@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API;
 
 use App\Enums\PrivilegeKey;
 use App\Http\Controllers\Controller;
-use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\InstitutionDiscountCreateUpdateRequest;
 use App\Http\Resources\API\InstitutionDiscountResource;
 use App\Models\CachedEntities\Institution;
@@ -13,6 +12,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
+use App\Http\OpenApiHelpers as OAH;
+use Throwable;
 
 class InstitutionDiscountController extends Controller
 {
@@ -35,12 +36,12 @@ class InstitutionDiscountController extends Controller
         if (empty($institutionDiscount = self::getInstitution()->institutionDiscount)) {
             return response()->noContent();
         }
-
         return InstitutionDiscountResource::make($institutionDiscount);
     }
 
     /**
      * @throws AuthorizationException
+     * @throws Throwable
      */
     #[OA\Put(
         path: '/institution-discounts',
@@ -53,18 +54,19 @@ class InstitutionDiscountController extends Controller
     {
         Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::EditInstitutionPriceRate->value));
 
-        $institutionDiscount = self::getInstitution()->institutionDiscount()
-            ->updateOrCreate($request->validated());
+        $institution = self::getInstitution();
+        $institutionDiscount = $institution->institutionDiscount()->firstOrNew();
+        $institutionDiscount->fill([
+            ...$request->validated(),
+            'institution_id' => $institution->id
+        ]);
+        $institutionDiscount->saveOrFail();
 
-        return InstitutionDiscountResource::make($institutionDiscount);
+        return InstitutionDiscountResource::make($institutionDiscount->refresh());
     }
 
     private static function getInstitution(): Institution
     {
-        if (! $institution = Institution::find(Auth::user()->institutionId)) {
-            abort(401);
-        }
-
-        return $institution;
+        return Institution::findOrFail(Auth::user()->institutionId);
     }
 }
