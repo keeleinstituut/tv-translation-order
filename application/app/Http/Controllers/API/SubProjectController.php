@@ -147,7 +147,6 @@ class SubProjectController extends Controller
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',
             'assignments.volumes',
-            'assignments.jobs',
             'catToolJobs',
         ])->findOrFail($id);
 
