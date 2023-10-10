@@ -36,7 +36,7 @@ class SubProjectController extends Controller
             new OA\QueryParameter(name: 'ext_id', schema: new OA\Schema(type: 'string')),
             new OA\QueryParameter(name: 'only_show_personal_sub_projects', schema: new OA\Schema(type: 'boolean', default: true)),
             new OA\QueryParameter(
-                name: 'status',
+                name: 'status[]',
                 description: 'Filter the result set to projects which have any of the specified statuses. TODO: add filtering on the BE',
                 schema: new OA\Schema(
                     type: 'array',
@@ -49,7 +49,7 @@ class SubProjectController extends Controller
                 schema: new OA\Schema(type: 'string', format: 'uuid')
             ),
             new OA\QueryParameter(
-                name: 'type_classifier_value_id',
+                name: 'type_classifier_value_id[]',
                 description: 'Filter the result set to projects which have any of the specified types.',
                 schema: new OA\Schema(
                     type: 'array',
@@ -57,7 +57,7 @@ class SubProjectController extends Controller
                 )
             ),
             new OA\QueryParameter(
-                name: 'language_direction',
+                name: 'language_direction[]',
                 description: 'Filter the result set to projects which have any of the specified language directions.',
                 schema: new OA\Schema(
                     type: 'array',
