@@ -122,6 +122,11 @@ readonly class MateCatProjectMetaDataStorage
         return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey().'.status', '');
     }
 
+    public function getCreationStatusResponse(): array
+    {
+        return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey(), []);
+    }
+
     public function getCreationError(): string
     {
         return data_get($this->subProject->cat_metadata, $this->getProjectCreationStatusKey().'.errors.0.message', '');

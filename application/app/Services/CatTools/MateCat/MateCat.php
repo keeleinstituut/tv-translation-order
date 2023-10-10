@@ -343,19 +343,6 @@ readonly class MateCat implements CatToolService
     }
 
     /**
-     * {@inheritDoc}
-     */
-    public function isCreated(): bool
-    {
-        $creationStatus = $this->storage->getCreationStatus();
-        if (empty($creationStatus) && !empty($this->storage->getCreationError())) {
-            throw new CatToolSetupFailedException($this->storage->getCreationError());
-        }
-
-        return $creationStatus == 200;
-    }
-
-    /**
      * @throws RequestException
      */
     public function toggleMTEngine(bool $isEnabled): void
@@ -398,5 +385,22 @@ readonly class MateCat implements CatToolService
             $this->storage->getProjectPassword(),
             [$tm->key]
         );
+    }
+
+    public function getSetupStatus(): CatToolSetupStatus
+    {
+        if (empty($this->storage->getCreationStatusResponse())) {
+            return CatToolSetupStatus::NotStarted;
+        }
+
+        if (filled($this->storage->getCreationError())) {
+            return CatToolSetupStatus::Failed;
+        }
+
+        if ($this->storage->getCreationStatus() == 200) {
+            return CatToolSetupStatus::Created;
+        }
+
+        return CatToolSetupStatus::InProgress;
     }
 }

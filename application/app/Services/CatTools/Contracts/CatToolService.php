@@ -47,11 +47,6 @@ interface CatToolService
 
     public function isAnalyzed(): bool;
 
-    /**
-     * @throws CatToolSetupFailedException
-     */
-    public function isCreated(): bool;
-
     public function getSetupStatus(): CatToolSetupStatus;
 
     public function toggleMTEngine(bool $isEnabled): void;
