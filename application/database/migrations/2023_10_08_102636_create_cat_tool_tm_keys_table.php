@@ -11,16 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cat_tool_tms', function (Blueprint $table) {
+        Schema::create('cat_tool_tm_keys', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('sub_project_id')
                 ->references('id')
                 ->on('sub_projects');
-            $table->string('tm_id');
+            $table->string('key');
             $table->boolean('is_writable');
-            $table->boolean('is_readable');
             $table->timestampsTz();
             $table->softDeletesTz();
+
+            $table->unique(['sub_project_id', 'key']);
         });
     }
 
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cat_tool_tms');
+        Schema::dropIfExists('cat_tool_tm_keys');
     }
 };

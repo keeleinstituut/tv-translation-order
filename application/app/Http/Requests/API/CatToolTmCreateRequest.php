@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\Feature;
-use App\Models\SubProject;
-use App\Policies\SubProjectPolicy;
+use App\Models\CatToolTmKey;
 use App\Rules\SubProjectExistsRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -17,15 +15,13 @@ use OpenApi\Attributes as OA;
     content: new OA\JsonContent(
         required: [
             'sub_project_id',
-            'tm_id',
+            'key',
             'is_writable',
-            'is_readable',
         ],
         properties: [
             new OA\Property(property: 'sub_project_id', type: 'string', format: 'uuid'),
-            new OA\Property(property: 'tm_id', type: 'string'),
+            new OA\Property(property: 'key', type: 'string'),
             new OA\Property(property: 'is_writable', type: 'boolean'),
-            new OA\Property(property: 'is_readable', description: 'In case if empty TM created the field should be false to do not read empty TM', type: 'boolean'),
         ]
     )
 )]
@@ -45,24 +41,27 @@ class CatToolTmCreateRequest extends FormRequest
                 'uuid',
                 new SubProjectExistsRule,
             ],
-            'tm_id' => ['required', 'string'],
+            'key' => ['required', 'string'],
             'is_writable' => ['required', 'boolean'],
-            'is_readable' => ['required', 'boolean'],
         ];
     }
 
     public function after(): array
     {
         return [
-            function (Validator $validator) {
+            function (Validator $validator): void {
                 if ($validator->errors()->isNotEmpty()) {
                     return;
                 }
 
-                $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-                    ->find($this->validated('sub_project_id'));
+                $exists = CatToolTmKey::where('key', $this->validated('key'))
+                    ->where('sub_project_id', $this->validated('sub_project_id'))
+                    ->exists();
 
-            },
+                if ($exists) {
+                    $validator->errors()->add('key', 'The TM key is already exists for specified sub-project.');
+                }
+            }
         ];
     }
 }

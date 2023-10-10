@@ -5,11 +5,12 @@ namespace App\Services\CatTools\MateCat;
 use App\Jobs\TrackMateCatProjectAnalyzingStatus;
 use App\Jobs\TrackMateCatProjectCreationStatus;
 use App\Jobs\TrackMateCatProjectProgress;
-use App\Models\CatToolTm;
+use App\Models\CatToolTmKey;
 use App\Models\Media;
 use App\Models\SubProject;
 use App\Services\CatTools\Contracts\CatToolService;
 use App\Services\CatTools\Contracts\DownloadableFile;
+use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolRetrievingException;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use App\Services\CatTools\Exceptions\UnexpectedResponseFormatException;
@@ -37,22 +38,16 @@ readonly class MateCat implements CatToolService
     }
 
     /**
-     * @param  array  $filesIds
+     * @param array $filesIds
      * {@inheritDoc}
      */
     public function setupJobs(array $filesIds = null, bool $useMT = true): void
     {
-        try {
-            $isCreated = $this->isCreated();
-        } catch (CatToolSetupFailedException) {
-            $isCreated = false;
-        }
-
-        if ($isCreated) {
+        if ($this->getSetupStatus() === CatToolSetupStatus::Created) {
             throw new BadMethodCallException('Cat tool is already setup');
         }
 
-        if (! $this->storage->isEmpty()) {
+        if (!$this->storage->isEmpty()) {
             $this->storage->clean();
         }
 
@@ -60,11 +55,11 @@ readonly class MateCat implements CatToolService
             $files = $this->subProject->sourceFiles;
         } else {
             $files = $this->subProject->sourceFiles->filter(
-                fn (Media $sourceFile) => in_array($sourceFile->id, $filesIds)
+                fn(Media $sourceFile) => in_array($sourceFile->id, $filesIds)
             )->values();
         }
 
-        if (! is_null($filesIds) && count($filesIds) !== count($files)) {
+        if (!is_null($filesIds) && count($filesIds) !== count($files)) {
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
@@ -79,7 +74,7 @@ readonly class MateCat implements CatToolService
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
             ];
 
-            if (! $this->storage->hasMTEnabled()) {
+            if (!$this->storage->hasMTEnabled()) {
                 $params['mt_engine'] = self::DUMMY_MT_ENGINE_ID;
             }
 
@@ -149,7 +144,7 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Chunks count should be gather than 1');
         }
 
-        if (! $job = $this->subProject->catToolJobs->first()) {
+        if (!$job = $this->subProject->catToolJobs->first()) {
             throw new DomainException('Job not found for the project');
         }
 
@@ -202,7 +197,7 @@ readonly class MateCat implements CatToolService
      */
     public function merge(): Collection
     {
-        if (! $this->storage->wasSplit()) {
+        if (!$this->storage->wasSplit()) {
             throw new DomainException("Can't merge project that wasn't split before");
         }
 
@@ -220,7 +215,7 @@ readonly class MateCat implements CatToolService
             throw new RuntimeException('', 0, $e);
         }
 
-        if (! isset($response['success'])) {
+        if (!isset($response['success'])) {
             throw new UnexpectedResponseFormatException('Unexpected merge project jobs response format');
         }
 
@@ -308,7 +303,7 @@ readonly class MateCat implements CatToolService
             throw new CatToolRetrievingException('CAT data retrieving failed.', previous: $e);
         }
 
-        if (! isset($response['project'])) {
+        if (!isset($response['project'])) {
             throw new UnexpectedResponseFormatException('Unexpected project info response format');
         }
 
@@ -326,7 +321,7 @@ readonly class MateCat implements CatToolService
             throw new CatToolRetrievingException('Translation progress retrieving failed.', previous: $e);
         }
 
-        if (! isset($response['project'])) {
+        if (!isset($response['project'])) {
             throw new UnexpectedResponseFormatException('Unexpected project info response format');
         }
 
@@ -343,7 +338,7 @@ readonly class MateCat implements CatToolService
         $sourceFilesIds = $this->storage->getProjectSourceFilesIds();
 
         return $this->subProject->sourceFiles->filter(
-            fn (Media $sourceFile) => in_array($sourceFile->id, $sourceFilesIds)
+            fn(Media $sourceFile) => in_array($sourceFile->id, $sourceFilesIds)
         )->values();
     }
 
@@ -353,7 +348,7 @@ readonly class MateCat implements CatToolService
     public function isCreated(): bool
     {
         $creationStatus = $this->storage->getCreationStatus();
-        if (empty($creationStatus) && ! empty($this->storage->getCreationError())) {
+        if (empty($creationStatus) && !empty($this->storage->getCreationError())) {
             throw new CatToolSetupFailedException($this->storage->getCreationError());
         }
 
@@ -365,7 +360,7 @@ readonly class MateCat implements CatToolService
      */
     public function toggleMTEngine(bool $isEnabled): void
     {
-        if ($this->isCreated()) {
+        if ($this->getSetupStatus() === CatToolSetupStatus::Created) {
             $this->apiClient->toggleMTEngine(
                 $this->storage->getProjectId(),
                 $this->storage->getProjectPassword(),
@@ -384,9 +379,9 @@ readonly class MateCat implements CatToolService
     /**
      * @throws RequestException
      */
-    public function addTM(CatToolTm $tm): void
+    public function addTMKey(CatToolTmKey $tm): void
     {
-        $this->apiClient->addTM(
+        $this->apiClient->addTMKeys(
             $this->storage->getProjectId(),
             $this->storage->getProjectPassword(),
             [TmKeyComposer::compose($tm)]
@@ -396,12 +391,12 @@ readonly class MateCat implements CatToolService
     /**
      * @throws RequestException
      */
-    public function deleteTM(CatToolTm $tm): void
+    public function deleteTMKey(CatToolTmKey $tm): void
     {
-        $this->apiClient->deleteTM(
+        $this->apiClient->deleteTMKeys(
             $this->storage->getProjectId(),
             $this->storage->getProjectPassword(),
-            [$tm->tm_id]
+            [$tm->key]
         );
     }
 }

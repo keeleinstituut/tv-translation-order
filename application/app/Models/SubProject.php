@@ -16,8 +16,11 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
+use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
 
@@ -44,7 +47,7 @@ use Throwable;
  * @property-read Collection<int, Media> $sourceFiles
  * @property-read Collection<int, Media> $finalFiles
  * @property-read Collection<int, CatToolJob> $catToolJobs
- * @property-read Collection<int, CatToolTm> $catToolTms
+ * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -78,22 +81,22 @@ class SubProject extends Model
         'price' => 'float',
     ];
 
-    public function project()
+    public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
-    public function sourceLanguageClassifierValue()
+    public function sourceLanguageClassifierValue(): BelongsTo
     {
         return $this->belongsTo(ClassifierValue::class, 'source_language_classifier_value_id');
     }
 
-    public function destinationLanguageClassifierValue()
+    public function destinationLanguageClassifierValue(): BelongsTo
     {
         return $this->belongsTo(ClassifierValue::class, 'destination_language_classifier_value_id');
     }
 
-    public function sourceFiles()
+    public function sourceFiles(): HasManyDeep
     {
         return $this->hasManyDeep(
             Media::class,
@@ -103,7 +106,7 @@ class SubProject extends Model
         );
     }
 
-    public function projectTypeConfig()
+    public function projectTypeConfig(): HasManyDeep
     {
         return $this->hasOneDeep(
             ProjectTypeConfig::class,
@@ -113,7 +116,7 @@ class SubProject extends Model
         );
     }
 
-    public function finalFiles()
+    public function finalFiles(): HasManyDeep
     {
         return $this->hasManyDeep(
             Media::class,
@@ -123,23 +126,23 @@ class SubProject extends Model
         );
     }
 
-    public function assignments()
+    public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class);
     }
 
-    public function catToolJobs()
+    public function catToolJobs(): HasMany
     {
         return $this->hasMany(CatToolJob::class)->orderBy('id');
     }
 
-    public function catToolTms()
+    public function catToolTmKeys(): HasMany
     {
-        return $this->hasMany(CatToolTm::class);
+        return $this->hasMany(CatToolTmKey::class);
     }
 
     /** @throws Throwable */
-    public function initAssignments()
+    public function initAssignments(): void
     {
         $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
             ->each(function (string $feature) {

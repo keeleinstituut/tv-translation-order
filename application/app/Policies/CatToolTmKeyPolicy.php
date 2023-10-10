@@ -3,12 +3,12 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
-use App\Models\CatToolTm;
+use App\Models\CatToolTmKey;
 use App\Models\User;
 use Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
-class CatToolTmPolicy
+class CatToolTmKeyPolicy
 {
     /**
      * Determine whether the user can view any models.
@@ -21,7 +21,7 @@ class CatToolTmPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $user, CatToolTm $catToolTm): bool
+    public function view(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
         //
     }
@@ -37,7 +37,7 @@ class CatToolTmPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $user, CatToolTm $catToolTm): bool
+    public function update(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
         //
     }
@@ -45,7 +45,7 @@ class CatToolTmPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, CatToolTm $catToolTm): bool
+    public function delete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
         //
     }
@@ -53,7 +53,7 @@ class CatToolTmPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, CatToolTm $catToolTm): bool
+    public function restore(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
         //
     }
@@ -61,7 +61,7 @@ class CatToolTmPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, CatToolTm $catToolTm): bool
+    public function forceDelete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
         //
     }

@@ -136,7 +136,7 @@ readonly class MateCatApiClient
      * @return array
      * @throws RequestException
      */
-    public function addTM(int $id, string $password, array $tmKeys): array
+    public function addTMKeys(int $id, string $password, array $tmKeys): array
     {
         return $this->getBasePendingRequest()
             ->put("/v2/projects/$id/$password/add-tm-keys", [
@@ -151,7 +151,7 @@ readonly class MateCatApiClient
      * @return array
      * @throws RequestException
      */
-    public function deleteTM(int $id, string $password, array $tmKeys): array
+    public function deleteTMKeys(int $id, string $password, array $tmKeys): array
     {
         return $this->getBasePendingRequest()
             ->put("/v2/projects/$id/$password/remove-tm-keys", [

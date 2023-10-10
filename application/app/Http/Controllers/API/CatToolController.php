@@ -14,6 +14,7 @@ use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
+use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Client\RequestException;
@@ -116,7 +117,7 @@ class CatToolController extends Controller
         $this->authorize('manageCatTool', $subProject);
 
         try {
-            if (! $subProject->cat()->isCreated()) {
+            if ($subProject->cat()->getSetupStatus() !== CatToolSetupStatus::Created) {
                 return response()->noContent();
             }
         } catch (CatToolSetupFailedException $e) {

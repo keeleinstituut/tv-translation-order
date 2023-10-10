@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "06953bfd55538e7e564181d7b3fd251b",
+    "content-hash": "acb151dbdc932d6b4300437db98786a0",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1485,16 +1485,16 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-security",
-            "version": "0.0.14",
+            "version": "0.0.16",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-security.git",
-                "reference": "5a5b7717263a71dc9ad64438b8c2f5627c7f77ec"
+                "reference": "fe597d2d095f433029c843e4cf026260e3b04566"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/5a5b7717263a71dc9ad64438b8c2f5627c7f77ec",
-                "reference": "5a5b7717263a71dc9ad64438b8c2f5627c7f77ec",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/fe597d2d095f433029c843e4cf026260e3b04566",
+                "reference": "fe597d2d095f433029c843e4cf026260e3b04566",
                 "shasum": ""
             },
             "require": {
@@ -1539,10 +1539,10 @@
                 "laravel"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.14",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.16",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-security/issues"
             },
-            "time": "2023-06-19T10:12:40+00:00"
+            "time": "2023-10-09T14:04:09+00:00"
         },
         {
             "name": "laravel/framework",

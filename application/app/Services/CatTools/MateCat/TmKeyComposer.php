@@ -2,12 +2,16 @@
 
 namespace App\Services\CatTools\MateCat;
 
-use App\Models\CatToolTm;
+use App\Models\CatToolTmKey;
 
 class TmKeyComposer
 {
-    public static function compose(CatToolTm $tm): string
+    public static function compose(CatToolTmKey $tmKey): string
     {
-        return '';
+        if ($tmKey->is_writable) {
+            return "$tmKey->key:rw";
+        }
+
+        return "$tmKey->key:r";
     }
 }
