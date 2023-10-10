@@ -14,7 +14,7 @@ class PricePolicy
      */
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Auth::hasPrivilege('VIEW_VENDOR_DB');
+        return Auth::hasPrivilege('VIEW_VENDOR_DB') || Auth::hasPrivilege('VIEW_GENERAL_PRICELIST');
     }
 
     /**
