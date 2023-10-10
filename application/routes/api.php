@@ -56,8 +56,12 @@ Route::get('/projects', [API\ProjectController::class, 'index']);
 Route::post('/projects', [API\ProjectController::class, 'store']);
 Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
 
-Route::get('/subprojects', [API\SubProjectController::class, 'index']);
-Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
+Route::prefix('/subprojects')
+    ->controller(API\SubProjectController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::get('/', 'index');
+        Route::get('/{id}', 'show');
+    });
 
 Route::prefix('/cat-tool')
     ->controller(API\CatToolController::class)

@@ -35,6 +35,7 @@ use Throwable;
  * @property ArrayObject|null $cat_metadata
  * @property float|null $price
  * @property Carbon|null $created_at
+ * @property Carbon|null $deadline_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
  * @property-read int|null $assignments_count
@@ -61,6 +62,7 @@ use Throwable;
  * @method static Builder|SubProject whereSourceLanguageClassifierValueId($value)
  * @method static Builder|SubProject whereUpdatedAt($value)
  * @method static Builder|SubProject whereWorkflowRef($value)
+ * @method static Builder|SubProject hasAnyOfLanguageDirections(array[] $languageDirections)
  *
  * @mixin Eloquent
  */
@@ -152,5 +154,23 @@ class SubProject extends Model
     public function getPriceCalculator(): PriceCalculator
     {
         return new SubProjectPriceCalculator($this);
+    }
+
+    /**
+     * @noinspection PhpUnused
+     *
+     * @param  array<array{string, string}>  $languageDirections
+     */
+    public function scopeHasAnyOfLanguageDirections(Builder $builder, array $languageDirections): void
+    {
+        $builder->where(function (Builder $groupedClause) use ($languageDirections) {
+            collect($languageDirections)->eachSpread(
+                function (string $sourceLanguageClassifierValueId, string $destinationLanguageClassifierValueId) use ($groupedClause) {
+                    $groupedClause->orWhere([
+                        'source_language_classifier_value_id' => $sourceLanguageClassifierValueId,
+                        'destination_language_classifier_value_id' => $destinationLanguageClassifierValueId,
+                    ]);
+                });
+        });
     }
 }

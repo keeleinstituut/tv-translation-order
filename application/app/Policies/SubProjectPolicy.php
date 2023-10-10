@@ -14,9 +14,11 @@ class SubProjectPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(JwtPayloadUser $user, bool $onlyPersonalSubProjectsRequested): bool
     {
-        return true;
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value)
+            || $onlyPersonalSubProjectsRequested
+            && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
     }
 
     /**
@@ -24,15 +26,20 @@ class SubProjectPolicy
      */
     public function view(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return true;
-    }
+        $currentInstitutionUserId = Auth::user()?->institutionUserId;
 
-    /**
-     * Determine whether the user can create models.
-     */
-    public function create(JwtPayloadUser $user): bool
-    {
-        return true;
+        if (empty($currentInstitutionUserId)) {
+            return false;
+        }
+
+        $project = $subProject->project;
+        if ($project->client_institution_user_id === $currentInstitutionUserId
+            || $project->manager_institution_user_id === $currentInstitutionUserId) {
+            return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value) ||
+                Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
+        }
+
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
     }
 
     /**

@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $discount_percentage_0_49
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ *
  * @method static Builder|InstitutionDiscount newModelQuery()
  * @method static Builder|InstitutionDiscount newQuery()
  * @method static Builder|InstitutionDiscount query()
@@ -39,6 +40,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder|InstitutionDiscount whereId($value)
  * @method static Builder|InstitutionDiscount whereInstitutionId($value)
  * @method static Builder|InstitutionDiscount whereUpdatedAt($value)
+ *
  * @mixin Eloquent
  */
 class InstitutionDiscount extends Model

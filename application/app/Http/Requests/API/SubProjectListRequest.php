@@ -2,17 +2,15 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\ProjectStatus;
+use App\Enums\SubProjectStatus;
 use App\Http\Requests\Helpers\LanguageDirectionValidationTools;
+use App\Models\Project;
 use App\Models\ProjectTypeConfig;
-use App\Models\Tag;
-use App\Rules\ModelBelongsToInstitutionRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class ProjectListRequest extends FormRequest
+class SubProjectListRequest extends FormRequest
 {
     use LanguageDirectionValidationTools;
 
@@ -26,26 +24,25 @@ class ProjectListRequest extends FormRequest
         return [
             'per_page' => 'integer',
             'page' => 'integer',
-            'sort_by' => Rule::in(['cost', 'deadline_at', 'created_at']),
+            'sort_by' => Rule::in(['price', 'deadline_at', 'created_at']),
             'sort_order' => Rule::in(['asc', 'desc']),
             'ext_id' => 'string',
-            'only_show_personal_projects' => 'boolean',
-            'statuses' => 'array',
-            'statuses.*' => Rule::enum(ProjectStatus::class),
-            'type_classifier_value_ids' => 'array',
-            'type_classifier_value_ids.*' => [
+            'only_show_personal_sub_projects' => 'boolean',
+            'status' => 'array',
+            'status.*' => Rule::enum(SubProjectStatus::class),
+            'type_classifier_value_id' => 'array',
+            'type_classifier_value_id.*' => [
                 'uuid',
                 'bail',
                 Rule::exists(ProjectTypeConfig::class, 'type_classifier_value_id'),
             ],
-            'tag_ids' => 'array',
-            'tag_ids.*' => [
+            'project_id' => [
                 'uuid',
                 'bail',
-                static::existsTagInSameInstitution(),
+                Rule::exists(Project::class, 'id'),
             ],
-            'language_directions' => 'array',
-            'language_directions.*' => [
+            'language_direction' => 'array',
+            'language_direction.*' => [
                 self::getLanguageDirectionValidationRegex(),
                 'bail',
                 static::validateLanguageDirectionExists(...),
@@ -53,13 +50,8 @@ class ProjectListRequest extends FormRequest
         ];
     }
 
-    private static function existsTagInSameInstitution(): ModelBelongsToInstitutionRule
-    {
-        return ModelBelongsToInstitutionRule::create(Tag::class, fn () => Auth::user()?->institutionId);
-    }
-
     protected function getLanguageDirections(): array
     {
-        return $this->validated('language_directions');
+        return $this->validated('language_direction');
     }
 }

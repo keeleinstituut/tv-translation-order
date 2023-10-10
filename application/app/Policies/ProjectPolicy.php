@@ -33,7 +33,8 @@ class ProjectPolicy
 
         if ($project->client_institution_user_id === $currentInstitutionUserId
             || $project->manager_institution_user_id === $currentInstitutionUserId) {
-            return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+            return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value) ||
+                Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
         }
 
         return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);

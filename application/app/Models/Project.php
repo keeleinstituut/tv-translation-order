@@ -101,8 +101,11 @@ class Project extends Model implements HasMedia
     protected $table = 'projects';
 
     public const SOURCE_FILES_COLLECTION = 'source';
+
     public const HELP_FILES_COLLECTION = 'help';
+
     public const FINAL_FILES_COLLECTION = 'final';
+
     public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
     public const HELP_FILE_TYPES = [
@@ -111,9 +114,8 @@ class Project extends Model implements HasMedia
         'REFERENCE_FILE',
     ];
 
-
-
     protected $guarded = [];
+
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
