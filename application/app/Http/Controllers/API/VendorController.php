@@ -26,12 +26,25 @@ class VendorController extends Controller
         summary: 'List vendors of current institution (institution inferrred from JWT)',
         tags: ['Vendor management'],
         parameters: [
+            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'role_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'tag_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(
+                name: 'lang_pair[]',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'src', type: 'string', format: 'uuid'),
+                            new OA\Property(property: 'dst', type: 'string', format: 'uuid'),
+                        ]
+                    ),
+                    nullable: true
+                )
+            ),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -83,6 +96,20 @@ class VendorController extends Controller
         if ($param = $params->get('dst_lang_classifier_value_id')) {
             $query = $query->whereRelation('prices.destinationLanguageClassifierValue', function ($query) use ($param) {
                 $query->whereIn('id', $param);
+            });
+        }
+
+        if ($param = $params->get('lang_pair')) {
+            $query->whereRelation('prices', function ($query) use ($param) {
+                $query->where(function ($query) use ($param) {
+                    collect($param)->each(function ($langPair) use ($query) {
+                        $query->orWhere(function ($query) use ($langPair) {
+                            $query
+                                ->where('src_lang_classifier_value_id', $langPair['src'])
+                                ->where('dst_lang_classifier_value_id', $langPair['dst']);
+                        }) ;
+                    });
+                });
             });
         }
 
