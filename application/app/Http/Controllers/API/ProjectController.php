@@ -153,7 +153,7 @@ class ProjectController extends Controller
     #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Created project', response: Response::HTTP_CREATED)]
     public function store(ProjectCreateRequest $request): ProjectResource
     {
-        $params = $request->validated();
+        $params = collect($request->validated());
 
         return DB::transaction(function () use ($params) {
             $project = Project::make([
