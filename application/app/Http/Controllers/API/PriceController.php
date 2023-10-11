@@ -32,8 +32,8 @@ class PriceController extends Controller
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'skill_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
-            new OA\QueryParameter(name: 'order_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
-            new OA\QueryParameter(name: 'order_direction', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
+            new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(
                 name: 'lang_pair[]',
                 schema: new OA\Schema(
