@@ -101,7 +101,7 @@ class PriceController extends Controller
         }
 
         $data = $query
-            ->orderBy($params->get('order_by', 'created_at'), $params->get('order_direction', 'desc'))
+            ->orderBy($params->get('sort_by', 'created_at'), $params->get('sort_order', 'desc'))
             ->paginate($params->get('limit', 10));
 
         return PriceResource::collection($data);
