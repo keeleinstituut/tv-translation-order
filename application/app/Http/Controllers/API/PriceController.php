@@ -59,6 +59,7 @@ class PriceController extends Controller
 
         $query = $this->getBaseQuery()
             ->with('vendor')
+            ->with('vendor.tags')
             ->with('vendor.institutionUser')
             ->with('sourceLanguageClassifierValue')
             ->with('destinationLanguageClassifierValue')
