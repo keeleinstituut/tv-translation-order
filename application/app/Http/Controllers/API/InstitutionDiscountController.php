@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
 use App\Http\OpenApiHelpers as OAH;
+use Throwable;
 
 class InstitutionDiscountController extends Controller
 {
@@ -40,6 +41,7 @@ class InstitutionDiscountController extends Controller
 
     /**
      * @throws AuthorizationException
+     * @throws Throwable
      */
     #[OA\Put(
         path: '/institution-discounts',
@@ -54,13 +56,13 @@ class InstitutionDiscountController extends Controller
 
         $institution = self::getInstitution();
         $institutionDiscount = $institution->institutionDiscount()->firstOrNew();
-
         $institutionDiscount->fill([
             ...$request->validated(),
             'institution_id' => $institution->id
         ]);
+        $institutionDiscount->saveOrFail();
 
-        return InstitutionDiscountResource::make($institutionDiscount);
+        return InstitutionDiscountResource::make($institutionDiscount->refresh());
     }
 
     private static function getInstitution(): Institution

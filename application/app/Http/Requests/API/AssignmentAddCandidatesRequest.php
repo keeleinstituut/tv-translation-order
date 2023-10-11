@@ -7,7 +7,6 @@ use App\Models\Vendor;
 use App\Policies\VendorPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
 use Ramsey\Uuid\Uuid;
 

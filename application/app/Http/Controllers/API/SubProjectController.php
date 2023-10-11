@@ -2,68 +2,163 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\SubProjectListRequest;
 use App\Http\Resources\API\SubProjectResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes as OA;
 
 class SubProjectController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * @throws AuthorizationException
      */
-    public function index()
+    #[OA\Get(
+        path: '/subprojects',
+        description: 'If there are multiple types of filtering conditions, they will be joined with the "AND" operand.',
+        summary: 'List and optionally filter sub-projects belonging to the current institution (inferred from JWT)',
+        tags: ['Sub-projects'],
+        parameters: [
+            new OA\QueryParameter(name: 'page', schema: new OA\Schema(type: 'integer', default: 1)),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'integer', default: 10)),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['price', 'deadline_at', 'created_at'])),
+            new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
+            new OA\QueryParameter(name: 'ext_id', schema: new OA\Schema(type: 'string')),
+            new OA\QueryParameter(name: 'only_show_personal_sub_projects', schema: new OA\Schema(type: 'boolean', default: true)),
+            new OA\QueryParameter(
+                name: 'status[]',
+                description: 'Filter the result set to projects which have any of the specified statuses. TODO: add filtering on the BE',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(type: 'string', enum: SubProjectStatus::class)
+                )
+            ),
+            new OA\QueryParameter(
+                name: 'project_id',
+                description: 'Filter the result set of sub-projects that belongs to specified project.',
+                schema: new OA\Schema(type: 'string', format: 'uuid')
+            ),
+            new OA\QueryParameter(
+                name: 'type_classifier_value_id[]',
+                description: 'Filter the result set to projects which have any of the specified types.',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(type: 'string', format: 'uuid')
+                )
+            ),
+            new OA\QueryParameter(
+                name: 'language_direction[]',
+                description: 'Filter the result set to projects which have any of the specified language directions.',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(
+                        description: 'd7719f74-3f27-490f-929d-e2d4954e797e:79c7ed08-501d-463c-a5b5-c8fd7e0c6179',
+                        type: 'string',
+                        example: 'Two UUIDs of language classifier values separated by a colon (:) character'
+                    )
+                )
+            ),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\PaginatedCollectionResponse(itemsRef: SubProjectResource::class, description: 'Filtered sub-projects of selected project')]
+    public function index(SubProjectListRequest $request): AnonymousResourceCollection
     {
-        $data = SubProject::getModel()
-            ->with('project')
-            ->with('project.typeClassifierValue')
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->paginate();
+        $params = collect($request->validated());
+
+        $showOnlyPersonalSubProjects = filter_var($params->get('only_show_personal_sub_projects', true), FILTER_VALIDATE_BOOLEAN);
+
+        $this->authorize('viewAny', [SubProject::class, $showOnlyPersonalSubProjects]);
+
+        $query = self::getBaseQuery()->with([
+            'sourceLanguageClassifierValue',
+            'destinationLanguageClassifierValue',
+            'project.typeClassifierValue',
+        ]);
+
+        if ($param = $params->get('ext_id')) {
+            $query = $query->where('ext_id', 'ilike', "%$param%");
+        }
+
+        if ($param = $params->get('project_id')) {
+            $query = $query->where('project_id', $param);
+        }
+
+        //        if ($param = $params->get('status')) {
+        //            $query = $query->whereIn('status', $param);
+        //        }
+
+        if ($param = $params->get('type_classifier_value_id')) {
+            $query = $query->whereRelation(
+                'project',
+                fn (Builder $projectQuery) => $projectQuery->whereIn('type_classifier_value_id', $param)
+            );
+        }
+
+        if ($params->get('language_direction')) {
+            $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
+        }
+
+        if ($showOnlyPersonalSubProjects) {
+            $query = $query->whereRelation('project', function (Builder $projectClause) {
+                $projectClause->where('manager_institution_user_id', Auth::user()->institutionUserId)
+                    ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
+            });
+        }
+
+        $data = $query->orderBy(
+            $request->validated('sort_by', 'created_at'),
+            $request->validated('sort_order', 'asc')
+        )->paginate($params->get('per_page', 10));
 
         return SubProjectResource::collection($data);
     }
 
     /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
      * Display the specified resource.
+     *
+     * @throws AuthorizationException
      */
-    public function show(string $id)
+    #[OA\Get(
+        path: '/subprojects/{id}',
+        tags: ['Sub-projects'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: SubProjectResource::class, description: 'Sub-project with given UUID')]
+    public function show(string $id): SubProjectResource
     {
-        $data = SubProject::getModel()
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('sourceFiles')
-            ->with('finalFiles')
-//            ->with('project.typeClassifierValue.projectTypeConfig')
-            ->with('assignments.candidates.vendor.institutionUser')
-            ->with('assignments.assignee.institutionUser')
-            ->find($id) ?? abort(404);
+        $subProject = self::getBaseQuery()->with([
+            'sourceLanguageClassifierValue',
+            'destinationLanguageClassifierValue',
+            'sourceFiles',
+            'finalFiles',
+            'project.typeClassifierValue.projectTypeConfig',
+            'assignments.candidates.vendor.institutionUser',
+            'assignments.assignee.institutionUser',
+            'assignments.volumes',
+            'catToolJobs',
+        ])->findOrFail($id);
 
-        return new SubProjectResource($data);
+        $this->authorize('view', $subProject);
+
+        return new SubProjectResource($subProject);
     }
 
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
     {
         //
     }
