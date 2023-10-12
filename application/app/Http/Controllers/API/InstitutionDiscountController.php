@@ -32,7 +32,7 @@ class InstitutionDiscountController extends Controller
     )]
     public function show(): Response|InstitutionDiscountResource
     {
-        Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::EditInstitutionPriceRate->value));
+        Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::ViewInstitutionPriceRate->value));
         if (empty($institutionDiscount = self::getInstitution()->institutionDiscount)) {
             return response()->noContent();
         }
