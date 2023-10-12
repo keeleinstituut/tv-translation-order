@@ -136,25 +136,10 @@ readonly class MateCatApiClient
      * @return array
      * @throws RequestException
      */
-    public function addTMKeys(int $id, string $password, array $tmKeys): array
+    public function syncTMKeys(int $id, string $password, array $tmKeys): array
     {
         return $this->getBasePendingRequest()
-            ->put("/v2/projects/$id/$password/add-tm-keys", [
-                'tm_keys' => join(',', $tmKeys),
-            ])->throw()->json();
-    }
-
-    /**
-     * @param int $id
-     * @param string $password
-     * @param array $tmKeys
-     * @return array
-     * @throws RequestException
-     */
-    public function deleteTMKeys(int $id, string $password, array $tmKeys): array
-    {
-        return $this->getBasePendingRequest()
-            ->put("/v2/projects/$id/$password/remove-tm-keys", [
+            ->put("/v2/projects/$id/$password/sync-tm-keys", [
                 'tm_keys' => join(',', $tmKeys),
             ])->throw()->json();
     }

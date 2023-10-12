@@ -11,6 +11,7 @@ use App\Policies\CatToolTmKeyPolicy;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use App\Http\OpenApiHelpers as OAH;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -31,7 +32,7 @@ class CatToolTmKeyController extends Controller
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
     )]
-    #[OAH\CollectionResponse(itemsRef: CatToolTmKeyResource::class, description: 'TMs of sub-project')]
+    #[OAH\CollectionResponse(itemsRef: CatToolTmKeyResource::class, description: 'TMs of the sub-project')]
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', CatToolTmKey::class);
@@ -66,8 +67,8 @@ class CatToolTmKeyController extends Controller
             $tmKey->saveOrFail();
             $tmKey->refresh();
 
-            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Created) {
-                $subProject->cat()->addTMKey($tmKey);
+            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
+                $this->publishTmKeysToCatTool($subProject);
             }
 
             return CatToolTmKeyResource::make($tmKey);
@@ -77,13 +78,14 @@ class CatToolTmKeyController extends Controller
     /**
      * @throws Throwable
      */
-    #[OA\Delete(
-        path: '/cat-tool/tm-keys/delete/{cat_tool_tm_key_id}',
-        summary: 'Mark the CAT tool TM key with the given UUID as deleted',
-        tags: ['CAT tool'],
-        parameters: [new OAH\UuidPath('cat_tool_tm_key_id')],
-        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
-    )]
+    #[
+        OA\Delete(
+            path: '/cat-tool/tm-keys/delete/{cat_tool_tm_key_id}',
+            summary: 'Mark the CAT tool TM key with the given UUID as deleted',
+            tags: ['CAT tool'],
+            parameters: [new OAH\UuidPath('cat_tool_tm_key_id')],
+            responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
+        )]
     #[OAH\ResourceResponse(dataRef: CatToolTmKeyResource::class, description: 'The CAT tool TM marked as deleted')]
     public function destroy(Request $request)
     {
@@ -97,12 +99,12 @@ class CatToolTmKeyController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'CAT tool setup is in progress, please try again later');
             }
 
-            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Created) {
+            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
                 if ($subProject->catToolTmKeys()->count() === 1) {
                     abort(Response::HTTP_BAD_REQUEST, 'CAT tool should have at least one translation memory');
                 }
 
-                $subProject->cat()->deleteTMKey($tmKey);
+                $this->publishTmKeysToCatTool($subProject);
             }
 
             $tmKey->deleteOrFail();
@@ -113,5 +115,18 @@ class CatToolTmKeyController extends Controller
     private static function getBaseQuery(): Builder
     {
         return CatToolTmKey::withGlobalScope('policy', CatToolTmKeyPolicy::scope());
+    }
+
+    private function publishTmKeysToCatTool(SubProject $subProject): void
+    {
+        try {
+            $subProject->cat()->syncTmKeys();
+        } catch (RequestException $e) {
+            if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
+                abort(Response::HTTP_BAD_REQUEST, 'TM keys are invalid');
+            }
+
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Adding of TM keys failed');
+        }
     }
 }

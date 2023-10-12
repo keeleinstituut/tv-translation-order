@@ -2,10 +2,10 @@
 
 namespace App\Services\CatTools\Enums;
 
-enum CatToolSetupStatus: string
+enum CatToolSetupStatus
 {
-    case Created = 'CREATED';
-    case Failed = 'FAILED';
-    case NotStarted = 'NOT_STARTED';
-    case InProgress = 'IN_PROGRESS';
+    case Done;
+    case Failed;
+    case NotStarted;
+    case InProgress;
 }

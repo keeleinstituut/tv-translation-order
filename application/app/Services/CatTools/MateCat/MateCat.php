@@ -43,7 +43,7 @@ readonly class MateCat implements CatToolService
      */
     public function setupJobs(array $filesIds = null, bool $useMT = true): void
     {
-        if ($this->getSetupStatus() === CatToolSetupStatus::Created) {
+        if ($this->getSetupStatus() === CatToolSetupStatus::Done) {
             throw new BadMethodCallException('Cat tool is already setup');
         }
 
@@ -345,9 +345,9 @@ readonly class MateCat implements CatToolService
     /**
      * @throws RequestException
      */
-    public function toggleMTEngine(bool $isEnabled): void
+    public function toggleMtEngine(bool $isEnabled): void
     {
-        if ($this->getSetupStatus() === CatToolSetupStatus::Created) {
+        if ($this->getSetupStatus() === CatToolSetupStatus::Done) {
             $this->apiClient->toggleMTEngine(
                 $this->storage->getProjectId(),
                 $this->storage->getProjectPassword(),
@@ -358,7 +358,7 @@ readonly class MateCat implements CatToolService
         $this->storage->storeIsMTEnabled($isEnabled);
     }
 
-    public function hasMTEnabled(): bool
+    public function hasMtEnabled(): bool
     {
         return $this->storage->hasMTEnabled();
     }
@@ -366,24 +366,14 @@ readonly class MateCat implements CatToolService
     /**
      * @throws RequestException
      */
-    public function addTMKey(CatToolTmKey $tm): void
+    public function syncTmKeys(): void
     {
-        $this->apiClient->addTMKeys(
+        $this->apiClient->syncTMKeys(
             $this->storage->getProjectId(),
             $this->storage->getProjectPassword(),
-            [TmKeyComposer::compose($tm)]
-        );
-    }
-
-    /**
-     * @throws RequestException
-     */
-    public function deleteTMKey(CatToolTmKey $tm): void
-    {
-        $this->apiClient->deleteTMKeys(
-            $this->storage->getProjectId(),
-            $this->storage->getProjectPassword(),
-            [$tm->key]
+            $this->subProject->catToolTmKeys()->get()
+                ->map(fn (CatToolTmKey $tmKey) => TmKeyComposer::compose($tmKey))
+                ->toArray()
         );
     }
 
@@ -398,7 +388,7 @@ readonly class MateCat implements CatToolService
         }
 
         if ($this->storage->getCreationStatus() == 200) {
-            return CatToolSetupStatus::Created;
+            return CatToolSetupStatus::Done;
         }
 
         return CatToolSetupStatus::InProgress;

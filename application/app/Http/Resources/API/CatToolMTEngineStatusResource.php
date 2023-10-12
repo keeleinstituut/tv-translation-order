@@ -29,7 +29,7 @@ class CatToolMTEngineStatusResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'mt_enabled' => $this->cat()->hasMTEnabled(),
+            'mt_enabled' => $this->cat()->hasMtEnabled(),
         ];
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Client\RequestException;
 
 interface CatToolService
 {
@@ -49,11 +50,12 @@ interface CatToolService
 
     public function getSetupStatus(): CatToolSetupStatus;
 
-    public function toggleMTEngine(bool $isEnabled): void;
+    public function toggleMtEngine(bool $isEnabled): void;
 
-    public function hasMTEnabled(): bool;
+    public function hasMtEnabled(): bool;
 
-    public function addTMKey(CatToolTmKey $tm): void;
-
-    public function deleteTMKey(CatToolTmKey $tm): void;
+    /**
+     * @throws RequestException
+     */
+    public function syncTmKeys(): void;
 }
