@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\API\CatToolTmCreateRequest;
+use App\Http\Requests\API\CatToolTmKeysSyncRequest;
 use App\Http\Resources\API\CatToolTmKeyResource;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
@@ -46,87 +46,71 @@ class CatToolTmKeyController extends Controller
      * @throws Throwable
      */
     #[OA\Post(
-        path: '/cat-tool/tm-keys/add',
-        summary: 'Add new TM key to the CAT tool',
-        requestBody: new OAH\RequestBody(CatToolTmCreateRequest::class),
+        path: '/cat-tool/tm-keys/sync',
+        summary: 'Add new/delete missing/update existing TM keys for the sub-project',
+        requestBody: new OAH\RequestBody(CatToolTmKeysSyncRequest::class),
         tags: ['CAT tool'],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
     )]
-    #[OAH\ResourceResponse(dataRef: CatToolTmKeyResource::class, description: 'Created CAT tool TM', response: Response::HTTP_CREATED)]
-    public function store(CatToolTmCreateRequest $request): CatToolTmKeyResource
+    #[OAH\CollectionResponse(itemsRef: CatToolTmKeyResource::class, description: 'Affected CAT tool TMs', response: Response::HTTP_OK)]
+    public function sync(CatToolTmKeysSyncRequest $request): AnonymousResourceCollection
     {
-        $this->authorize('create', CatToolTmKey::class);
-        return DB::transaction(function () use ($request): CatToolTmKeyResource {
-            $subProject = SubProject::findOrFail($request->validated('sub_project_id'));
+        return DB::transaction(function () use ($request): AnonymousResourceCollection {
+            $subProject = $request->getSubProject();
+            $this->authorize('sync', [CatToolTmKey::class, $subProject]);
 
             if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::InProgress) {
                 abort(Response::HTTP_BAD_REQUEST, 'CAT tool setup is in progress, please try again later');
             }
 
-            $tmKey = new CatToolTmKey($request->validated());
-            $tmKey->saveOrFail();
-            $tmKey->refresh();
+            $existingTmKeys = $subProject->catToolTmKeys()->get()->keyBy('key');
+            $receivedTmKeysData = collect($request->validated('tm_keys'))->keyBy('key');
 
-            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
-                $this->publishTmKeysToCatTool($subProject);
-            }
+            // Create new TM keys
+            $receivedTmKeysData->keys()->diff($existingTmKeys->keys())
+                ->each(function (string $newTmKey) use ($receivedTmKeysData, $subProject) {
+                    $newTmKeyData = $receivedTmKeysData->get($newTmKey);
+                    (new CatToolTmKey())
+                        ->fill([
+                            ...$newTmKeyData,
+                            'sub_project_id' => $subProject->id
+                        ])->saveOrFail();
+                });
 
-            return CatToolTmKeyResource::make($tmKey);
-        });
-    }
+            // Update existing
+            $receivedTmKeysData->keys()->intersect($existingTmKeys->keys())
+                ->each(function (string $existingTmKeyKey) use ($existingTmKeys, $receivedTmKeysData) {
+                    /** @var CatToolTmKey $existingTmKey */
+                    $existingTmKey = $existingTmKeys->get($existingTmKeyKey);
+                    $existingTmKey->fill($receivedTmKeysData->get($existingTmKeyKey))
+                        ->saveOrFail();
+                });
 
-    /**
-     * @throws Throwable
-     */
-    #[
-        OA\Delete(
-            path: '/cat-tool/tm-keys/delete/{cat_tool_tm_key_id}',
-            summary: 'Mark the CAT tool TM key with the given UUID as deleted',
-            tags: ['CAT tool'],
-            parameters: [new OAH\UuidPath('cat_tool_tm_key_id')],
-            responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
-        )]
-    #[OAH\ResourceResponse(dataRef: CatToolTmKeyResource::class, description: 'The CAT tool TM marked as deleted')]
-    public function destroy(Request $request)
-    {
-        return DB::transaction(function () use ($request): CatToolTmKeyResource {
-            /** @var CatToolTmKey $tmKey */
-            $tmKey = self::getBaseQuery()->findOrFail($request->get('cat_tool_tm_key_id'));
-            $subProject = $tmKey->subProject;
-            $this->authorize('delete', $tmKey);
-
-            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::InProgress) {
-                abort(Response::HTTP_BAD_REQUEST, 'CAT tool setup is in progress, please try again later');
+            // Delete missing
+            if (!empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
+                CatToolTmKey::whereIn('key', $tmKeysToRemove)
+                    ->where('sub_project_id', $subProject->id)
+                    ->delete();
             }
 
             if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
-                if ($subProject->catToolTmKeys()->count() === 1) {
-                    abort(Response::HTTP_BAD_REQUEST, 'CAT tool should have at least one translation memory');
+                try {
+                    $subProject->cat()->syncTmKeys();
+                } catch (RequestException $e) {
+                    if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
+                        abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Translation memory key(s) are invalid');
+                    }
+
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Translation memory service is not available, please try again later');
                 }
-
-                $this->publishTmKeysToCatTool($subProject);
             }
 
-            $tmKey->deleteOrFail();
-            return CatToolTmKeyResource::make($tmKey->refresh());
+            return CatToolTmKeyResource::collection($subProject->catToolTmKeys()->get());
         });
     }
 
     private static function getBaseQuery(): Builder
     {
         return CatToolTmKey::withGlobalScope('policy', CatToolTmKeyPolicy::scope());
-    }
-
-    private function publishTmKeysToCatTool(SubProject $subProject): void
-    {
-        try {
-            $subProject->cat()->syncTmKeys();
-        } catch (RequestException $e) {
-            if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
-                abort(Response::HTTP_BAD_REQUEST, 'TM keys are invalid');
-            }
-
-            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Adding of TM keys failed');
-        }
     }
 }

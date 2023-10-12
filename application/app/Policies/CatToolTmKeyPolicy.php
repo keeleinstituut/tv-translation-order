@@ -4,8 +4,10 @@ namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
 use App\Models\CatToolTmKey;
+use App\Models\SubProject;
 use App\Models\User;
 use Auth;
+use Illuminate\Support\Facades\Gate;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class CatToolTmKeyPolicy
@@ -15,7 +17,7 @@ class CatToolTmKeyPolicy
      */
     public function viewAny(JwtPayloadUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewTm);
+        return true;
     }
 
     /**
@@ -23,7 +25,7 @@ class CatToolTmKeyPolicy
      */
     public function view(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        //
+        return true;
     }
 
     /**
@@ -31,7 +33,15 @@ class CatToolTmKeyPolicy
      */
     public function create(JwtPayloadUser $user): bool
     {
-        //
+        return true;
+    }
+
+    /**
+     * Determine whether the user can create models.
+     */
+    public function sync(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return Gate::allows('update', [$subProject->project]);
     }
 
     /**
@@ -39,7 +49,7 @@ class CatToolTmKeyPolicy
      */
     public function update(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        //
+        return true;
     }
 
     /**
@@ -47,7 +57,7 @@ class CatToolTmKeyPolicy
      */
     public function delete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        //
+        return true;
     }
 
     /**
@@ -55,7 +65,7 @@ class CatToolTmKeyPolicy
      */
     public function restore(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        //
+        return true;
     }
 
     /**
@@ -63,7 +73,7 @@ class CatToolTmKeyPolicy
      */
     public function forceDelete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        //
+        return true;
     }
 
     // Should serve as an query enhancement to Eloquent queries

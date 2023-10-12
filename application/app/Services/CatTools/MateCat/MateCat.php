@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 
 readonly class MateCat implements CatToolService
 {
@@ -63,7 +64,7 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
-        if (empty($this->subProject->catToolTms)) {
+        if (empty($this->subProject->catToolTmKeys)) {
             throw new InvalidArgumentException('Could not setup CAT tool without translation memories');
         }
 
@@ -72,6 +73,9 @@ readonly class MateCat implements CatToolService
                 'name' => $this->subProject->ext_id,
                 'source_lang' => $this->subProject->sourceLanguageClassifierValue->value,
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
+                'private_tm_key' => $this->subProject->catToolTmKeys
+                    ->map(fn(CatToolTmKey $key) => TmKeyComposer::compose($key))
+                    ->implode(',')
             ];
 
             if (!$this->storage->hasMTEnabled()) {
@@ -368,13 +372,19 @@ readonly class MateCat implements CatToolService
      */
     public function syncTmKeys(): void
     {
-        $this->apiClient->syncTMKeys(
-            $this->storage->getProjectId(),
-            $this->storage->getProjectPassword(),
-            $this->subProject->catToolTmKeys()->get()
-                ->map(fn (CatToolTmKey $tmKey) => TmKeyComposer::compose($tmKey))
-                ->toArray()
-        );
+//        try {
+            $this->apiClient->syncTMKeys(
+                $this->storage->getProjectId(),
+                $this->storage->getProjectPassword(),
+                $this->subProject->catToolTmKeys()->get()
+                    ->map(fn(CatToolTmKey $tmKey) => TmKeyComposer::compose($tmKey))
+                    ->toArray()
+            );
+//        } catch (RequestException $e) {
+//            if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
+//                throw new RuntimeException("");
+//            }
+//        }
     }
 
     public function getSetupStatus(): CatToolSetupStatus

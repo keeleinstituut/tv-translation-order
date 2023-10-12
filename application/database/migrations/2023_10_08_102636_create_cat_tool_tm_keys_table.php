@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignUuid('sub_project_id')
                 ->references('id')
                 ->on('sub_projects');
-            $table->string('key');
+            $table->string('key')->index();
             $table->boolean('is_writable');
             $table->timestampsTz();
             $table->softDeletesTz();
