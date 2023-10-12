@@ -29,6 +29,7 @@ enum PrivilegeKey: string
     case ViewVendorTask = 'VIEW_VENDOR_TASK';
     case EditInstitution = 'EDIT_INSTITUTION';
     case EditInstitutionPriceRate = 'EDIT_INSTITUTION_PRICE_RATE';
+    case ViewInstitutionPriceRate = 'VIEW_INSTITUTION_PRICE_RATE';
     case EditInstitutionWorktime = 'EDIT_INSTITUTION_WORKTIME';
     case CreateProject = 'CREATE_PROJECT';
     case ManageProject = 'MANAGE_PROJECT';
