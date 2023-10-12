@@ -2,7 +2,9 @@
 
 namespace App\Http\Resources\API;
 
+use App\Models\Assignment;
 use App\Models\Candidate;
+use App\Models\Vendor;
 use App\Services\Prices\CandidatePriceCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -21,10 +23,11 @@ class CandidateResource extends JsonResource
     {
         return [
             'vendor' => VendorResource::make($this->vendor),
-            'price' => (new CandidatePriceCalculator(
-                $this->assignment,
-                $this->vendor
-            ))->getPrice(),
+            'price' => filled($this->vendor) ?
+                (new CandidatePriceCalculator(
+                    $this->assignment,
+                    $this->vendor
+                ))->getPrice() : null,
         ];
     }
 }
