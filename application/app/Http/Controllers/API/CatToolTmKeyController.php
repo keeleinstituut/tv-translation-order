@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CatToolTmKeysSyncRequest;
 use App\Http\Resources\API\CatToolTmKeyResource;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
 use App\Policies\CatToolTmKeyPolicy;
+use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
-use App\Http\OpenApiHelpers as OAH;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
@@ -32,11 +33,15 @@ class CatToolTmKeyController extends Controller
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
     )]
-    #[OAH\CollectionResponse(itemsRef: CatToolTmKeyResource::class, description: 'TMs of the sub-project')]
+    #[OAH\CollectionResponse(itemsRef: CatToolTmKeyResource::class, description: 'TM keys of the sub-project')]
     public function index(Request $request): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', CatToolTmKey::class);
-        $query = self::getBaseQuery()->where('sub_project_id', $request->get('sub_project_id'))
+        $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->findOrFail($request->get('sub_project_id'));
+
+        $this->authorize('viewAny', [CatToolTmKey::class, $subProject]);
+
+        $query = self::getBaseQuery()->where('sub_project_id', $subProject->id)
             ->orderBy('created_at');
 
         return CatToolTmKeyResource::collection($query->get());
@@ -50,7 +55,7 @@ class CatToolTmKeyController extends Controller
         summary: 'Add new/delete missing/update existing TM keys for the sub-project',
         requestBody: new OAH\RequestBody(CatToolTmKeysSyncRequest::class),
         tags: ['CAT tool'],
-        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
+        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized, new OAH\InvalidTmKeys]
     )]
     #[OAH\CollectionResponse(itemsRef: CatToolTmKeyResource::class, description: 'Affected CAT tool TMs', response: Response::HTTP_OK)]
     public function sync(CatToolTmKeysSyncRequest $request): AnonymousResourceCollection
@@ -73,7 +78,7 @@ class CatToolTmKeyController extends Controller
                     (new CatToolTmKey())
                         ->fill([
                             ...$newTmKeyData,
-                            'sub_project_id' => $subProject->id
+                            'sub_project_id' => $subProject->id,
                         ])->saveOrFail();
                 });
 
@@ -87,7 +92,7 @@ class CatToolTmKeyController extends Controller
                 });
 
             // Delete missing
-            if (!empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
+            if (! empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
                 CatToolTmKey::whereIn('key', $tmKeysToRemove)
                     ->where('sub_project_id', $subProject->id)
                     ->delete();
@@ -95,13 +100,9 @@ class CatToolTmKeyController extends Controller
 
             if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
                 try {
-                    $subProject->cat()->syncTmKeys();
+                    $subProject->cat()->setTmKeys();
                 } catch (RequestException $e) {
-                    if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
-                        abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Translation memory key(s) are invalid');
-                    }
-
-                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Translation memory service is not available, please try again later');
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
                 }
             }
 

@@ -2,11 +2,8 @@
 
 namespace App\Policies;
 
-use App\Enums\PrivilegeKey;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
-use App\Models\User;
-use Auth;
 use Illuminate\Support\Facades\Gate;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -14,10 +11,11 @@ class CatToolTmKeyPolicy
 {
     /**
      * Determine whether the user can view any models.
+     * TODO: set correct permission check
      */
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return true;
+        return Gate::allows('update', [$subProject->project]);
     }
 
     /**
@@ -25,7 +23,7 @@ class CatToolTmKeyPolicy
      */
     public function view(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        return true;
+        return false;
     }
 
     /**
@@ -33,11 +31,12 @@ class CatToolTmKeyPolicy
      */
     public function create(JwtPayloadUser $user): bool
     {
-        return true;
+        return false;
     }
 
     /**
      * Determine whether the user can create models.
+     * TODO: set correct permission check
      */
     public function sync(JwtPayloadUser $user, SubProject $subProject): bool
     {
@@ -49,7 +48,7 @@ class CatToolTmKeyPolicy
      */
     public function update(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        return true;
+        return false;
     }
 
     /**
@@ -57,7 +56,7 @@ class CatToolTmKeyPolicy
      */
     public function delete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        return true;
+        return false;
     }
 
     /**
@@ -65,7 +64,7 @@ class CatToolTmKeyPolicy
      */
     public function restore(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        return true;
+        return false;
     }
 
     /**
@@ -73,7 +72,7 @@ class CatToolTmKeyPolicy
      */
     public function forceDelete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
     {
-        return true;
+        return false;
     }
 
     // Should serve as an query enhancement to Eloquent queries
@@ -90,24 +89,26 @@ class CatToolTmKeyPolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope() {
+    public static function scope(): Scope\CatToolTmScope
+    {
         return new Scope\CatToolTmScope();
     }
 }
 
 // Scope resides in the same file with Policy to enforce scope creation with policy creation.
+
 namespace App\Policies\Scope;
 
 use App\Policies\SubProjectPolicy;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope as IScope;
 
-class CatToolTmScope implements IScope {
+class CatToolTmScope implements IScope
+{
     /**
-    * Apply the scope to a given Eloquent query builder.
-    */
+     * Apply the scope to a given Eloquent query builder.
+     */
     public function apply(Builder $builder, Model $model): void
     {
         $builder->whereHas('subProject', function (Builder $subProjectQuery) {

@@ -4,7 +4,7 @@ namespace App\Services\CatTools\MateCat;
 
 use App\Models\CatToolTmKey;
 
-class TmKeyComposer
+class ExternalTmKeyComposer
 {
     public static function compose(CatToolTmKey $tmKey): string
     {

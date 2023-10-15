@@ -3,7 +3,6 @@
 namespace App\Services\CatTools\Contracts;
 
 use App\Models\CatToolJob;
-use App\Models\CatToolTmKey;
 use App\Models\Media;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
@@ -57,5 +56,5 @@ interface CatToolService
     /**
      * @throws RequestException
      */
-    public function syncTmKeys(): void;
+    public function setTmKeys(): void;
 }

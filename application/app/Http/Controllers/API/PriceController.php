@@ -95,7 +95,7 @@ class PriceController extends Controller
                         $query
                             ->where('src_lang_classifier_value_id', $langPair['src'])
                             ->where('dst_lang_classifier_value_id', $langPair['dst']);
-                    }) ;
+                    });
                 });
             });
         }

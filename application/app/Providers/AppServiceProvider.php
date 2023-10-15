@@ -2,15 +2,10 @@
 
 namespace App\Providers;
 
-use App\Services\NecTm\NecTmApiClient;
 use App\Sync\ApiClients\TvAuthorizationApiClient;
 use App\Sync\ApiClients\TvClassifierApiClient;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
-use KeycloakAuthGuard\Services\CachedServiceAccountJwtRetriever;
-use KeycloakAuthGuard\Services\Decoders\JwtTokenDecoder;
-use KeycloakAuthGuard\Services\RealmJwkRetrieverInterface;
-use KeycloakAuthGuard\Services\ServiceAccountJwtRetriever;
 use KeycloakAuthGuard\Services\ServiceAccountJwtRetrieverInterface;
 
 class AppServiceProvider extends ServiceProvider

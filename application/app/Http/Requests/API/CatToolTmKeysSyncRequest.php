@@ -2,15 +2,12 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\TagType;
-use App\Models\CatToolTmKey;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Rules\SubProjectExistsRule;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
 
@@ -36,7 +33,7 @@ use OpenApi\Attributes as OA;
                     type: 'object'
                 ),
                 minItems: 1
-            )
+            ),
         ]
     )
 )]
@@ -88,7 +85,7 @@ class CatToolTmKeysSyncRequest extends FormRequest
                         $validator->errors()->add('tm_keys', 'At least one TM should be added');
                     }
                 }
-            }
+            },
         ];
     }
 

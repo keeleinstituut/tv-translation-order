@@ -36,7 +36,7 @@ class CatToolController extends Controller
         summary: 'Setup CAT tool',
         requestBody: new OAH\RequestBody(CatToolSetupRequest::class),
         tags: ['CAT tool'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid, new OAH\InvalidTmKeys]
     )]
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_CREATED, description: 'CAT tool was setup')]
     public function setup(CatToolSetupRequest $request): Response
@@ -139,7 +139,7 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        if (!$subProject->cat()->isAnalyzed()) {
+        if (! $subProject->cat()->isAnalyzed()) {
             return response()->noContent();
         }
 
@@ -165,7 +165,7 @@ class CatToolController extends Controller
         try {
             $subProject->cat()->toggleMtEngine($request->validated('mt_enabled'));
         } catch (RequestException $e) {
-            throw new HttpException(500, 'Disabling/Enabling MT failed. Reason: ' . $e->getMessage(), $e);
+            throw new HttpException(500, 'Disabling/Enabling MT failed. Reason: '.$e->getMessage(), $e);
         }
 
         return CatToolMTEngineStatusResource::make($subProject);
@@ -255,7 +255,7 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        if (!$subProject->cat()->isAnalyzed()) {
+        if (! $subProject->cat()->isAnalyzed()) {
             return response()->noContent();
         }
 
