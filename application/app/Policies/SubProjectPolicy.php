@@ -21,6 +21,12 @@ class SubProjectPolicy
             && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
     }
 
+    /**
+     * @param JwtPayloadUser $user
+     * @return mixed
+     *
+     * TODO: add correct privilege check
+     */
     public function viewAnyByTmKey(JwtPayloadUser $user)
     {
         return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value);
