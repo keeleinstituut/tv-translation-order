@@ -21,6 +21,11 @@ class SubProjectPolicy
             && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
     }
 
+    public function viewAnyByTmKey(JwtPayloadUser $user)
+    {
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value);
+    }
+
     /**
      * Determine whether the user can view the model.
      */
