@@ -14,7 +14,7 @@ class VendorListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'limit' => 'sometimes|integer|max:50',
+            'per_page' => 'sometimes|integer|max:50',
             'fullname' => 'sometimes|string',
             'src_lang_classifier_value_id' => 'sometimes|array',
             'src_lang_classifier_value_id.*' => 'uuid',

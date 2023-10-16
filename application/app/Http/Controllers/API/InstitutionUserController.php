@@ -24,7 +24,7 @@ class InstitutionUserController extends Controller
         parameters: [
             new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'project_role', schema: new OA\Schema(type: 'string', nullable: true)),
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -55,7 +55,7 @@ class InstitutionUserController extends Controller
         $data = $query
             ->with('vendor')
             ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
-            ->paginate($params->get('limit', 10));
+            ->paginate($params->get('per_page', 10));
 
         return InstitutionUserResource::collection($data);
     }

@@ -14,7 +14,7 @@ class InstitutionUserListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'limit' => 'sometimes|integer|max:50',
+            'per_page' => 'sometimes|integer|max:50',
             'fullname' => 'sometimes|string',
             'project_role' => 'sometimes|in:client,manager',
         ];

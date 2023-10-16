@@ -26,7 +26,7 @@ class VendorController extends Controller
         summary: 'List vendors of current institution (institution inferrred from JWT)',
         tags: ['Vendor management'],
         parameters: [
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'role_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'tag_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
@@ -117,7 +117,7 @@ class VendorController extends Controller
             ->join('entity_cache.cached_institution_users', 'vendors.institution_user_id', '=', 'entity_cache.cached_institution_users.id')
             ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
-            ->paginate($params->get('limit', 10));
+            ->paginate($params->get('per_page', 10));
 
         return VendorResource::collection($data);
     }
