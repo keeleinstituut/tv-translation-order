@@ -3,10 +3,14 @@
 namespace App\Http\Resources\API;
 
 use App\Http\Resources\TagResource;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
+/**
+ * @mixin Vendor
+ */
 #[OA\Schema(
     title: 'Vendor',
     required: ['id', 'institution_id', 'company_name', 'updated_at', 'created_at'],
@@ -54,21 +58,12 @@ class VendorResource extends JsonResource
         ];
     }
 
-    private function discounts()
+    private function discounts(): array
     {
         // TODO: figure out how to conditionally render certain
         // TODO: json fields based on controllers input.
         // TODO: ideally should be recursive to nested resources as well.
 
-        return [
-            'discount_percentage_101' => $this->discount_percentage_101,
-            'discount_percentage_repetitions' => $this->discount_percentage_repetitions,
-            'discount_percentage_100' => $this->discount_percentage_100,
-            'discount_percentage_95_99' => $this->discount_percentage_95_99,
-            'discount_percentage_85_94' => $this->discount_percentage_85_94,
-            'discount_percentage_75_84' => $this->discount_percentage_75_84,
-            'discount_percentage_50_74' => $this->discount_percentage_50_74,
-            'discount_percentage_0_49' => $this->discount_percentage_0_49,
-        ];
+        return $this->getDiscount()->jsonSerialize();
     }
 }
