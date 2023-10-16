@@ -38,6 +38,7 @@ enum PrivilegeKey: string
     case ViewInstitutionProjectList = 'VIEW_INSTITUTION_PROJECT_LIST';
     case ViewInstitutionProjectDetail = 'VIEW_INSTITUTION_PROJECT_DETAIL';
     case ChangeClient = 'CHANGE_CLIENT';
+    case ViewTm = 'VIEW_TM';
 
     public static function values(): array
     {

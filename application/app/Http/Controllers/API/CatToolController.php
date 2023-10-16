@@ -14,7 +14,7 @@ use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
-use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
+use App\Services\CatTools\Enums\CatToolSetupStatus;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
@@ -36,7 +36,7 @@ class CatToolController extends Controller
         summary: 'Setup CAT tool',
         requestBody: new OAH\RequestBody(CatToolSetupRequest::class),
         tags: ['CAT tool'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid, new OAH\InvalidTmKeys]
     )]
     #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_CREATED, description: 'CAT tool was setup')]
     public function setup(CatToolSetupRequest $request): Response
@@ -115,15 +115,11 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        try {
-            if (! $subProject->cat()->isCreated()) {
-                return response()->noContent();
-            }
-        } catch (CatToolSetupFailedException $e) {
-            throw new HttpException(500, 'CAT tool setup failed. Reason: '.$e->getMessage(), $e);
-        }
-
-        return CatToolJobResource::collection($subProject->catToolJobs);
+        return match ($subProject->cat()->getSetupStatus()) {
+            CatToolSetupStatus::Done => CatToolJobResource::collection($subProject->catToolJobs),
+            CatToolSetupStatus::InProgress => response()->noContent(),
+            default => throw new HttpException(500, 'CAT tool setup failed, please try to re-create CAT tool project')
+        };
     }
 
     /**
@@ -167,7 +163,7 @@ class CatToolController extends Controller
         $this->authorize('manageCatTool', $subProject);
 
         try {
-            $subProject->cat()->toggleMTEngine($request->validated('mt_enabled'));
+            $subProject->cat()->toggleMtEngine($request->validated('mt_enabled'));
         } catch (RequestException $e) {
             throw new HttpException(500, 'Disabling/Enabling MT failed. Reason: '.$e->getMessage(), $e);
         }

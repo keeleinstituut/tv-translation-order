@@ -5,10 +5,12 @@ namespace App\Services\CatTools\MateCat;
 use App\Jobs\TrackMateCatProjectAnalyzingStatus;
 use App\Jobs\TrackMateCatProjectCreationStatus;
 use App\Jobs\TrackMateCatProjectProgress;
+use App\Models\CatToolTmKey;
 use App\Models\Media;
 use App\Models\SubProject;
 use App\Services\CatTools\Contracts\CatToolService;
 use App\Services\CatTools\Contracts\DownloadableFile;
+use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolRetrievingException;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use App\Services\CatTools\Exceptions\UnexpectedResponseFormatException;
@@ -18,8 +20,10 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 
 readonly class MateCat implements CatToolService
 {
@@ -38,16 +42,12 @@ readonly class MateCat implements CatToolService
     /**
      * @param  array  $filesIds
      * {@inheritDoc}
+     *
+     * @throws ValidationException
      */
     public function setupJobs(array $filesIds = null, bool $useMT = true): void
     {
-        try {
-            $isCreated = $this->isCreated();
-        } catch (CatToolSetupFailedException) {
-            $isCreated = false;
-        }
-
-        if ($isCreated) {
+        if ($this->getSetupStatus() === CatToolSetupStatus::Done) {
             throw new BadMethodCallException('Cat tool is already setup');
         }
 
@@ -67,11 +67,18 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
+        if (empty($this->subProject->catToolTmKeys)) {
+            throw new InvalidArgumentException('Project should have at least one TM key');
+        }
+
         try {
             $params = [
                 'name' => $this->subProject->ext_id,
                 'source_lang' => $this->subProject->sourceLanguageClassifierValue->value,
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
+                'tm_keys' => $this->subProject->catToolTmKeys
+                    ->map(fn (CatToolTmKey $key) => ExternalTmKeyComposer::compose($key))
+                    ->toArray(),
             ];
 
             if (! $this->storage->hasMTEnabled()) {
@@ -80,6 +87,22 @@ readonly class MateCat implements CatToolService
 
             $response = $this->apiClient->createProject($params, $files);
         } catch (RequestException $e) {
+            if ($e->response->status() === Response::HTTP_BAD_REQUEST) {
+                $errorMessage = $e->response->json('debug') ?:
+                    $e->response->json('message');
+
+                throw new InvalidArgumentException($errorMessage);
+            }
+
+            if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
+                $tmKeysErrors = $e->response->json('errors.tm_keys');
+                if (! empty($tmKeysErrors)) {
+                    throw ValidationException::withMessages([
+                        'tm_keys' => $tmKeysErrors,
+                    ])->status(Response::HTTP_BAD_REQUEST);
+                }
+            }
+
             throw new CatToolSetupFailedException('Project not created', previous: $e);
         }
 
@@ -343,24 +366,11 @@ readonly class MateCat implements CatToolService
     }
 
     /**
-     * {@inheritDoc}
-     */
-    public function isCreated(): bool
-    {
-        $creationStatus = $this->storage->getCreationStatus();
-        if (empty($creationStatus) && ! empty($this->storage->getCreationError())) {
-            throw new CatToolSetupFailedException($this->storage->getCreationError());
-        }
-
-        return $creationStatus == 200;
-    }
-
-    /**
      * @throws RequestException
      */
-    public function toggleMTEngine(bool $isEnabled): void
+    public function toggleMtEngine(bool $isEnabled): void
     {
-        if ($this->isCreated()) {
+        if ($this->getSetupStatus() === CatToolSetupStatus::Done) {
             $this->apiClient->toggleMTEngine(
                 $this->storage->getProjectId(),
                 $this->storage->getProjectPassword(),
@@ -371,8 +381,53 @@ readonly class MateCat implements CatToolService
         $this->storage->storeIsMTEnabled($isEnabled);
     }
 
-    public function hasMTEnabled(): bool
+    public function hasMtEnabled(): bool
     {
         return $this->storage->hasMTEnabled();
+    }
+
+    /**
+     * @throws ValidationException
+     * @throws RequestException
+     */
+    public function setTmKeys(): void
+    {
+        try {
+            $this->apiClient->setTMKeys(
+                $this->storage->getProjectId(),
+                $this->storage->getProjectPassword(),
+                $this->subProject->catToolTmKeys()->get()
+                    ->map(fn (CatToolTmKey $tmKey) => ExternalTmKeyComposer::compose($tmKey))
+                    ->toArray()
+            );
+        } catch (RequestException $e) {
+            if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
+                $errors = $e->response->json('errors');
+                if (! empty($errors)) {
+                    throw ValidationException::withMessages([
+                        'tm_keys' => $errors,
+                    ])->status(Response::HTTP_BAD_REQUEST);
+                }
+            }
+
+            throw $e;
+        }
+    }
+
+    public function getSetupStatus(): CatToolSetupStatus
+    {
+        if (empty($this->storage->getCreationStatusResponse())) {
+            return CatToolSetupStatus::NotStarted;
+        }
+
+        if (filled($this->storage->getCreationError())) {
+            return CatToolSetupStatus::Failed;
+        }
+
+        if ($this->storage->getCreationStatus() == 200) {
+            return CatToolSetupStatus::Done;
+        }
+
+        return CatToolSetupStatus::InProgress;
     }
 }

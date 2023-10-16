@@ -62,7 +62,7 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                     $exists = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
                         ->where('id', $value)->exists();
 
-                    if (!$exists) {
+                    if (! $exists) {
                         $fail('The assignment with such ID does not exist.');
                     }
                 },
@@ -74,7 +74,7 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                     $exists = CatToolJob::withGlobalScope('policy', CatToolJobPolicy::scope())
                         ->where('id', $value)->exists();
 
-                    if (!$exists) {
+                    if (! $exists) {
                         $fail('The XLIFF with such ID does not exist.');
                     }
                 },
@@ -107,29 +107,29 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                 $this->collect($this->validated('linking'))->each(
                     function (array $linking, int $idx) use ($validator) {
                         $catToolJobHasWrongSubProject = $this->getCatToolJobs()->get($linking['cat_tool_job_id'])
-                                ?->sub_project_id !== $this->validated('sub_project_id');
+                            ?->sub_project_id !== $this->validated('sub_project_id');
 
                         $validator->errors()->addIf(
                             $catToolJobHasWrongSubProject,
-                            'linking.' . $idx . '.cat_tool_job_id',
+                            'linking.'.$idx.'.cat_tool_job_id',
                             'XLIFF file belongs to another sub-project'
                         );
 
                         $assignmentHasWrongSubProject = $this->getAssignments()->get($linking['assignment_id'])
-                                ?->sub_project_id !== $this->validated('sub_project_id');
+                            ?->sub_project_id !== $this->validated('sub_project_id');
 
                         $validator->errors()->addIf(
                             $assignmentHasWrongSubProject,
-                            'linking.' . $idx . '.assignment_id',
+                            'linking.'.$idx.'.assignment_id',
                             'Assignment belongs to another sub-project'
                         );
 
                         $assignmentHasWrongFeature = $this->getAssignments()->get($linking['assignment_id'])
-                                ?->feature !== $this->validated('feature');
+                            ?->feature !== $this->validated('feature');
 
                         $validator->errors()->addIf(
                             $assignmentHasWrongFeature,
-                            'linking.' . $idx . '.assignment_id',
+                            'linking.'.$idx.'.assignment_id',
                             'Assignment belongs to another feature'
                         );
                     }
@@ -147,7 +147,7 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                 $validator->errors()->addIf(
                     $this->validated('feature') !== $features->first(),
                     'feature',
-                    'The linking is available only for the feature ' . $features->first()
+                    'The linking is available only for the feature '.$features->first()
                 );
             },
         ];

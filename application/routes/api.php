@@ -77,6 +77,14 @@ Route::prefix('/cat-tool')
         Route::get('/download-volume-analysis/{sub_project_id}', 'downloadVolumeAnalysisReport');
     });
 
+Route::prefix('/tm-keys')
+    ->controller(API\CatToolTmKeyController::class)
+    ->whereUuid('sub_project_id')->group(function (): void {
+        Route::get('/{sub_project_id}', 'index');
+        Route::get('/subprojects/{key}', 'subProjectsIndex');
+        Route::post('/sync', 'sync');
+    });
+
 Route::prefix('/volumes')
     ->controller(API\VolumeController::class)
     ->whereUuid('id')->group(function (): void {

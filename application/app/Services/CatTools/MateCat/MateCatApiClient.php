@@ -32,7 +32,7 @@ readonly class MateCatApiClient
     public function createProject(array $params, Collection $files): array
     {
         $params = collect($params);
-        if (! $params->has('name', 'source_lang', 'target_lang')) {
+        if (! $params->has('name', 'source_lang', 'target_lang', 'tm_keys')) {
             throw new InvalidArgumentException("'name', 'source_lang', 'target_lang' params are required");
         }
 
@@ -47,6 +47,7 @@ readonly class MateCatApiClient
             'project_name' => $params->get('name'),
             'source_lang' => $params->get('source_lang'),
             'target_lang' => $params->get('target_lang'),
+            'private_tm_key' => implode(',', $params->get('tm_keys')),
         ])->throw()->json();
     }
 
@@ -127,6 +128,18 @@ readonly class MateCatApiClient
             ->put("/v2/projects/$id/$password/toggle-mt-enabled", [
                 'enabled' => $isEnabled,
             ])->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function setTMKeys(int $id, string $password, array $tmKeys): array
+    {
+        return $this->getBasePendingRequest()
+            ->put("/v2/projects/$id/$password/set-tm-keys", [
+                'tm_keys' => implode(',', $tmKeys),
+            ])->throw()->json();
+
     }
 
     protected function getBasePendingRequest(): PendingRequest

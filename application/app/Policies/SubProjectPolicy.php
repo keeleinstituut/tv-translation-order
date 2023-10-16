@@ -22,6 +22,17 @@ class SubProjectPolicy
     }
 
     /**
+     * @param JwtPayloadUser $user
+     * @return mixed
+     *
+     * TODO: add correct privilege check
+     */
+    public function viewAnyByTmKey(JwtPayloadUser $user)
+    {
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value);
+    }
+
+    /**
      * Determine whether the user can view the model.
      */
     public function view(JwtPayloadUser $user, SubProject $subProject): bool

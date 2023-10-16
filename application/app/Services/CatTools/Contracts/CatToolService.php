@@ -4,8 +4,10 @@ namespace App\Services\CatTools\Contracts;
 
 use App\Models\CatToolJob;
 use App\Models\Media;
+use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Client\RequestException;
 
 interface CatToolService
 {
@@ -45,12 +47,14 @@ interface CatToolService
 
     public function isAnalyzed(): bool;
 
+    public function getSetupStatus(): CatToolSetupStatus;
+
+    public function toggleMtEngine(bool $isEnabled): void;
+
+    public function hasMtEnabled(): bool;
+
     /**
-     * @throws CatToolSetupFailedException
+     * @throws RequestException
      */
-    public function isCreated(): bool;
-
-    public function toggleMTEngine(bool $isEnabled): void;
-
-    public function hasMTEnabled(): bool;
+    public function setTmKeys(): void;
 }

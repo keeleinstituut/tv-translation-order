@@ -57,7 +57,7 @@ class AssignmentController extends Controller
             $request->route('sub_project_id')
         )->when(
             $request->validated('feature'),
-            fn(Builder $query, string $feature) => $query->where('feature', $feature)
+            fn (Builder $query, string $feature) => $query->where('feature', $feature)
         )->with(
             'candidates.vendor.institutionUser',
             'assignee.institutionUser',
@@ -235,7 +235,7 @@ class AssignmentController extends Controller
 
             $assignment->candidates()
                 ->whereIn('vendor_id', $vendorIds)
-                ->each(fn(Candidate $candidate) => $candidate->delete());
+                ->each(fn (Candidate $candidate) => $candidate->delete());
 
             $assignment->load('candidates.vendor.institutionUser');
 
@@ -301,7 +301,7 @@ class AssignmentController extends Controller
                 'candidates.vendor.institutionUser',
                 'assignee.institutionUser',
                 'volumes',
-                'catToolJobs'
+                'catToolJobs',
             ])->get();
     }
 }
