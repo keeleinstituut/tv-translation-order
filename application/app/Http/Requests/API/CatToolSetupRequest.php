@@ -46,7 +46,7 @@ class CatToolSetupRequest extends FormRequest
             'source_files_ids.*' => [
                 'required',
                 'integer',
-                Rule::exists(Media::class, 'id')->where('collection_name', Project::SOURCE_FILES_COLLECTION),
+                Rule::exists(Media::class, 'id'),
             ],
         ];
     }
