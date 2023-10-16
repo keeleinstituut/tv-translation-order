@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Enums\PrivilegeKey;
+use App\Models\InstitutionDiscount;
 use App\Models\Vendor;
 use ArrayObject;
 use Database\Factories\CachedEntities\InstitutionUserFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -25,6 +27,7 @@ use SyncTools\Traits\IsCachedEntity;
  * @property string|null $email
  * @property string|null $phone
  * @property string|null $deactivation_date
+ * @property string|null $institution_id
  * @property Carbon|null $archived_at
  * @property ArrayObject|null $user
  * @property ArrayObject|null $institution
@@ -33,6 +36,7 @@ use SyncTools\Traits\IsCachedEntity;
  * @property Carbon|null $deleted_at
  * @property Carbon|null $synced_at
  * @property-read Vendor|null $vendor
+ * @property-read InstitutionDiscount|null $institutionDiscount
  *
  * @method static InstitutionUserFactory factory($count = null, $state = [])
  * @method static Builder|InstitutionUser newModelQuery()
@@ -70,14 +74,24 @@ class InstitutionUser extends Model
         'institution' => AsArrayObject::class,
         'department' => AsArrayObject::class,
         'roles' => AsArrayObject::class,
-        'deactivaton_date' => 'datetime',
+        'deactivation_date' => 'datetime',
         'archived_at' => 'datetime',
         'synced_at' => 'datetime',
     ];
 
-    public function vendor()
+    public function vendor(): HasOne
     {
         return $this->hasOne(Vendor::class);
+    }
+
+    public function institutionDiscount(): HasOne
+    {
+        return $this->hasOne(InstitutionDiscount::class, 'institution_id', 'institution_id');
+    }
+
+    public function getInstitutionIdAttribute()
+    {
+        return $this->institution['id'] ?? null;
     }
 
     public function isArchived(): bool

@@ -76,7 +76,7 @@ class AssignmentObserver
             }
 
             Volume::withoutEvents(fn () => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
-                $volume->discounts = $assignment->assignee->getDiscount();
+                $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
                 $volume->unit_fee = $assignment->assignee->getPriceList(
                     $assignment->subProject->source_language_classifier_value_id,
                     $assignment->subProject->destination_language_classifier_value_id

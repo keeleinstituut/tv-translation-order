@@ -2,23 +2,18 @@
 
 namespace App\Models\Dto;
 
-class VolumeAnalysisDiscount implements \JsonSerializable
+use JsonSerializable;
+
+class VolumeAnalysisDiscount implements JsonSerializable
 {
-    public float $discount_percentage_101;
-
-    public float $discount_percentage_repetitions;
-
-    public float $discount_percentage_100;
-
-    public float $discount_percentage_95_99;
-
-    public float $discount_percentage_85_94;
-
-    public float $discount_percentage_75_84;
-
-    public float $discount_percentage_50_74;
-
-    public float $discount_percentage_0_49;
+    public ?float $discount_percentage_101;
+    public ?float $discount_percentage_repetitions;
+    public ?float $discount_percentage_100;
+    public ?float $discount_percentage_95_99;
+    public ?float $discount_percentage_85_94;
+    public ?float $discount_percentage_75_84;
+    public ?float $discount_percentage_50_74;
+    public ?float $discount_percentage_0_49;
 
     public function __construct(array $params)
     {

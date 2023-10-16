@@ -19,7 +19,7 @@ class VolumeObserver
             }
 
             if (filled($volume->cat_tool_job_id) && empty($volume->discounts)) {
-                $volume->discounts = $assignee->getDiscount();
+                $volume->discounts = $assignee->getVolumeAnalysisDiscount();
             }
         }
     }

@@ -63,7 +63,12 @@ class VendorResource extends JsonResource
         // TODO: figure out how to conditionally render certain
         // TODO: json fields based on controllers input.
         // TODO: ideally should be recursive to nested resources as well.
+        // NOTE: the condition below can be used to restrict access based on the PrivilegeKey.
+        // it can be done by loading `institutionUser.institutionDiscount` only in case if user has privilege to see the discounts
+        if ($this->relationLoaded('institutionUser') && $this->institutionUser->relationLoaded('institutionDiscount')) {
+            return $this->getVolumeAnalysisDiscount()->jsonSerialize();
+        }
 
-        return $this->getDiscount()->jsonSerialize();
+        return [];
     }
 }

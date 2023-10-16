@@ -11,6 +11,8 @@ use App\Http\Requests\API\VendorUpdateRequest;
 use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
@@ -20,6 +22,7 @@ class VendorController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * @throws AuthorizationException
      */
     #[OA\Get(
         path: '/vendors',
@@ -59,8 +62,7 @@ class VendorController extends Controller
             ->with('prices')
             ->with('prices.sourceLanguageClassifierValue')
             ->with('prices.destinationLanguageClassifierValue')
-            ->with('tags')
-            ->with('institutionUser');
+            ->with('tags');
 
         if ($param = $params->get('fullname')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
@@ -124,6 +126,8 @@ class VendorController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * @throws AuthorizationException
+     * @throws \Throwable
      */
     #[OA\Put(
         path: '/vendors/{id}',
@@ -165,12 +169,15 @@ class VendorController extends Controller
                 $vendor->tags()->attach($tagsInput);
             }
 
-            $vendor->load('institutionUser', 'tags');
+            $vendor->load('institutionUser.institutionDiscount', 'tags');
 
             return new VendorResource($vendor);
         });
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/vendors/{id}',
         summary: 'Get existing vendor',
@@ -189,6 +196,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * @throws \Throwable
      */
     #[OA\Post(
         path: '/vendors/bulk',
@@ -221,6 +229,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * @throws \Throwable
      */
     #[OA\Delete(
         path: '/vendors/bulk',
@@ -251,9 +260,9 @@ class VendorController extends Controller
         });
     }
 
-    private function getBaseQuery()
+    private function getBaseQuery(): Builder
     {
         return Vendor::getModel()->withGlobalScope('policy', VendorPolicy::scope())
-            ->with('institutionUser');
+            ->with('institutionUser.institutionDiscount');
     }
 }

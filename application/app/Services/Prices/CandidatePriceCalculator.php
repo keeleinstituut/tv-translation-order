@@ -23,7 +23,7 @@ readonly class CandidatePriceCalculator implements PriceCalculator
         $prices = $this->assignment->volumes->map(function (Volume $volume) use ($priceList) {
             return $volume->getPriceCalculator()
                 ->setUnitFee($priceList?->getUnitFee($volume->unit_type))
-                ->setDiscount($this->candidate->getDiscount())
+                ->setDiscount($this->candidate->getVolumeAnalysisDiscount())
                 ->getPrice();
         });
 
