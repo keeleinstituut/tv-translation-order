@@ -114,9 +114,27 @@ class Vendor extends Model
             ->using(Taggable::class);
     }
 
-    public function getDiscount(): VolumeAnalysisDiscount
+    public function getVolumeAnalysisDiscount(): VolumeAnalysisDiscount
     {
-        // TODO: add merging vendor discounts with institution discounts to use them in case of empty vendor discounts
+        $discountAttributes = [
+            'discount_percentage_101',
+            'discount_percentage_repetitions',
+            'discount_percentage_100',
+            'discount_percentage_95_99',
+            'discount_percentage_85_94',
+            'discount_percentage_75_84',
+            'discount_percentage_50_74',
+            'discount_percentage_0_49',
+        ];
+
+        if (filled($institutionDiscount = $this->institutionUser->institutionDiscount)) {
+            return new VolumeAnalysisDiscount(
+                collect($institutionDiscount->only($discountAttributes))->merge(
+                    collect($this->only($discountAttributes))->filter()
+                )->toArray()
+            );
+        }
+
         return new VolumeAnalysisDiscount($this->only([
             'discount_percentage_101',
             'discount_percentage_repetitions',
