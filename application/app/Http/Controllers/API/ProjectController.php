@@ -194,7 +194,8 @@ class ProjectController extends Controller
                 ClassifierValue::findMany($params->get('destination_language_classifier_value_ids'))
             );
 
-            $project->workflow()->startProcessInstance();
+            // TODO: disabled for now as it can cause some issues with project creation
+            //$project->workflow()->startProcessInstance();
 
             $project->refresh();
             $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');

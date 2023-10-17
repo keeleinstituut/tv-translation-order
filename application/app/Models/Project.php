@@ -8,7 +8,7 @@ use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\ProjectPriceCalculator;
-use App\Services\WorkflowProcessInstanceService;
+use App\Services\Workflows\WorkflowProcessInstanceService;
 use Database\Factories\ProjectFactory;
 use Eloquent;
 use Illuminate\Contracts\Database\Eloquent\Builder;
