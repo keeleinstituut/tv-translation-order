@@ -7,23 +7,29 @@ use App\Models\CachedEntities\Institution;
 use Database\Factories\TagFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
  * App\Models\Tag
  *
- * @property string $id
- * @property string $name
- * @property TagType $type
+ * @property string|null $id
+ * @property string|null $name
+ * @property TagType|null $type
  * @property string|null $institution_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
+ * @property-read Collection<int, Vendor> $vendors
+ * @property-read int|null $vendors_count
+ * @property-read Collection<int, Project> $projects
+ * @property-read int|null $projects_count
  * @property-read Institution|null $institution
  *
  * @method static TagFactory factory($count = null, $state = [])
@@ -37,6 +43,9 @@ use Illuminate\Support\Carbon;
  * @method static Builder|Tag whereName($value)
  * @method static Builder|Tag whereType($value)
  * @method static Builder|Tag whereUpdatedAt($value)
+ * @method static Builder|Tag onlyTrashed()
+ * @method static Builder|Tag withTrashed()
+ * @method static Builder|Tag withoutTrashed()
  *
  * @mixin Eloquent
  */
@@ -61,5 +70,15 @@ class Tag extends Model
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
+    }
+
+    public function vendors(): MorphToMany
+    {
+        return $this->morphedByMany(Vendor::class, 'taggable')->using(Taggable::class);
+    }
+
+    public function projects(): MorphToMany
+    {
+        return $this->morphedByMany(Project::class, 'taggable')->using(Taggable::class);
     }
 }

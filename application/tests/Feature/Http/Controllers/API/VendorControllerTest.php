@@ -44,7 +44,7 @@ class VendorControllerTest extends TestCase
             ->whereIn('institution_user_id', $randomTestIUserIds)
             ->with('prices', 'institutionUser', 'tags')
             ->join('entity_cache.cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
-            ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') ASC")
+            ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
             ->get();
 
@@ -142,6 +142,52 @@ class VendorControllerTest extends TestCase
                 'data' => collect($expectedDataset)->map(fn ($vendor) => $this->constructRepresentation($vendor))->toArray(),
             ])
             ->assertJsonCount($expectedDataset->count(), 'data');
+    }
+
+    public function test_showing(): void
+    {
+        $institutionUser = InstitutionUser::factory()->has(
+            Vendor::factory()
+                ->has(Tag::factory()->typeVendor())
+        )->create();
+        $institutionId = $institutionUser->institution['id'];
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+                'VIEW_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => $institutionId,
+            ],
+        ]);
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/vendors/'.$institutionUser->vendor->id)
+            ->assertStatus(200)
+            ->assertJson([
+                'data' => $this->constructRepresentation($institutionUser->vendor),
+            ]);
+    }
+
+    public function test_showing_vendor_from_another_institution(): void
+    {
+        $institutionUser = InstitutionUser::factory()->has(
+            Vendor::factory()
+                ->has(Tag::factory()->typeVendor())
+        )->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => Str::orderedUuid(),
+            ],
+        ]);
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/vendors/'.$institutionUser->vendor->id)
+            ->assertStatus(404);
     }
 
     public function test_bulk_create(): void

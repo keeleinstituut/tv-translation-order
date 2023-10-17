@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Models\File;
 use Illuminate\Support\Facades\Http;
+use Throwable;
+use UnexpectedValueException;
 
 class XliffConverterService
 {
-    private static $base = 'http://host.docker.internal:8732';
-
     public static function convertOriginalToXliff($sourceLocale, $targetLocale, File $sourceFile)
     {
         $response = static::client()
@@ -30,8 +30,12 @@ class XliffConverterService
         return $response->throw()->json();
     }
 
+    /** @throws Throwable */
     private static function client()
     {
-        return Http::baseUrl(static::$base);
+        $xliffConverterURL = env('XLIFF_CONVERTER_URL');
+        throw_if(empty($xliffConverterURL), UnexpectedValueException::class);
+
+        return Http::baseUrl($xliffConverterURL);
     }
 }

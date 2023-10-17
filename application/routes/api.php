@@ -35,9 +35,13 @@ Route::prefix('/tags')
 Route::get('/classifier-values', [API\ClassifierValueController::class, 'index']);
 Route::get('/institution-users', [API\InstitutionUserController::class, 'index']);
 
+Route::get('/institution-discounts', [API\InstitutionDiscountController::class, 'show']);
+Route::put('/institution-discounts', [API\InstitutionDiscountController::class, 'store']);
+
 Route::get('/skills', [API\SkillController::class, 'index']);
 
 Route::get('/vendors', [API\VendorController::class, 'index']);
+Route::get('/vendors/{id}', [API\VendorController::class, 'show']);
 Route::put('/vendors/{id}', [API\VendorController::class, 'update']);
 Route::post('/vendors/bulk', [API\VendorController::class, 'bulkCreate']);
 Route::delete('/vendors/bulk', [API\VendorController::class, 'bulkDestroy']);
@@ -52,13 +56,57 @@ Route::get('/projects', [API\ProjectController::class, 'index']);
 Route::post('/projects', [API\ProjectController::class, 'store']);
 Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
 
-Route::get('/assignments', [API\AssignmentController::class, 'index']);
-Route::put('/assignments/{id}', [API\AssignmentController::class, 'update']);
+Route::prefix('/subprojects')
+    ->controller(API\SubProjectController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::get('/', 'index');
+        Route::get('/{id}', 'show');
+    });
 
-Route::get('/subprojects', [API\SubProjectController::class, 'index']);
-Route::get('/subprojects/{id}', [API\SubProjectController::class, 'show']);
-Route::post('/subprojects/{id}/send-to-cat', [API\SubProjectController::class, 'sendToCat']);
-Route::post('/subprojects/{id}/send-to-work', [API\SubProjectController::class, 'sendToWork']);
+Route::prefix('/cat-tool')
+    ->controller(API\CatToolController::class)
+    ->whereUuid('sub_project_id')->group(function (): void {
+        Route::post('/setup', 'setup');
+        Route::post('/split', 'split');
+        Route::post('/merge', 'merge');
+        Route::get('/jobs/{sub_project_id}', 'jobsIndex');
+        Route::put('/toggle-mt-engine/{sub_project_id}', 'toggleMTEngine');
+        Route::get('/volume-analysis/{sub_project_id}', 'volumeAnalysis');
+        Route::get('/download-xliff/{sub_project_id}', 'downloadXLIFFs');
+        Route::get('/download-translated/{sub_project_id}', 'downloadTranslations');
+        Route::get('/download-volume-analysis/{sub_project_id}', 'downloadVolumeAnalysisReport');
+    });
+
+Route::prefix('/tm-keys')
+    ->controller(API\CatToolTmKeyController::class)
+    ->whereUuid('sub_project_id')->group(function (): void {
+        Route::get('/{sub_project_id}', 'index');
+        Route::get('/subprojects/{key}', 'subProjectsIndex');
+        Route::post('/sync', 'sync');
+    });
+
+Route::prefix('/volumes')
+    ->controller(API\VolumeController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::post('/', 'store');
+        Route::post('/cat-tool', 'storeCatToolVolume');
+        Route::put('/{id}', 'update');
+        Route::put('/cat-tool/{id}', 'updateCatToolVolume');
+        Route::delete('/{id}', 'destroy');
+    });
+
+Route::prefix('/assignments')
+    ->controller(API\AssignmentController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::get('/{sub_project_id}', 'index');
+        Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs');
+        Route::post('/', 'store');
+        Route::put('/{id}', 'update');
+        Route::delete('/{id}', 'destroy');
+        Route::put('/{id}/assignee-comment', 'updateAssigneeComment');
+        Route::post('/{id}/candidates/bulk', 'addCandidates');
+        Route::delete('/{id}/candidates/bulk', 'deleteCandidate');
+    });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
@@ -70,29 +118,3 @@ Route::get('/workflow/history/tasks', [API\WorkflowController::class, 'getHistor
 //Route::get('/cat/urls/revise/{project_id}', []);
 // ??
 Route::get('/redirect', [API\RedirectController::class, '__invoke']);
-
-Route::get('/playground', function (Request $request) {
-    $response = [];
-    $project = Project::find('99a6d516-fb33-47c2-9291-ad3e0c512cc4');
-    $response['startProcessInstance'] = $project->workflow()->startProcessInstance();
-
-    //    dd($response);
-    $response['project'] = $project->refresh();
-
-    return $response;
-    //    return [
-    //        'name' => fake()->name(),
-    //    ];
-});
-
-Route::get('/playground2', function (Request $request) {
-    $response = [];
-    $projects = Project::getModel()
-        ->with('subProjects')
-        ->paginate();
-
-    return $projects;
-    $response['projects'] = $projects;
-
-    return $response;
-});

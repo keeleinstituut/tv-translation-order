@@ -11,6 +11,9 @@ use App\Http\Requests\API\VendorUpdateRequest;
 use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,18 +22,32 @@ class VendorController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * @throws AuthorizationException
      */
     #[OA\Get(
         path: '/vendors',
         summary: 'List vendors of current institution (institution inferrred from JWT)',
         tags: ['Vendor management'],
         parameters: [
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'role_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'tag_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(
+                name: 'lang_pair[]',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'src', type: 'string', format: 'uuid'),
+                            new OA\Property(property: 'dst', type: 'string', format: 'uuid'),
+                        ]
+                    ),
+                    nullable: true
+                )
+            ),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -45,12 +62,11 @@ class VendorController extends Controller
             ->with('prices')
             ->with('prices.sourceLanguageClassifierValue')
             ->with('prices.destinationLanguageClassifierValue')
-            ->with('tags')
-            ->with('institutionUser');
+            ->with('tags');
 
         if ($param = $params->get('fullname')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
-                $query->where(DB::raw("CONCAT(\"user\"->>'forename', \"user\"->>'surname')"), 'ILIKE', "%$param%");
+                $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$param%");
             });
         }
 
@@ -85,17 +101,33 @@ class VendorController extends Controller
             });
         }
 
+        if ($param = $params->get('lang_pair')) {
+            $query->whereRelation('prices', function ($query) use ($param) {
+                $query->where(function ($query) use ($param) {
+                    collect($param)->each(function ($langPair) use ($query) {
+                        $query->orWhere(function ($query) use ($langPair) {
+                            $query
+                                ->where('src_lang_classifier_value_id', $langPair['src'])
+                                ->where('dst_lang_classifier_value_id', $langPair['dst']);
+                        });
+                    });
+                });
+            });
+        }
+
         $data = $query
             ->join('entity_cache.cached_institution_users', 'vendors.institution_user_id', '=', 'entity_cache.cached_institution_users.id')
-            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
+            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
-            ->paginate($params->get('limit', 10));
+            ->paginate($params->get('per_page', 10));
 
         return VendorResource::collection($data);
     }
 
     /**
      * Update the specified resource in storage.
+     * @throws AuthorizationException
+     * @throws \Throwable
      */
     #[OA\Put(
         path: '/vendors/{id}',
@@ -137,14 +169,34 @@ class VendorController extends Controller
                 $vendor->tags()->attach($tagsInput);
             }
 
-            $vendor->load('institutionUser', 'tags');
+            $vendor->load('institutionUser.institutionDiscount', 'tags');
 
             return new VendorResource($vendor);
         });
     }
 
     /**
+     * @throws AuthorizationException
+     */
+    #[OA\Get(
+        path: '/vendors/{id}',
+        summary: 'Get existing vendor',
+        tags: ['Vendor management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: VendorResource::class, description: 'Vendor resource', response: Response::HTTP_OK)]
+    public function show(Request $request): VendorResource
+    {
+        $vendor = $this->getBaseQuery()->findOrFail($request->route('id'));
+        $this->authorize('view', $vendor);
+
+        return new VendorResource($vendor);
+    }
+
+    /**
      * Remove the specified resource from storage.
+     * @throws \Throwable
      */
     #[OA\Post(
         path: '/vendors/bulk',
@@ -177,6 +229,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * @throws \Throwable
      */
     #[OA\Delete(
         path: '/vendors/bulk',
@@ -207,9 +260,9 @@ class VendorController extends Controller
         });
     }
 
-    private function getBaseQuery()
+    private function getBaseQuery(): Builder
     {
         return Vendor::getModel()->withGlobalScope('policy', VendorPolicy::scope())
-            ->with('institutionUser');
+            ->with('institutionUser.institutionDiscount');
     }
 }

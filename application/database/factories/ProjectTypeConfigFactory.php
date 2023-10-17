@@ -23,6 +23,7 @@ class ProjectTypeConfigFactory extends Factory
             'type_classifier_value_id' => ClassifierValue::factory(),
             'workflow_process_definition_id' => fake()->randomElement(SubProjectWorkflowTemplatePicker::getWorkflowTemplateIds()),
             'features' => $this->getFeatures(),
+            'is_start_date_supported' => false,
         ];
     }
 

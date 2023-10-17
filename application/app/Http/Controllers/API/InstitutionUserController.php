@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\PrivilegeKey;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\InstitutionUserListRequest;
 use App\Http\Resources\API\InstitutionUserResource;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Policies\InstitutionUserPolicy;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 class InstitutionUserController extends Controller
@@ -20,7 +22,9 @@ class InstitutionUserController extends Controller
         summary: 'List Institution Users',
         tags: ['Cached entities'],
         parameters: [
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'fullname', schema: new OA\Schema(type: 'string', nullable: true)),
+            new OA\QueryParameter(name: 'project_role', schema: new OA\Schema(type: 'string', nullable: true)),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -32,9 +36,26 @@ class InstitutionUserController extends Controller
         $this->authorize('viewAny', InstitutionUser::class);
 
         $query = $this->getBaseQuery();
+
+        if ($fullName = $params->get('fullname')) {
+            $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$fullName%");
+        }
+
+        if ($projectRole = $params->get('project_role')) {
+            $map = collect([
+                'manager' => PrivilegeKey::ReceiveAndManageProject,
+                'client' => PrivilegeKey::CreateProject,
+            ]);
+
+            if ($privilege = $map->get($projectRole)) {
+                $query->where('roles', '@>', "[{\"privileges\": [\"$privilege->value\"]}]");
+            }
+        }
+
         $data = $query
-            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') ASC")
-            ->paginate($params->get('limit', 10));
+            ->with('vendor')
+            ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
+            ->paginate($params->get('per_page', 10));
 
         return InstitutionUserResource::collection($data);
     }

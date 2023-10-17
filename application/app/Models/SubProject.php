@@ -3,41 +3,102 @@
 namespace App\Models;
 
 use App\Models\CachedEntities\ClassifierValue;
-use App\Services\CatPickerService;
+use App\Services\CatTools\CatPickerService;
+use App\Services\CatTools\Contracts\CatToolService;
+use App\Services\Prices\PriceCalculator;
+use App\Services\Prices\SubProjectPriceCalculator;
+use ArrayObject;
+use Database\Factories\SubProjectFactory;
+use Eloquent;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsArrayObject;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
+use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
+use Throwable;
 
+/**
+ * App\Models\SubProject
+ *
+ * @property string|null $id
+ * @property string|null $ext_id
+ * @property string|null $project_id
+ * @property string|null $file_collection
+ * @property string|null $file_collection_final
+ * @property string|null $workflow_ref
+ * @property string|null $source_language_classifier_value_id
+ * @property string|null $destination_language_classifier_value_id
+ * @property ArrayObject|null $cat_metadata
+ * @property float|null $price
+ * @property Carbon|null $created_at
+ * @property Carbon|null $deadline_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, Assignment> $assignments
+ * @property-read int|null $assignments_count
+ * @property-read ClassifierValue|null $destinationLanguageClassifierValue
+ * @property-read Project|null $project
+ * @property-read ClassifierValue|null $sourceLanguageClassifierValue
+ * @property-read Collection<int, Media> $sourceFiles
+ * @property-read Collection<int, Media> $finalFiles
+ * @property-read Collection<int, CatToolJob> $catToolJobs
+ * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
+ *
+ * @method static SubProjectFactory factory($count = null, $state = [])
+ * @method static Builder|SubProject newModelQuery()
+ * @method static Builder|SubProject newQuery()
+ * @method static Builder|SubProject query()
+ * @method static Builder|SubProject whereCatMetadata($value)
+ * @method static Builder|SubProject whereCreatedAt($value)
+ * @method static Builder|SubProject whereDestinationLanguageClassifierValueId($value)
+ * @method static Builder|SubProject whereExtId($value)
+ * @method static Builder|SubProject whereFileCollection($value)
+ * @method static Builder|SubProject whereFileCollectionFinal($value)
+ * @method static Builder|SubProject whereId($value)
+ * @method static Builder|SubProject whereMatecatJobId($value)
+ * @method static Builder|SubProject whereProjectId($value)
+ * @method static Builder|SubProject whereSourceLanguageClassifierValueId($value)
+ * @method static Builder|SubProject whereUpdatedAt($value)
+ * @method static Builder|SubProject whereWorkflowRef($value)
+ * @method static Builder|SubProject hasAnyOfLanguageDirections(array[] $languageDirections)
+ *
+ * @mixin Eloquent
+ */
 class SubProject extends Model
 {
     use HasFactory;
     use HasUuids;
     use HasRelationships;
 
+    protected $guarded = [];
+
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
+        'price' => 'float',
     ];
 
-    public function project()
+    public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
-    public function sourceLanguageClassifierValue()
+    public function sourceLanguageClassifierValue(): BelongsTo
     {
         return $this->belongsTo(ClassifierValue::class, 'source_language_classifier_value_id');
     }
 
-    public function destinationLanguageClassifierValue()
+    public function destinationLanguageClassifierValue(): BelongsTo
     {
         return $this->belongsTo(ClassifierValue::class, 'destination_language_classifier_value_id');
     }
 
-    public function sourceFiles()
+    public function sourceFiles(): HasManyDeep
     {
         return $this->hasManyDeep(
             Media::class,
@@ -47,7 +108,17 @@ class SubProject extends Model
         );
     }
 
-    public function finalFiles()
+    public function projectTypeConfig(): HasManyDeep
+    {
+        return $this->hasOneDeep(
+            ProjectTypeConfig::class,
+            [Project::class, ClassifierValue::class],
+            ['id', 'id', 'type_classifier_value_id'],
+            ['project_id', 'type_classifier_value_id', 'id']
+        );
+    }
+
+    public function finalFiles(): HasManyDeep
     {
         return $this->hasManyDeep(
             Media::class,
@@ -57,31 +128,58 @@ class SubProject extends Model
         );
     }
 
-    public function assignments()
+    public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class);
     }
 
-    public function initAssignments()
+    public function catToolJobs(): HasMany
     {
-        collect($this->project->typeClassifierValue->projectTypeConfig->features)
-            ->filter(fn ($elem) => Str::startsWith($elem, 'job'))
-            ->each(function ($feature) {
+        return $this->hasMany(CatToolJob::class)->orderBy('id');
+    }
+
+    public function catToolTmKeys(): HasMany
+    {
+        return $this->hasMany(CatToolTmKey::class);
+    }
+
+    /** @throws Throwable */
+    public function initAssignments(): void
+    {
+        $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
+            ->each(function (string $feature) {
                 $assignment = new Assignment();
                 $assignment->sub_project_id = $this->id;
                 $assignment->feature = $feature;
-                $assignment->save();
+                $assignment->saveOrFail();
             });
     }
 
-    //    public function sourceFiles2() {
-    //        return $this->project->media()->where('collection_name', $this->file_collection);
-    //    }
-
-    public function cat()
+    public function cat(): CatToolService
     {
-        $catClass = CatPickerService::pick(CatPickerService::MATECAT);
+        return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
+    }
 
-        return new $catClass($this);
+    public function getPriceCalculator(): PriceCalculator
+    {
+        return new SubProjectPriceCalculator($this);
+    }
+
+    /**
+     * @noinspection PhpUnused
+     *
+     * @param  array<array{string, string}>  $languageDirections
+     */
+    public function scopeHasAnyOfLanguageDirections(Builder $builder, array $languageDirections): void
+    {
+        $builder->where(function (Builder $groupedClause) use ($languageDirections) {
+            collect($languageDirections)->eachSpread(
+                function (string $sourceLanguageClassifierValueId, string $destinationLanguageClassifierValueId) use ($groupedClause) {
+                    $groupedClause->orWhere([
+                        'source_language_classifier_value_id' => $sourceLanguageClassifierValueId,
+                        'destination_language_classifier_value_id' => $destinationLanguageClassifierValueId,
+                    ]);
+                });
+        });
     }
 }

@@ -31,9 +31,22 @@ class PriceController extends Controller
             new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'skill_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
-            new OA\QueryParameter(name: 'limit', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
-            new OA\QueryParameter(name: 'order_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
-            new OA\QueryParameter(name: 'order_direction', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
+            new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
+            new OA\QueryParameter(
+                name: 'lang_pair[]',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'src', type: 'string', format: 'uuid'),
+                            new OA\Property(property: 'dst', type: 'string', format: 'uuid'),
+                        ]
+                    ),
+                    nullable: true
+                )
+            ),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -46,6 +59,7 @@ class PriceController extends Controller
 
         $query = $this->getBaseQuery()
             ->with('vendor')
+            ->with('vendor.tags')
             ->with('vendor.institutionUser')
             ->with('sourceLanguageClassifierValue')
             ->with('destinationLanguageClassifierValue')
@@ -68,16 +82,28 @@ class PriceController extends Controller
         }
 
         if ($param = $params->get('institution_user_name')) {
-            $query = $query->whereRelation('vendor.institutionUser', DB::raw("CONCAT(\"user\"->>'forename', \"user\"->>'surname')"), 'ILIKE', "%$param%");
+            $query = $query->whereRelation('vendor.institutionUser', DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$param%");
         }
 
         if ($param = $params->get('skill_id')) {
             $query = $query->whereIn('skill_id', $param);
         }
 
+        if ($param = $params->get('lang_pair')) {
+            $query->where(function ($query) use ($param) {
+                collect($param)->each(function ($langPair) use ($query) {
+                    $query->orWhere(function ($query) use ($langPair) {
+                        $query
+                            ->where('src_lang_classifier_value_id', $langPair['src'])
+                            ->where('dst_lang_classifier_value_id', $langPair['dst']);
+                    });
+                });
+            });
+        }
+
         $data = $query
-            ->orderBy($params->get('order_by', 'created_at'), $params->get('order_direction', 'desc'))
-            ->paginate($params->get('limit', 10));
+            ->orderBy($params->get('sort_by', 'created_at'), $params->get('sort_order', 'desc'))
+            ->paginate($params->get('per_page', 10));
 
         return PriceResource::collection($data);
     }
