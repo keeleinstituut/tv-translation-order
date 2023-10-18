@@ -30,7 +30,7 @@ class InstitutionFullSyncTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('institution:full-sync')->assertExitCode(0);
+        $this->artisan('sync:institutions')->assertExitCode(0);
 
         $institution = Institution::withTrashed()
             ->where('id', '=', $institutionAttributes['id'])
@@ -51,7 +51,7 @@ class InstitutionFullSyncTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('institution:full-sync')->assertExitCode(0);
+        $this->artisan('sync:institutions')->assertExitCode(0);
 
         $institution = Institution::withTrashed()
             ->where('id', '=', $institutionAttributes['id'])
@@ -74,7 +74,7 @@ class InstitutionFullSyncTest extends TestCase
             ...$this->getFakeInstitutionsResponse(),
         ]);
 
-        $this->artisan('institution:full-sync')->assertExitCode(0);
+        $this->artisan('sync:institutions')->assertExitCode(0);
         foreach ($institutions as $institution) {
             $this->assertModelMissing($institution);
         }
@@ -91,7 +91,7 @@ class InstitutionFullSyncTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('institution:full-sync')->assertExitCode(0);
+        $this->artisan('sync:institutions')->assertExitCode(0);
 
         $institution->refresh();
         $this->assertModelExists($institution);
@@ -109,7 +109,7 @@ class InstitutionFullSyncTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('institution:full-sync')->assertExitCode(0);
+        $this->artisan('sync:institutions')->assertExitCode(0);
 
         $institution->refresh();
         $this->assertModelExists($institution);

@@ -28,7 +28,7 @@ class ClassifierValueSyncTest extends TestCase
             ...$this->getFakeClassifierValueResponse($classifierValueAttributes),
         ]);
 
-        $this->artisan('classifier-value:sync', ['id' => $classifierValueAttributes['id']])
+        $this->artisan('sync:single:classifier-value', ['id' => $classifierValueAttributes['id']])
             ->assertExitCode(0);
 
         $classifierValue = ClassifierValue::withTrashed()
@@ -48,7 +48,7 @@ class ClassifierValueSyncTest extends TestCase
             ...$this->getFakeClassifierValueResponse($newClassifierValueAttributes),
         ]);
 
-        $this->artisan('classifier-value:sync', ['id' => $classifierValue->id])
+        $this->artisan('sync:single:classifier-value', ['id' => $classifierValue->id])
             ->assertExitCode(0);
 
         $classifierValue->refresh();
@@ -64,7 +64,7 @@ class ClassifierValueSyncTest extends TestCase
             ...$this->getFakeNotFoundClassifierValueResponse(),
         ]);
 
-        $this->artisan('classifier-value:sync', ['id' => $classifierValue->id])->assertExitCode(0);
+        $this->artisan('sync:single:classifier-value', ['id' => $classifierValue->id])->assertExitCode(0);
         $this->assertModelMissing($classifierValue);
     }
 }

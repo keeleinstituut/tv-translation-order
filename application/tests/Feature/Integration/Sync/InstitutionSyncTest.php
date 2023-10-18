@@ -27,7 +27,7 @@ class InstitutionSyncTest extends TestCase
             ...$this->getFakeKeycloakServiceAccountJwtResponse(),
             ...$this->getFakeInstitutionResponse($institutionAttributes),
         ]);
-        $this->artisan('institution:sync', ['id' => $institutionAttributes['id']])
+        $this->artisan('sync:single:institution', ['id' => $institutionAttributes['id']])
             ->assertExitCode(0);
 
         $institution = Institution::withTrashed()->where('id', '=', $institutionAttributes['id'])->first();
@@ -45,7 +45,7 @@ class InstitutionSyncTest extends TestCase
             ...$this->getFakeInstitutionResponse($newInstitutionAttributes),
         ]);
 
-        $this->artisan('institution:sync', ['id' => $institution->id])->assertExitCode(0);
+        $this->artisan('sync:single:institution', ['id' => $institution->id])->assertExitCode(0);
 
         $institution->refresh();
 
@@ -61,7 +61,7 @@ class InstitutionSyncTest extends TestCase
             ...$this->getFakeNotFoundInstitutionResponse(),
         ]);
 
-        $this->artisan('institution:sync', ['id' => $institution->id])->assertExitCode(0);
+        $this->artisan('sync:single:institution', ['id' => $institution->id])->assertExitCode(0);
         $this->assertModelMissing($institution);
     }
 }

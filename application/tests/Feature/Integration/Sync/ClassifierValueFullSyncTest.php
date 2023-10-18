@@ -30,7 +30,7 @@ class ClassifierValueFullSyncTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('classifier-value:full-sync')->assertExitCode(0);
+        $this->artisan('sync:classifier-values')->assertExitCode(0);
 
         $classifierValue = ClassifierValue::withTrashed()
             ->where('id', '=', $classifierValueAttributes['id'])
@@ -53,7 +53,7 @@ class ClassifierValueFullSyncTest extends TestCase
             ...$this->getFakeClassifierValuesResponse(),
         ]);
 
-        $this->artisan('classifier-value:full-sync')->assertExitCode(0);
+        $this->artisan('sync:classifier-values')->assertExitCode(0);
         foreach ($classifierValues as $classifierValue) {
             $this->assertModelMissing($classifierValue);
         }
@@ -70,7 +70,7 @@ class ClassifierValueFullSyncTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('classifier-value:full-sync')->assertExitCode(0);
+        $this->artisan('sync:classifier-values')->assertExitCode(0);
 
         $classifierValue->refresh();
         $this->assertModelExists($classifierValue);

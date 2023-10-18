@@ -17,7 +17,7 @@ class InstitutionUserSync extends BaseEntitySyncCommand
      *
      * @var string
      */
-    protected $signature = 'institution-user:sync {id : ID of institution user}';
+    protected $signature = 'sync:single:institution-user {id : ID of institution user}';
 
     /**
      * @throws BindingResolutionException

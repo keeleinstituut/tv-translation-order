@@ -27,7 +27,7 @@ class InstitutionUserSyncTest extends TestCase
             ...$this->getFakeInstitutionUserResponse($institutionUserAttributes),
         ]);
 
-        $this->artisan('institution-user:sync', ['id' => $institutionUserAttributes['id']])
+        $this->artisan('sync:single:institution-user', ['id' => $institutionUserAttributes['id']])
             ->assertExitCode(0);
 
         $institutionUser = InstitutionUser::withTrashed()->where('id', '=', $institutionUserAttributes['id'])->first();
@@ -43,7 +43,7 @@ class InstitutionUserSyncTest extends TestCase
             ...$this->getFakeInstitutionUserResponse($institutionUserAttributes),
         ]);
 
-        $this->artisan('institution-user:sync', ['id' => $institutionUserAttributes['id']])
+        $this->artisan('sync:single:institution-user', ['id' => $institutionUserAttributes['id']])
             ->assertExitCode(0);
 
         $institutionUser = InstitutionUser::withTrashed()->where('id', '=', $institutionUserAttributes['id'])->first();
@@ -61,7 +61,7 @@ class InstitutionUserSyncTest extends TestCase
             ...$this->getFakeInstitutionUserResponse($newInstitutionUserAttributes),
         ]);
 
-        $this->artisan('institution-user:sync', ['id' => $institutionUser->id])->assertExitCode(0);
+        $this->artisan('sync:single:institution-user', ['id' => $institutionUser->id])->assertExitCode(0);
 
         $institutionUser->refresh();
 
@@ -79,7 +79,7 @@ class InstitutionUserSyncTest extends TestCase
             ...$this->getFakeInstitutionUserResponse($newInstitutionUserAttributes),
         ]);
 
-        $this->artisan('institution-user:sync', ['id' => $institutionUser->id])->assertExitCode(0);
+        $this->artisan('sync:single:institution-user', ['id' => $institutionUser->id])->assertExitCode(0);
 
         $institutionUser->refresh();
 
@@ -95,7 +95,7 @@ class InstitutionUserSyncTest extends TestCase
             ...$this->getFakeNotFoundInstitutionUserResponse(),
         ]);
 
-        $this->artisan('institution-user:sync', ['id' => $institution->id])->assertExitCode(0);
+        $this->artisan('sync:single:institution-user', ['id' => $institution->id])->assertExitCode(0);
         $this->assertModelMissing($institution);
     }
 }
