@@ -11,6 +11,7 @@ abstract class BaseSubProjectWorkflowTemplate extends BaseWorkflowTemplate
     protected function buildUserTaskVariables(Project $project, SubProject $subProject, Assignment $assignment = null, bool $withCATTool = false): array
     {
         return [
+            'assignment_id' => $assignment->id,
             'sub_project_id' => $subProject->id,
             'with_cat_tool' => $withCATTool,
             'machine_translation' => false,
@@ -21,7 +22,7 @@ abstract class BaseSubProjectWorkflowTemplate extends BaseWorkflowTemplate
             'accepted_at' => null,
             'completed_at' => null,
             'assignee' => $assignment->assigned_vendor_id ?? '',
-            'candidateUsers' => collect($assignment->caidndidates)->pluck('vendor_id')->toArray(),
+            'candidateUsers' => collect($assignment->candidates)->pluck('vendor_id')->toArray(),
         ];
     }
 }
