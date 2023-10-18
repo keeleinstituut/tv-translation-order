@@ -137,7 +137,7 @@ class ProjectCreateRequest extends FormRequest
                 'bail',
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::TranslationDomain),
             ],
-            'source_files' => ['array'],
+            'source_files' => ['array', 'min:1'],
             'source_files.*' => [TranslationSourceFileValidator::createRule()],
             'help_files' => ['required_with:help_file_types', 'array'],
             'help_files.*' => ['file'],
