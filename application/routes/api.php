@@ -83,6 +83,7 @@ Route::prefix('/tm-keys')
         Route::get('/{sub_project_id}', 'index');
         Route::get('/subprojects/{key}', 'subProjectsIndex');
         Route::post('/sync', 'sync');
+        Route::put('/toggle-writable/{id}', 'toggleWritable');
     });
 
 Route::prefix('/volumes')

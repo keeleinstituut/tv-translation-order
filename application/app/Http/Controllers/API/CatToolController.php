@@ -39,6 +39,17 @@ class CatToolController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid, new OAH\InvalidTmKeys]
     )]
     #[OA\Response(response: Response::HTTP_CREATED, description: 'CAT tool was setup')]
+    #[OA\Response(
+        response: Response::HTTP_UNPROCESSABLE_ENTITY,
+        description: 'Sub project TM keys validation failed',
+        content: new OA\JsonContent(required: ['message'],
+            properties: [
+                new OA\Property(property: 'message', type: 'string'),
+            ],
+            type: 'object',
+            example: ['message' => 'Project should have at least one TM key || Project should have not more than 10 TM keys || Not more than two translation memories can be writable || At least one TM should be writable']
+        )
+    )]
     public function setup(CatToolSetupRequest $request): \Illuminate\Http\Response
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));

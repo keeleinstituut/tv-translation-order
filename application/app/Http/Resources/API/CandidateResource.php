@@ -2,9 +2,7 @@
 
 namespace App\Http\Resources\API;
 
-use App\Models\Assignment;
 use App\Models\Candidate;
-use App\Models\Vendor;
 use App\Services\Prices\CandidatePriceCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;

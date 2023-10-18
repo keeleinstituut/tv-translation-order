@@ -22,6 +22,7 @@ class VendorController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
      * @throws AuthorizationException
      */
     #[OA\Get(
@@ -126,6 +127,7 @@ class VendorController extends Controller
 
     /**
      * Update the specified resource in storage.
+     *
      * @throws AuthorizationException
      * @throws \Throwable
      */
@@ -196,6 +198,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     *
      * @throws \Throwable
      */
     #[OA\Post(
@@ -229,6 +232,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     *
      * @throws \Throwable
      */
     #[OA\Delete(
