@@ -10,10 +10,10 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
 {
     public function save(array $resource): void
     {
-        $obj = $this->getBaseQuery()->withTrashed()->find($resource['id']);
+        $obj = $this->getBaseModel()->withTrashed()->find($resource['id']);
 
         if (!$obj) {
-            $obj = new ClassifierValue();
+            $obj = $this->getBaseModel();
             $obj->id = $resource['id'];
         }
 
@@ -29,22 +29,22 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
 
     public function delete(string $id): void
     {
-        $obj = $this->getBaseQuery()->find($id);
+        $obj = $this->getBaseModel()->find($id);
         $obj->delete();
     }
 
     public function deleteNotSynced(): void
     {
-        $this->getBaseQuery()->whereNull('synced_at')
+        $this->getBaseModel()->whereNull('synced_at')
             ->delete();
     }
 
     public function cleanupLastSyncDateTime(): void
     {
-        $this->getBaseQuery()->update(['synced_at' => null]);
+        $this->getBaseModel()->update(['synced_at' => null]);
     }
 
-    private function getBaseQuery(): ClassifierValue
+    private function getBaseModel(): ClassifierValue
     {
         return ClassifierValue::getModel()->setConnection(config('pgsql-connection.sync.name'));
     }
