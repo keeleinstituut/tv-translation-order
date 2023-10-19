@@ -36,7 +36,7 @@ class CatToolController extends Controller
         summary: 'Setup CAT tool',
         requestBody: new OAH\RequestBody(CatToolSetupRequest::class),
         tags: ['CAT tool'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid, new OAH\InvalidTmKeys]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\InvalidTmKeys]
     )]
     #[OA\Response(response: Response::HTTP_CREATED, description: 'CAT tool was setup')]
     #[OA\Response(
