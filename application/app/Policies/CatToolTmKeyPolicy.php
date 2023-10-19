@@ -44,6 +44,16 @@ class CatToolTmKeyPolicy
     }
 
     /**
+     * @return bool
+     *
+     * TODO: set correct permission check
+     */
+    public function toggleWritable(JwtPayloadUser $user, CatToolTmKey $tmKey): bool
+    {
+        return Gate::allows('update', [$tmKey->subProject->project]);
+    }
+
+    /**
      * Determine whether the user can update the model.
      */
     public function update(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool

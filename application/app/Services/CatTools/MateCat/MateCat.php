@@ -67,17 +67,32 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
-        if (empty($this->subProject->catToolTmKeys)) {
-            throw new InvalidArgumentException('Project should have at least one TM key');
-        }
+        // TODO: enable validation when FE part will be done
+
+        //        if (empty($this->subProject->catToolTmKeys)) {
+        //            throw new InvalidArgumentException('Project should have at least one TM key');
+        //        }
+        //
+        //        if ($this->subProject->catToolTmKeys->count() > 10) {
+        //            throw new InvalidArgumentException('Project should have not more than 10 TM keys');
+        //        }
+        //
+        //        $writableTmsCount = $this->subProject->catToolTmKeys->where('is_writable', true)->count();
+        //        if ($writableTmsCount > 2) {
+        //            throw new InvalidArgumentException('Not more than two translation memories can be writable');
+        //        }
+        //
+        //        if ($writableTmsCount === 0) {
+        //            throw new InvalidArgumentException('At least one TM should be writable');
+        //        }
 
         try {
             $params = [
                 'name' => $this->subProject->ext_id,
                 'source_lang' => $this->subProject->sourceLanguageClassifierValue->value,
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
-                'tm_keys' => $this->subProject->catToolTmKeys
-                    ->map(fn (CatToolTmKey $key) => ExternalTmKeyComposer::compose($key))
+                'tm_keys' => collect($this->subProject->catToolTmKeys)
+                    ->map(ExternalTmKeyComposer::compose(...))
                     ->toArray(),
             ];
 
@@ -88,8 +103,12 @@ readonly class MateCat implements CatToolService
             $response = $this->apiClient->createProject($params, $files);
         } catch (RequestException $e) {
             if ($e->response->status() === Response::HTTP_BAD_REQUEST) {
-                $errorMessage = $e->response->json('debug') ?:
-                    $e->response->json('message');
+                $debugResponseData = $e->response->json('debug');
+                if (filled($debugResponseData) && is_string($debugResponseData)) {
+                    $errorMessage = $debugResponseData;
+                } else {
+                    $errorMessage = $e->response->json('message');
+                }
 
                 throw new InvalidArgumentException($errorMessage);
             }

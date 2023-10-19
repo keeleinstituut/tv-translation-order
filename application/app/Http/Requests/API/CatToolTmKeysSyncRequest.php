@@ -25,10 +25,9 @@ use OpenApi\Attributes as OA;
                 property: 'tm_keys',
                 type: 'array',
                 items: new OA\Items(
-                    required: ['key', 'is_writable'],
+                    required: ['key'],
                     properties: [
                         new OA\Property(property: 'key', type: 'string'),
-                        new OA\Property(property: 'is_writable', type: 'boolean'),
                     ],
                     type: 'object'
                 ),
@@ -56,7 +55,6 @@ class CatToolTmKeysSyncRequest extends FormRequest
             ],
             'tm_keys' => ['present', 'array', 'max:10'],
             'tm_keys.*.key' => ['required', 'string'],
-            'tm_keys.*.is_writable' => ['required', 'boolean'],
         ];
     }
 
@@ -66,15 +64,6 @@ class CatToolTmKeysSyncRequest extends FormRequest
             function (Validator $validator): void {
                 if ($validator->errors()->isNotEmpty()) {
                     return;
-                }
-
-                $writeTmCount = array_sum($this->validated('tm_keys.*.is_writable'));
-                if ($writeTmCount === 0) {
-                    $validator->errors()->add('tm_keys', 'At least one TM should be writable');
-                }
-
-                if ($writeTmCount > 2) {
-                    $validator->errors()->add('tm_keys', 'Not more than two translation memories can be writable');
                 }
 
                 $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
