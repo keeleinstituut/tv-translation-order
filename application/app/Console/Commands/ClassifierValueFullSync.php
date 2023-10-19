@@ -17,7 +17,7 @@ class ClassifierValueFullSync extends BaseEntityFullSyncCommand
      *
      * @var string
      */
-    protected $signature = 'classifier-value:full-sync';
+    protected $signature = 'sync:classifier-values';
 
     /**
      * @throws BindingResolutionException
@@ -32,5 +32,10 @@ class ClassifierValueFullSync extends BaseEntityFullSyncCommand
     protected function getEntityRepository(): CachedEntityRepositoryInterface
     {
         return new ClassifierValueRepository;
+    }
+
+    protected function getSingleSyncQueueName(): string
+    {
+        return "tv-translation-order.classifier-value";
     }
 }

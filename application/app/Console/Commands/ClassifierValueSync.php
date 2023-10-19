@@ -17,7 +17,7 @@ class ClassifierValueSync extends BaseEntitySyncCommand
      *
      * @var string
      */
-    protected $signature = 'classifier-value:sync {id : ID of classifier value}';
+    protected $signature = 'sync:single:classifier-value {id : ID of classifier value}';
 
     /**
      * @throws BindingResolutionException

@@ -17,7 +17,7 @@ class InstitutionUserFullSync extends BaseEntityFullSyncCommand
      *
      * @var string
      */
-    protected $signature = 'institution-user:full-sync';
+    protected $signature = 'sync:institution-users';
 
     /**
      * @throws BindingResolutionException
@@ -32,5 +32,10 @@ class InstitutionUserFullSync extends BaseEntityFullSyncCommand
     protected function getEntityRepository(): CachedEntityRepositoryInterface
     {
         return new InstitutionUserRepository();
+    }
+
+    protected function getSingleSyncQueueName(): string
+    {
+        return "tv-translation-order.institution-user";
     }
 }
