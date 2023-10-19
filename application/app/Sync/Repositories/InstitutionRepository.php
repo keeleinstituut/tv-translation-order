@@ -3,30 +3,35 @@
 namespace App\Sync\Repositories;
 
 use App\Models\CachedEntities\Institution;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Database\Query\Expression;
-use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionRepository implements CachedEntityRepositoryInterface
 {
     public function save(array $resource): void
     {
-        $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'id' => $resource['id'],
-            'name' => $resource['name'],
-            'short_name' => $resource['short_name'],
-            'phone' => $resource['phone'],
-            'email' => $resource['email'],
-            'logo_url' => $resource['logo_url'],
-            'deleted_at' => $resource['deleted_at'],
-            'synced_at' => new Expression('NOW()'),
-        ]);
+        $obj = $this->getBaseQuery()->withTrashed()->find($resource['id']);
+
+        if (!$obj) {
+            $obj = new Institution();
+            $obj->id = $resource['id'];
+        }
+
+        $obj->name = $resource['name'];
+        $obj->short_name = $resource['short_name'];
+        $obj->phone = $resource['phone'];
+        $obj->email = $resource['email'];
+        $obj->logo_url = $resource['logo_url'];
+        $obj->deleted_at = $resource['deleted_at'];
+        $obj->synced_at = Carbon::now();
+
+        $obj->save();
     }
 
     public function delete(string $id): void
     {
-        $this->getBaseQuery()->delete($id);
+        $obj = $this->getBaseQuery()->find($id);
+        $obj->delete();
     }
 
     public function deleteNotSynced(): void
@@ -40,8 +45,8 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
         $this->getBaseQuery()->update(['synced_at' => null]);
     }
 
-    private function getBaseQuery(): Builder
+    private function getBaseQuery(): Institution
     {
-        return DB::connection(config('pgsql-connection.sync.name'))->table('cached_institutions');
+        return Institution::getModel()->setConnection(config('pgsql-connection.sync.name'));
     }
 }

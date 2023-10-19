@@ -2,58 +2,65 @@
 
 namespace App\Sync\Repositories;
 
+use App\Models\CachedEntities\InstitutionUser;
 use Arr;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionUserRepository implements CachedEntityRepositoryInterface
 {
     public function save(array $resource): void
     {
-        $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'email' => $resource['email'],
-            'phone' => $resource['phone'],
-            'archived_at' => $resource['archived_at'],
-            'deactivation_date' => $resource['deactivation_date'],
-            'user' => $this->getNestedResourceAsJson(
-                $resource, 'user', [
-                    'id',
-                    'personal_identification_code',
-                    'forename',
-                    'surname',
-                ]),
-            'institution' => $this->getNestedResourceAsJson(
-                $resource, 'institution', [
-                    'id',
-                    'name',
-                    'short_name',
-                    'phone',
-                    'email',
-                    'logo_url',
-                ]),
-            'department' => $this->getNestedResourceAsJson(
-                $resource, 'department', [
-                    'id',
-                    'institution_id',
-                    'name',
-                ]),
-            'roles' => $this->getNestedResourceAsJson(
-                $resource, 'roles', [
-                    'id',
-                    'name',
-                    'institution_id',
-                    'privileges',
-                ]),
-            'synced_at' => Carbon::now()->toISOString(),
-            'deleted_at' => $resource['deleted_at'],
+        $obj = $this->getBaseQuery()->withTrashed()->find($resource['id']);
+
+        if (!$obj) {
+            $obj = new InstitutionUser();
+            $obj->id = $resource['id'];
+        }
+
+        $obj->email = $resource['email'];
+        $obj->phone = $resource['phone'];
+        $obj->archived_at = $resource['archived_at'];
+        $obj->deactivation_date = $resource['deactivation_date'];
+        $obj->user = $this->getNestedResourceAsJson(
+            $resource, 'user', [
+            'id',
+            'personal_identification_code',
+            'forename',
+            'surname',
         ]);
+        $obj->institution = $this->getNestedResourceAsJson(
+            $resource, 'institution', [
+            'id',
+            'name',
+            'short_name',
+            'phone',
+            'email',
+            'logo_url',
+        ]);
+        $obj->department = $this->getNestedResourceAsJson(
+            $resource, 'department', [
+            'id',
+            'institution_id',
+            'name',
+        ]);
+        $obj->roles = $this->getNestedResourceAsJson(
+            $resource, 'roles', [
+            'id',
+            'name',
+            'institution_id',
+            'privileges',
+        ]);
+        $obj->deleted_at = $resource['deleted_at'];
+        $obj->synced_at = Carbon::now();
+
+        $obj->save();
     }
 
     public function delete(string $id): void
     {
-        $this->getBaseQuery()->delete($id);
+        $obj = $this->getBaseQuery()->find($id);
+        $obj->delete();
     }
 
     public function deleteNotSynced(): void
@@ -67,9 +74,9 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
         $this->getBaseQuery()->update(['synced_at' => null]);
     }
 
-    private function getBaseQuery(): Builder
+    private function getBaseQuery(): InstitutionUser
     {
-        return DB::connection(config('pgsql-connection.sync.name'))->table('cached_institution_users');
+        return InstitutionUser::getModel()->setConnection(config('pgsql-connection.sync.name'));
     }
 
     private function getNestedResourceAsJson(array $resource, string $key, array $attributes): string
