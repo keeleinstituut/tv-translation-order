@@ -167,7 +167,7 @@ class VendorController extends Controller
             $vendor->save();
 
             if ($tagsInput = $params->get('tags')) {
-                $vendor->tags()->delete();
+                $vendor->tags()->detach();
                 $vendor->tags()->attach($tagsInput);
             }
 
