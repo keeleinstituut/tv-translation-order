@@ -14,6 +14,7 @@ class VolumeObserver
                 $volume->unit_fee = $assignee->getPriceList(
                     $volume->assignment->subProject->source_language_classifier_value_id,
                     $volume->assignment->subProject->destination_language_classifier_value_id,
+                    $volume->assignment->jobDefinition?->skill_id
                 )?->getUnitFee($volume->unit_type);
                 $volume->save();
             }

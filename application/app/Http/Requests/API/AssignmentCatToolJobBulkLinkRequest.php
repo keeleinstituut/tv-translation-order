@@ -3,8 +3,10 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\Feature;
+use App\Enums\JobKey;
 use App\Models\Assignment;
 use App\Models\CatToolJob;
+use App\Models\JobDefinition;
 use App\Models\SubProject;
 use App\Policies\AssignmentPolicy;
 use App\Policies\CatToolJobPolicy;
@@ -35,7 +37,7 @@ use OpenApi\Attributes as OA;
                 ],
                 type: 'object'
             )),
-            new OA\Property(property: 'feature', type: 'string', enum: Feature::class),
+            new OA\Property(property: 'job_key', type: 'string', enum: JobKey::class),
             new OA\Property(property: 'sub_project_id', type: 'string', format: 'uuid'),
         ]
     )
@@ -43,8 +45,9 @@ use OpenApi\Attributes as OA;
 class AssignmentCatToolJobBulkLinkRequest extends FormRequest
 {
     private ?Collection $catToolJobs = null;
-
     private ?Collection $assignments = null;
+    private ?JobDefinition $jobDefinition = null;
+    private ?SubProject $subProject = null;
 
     /**
      * Get the validation rules that apply to the request.
@@ -84,10 +87,10 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                 'uuid',
                 new SubProjectExistsRule,
             ],
-            'feature' => [
+            'job_key' => [
                 'required',
                 'string',
-                new Enum(Feature::class),
+                new Enum(JobKey::class),
             ],
         ];
     }
@@ -125,12 +128,12 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                         );
 
                         $assignmentHasWrongFeature = $this->getAssignments()->get($linking['assignment_id'])
-                            ?->feature !== $this->validated('feature');
+                            ?->job_definition_id !== $this->getJobDefinition()->id;
 
                         $validator->errors()->addIf(
                             $assignmentHasWrongFeature,
                             'linking.'.$idx.'.assignment_id',
-                            'Assignment belongs to another feature'
+                            'Assignment belongs to another job'
                         );
                     }
                 );
@@ -140,14 +143,18 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                     return;
                 }
 
-                $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-                    ->find($this->validated('sub_project_id'));
+                if (empty($jobDefinition = $this->getJobDefinition())) {
+                    $validator->errors()->add(
+                        'job_key',
+                        'The project doesn\'t contain '.$this->validated('job_key')
+                    );
+                    return;
+                }
 
-                $features = $subProject->project->typeClassifierValue->projectTypeConfig->getJobsFeatures();
                 $validator->errors()->addIf(
-                    $this->validated('feature') !== $features->first(),
-                    'feature',
-                    'The linking is available only for the feature '.$features->first()
+                    !$jobDefinition->linking_with_cat_tool_jobs_enabled,
+                    'job_key',
+                    'The linking is not available for the job '.$this->validated('job_key')
                 );
             },
         ];
@@ -178,5 +185,27 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
         return $this->assignments = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
             ->whereIn('id', $this->validated('linking.*.assignment_id'))
             ->get()->keyBy('id');
+    }
+
+    public function getJobDefinition(): ?JobDefinition
+    {
+        if (is_null($this->jobDefinition)) {
+            $this->jobDefinition = $this->getSubProject()?->project
+                ->typeClassifierValue->projectTypeConfig
+                ->jobDefinitions()->where('job_key', $this->validated('job_key'))
+                ->first();
+        }
+
+        return $this->jobDefinition;
+    }
+
+    public function getSubProject(): ?SubProject
+    {
+        if (is_null($this->subProject)) {
+            $this->subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+                ->find($this->validated('sub_project_id'));
+        }
+
+        return $this->subProject;
     }
 }

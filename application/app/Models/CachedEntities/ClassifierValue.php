@@ -9,6 +9,7 @@ use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use SyncTools\Traits\HasCachedEntityFactory;
@@ -56,7 +57,7 @@ class ClassifierValue extends Model
         'meta' => 'array',
     ];
 
-    public function projectTypeConfig()
+    public function projectTypeConfig(): HasOne
     {
         return $this->hasOne(ProjectTypeConfig::class, 'type_classifier_value_id');
     }

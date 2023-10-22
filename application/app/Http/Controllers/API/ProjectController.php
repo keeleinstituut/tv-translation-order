@@ -93,7 +93,7 @@ class ProjectController extends Controller
 
         $query = self::getBaseQuery()
             ->with([
-                'typeClassifierValue',
+                'typeClassifierValue.projectTypeConfig',
                 'tags',
                 'subProjects',
                 'subProjects.sourceLanguageClassifierValue',
@@ -220,7 +220,7 @@ class ProjectController extends Controller
         $project = static::getBaseQuery()->with([
             'managerInstitutionUser',
             'clientInstitutionUser',
-            'typeClassifierValue',
+            'typeClassifierValue.projectTypeConfig',
             'translationDomainClassifierValue',
             'subProjects',
             'subProjects.sourceLanguageClassifierValue',

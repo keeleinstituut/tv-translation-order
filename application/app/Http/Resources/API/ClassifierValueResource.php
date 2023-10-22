@@ -20,7 +20,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'name', type: 'string'),
         new OA\Property(
             property: 'meta',
-            description: 'Additonal data depending on the classifier type',
+            description: 'Additional data depending on the classifier type',
             anyOf: [
                 new OA\Schema(
                     required: ['iso3_code'],
@@ -30,14 +30,21 @@ use OpenApi\Attributes as OA;
                     type: 'object'
                 ),
                 new OA\Schema(
-                    required: ['workflow_id', 'display_start_time'],
+                    required: ['code'],
                     properties: [
-                        new OA\Property(property: 'workflow_id', type: 'string'),
+                        new OA\Property(property: 'code', type: 'string'),
                     ],
                     type: 'object'
                 ),
             ]
         ),
+        new OA\Property(
+            property: 'project_type_config',
+            ref: ProjectTypeConfigResource::class,
+            description: 'config of PROJECT_TYPE classifier values',
+            type: 'object',
+            nullable: true
+        )
     ],
     type: 'object'
 )]
@@ -50,12 +57,15 @@ class ClassifierValueResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return $this->only([
-            'id',
-            'type',
-            'value',
-            'name',
-            'meta',
-        ]);
+        return [
+            ...$this->only(
+                'id',
+                'type',
+                'value',
+                'name',
+                'meta',
+            ),
+            'project_type_config' => ProjectTypeConfigResource::make($this->whenLoaded('projectTypeConfig'))
+        ];
     }
 }

@@ -14,6 +14,7 @@ class ClassifiersAndProjectTypesSeeder extends Seeder
         $this->call([
             ClassifierValueSeeder::class,
             ProjectTypeConfigSeeder::class,
+            JobDefinitionSeeder::class
         ]);
     }
 }

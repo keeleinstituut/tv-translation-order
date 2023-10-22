@@ -12,19 +12,14 @@ class AssignmentObserver
      */
     public function creating(Assignment $assignment): void
     {
-        $idx = $assignment->subProject->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
-            ->search($assignment->feature);
-
-        if ($idx === false) {
-            $idx = 0;
-        }
+        $idx = $assignment->jobDefinition?->sequence ?: 0;
 
         $assignment->ext_id = collect([
-            $assignment->subProject->ext_id, '/',
-            ++$idx,
+            $assignment->subProject->ext_id, '/', ++$idx,
             '.',
             Assignment::where('sub_project_id', $assignment->sub_project_id)
-                ->where('feature', $assignment->feature)->count() + 1,
+                ->where('job_definition_id', $assignment->job_definition_id)
+                ->count() + 1,
         ])->implode('');
     }
 
@@ -79,7 +74,8 @@ class AssignmentObserver
                 $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
                 $volume->unit_fee = $assignment->assignee->getPriceList(
                     $assignment->subProject->source_language_classifier_value_id,
-                    $assignment->subProject->destination_language_classifier_value_id
+                    $assignment->subProject->destination_language_classifier_value_id,
+                    $assignment->jobDefinition?->skill_id
                 )?->getUnitFee($volume->unit_type);
                 $volume->save();
             }));

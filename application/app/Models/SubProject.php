@@ -146,11 +146,11 @@ class SubProject extends Model
     /** @throws Throwable */
     public function initAssignments(): void
     {
-        $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
-            ->each(function (string $feature) {
+        collect($this->project->typeClassifierValue->projectTypeConfig->jobDefinitions)
+            ->each(function (JobDefinition $jobDefinition) {
                 $assignment = new Assignment();
                 $assignment->sub_project_id = $this->id;
-                $assignment->feature = $feature;
+                $assignment->job_definition_id = $jobDefinition->id;
                 $assignment->saveOrFail();
             });
     }

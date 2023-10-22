@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\VolumeUnits;
+use App\Models\CachedEntities\Institution;
 use App\Models\Dto\VolumeAnalysisDiscount;
 use App\Services\CatTools\VolumeAnalysis;
 use App\Services\Prices\VolumePriceCalculator;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
+use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 
 /**
  * App\Models\Volume
@@ -31,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Assignment $assignment
+ * @property-read InstitutionDiscount $institutionDiscount
  * @property-read CatToolJob|null $catToolJob
  *
  * @method static Builder|Volume newModelQuery()
@@ -55,7 +59,8 @@ class Volume extends Model
 {
     use HasUuids,
         HasFactory,
-        SoftDeletes;
+        SoftDeletes,
+        HasRelationships;
 
     protected $table = 'volumes';
 
@@ -78,16 +83,35 @@ class Volume extends Model
         return $this->belongsTo(CatToolJob::class, 'cat_tool_job_id');
     }
 
+    public function institutionDiscount(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->assignment(),
+            (new Assignment())->subProject(),
+            (new SubProject())->project(),
+            (new Project())->institution(),
+            (new Institution())->institutionDiscount()
+        );
+    }
+
     public function getDiscount(): VolumeAnalysisDiscount
     {
-        // After confirmation that the vendor will work on the task his discounts will be set to
-        // Volume->discounts to prevent price override after changing of the vendor discounts.
+        $institutionDiscounts = $this->institutionDiscount->only([
+            'discount_percentage_101',
+            'discount_percentage_repetitions',
+            'discount_percentage_100',
+            'discount_percentage_95_99',
+            'discount_percentage_85_94',
+            'discount_percentage_75_84',
+            'discount_percentage_50_74',
+            'discount_percentage_0_49',
+        ]);
+
         if (filled($this->discounts)) {
-            return new VolumeAnalysisDiscount((array) $this->discounts);
+            return new VolumeAnalysisDiscount(array_merge($institutionDiscounts, (array)$this->discounts));
         }
 
-        // TODO: use institution discounts in case if vendor is not assigned
-        return new VolumeAnalysisDiscount([]);
+        return new VolumeAnalysisDiscount($institutionDiscounts);
     }
 
     public function getVolumeAnalysis(): ?VolumeAnalysis
@@ -97,8 +121,8 @@ class Volume extends Model
         }
 
         return new VolumeAnalysis(array_merge(
-            (array) $this->catToolJob->volume_analysis,
-            (array) $this->custom_volume_analysis
+            (array)$this->catToolJob->volume_analysis,
+            (array)$this->custom_volume_analysis
         ));
     }
 

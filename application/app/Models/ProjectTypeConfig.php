@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\CachedEntities\ClassifierValue;
 use Database\Factories\ProjectTypeConfigFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -20,8 +23,11 @@ use Illuminate\Support\Str;
  * @property string|null $workflow_process_definition_id
  * @property array|null $features
  * @property bool|null $is_start_date_supported
+ * @property bool|null $cat_tool_enabled
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Collection<int, JobDefinition> $jobDefinitions
+ * @property ClassifierValue $typeClassifierValue
  *
  * @method static ProjectTypeConfigFactory factory($count = null, $state = [])
  * @method static Builder|ProjectTypeConfig newModelQuery()
@@ -52,10 +58,13 @@ class ProjectTypeConfig extends Model
         'features' => 'array',
     ];
 
-    public function getJobsFeatures(): Collection
+    public function jobDefinitions(): HasMany
     {
-        return collect($this->features)
-            ->filter(fn ($elem) => Str::startsWith($elem, 'job'))
-            ->values();
+        return $this->hasMany(JobDefinition::class);
+    }
+
+    public function typeClassifierValue(): HasOne
+    {
+        return $this->hasOne(ClassifierValue::class, 'id', 'type_classifier_value_id');
     }
 }
