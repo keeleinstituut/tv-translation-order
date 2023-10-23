@@ -2,7 +2,7 @@
 
 namespace App\Services\CatTools\Enums;
 
-enum CatToolSetupStatus: string
+enum CatToolAnalyzingStatus: string
 {
     case Done = 'DONE';
     case Failed = 'FAILED';

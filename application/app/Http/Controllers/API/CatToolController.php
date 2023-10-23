@@ -10,11 +10,12 @@ use App\Http\Requests\API\CatToolSplitRequest;
 use App\Http\Requests\API\CatToolToggleMTEngineRequest;
 use App\Http\Resources\API\CatToolJobResource;
 use App\Http\Resources\API\CatToolMTEngineStatusResource;
+use App\Http\Resources\API\SubProjectCatToolJobsResource;
 use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
-use App\Services\CatTools\Enums\CatToolSetupStatus;
+use App\Services\CatTools\Enums\CatToolAnalyzingStatus;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
@@ -119,20 +120,13 @@ class CatToolController extends Controller
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: CatToolJobResource::class, description: 'CAT tool jobs')]
-    #[OA\Response(response: Response::HTTP_ACCEPTED, description: 'CAT tool setup is in progress, retry request in a few seconds')]
-    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'CAT tool setup is not started, no CAT tool jobs available')]
-    public function jobsIndex(Request $request): AnonymousResourceCollection|Response
+    #[OAH\ResourceResponse(dataRef: SubProjectCatToolJobsResource::class, description: 'CAT tool jobs')]
+    public function jobsIndex(Request $request): SubProjectCatToolJobsResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        return match ($subProject->cat()->getSetupStatus()) {
-            CatToolSetupStatus::Done => CatToolJobResource::collection($subProject->catToolJobs),
-            CatToolSetupStatus::InProgress => response()->noContent(Response::HTTP_ACCEPTED),
-            CatToolSetupStatus::NotStarted => response()->noContent(),
-            default => throw new HttpException(500, 'CAT tool setup failed, please try to re-create CAT tool project')
-        };
+        return SubProjectCatToolJobsResource::make($subProject);
     }
 
     /**
@@ -145,16 +139,11 @@ class CatToolController extends Controller
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: SubProjectVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
-    #[OA\Response(response: Response::HTTP_ACCEPTED, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
-    public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource|Response
+    #[OAH\ResourceResponse(dataRef: SubProjectVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
+    public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
-
-        if (! $subProject->cat()->isAnalyzed()) {
-            return response()->noContent(Response::HTTP_ACCEPTED);
-        }
 
         return new SubProjectVolumeAnalysisResource($subProject);
     }
@@ -268,7 +257,7 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        if (! $subProject->cat()->isAnalyzed()) {
+        if ($subProject->cat()->getAnalyzingStatus() !== CatToolAnalyzingStatus::Done) {
             return response()->noContent(Response::HTTP_ACCEPTED);
         }
 
@@ -282,6 +271,7 @@ class CatToolController extends Controller
     private function getSubProject(string $subProjectId): SubProject
     {
         return SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->with('catToolJobs')
             ->findOrFail($subProjectId);
     }
 }
