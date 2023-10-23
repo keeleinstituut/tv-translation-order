@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
 
@@ -49,6 +50,7 @@ use Throwable;
  * @property-read Collection<int, Media> $finalFiles
  * @property-read Collection<int, CatToolJob> $catToolJobs
  * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
+ * @property-read ClassifierValue|null $translationDomainClassifierValue
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -86,6 +88,14 @@ class SubProject extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function translationDomainClassifierValue(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->project(),
+            (new Project())->translationDomainClassifierValue()
+        );
     }
 
     public function sourceLanguageClassifierValue(): BelongsTo

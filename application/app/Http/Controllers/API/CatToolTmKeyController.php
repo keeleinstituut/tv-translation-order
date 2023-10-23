@@ -70,10 +70,15 @@ class CatToolTmKeyController extends Controller
         $this->authorize('viewAnyByTmKey', SubProject::class);
 
         $query = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->with('translationDomainClassifierValue')
             ->whereRelation('catToolTmKeys', 'key', $request->route('key'))
             ->orderBy('created_at', 'desc');
 
-        return SubProjectResource::collection($query->paginate($request->get('per_page', 10)));
+        return SubProjectResource::collection(
+            $query->paginate(
+                $request->get('per_page', 10)
+            )
+        );
     }
 
     /**
@@ -112,7 +117,7 @@ class CatToolTmKeyController extends Controller
                 });
 
             // Delete missing
-            if (! empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
+            if (!empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
                 CatToolTmKey::whereIn('key', $tmKeysToRemove)
                     ->where('sub_project_id', $subProject->id)
                     ->delete();
