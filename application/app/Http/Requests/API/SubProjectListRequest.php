@@ -27,7 +27,7 @@ class SubProjectListRequest extends FormRequest
             'sort_by' => Rule::in(['price', 'deadline_at', 'created_at']),
             'sort_order' => Rule::in(['asc', 'desc']),
             'ext_id' => 'string',
-            'only_show_personal_sub_projects' => 'boolean',
+            'only_show_personal_projects' => 'boolean',
             'status' => 'array',
             'status.*' => Rule::enum(SubProjectStatus::class),
             'type_classifier_value_id' => 'array',

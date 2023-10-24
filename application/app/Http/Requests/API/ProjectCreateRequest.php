@@ -171,7 +171,7 @@ class ProjectCreateRequest extends FormRequest
     /**
      * @param  Closure(InstitutionUser): array<string>  $extraErrorChecker
      */
-    private static function existsActiveUserInSameInstitution(Closure $extraErrorChecker): ModelBelongsToInstitutionRule
+    protected static function existsActiveUserInSameInstitution(Closure $extraErrorChecker): ModelBelongsToInstitutionRule
     {
         return ModelBelongsToInstitutionRule::create(
             InstitutionUser::class,
@@ -191,7 +191,7 @@ class ProjectCreateRequest extends FormRequest
                 ->all());
     }
 
-    private function userCanBeSelectedAsClientRule(): ModelBelongsToInstitutionRule
+    protected function userCanBeSelectedAsClientRule(): ModelBelongsToInstitutionRule
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {
@@ -204,7 +204,7 @@ class ProjectCreateRequest extends FormRequest
         );
     }
 
-    private function userCanBeSelectedAsManagerRule(): ModelBelongsToInstitutionRule
+    protected function userCanBeSelectedAsManagerRule(): ModelBelongsToInstitutionRule
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {
