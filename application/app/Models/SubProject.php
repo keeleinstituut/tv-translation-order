@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
@@ -158,13 +159,18 @@ class SubProject extends Model
     /** @throws Throwable */
     public function initAssignments(): void
     {
-        collect($this->project->typeClassifierValue->projectTypeConfig->jobDefinitions)
-            ->each(function (JobDefinition $jobDefinition) {
-                $assignment = new Assignment();
-                $assignment->sub_project_id = $this->id;
-                $assignment->job_definition_id = $jobDefinition->id;
-                $assignment->saveOrFail();
-            });
+        $jobDefinitions = $this->project->typeClassifierValue->projectTypeConfig->jobDefinitions;
+
+        if (empty($jobDefinitions)) {
+            throw new RuntimeException("Assignments are not populated. Job definitions not found for project type " . $this->project->typeClassifierValue->value);
+        }
+
+        $jobDefinitions->each(function (JobDefinition $jobDefinition) {
+            $assignment = new Assignment();
+            $assignment->sub_project_id = $this->id;
+            $assignment->job_definition_id = $jobDefinition->id;
+            $assignment->saveOrFail();
+        });
     }
 
     public function cat(): CatToolService
@@ -180,7 +186,7 @@ class SubProject extends Model
     /**
      * @noinspection PhpUnused
      *
-     * @param  array<array{string, string}>  $languageDirections
+     * @param array<array{string, string}> $languageDirections
      */
     public function scopeHasAnyOfLanguageDirections(Builder $builder, array $languageDirections): void
     {

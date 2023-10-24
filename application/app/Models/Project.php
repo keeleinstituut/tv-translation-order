@@ -218,11 +218,11 @@ class Project extends Model implements HasMedia
         $toCreate = $requestedSubProjects->reject($comparator($existingSubProjects));
         $toDelete = $existingSubProjects->reject($comparator($requestedSubProjects));
 
-        collect($toDelete)->each(function ($subProject) {
+        collect($toDelete)->each(function (SubProject $subProject) {
             $subProject->delete();
         });
 
-        collect($toCreate)->each(function ($subProject) {
+        collect($toCreate)->each(function (SubProject $subProject) {
             $subProject->saveOrFail();
 
             $this->getMedia('source')->each(function ($sourceFile) use ($subProject) {
