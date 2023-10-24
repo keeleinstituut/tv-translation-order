@@ -4,6 +4,7 @@ namespace App\Services\CatTools\Contracts;
 
 use App\Models\CatToolJob;
 use App\Models\Media;
+use App\Services\CatTools\Enums\CatToolAnalyzingStatus;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
 use Illuminate\Database\Eloquent\Collection;
@@ -45,7 +46,7 @@ interface CatToolService
      */
     public function getDownloadableTranslationsFile(): DownloadableFile;
 
-    public function isAnalyzed(): bool;
+    public function getAnalyzingStatus(): CatToolAnalyzingStatus;
 
     public function getSetupStatus(): CatToolSetupStatus;
 
