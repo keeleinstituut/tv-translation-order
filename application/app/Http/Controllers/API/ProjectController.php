@@ -131,14 +131,6 @@ class ProjectController extends Controller
             });
         }
 
-        ////            ->when($showOnlyPersonalProjects, function (Builder $builder) {
-        ////                $builder->where(function (Builder $projectClause) {
-        ////                    $projectClause
-        ////                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
-        ////                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
-        ////                });
-        ////            })
-
         $data = $query
             ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'desc'))
             ->paginate($params->get('per_page', 10));
@@ -285,8 +277,6 @@ class ProjectController extends Controller
                 ClassifierValue::findMany($destinationLangs),
                 $reInitializeSubProjects
             );
-
-//            $project->load('institutionUser.institutionDiscount', 'tags');
 
             return new ProjectResource($project);
         });
