@@ -39,6 +39,7 @@ readonly class CandidatePriceCalculator implements PriceCalculator
         return $this->candidate->getPriceList(
             $this->assignment->subProject->source_language_classifier_value_id,
             $this->assignment->subProject->destination_language_classifier_value_id,
+            $this->assignment->jobDefinition?->skill_id
         );
     }
 }

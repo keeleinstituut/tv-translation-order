@@ -165,6 +165,7 @@ class CatToolController extends Controller
     #[OA\Put(
         path: '/cat-tool/toggle-mt-engine/{sub_project_id}',
         summary: 'Enable/Disable MT engine for CAT tool',
+        requestBody: new OAH\RequestBody(CatToolToggleMTEngineRequest::class),
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]

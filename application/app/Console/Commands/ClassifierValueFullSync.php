@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Sync\ApiClients\TvClassifierApiClient;
 use App\Sync\Gateways\ClassifierValueResourceGateway;
 use App\Sync\Repositories\ClassifierValueRepository;
+use Database\Seeders\JobDefinitionSeeder;
+use Database\Seeders\ProjectTypeConfigSeeder;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use SyncTools\Console\Base\BaseEntityFullSyncCommand;
 use SyncTools\Gateways\ResourceGatewayInterface;
@@ -18,6 +20,13 @@ class ClassifierValueFullSync extends BaseEntityFullSyncCommand
      * @var string
      */
     protected $signature = 'sync:classifier-values';
+
+    public function handle(): void
+    {
+        parent::handle();
+        (new ProjectTypeConfigSeeder())->run();
+        (new JobDefinitionSeeder())->run();
+    }
 
     /**
      * @throws BindingResolutionException

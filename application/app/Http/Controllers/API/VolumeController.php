@@ -149,6 +149,7 @@ class VolumeController extends Controller
     {
         return Volume::withGlobalScope('policy', VolumePolicy::scope())->with([
             'assignment.assignee',
+            'institutionDiscount',
             'catToolJob',
         ]);
     }

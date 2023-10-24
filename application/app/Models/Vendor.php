@@ -147,17 +147,18 @@ class Vendor extends Model
         ]));
     }
 
-    /**
-     * TODO: add filtering by the skill
-     */
-    public function getPriceList($sourceLanguageId, $destinationLanguageId): ?Price
+    public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, ?string $skillId = null): ?Price
     {
+        if (empty($skillId)) {
+            return null;
+        }
+
         return $this->prices()->where(
-            'src_lang_classifier_value_id',
-            $sourceLanguageId
+            'src_lang_classifier_value_id', $sourceLanguageId
         )->where(
-            'dst_lang_classifier_value_id',
-            $destinationLanguageId
+            'dst_lang_classifier_value_id', $destinationLanguageId
+        )->where(
+            'skill_id', $skillId
         )->first();
     }
 }

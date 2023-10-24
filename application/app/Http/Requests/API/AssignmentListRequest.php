@@ -3,6 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\Feature;
+use App\Enums\JobKey;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
@@ -17,7 +18,7 @@ class AssignmentListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'feature' => ['sometimes', new Enum(Feature::class)],
+            'job_key' => ['sometimes', new Enum(JobKey::class)],
         ];
     }
 }

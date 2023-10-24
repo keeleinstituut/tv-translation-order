@@ -18,7 +18,7 @@ class ProjectObserver
             $project->ext_id = collect([
                 $project->institution->short_name,
                 Carbon::now()->format('Y-m'),
-                'K',
+                $project->typeClassifierValue->meta['code'] ?? '',
                 $project->institution->institutionProjectSequence->incrementCurrentValue(),
             ])->implode('-');
         }
