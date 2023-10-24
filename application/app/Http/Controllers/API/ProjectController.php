@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Requests\API\ProjectListRequest;
+use App\Http\Requests\API\ProjectUpdateRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
 use App\Models\CachedEntities\ClassifierValue;
@@ -87,7 +88,7 @@ class ProjectController extends Controller
     {
         $params = collect($request->validated());
 
-        $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', true), FILTER_VALIDATE_BOOLEAN);
+        $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', false), FILTER_VALIDATE_BOOLEAN);
 
         $this->authorize('viewAny', [Project::class, $showOnlyPersonalProjects]);
 
@@ -122,16 +123,16 @@ class ProjectController extends Controller
             $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
         }
 
-        ////            ->when($showOnlyPersonalProjects, function (Builder $builder) {
-        ////                $builder->where(function (Builder $projectClause) {
-        ////                    $projectClause
-        ////                        ->where('manager_institution_user_id', Auth::user()->institutionUserId)
-        ////                        ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
-        ////                });
-        ////            })
+        if ($showOnlyPersonalProjects) {
+            $query = $query->where(function (Builder $query) {
+                $query
+                    ->where('manager_institution_user_id', Auth::user()->institutionUserId)
+                    ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
+            });
+        }
 
         $data = $query
-            ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'asc'))
+            ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'desc'))
             ->paginate($params->get('per_page', 10));
 
         return ProjectResource::collection($data);
@@ -238,9 +239,47 @@ class ProjectController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(ProjectUpdateRequest $request)
     {
-        //
+        $id = $request->route('id');
+        $params = collect($request->validated());
+
+        $project = $this->getBaseQuery()->find($id) ?? abort(404);
+        $this->authorize('update', $project);
+
+        return DB::transaction(function () use ($project, $params) {
+            // Collect certain keys from input params, filter null values
+            // and fill model with result from filter
+            tap(collect($params)->only([
+                'type_classifier_value_id',
+                'translation_domain_classifier_value_id',
+                'manager_institution_user_id',
+                'client_institution_user_id',
+                'reference_number',
+                'comments',
+                'deadline_at',
+            ])->filter()->toArray(), $project->fill(...));
+
+            $project->save();
+
+            $tagsInput = $params->get('tags');
+            if (is_array($tagsInput)) {
+                $project->tags()->detach();
+                $project->tags()->attach($tagsInput);
+            }
+
+            $sourceLang = $params->get('source_language_classifier_value_id', fn () => $project->subProjects->pluck('source_language_classifier_value_id')->first());
+            $destinationLangs = $params->get('destination_language_classifier_value_ids', fn () => $project->subProjects->pluck('destination_language_classifier_value_id'));
+
+            $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
+            $project->initSubProjects(
+                ClassifierValue::findOrFail($sourceLang),
+                ClassifierValue::findMany($destinationLangs),
+                $reInitializeSubProjects
+            );
+
+            return new ProjectResource($project);
+        });
     }
 
     /**

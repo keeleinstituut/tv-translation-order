@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
@@ -77,6 +78,7 @@ class SubProject extends Model
     use HasFactory;
     use HasUuids;
     use HasRelationships;
+    use SoftDeletes;
 
     protected $guarded = [];
 
