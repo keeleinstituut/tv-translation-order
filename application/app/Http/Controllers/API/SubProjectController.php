@@ -144,7 +144,7 @@ class SubProjectController extends Controller
             'destinationLanguageClassifierValue',
             'sourceFiles',
             'finalFiles',
-            'project.typeClassifierValue.projectTypeConfig',
+            'project.typeClassifierValue.projectTypeConfig.jobDefinitions',
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',
             'assignments.volumes.institutionDiscount',
