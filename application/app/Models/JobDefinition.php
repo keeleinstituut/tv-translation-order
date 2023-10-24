@@ -50,6 +50,14 @@ class JobDefinition extends Model
         'job_key' => JobKey::class
     ];
 
+    protected $fillable = [
+        'project_type_config_id',
+        'job_key',
+        'multi_assignments_enabled',
+        'linking_with_cat_tool_jobs_enabled',
+        'sequence',
+    ];
+
     public function projectTypeConfig(): BelongsTo
     {
         return $this->belongsTo(ProjectTypeConfig::class);
