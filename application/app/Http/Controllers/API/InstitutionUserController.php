@@ -48,7 +48,7 @@ class InstitutionUserController extends Controller
             ]);
 
             if ($privilege = $map->get($projectRole)) {
-                $query->where('roles', '@>', "[{\"privileges\": [\"$privilege->value\"]}]");
+                $query->where('roles', '@>', "[{\"privileges\": [{ \"key\": \"$privilege->value\"}]}]");
             }
         }
 

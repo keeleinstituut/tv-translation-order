@@ -22,7 +22,6 @@ class SubProjectPolicy
     }
 
     /**
-     * @param JwtPayloadUser $user
      * @return mixed
      *
      * TODO: add correct privilege check

@@ -53,8 +53,8 @@ class VendorUpdateRequest extends FormRequest
                 'required',
                 Rule::exists(Tag::class, 'id')->where('type', TagType::Vendor->value),
             ],
-            'comment' => 'sometimes|string',
-            'company_name' => 'sometimes|string',
+            'comment' => 'sometimes|nullable|string',
+            'company_name' => 'sometimes|nullable|string',
 
             'discount_percentage_101' => $percentageRule,
             'discount_percentage_repetitions' => $percentageRule,

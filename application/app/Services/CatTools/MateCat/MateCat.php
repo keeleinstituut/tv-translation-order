@@ -10,6 +10,7 @@ use App\Models\Media;
 use App\Models\SubProject;
 use App\Services\CatTools\Contracts\CatToolService;
 use App\Services\CatTools\Contracts\DownloadableFile;
+use App\Services\CatTools\Enums\CatToolAnalyzingStatus;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\CatTools\Exceptions\CatToolRetrievingException;
 use App\Services\CatTools\Exceptions\CatToolSetupFailedException;
@@ -67,17 +68,32 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
-        if (empty($this->subProject->catToolTmKeys)) {
-            throw new InvalidArgumentException('Project should have at least one TM key');
-        }
+        // TODO: enable validation when FE part will be done
+
+        //        if (empty($this->subProject->catToolTmKeys)) {
+        //            throw new InvalidArgumentException('Project should have at least one TM key');
+        //        }
+        //
+        //        if ($this->subProject->catToolTmKeys->count() > 10) {
+        //            throw new InvalidArgumentException('Project should have not more than 10 TM keys');
+        //        }
+        //
+        //        $writableTmsCount = $this->subProject->catToolTmKeys->where('is_writable', true)->count();
+        //        if ($writableTmsCount > 2) {
+        //            throw new InvalidArgumentException('Not more than two translation memories can be writable');
+        //        }
+        //
+        //        if ($writableTmsCount === 0) {
+        //            throw new InvalidArgumentException('At least one TM should be writable');
+        //        }
 
         try {
             $params = [
                 'name' => $this->subProject->ext_id,
                 'source_lang' => $this->subProject->sourceLanguageClassifierValue->value,
                 'target_lang' => $this->subProject->destinationLanguageClassifierValue->value,
-                'tm_keys' => $this->subProject->catToolTmKeys
-                    ->map(fn (CatToolTmKey $key) => ExternalTmKeyComposer::compose($key))
+                'tm_keys' => collect($this->subProject->catToolTmKeys)
+                    ->map(ExternalTmKeyComposer::compose(...))
                     ->toArray(),
             ];
 
@@ -88,15 +104,19 @@ readonly class MateCat implements CatToolService
             $response = $this->apiClient->createProject($params, $files);
         } catch (RequestException $e) {
             if ($e->response->status() === Response::HTTP_BAD_REQUEST) {
-                $errorMessage = $e->response->json('debug') ?:
-                    $e->response->json('message');
+                $debugResponseData = $e->response->json('debug');
+                if (filled($debugResponseData) && is_string($debugResponseData)) {
+                    $errorMessage = $debugResponseData;
+                } else {
+                    $errorMessage = $e->response->json('message');
+                }
 
                 throw new InvalidArgumentException($errorMessage);
             }
 
             if ($e->response->status() === Response::HTTP_UNPROCESSABLE_ENTITY) {
                 $tmKeysErrors = $e->response->json('errors.tm_keys');
-                if (! empty($tmKeysErrors)) {
+                if (filled($tmKeysErrors)) {
                     throw ValidationException::withMessages([
                         'tm_keys' => $tmKeysErrors,
                     ])->status(Response::HTTP_BAD_REQUEST);
@@ -167,8 +187,16 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Chunks count should be gather than 1');
         }
 
-        if (! $job = $this->subProject->catToolJobs->first()) {
+        if (empty($job = $this->subProject->catToolJobs->first())) {
             throw new DomainException('Job not found for the project');
+        }
+
+        if ($this->getSetupStatus() !== CatToolSetupStatus::Done) {
+            throw new RuntimeException('Not possible to split the project that was not setup correctly');
+        }
+
+        if ($this->getAnalyzingStatus() !== CatToolAnalyzingStatus::Done) {
+            throw new RuntimeException('Not possible to split the project that has analysis in progress');
         }
 
         try {
@@ -222,6 +250,14 @@ readonly class MateCat implements CatToolService
     {
         if (! $this->storage->wasSplit()) {
             throw new DomainException("Can't merge project that wasn't split before");
+        }
+
+        if ($this->getSetupStatus() !== CatToolSetupStatus::Done) {
+            throw new RuntimeException('Not possible to split the project that was not setup correctly');
+        }
+
+        if ($this->getAnalyzingStatus() !== CatToolAnalyzingStatus::Done) {
+            throw new RuntimeException('Not possible to merge the project that has analysis in progress');
         }
 
         if (empty($job = $this->subProject->catToolJobs->first())) {
@@ -351,11 +387,6 @@ readonly class MateCat implements CatToolService
         $this->storage->storeProjectProgress($response);
     }
 
-    public function isAnalyzed(): bool
-    {
-        return $this->storage->getAnalyzingStatus() === 'DONE';
-    }
-
     public function getSourceFiles(): Collection
     {
         $sourceFilesIds = $this->storage->getProjectSourceFilesIds();
@@ -376,6 +407,8 @@ readonly class MateCat implements CatToolService
                 $this->storage->getProjectPassword(),
                 $isEnabled
             );
+        } elseif ($this->getSetupStatus() == CatToolSetupStatus::InProgress) {
+            throw new RuntimeException("Not possible to toggle MT engine during the project setup");
         }
 
         $this->storage->storeIsMTEnabled($isEnabled);
@@ -429,5 +462,27 @@ readonly class MateCat implements CatToolService
         }
 
         return CatToolSetupStatus::InProgress;
+    }
+
+    public function getAnalyzingStatus(): CatToolAnalyzingStatus
+    {
+        if (empty($this->storage->getAnalyzingStatus())) {
+            return CatToolAnalyzingStatus::NotStarted;
+        }
+
+        if ($this->storage->getAnalyzingStatus() === 'NEW') {
+            return CatToolAnalyzingStatus::NotStarted;
+        }
+
+        if ($this->storage->getAnalyzingStatus() === 'DONE') {
+            return CatToolAnalyzingStatus::Done;
+        }
+
+        if (in_array($this->storage->getAnalyzingStatus(), ['BUSY', 'FAST_OK'])) {
+            return CatToolAnalyzingStatus::InProgress;
+        }
+
+
+        return CatToolAnalyzingStatus::Failed;
     }
 }

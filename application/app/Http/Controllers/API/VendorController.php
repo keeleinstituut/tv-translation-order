@@ -22,6 +22,7 @@ class VendorController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
      * @throws AuthorizationException
      */
     #[OA\Get(
@@ -126,6 +127,7 @@ class VendorController extends Controller
 
     /**
      * Update the specified resource in storage.
+     *
      * @throws AuthorizationException
      * @throws \Throwable
      */
@@ -164,8 +166,9 @@ class VendorController extends Controller
 
             $vendor->save();
 
-            if ($tagsInput = $params->get('tags')) {
-                $vendor->tags()->delete();
+            $tagsInput = $params->get('tags');
+            if (is_array($tagsInput)) {
+                $vendor->tags()->detach();
                 $vendor->tags()->attach($tagsInput);
             }
 
@@ -196,6 +199,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     *
      * @throws \Throwable
      */
     #[OA\Post(
@@ -229,6 +233,7 @@ class VendorController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     *
      * @throws \Throwable
      */
     #[OA\Delete(

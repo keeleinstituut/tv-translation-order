@@ -76,9 +76,9 @@ class SubProjectController extends Controller
     {
         $params = collect($request->validated());
 
-        $showOnlyPersonalSubProjects = filter_var($params->get('only_show_personal_sub_projects', true), FILTER_VALIDATE_BOOLEAN);
+        $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', false), FILTER_VALIDATE_BOOLEAN);
 
-        $this->authorize('viewAny', [SubProject::class, $showOnlyPersonalSubProjects]);
+        $this->authorize('viewAny', [SubProject::class, $showOnlyPersonalProjects]);
 
         $query = self::getBaseQuery()->with([
             'sourceLanguageClassifierValue',
@@ -109,9 +109,10 @@ class SubProjectController extends Controller
             $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
         }
 
-        if ($showOnlyPersonalSubProjects) {
-            $query = $query->whereRelation('project', function (Builder $projectClause) {
-                $projectClause->where('manager_institution_user_id', Auth::user()->institutionUserId)
+        if ($showOnlyPersonalProjects) {
+            $query = $query->whereRelation('project', function (Builder $query) {
+                $query
+                    ->where('manager_institution_user_id', Auth::user()->institutionUserId)
                     ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
             });
         }
@@ -143,10 +144,12 @@ class SubProjectController extends Controller
             'destinationLanguageClassifierValue',
             'sourceFiles',
             'finalFiles',
-            'project.typeClassifierValue.projectTypeConfig',
+            'project.typeClassifierValue.projectTypeConfig.jobDefinitions',
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',
-            'assignments.volumes',
+            'assignments.volumes.institutionDiscount',
+            'assignments.catToolJobs',
+            'assignments.jobDefinition',
             'catToolJobs',
         ])->findOrFail($id);
 

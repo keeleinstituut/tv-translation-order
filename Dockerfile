@@ -161,6 +161,9 @@ php artisan migrate --force
 echo "Generating OpenAPI document"
 php artisan l5-swagger:generate
 
+echo "Synchronizing entities from external services"
+php artisan sync:all
+
 echo "Deploying BPMN templates to Camunda"
 php artisan workflow:deploy
 

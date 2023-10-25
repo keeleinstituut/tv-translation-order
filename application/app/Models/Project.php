@@ -185,15 +185,44 @@ class Project extends Model implements HasMedia
     }
 
     /** @throws Throwable */
-    public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages): void
+    public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages, $reinitialize = false): void
     {
-        collect($destinationLanguages)->each(function ($destinationLanguage) use ($sourceLanguage) {
+        $makeSubProject = function ($destinationLanguage) use ($sourceLanguage) {
             $subProject = new SubProject();
             $subProject->project_id = $this->id;
             $subProject->file_collection = self::INTERMEDIATE_FILES_COLLECTION_PREFIX."/$sourceLanguage->value/$destinationLanguage->value";
             $subProject->file_collection_final = self::FINAL_FILES_COLLECTION."/$sourceLanguage->value/$destinationLanguage->value";
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
+            return $subProject;
+        };
+
+        $existingSubProjects = $this->subProjects;
+        $requestedSubProjects = collect($destinationLanguages)->map($makeSubProject(...));
+
+        $comparator = function (\Illuminate\Support\Collection $others) use ($reinitialize) {
+            $equals = function (SubProject $that, SubProject $other) use ($reinitialize) {
+                if ($reinitialize) {
+                    return false;
+                }
+
+                return $that->source_language_classifier_value_id == $other->source_language_classifier_value_id
+                    && $that->destination_language_classifier_value_id == $other->destination_language_classifier_value_id;
+            };
+
+            return function (SubProject $that) use ($others, $equals) {
+                return $others->contains(fn ($other) => $equals($that, $other));
+            };
+        };
+
+        $toCreate = $requestedSubProjects->reject($comparator($existingSubProjects));
+        $toDelete = $existingSubProjects->reject($comparator($requestedSubProjects));
+
+        collect($toDelete)->each(function (SubProject $subProject) {
+            $subProject->delete();
+        });
+
+        collect($toCreate)->each(function (SubProject $subProject) {
             $subProject->saveOrFail();
 
             $this->getMedia('source')->each(function ($sourceFile) use ($subProject) {

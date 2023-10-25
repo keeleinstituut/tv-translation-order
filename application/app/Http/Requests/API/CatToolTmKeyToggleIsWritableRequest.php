@@ -11,14 +11,14 @@ use OpenApi\Attributes as OA;
     required: true,
     content: new OA\JsonContent(
         required: [
-            'mt_enabled',
+            'is_writable',
         ],
         properties: [
-            new OA\Property(property: 'mt_enabled', type: 'boolean'),
+            new OA\Property(property: 'is_writable', type: 'boolean'),
         ]
     )
 )]
-class CatToolToggleMTEngineRequest extends FormRequest
+class CatToolTmKeyToggleIsWritableRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -28,7 +28,7 @@ class CatToolToggleMTEngineRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mt_enabled' => ['required', 'boolean'],
+            'is_writable' => ['required', 'boolean'],
         ];
     }
 }

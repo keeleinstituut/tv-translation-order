@@ -18,9 +18,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
 
@@ -49,6 +52,7 @@ use Throwable;
  * @property-read Collection<int, Media> $finalFiles
  * @property-read Collection<int, CatToolJob> $catToolJobs
  * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
+ * @property-read ClassifierValue|null $translationDomainClassifierValue
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
@@ -75,6 +79,7 @@ class SubProject extends Model
     use HasFactory;
     use HasUuids;
     use HasRelationships;
+    use SoftDeletes;
 
     protected $guarded = [];
 
@@ -86,6 +91,14 @@ class SubProject extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function translationDomainClassifierValue(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->project(),
+            (new Project())->translationDomainClassifierValue()
+        );
     }
 
     public function sourceLanguageClassifierValue(): BelongsTo
@@ -146,13 +159,18 @@ class SubProject extends Model
     /** @throws Throwable */
     public function initAssignments(): void
     {
-        $this->project->typeClassifierValue->projectTypeConfig->getJobsFeatures()
-            ->each(function (string $feature) {
-                $assignment = new Assignment();
-                $assignment->sub_project_id = $this->id;
-                $assignment->feature = $feature;
-                $assignment->saveOrFail();
-            });
+        $jobDefinitions = $this->project->typeClassifierValue->projectTypeConfig->jobDefinitions;
+
+        if (empty($jobDefinitions)) {
+            throw new RuntimeException("Assignments are not populated. Job definitions not found for project type " . $this->project->typeClassifierValue->value);
+        }
+
+        $jobDefinitions->each(function (JobDefinition $jobDefinition) {
+            $assignment = new Assignment();
+            $assignment->sub_project_id = $this->id;
+            $assignment->job_definition_id = $jobDefinition->id;
+            $assignment->saveOrFail();
+        });
     }
 
     public function cat(): CatToolService
@@ -168,7 +186,7 @@ class SubProject extends Model
     /**
      * @noinspection PhpUnused
      *
-     * @param  array<array{string, string}>  $languageDirections
+     * @param array<array{string, string}> $languageDirections
      */
     public function scopeHasAnyOfLanguageDirections(Builder $builder, array $languageDirections): void
     {

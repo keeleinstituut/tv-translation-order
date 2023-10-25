@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CatToolTmKeysSyncRequest;
+use App\Http\Requests\API\CatToolTmKeyToggleIsWritableRequest;
 use App\Http\Requests\API\TmKeySubProjectListRequest;
 use App\Http\Resources\API\CatToolTmKeyResource;
 use App\Http\Resources\API\SubProjectResource;
@@ -69,10 +70,15 @@ class CatToolTmKeyController extends Controller
         $this->authorize('viewAnyByTmKey', SubProject::class);
 
         $query = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->with('translationDomainClassifierValue')
             ->whereRelation('catToolTmKeys', 'key', $request->route('key'))
-        ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc');
 
-        return SubProjectResource::collection($query->paginate($request->get('per_page', 10)));
+        return SubProjectResource::collection(
+            $query->paginate(
+                $request->get('per_page', 10)
+            )
+        );
     }
 
     /**
@@ -80,7 +86,7 @@ class CatToolTmKeyController extends Controller
      */
     #[OA\Post(
         path: '/tm-keys/sync',
-        summary: 'Add new/delete missing/update existing TM keys for the sub-project',
+        summary: 'Add new/delete missing TM keys for the sub-project',
         requestBody: new OAH\RequestBody(CatToolTmKeysSyncRequest::class),
         tags: ['TM keys'],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized, new OAH\InvalidTmKeys]
@@ -110,17 +116,8 @@ class CatToolTmKeyController extends Controller
                         ])->saveOrFail();
                 });
 
-            // Update existing
-            $receivedTmKeysData->keys()->intersect($existingTmKeys->keys())
-                ->each(function (string $existingTmKeyKey) use ($existingTmKeys, $receivedTmKeysData) {
-                    /** @var CatToolTmKey $existingTmKey */
-                    $existingTmKey = $existingTmKeys->get($existingTmKeyKey);
-                    $existingTmKey->fill($receivedTmKeysData->get($existingTmKeyKey))
-                        ->saveOrFail();
-                });
-
             // Delete missing
-            if (! empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
+            if (!empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
                 CatToolTmKey::whereIn('key', $tmKeysToRemove)
                     ->where('sub_project_id', $subProject->id)
                     ->delete();
@@ -136,6 +133,28 @@ class CatToolTmKeyController extends Controller
 
             return CatToolTmKeyResource::collection($subProject->catToolTmKeys()->get());
         });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Put(
+        path: '/tm-keys/toggle-writable/{id}',
+        summary: 'Mark/Unmark TM key as writable for the sub-project',
+        requestBody: new OAH\RequestBody(CatToolTmKeyToggleIsWritableRequest::class),
+        tags: ['TM keys'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    public function toggleWritable(CatToolTmKeyToggleIsWritableRequest $request): CatToolTmKeyResource
+    {
+        /** @var CatToolTmKey $tmKey */
+        $tmKey = self::getBaseQuery()->findOrFail($request->route('id'));
+        $this->authorize('toggleWritable', $tmKey);
+        $tmKey->fill($request->validated());
+        $tmKey->saveOrFail();
+
+        return CatToolTmKeyResource::make($tmKey);
     }
 
     private static function getBaseQuery(): Builder

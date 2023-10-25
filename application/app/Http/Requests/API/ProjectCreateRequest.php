@@ -137,7 +137,7 @@ class ProjectCreateRequest extends FormRequest
                 'bail',
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::TranslationDomain),
             ],
-            'source_files' => ['array'],
+            'source_files' => ['array', 'min:1'],
             'source_files.*' => [TranslationSourceFileValidator::createRule()],
             'help_files' => ['required_with:help_file_types', 'array'],
             'help_files.*' => ['file'],
@@ -171,7 +171,7 @@ class ProjectCreateRequest extends FormRequest
     /**
      * @param  Closure(InstitutionUser): array<string>  $extraErrorChecker
      */
-    private static function existsActiveUserInSameInstitution(Closure $extraErrorChecker): ModelBelongsToInstitutionRule
+    protected static function existsActiveUserInSameInstitution(Closure $extraErrorChecker): ModelBelongsToInstitutionRule
     {
         return ModelBelongsToInstitutionRule::create(
             InstitutionUser::class,
@@ -191,7 +191,7 @@ class ProjectCreateRequest extends FormRequest
                 ->all());
     }
 
-    private function userCanBeSelectedAsClientRule(): ModelBelongsToInstitutionRule
+    protected function userCanBeSelectedAsClientRule(): ModelBelongsToInstitutionRule
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {
@@ -204,7 +204,7 @@ class ProjectCreateRequest extends FormRequest
         );
     }
 
-    private function userCanBeSelectedAsManagerRule(): ModelBelongsToInstitutionRule
+    protected function userCanBeSelectedAsManagerRule(): ModelBelongsToInstitutionRule
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {

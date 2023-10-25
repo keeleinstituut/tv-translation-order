@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  *
  * @property string|null $id
  * @property string|null $sub_project_id
+ * @property string|null $job_definition_id
  * @property string|null $assigned_vendor_id
  * @property string|null $ext_id
  * @property string|null $deadline_at
@@ -33,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
  * @property-read SubProject $subProject
+ * @property-read JobDefinition $jobDefinition
  * @property-read Collection<int, Volume> $volumes
  * @property-read int|null $volumes_count
  * @property-read Collection<int, CatToolJob> $catToolJobs
@@ -84,6 +86,11 @@ class Assignment extends Model
     {
         return $this->belongsToMany(CatToolJob::class, AssignmentCatToolJob::class)
             ->using(AssignmentCatToolJob::class);
+    }
+
+    public function jobDefinition(): BelongsTo
+    {
+        return $this->belongsTo(JobDefinition::class);
     }
 
     public function getPriceCalculator(): PriceCalculator

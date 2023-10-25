@@ -55,6 +55,7 @@ Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy']);
 Route::get('/projects', [API\ProjectController::class, 'index']);
 Route::post('/projects', [API\ProjectController::class, 'store']);
 Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
+Route::put('/projects/{id}', [API\ProjectController::class, 'update']);
 
 Route::prefix('/subprojects')
     ->controller(API\SubProjectController::class)
@@ -83,6 +84,7 @@ Route::prefix('/tm-keys')
         Route::get('/{sub_project_id}', 'index');
         Route::get('/subprojects/{key}', 'subProjectsIndex');
         Route::post('/sync', 'sync');
+        Route::put('/toggle-writable/{id}', 'toggleWritable');
     });
 
 Route::prefix('/volumes')

@@ -2,45 +2,51 @@
 
 namespace App\Sync\Repositories;
 
-use Illuminate\Database\Query\Builder;
-use Illuminate\Database\Query\Expression;
-use Illuminate\Support\Facades\DB;
+use App\Models\CachedEntities\Institution;
+use Carbon\Carbon;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionRepository implements CachedEntityRepositoryInterface
 {
     public function save(array $resource): void
     {
-        $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'id' => $resource['id'],
-            'name' => $resource['name'],
-            'short_name' => $resource['short_name'],
-            'phone' => $resource['phone'],
-            'email' => $resource['email'],
-            'logo_url' => $resource['logo_url'],
-            'deleted_at' => $resource['deleted_at'],
-            'synced_at' => new Expression('NOW()'),
-        ]);
+        $obj = $this->getBaseModel()->withTrashed()->find($resource['id']);
+
+        if (!$obj) {
+            $obj = $this->getBaseModel();
+            $obj->id = $resource['id'];
+        }
+
+        $obj->name = $resource['name'];
+        $obj->short_name = $resource['short_name'];
+        $obj->phone = $resource['phone'];
+        $obj->email = $resource['email'];
+        $obj->logo_url = $resource['logo_url'];
+        $obj->deleted_at = $resource['deleted_at'];
+        $obj->synced_at = Carbon::now();
+
+        $obj->save();
     }
 
     public function delete(string $id): void
     {
-        $this->getBaseQuery()->delete($id);
+        $obj = $this->getBaseModel()->find($id);
+        $obj->delete();
     }
 
     public function deleteNotSynced(): void
     {
-        $this->getBaseQuery()->whereNull('synced_at')
+        $this->getBaseModel()->whereNull('synced_at')
             ->delete();
     }
 
     public function cleanupLastSyncDateTime(): void
     {
-        $this->getBaseQuery()->update(['synced_at' => null]);
+        $this->getBaseModel()->update(['synced_at' => null]);
     }
 
-    private function getBaseQuery(): Builder
+    private function getBaseModel(): Institution
     {
-        return DB::connection(config('pgsql-connection.sync.name'))->table('cached_institutions');
+        return Institution::getModel()->setConnection(config('pgsql-connection.sync.name'));
     }
 }

@@ -57,9 +57,9 @@ class VolumeResource extends JsonResource
                 'updated_at',
                 'created_at'
             ),
-            'job' => CatToolJobResource::make($this->catToolJob),
+            'cat_job' => CatToolJobResource::make($this->catToolJob),
             'volume_analysis' => VolumeAnalysisResource::make($this->getVolumeAnalysis()),
-            'discount' => VolumeAnalysisDiscountResource::make($this->getDiscount()),
+            'discounts' => VolumeAnalysisDiscountResource::make($this->getDiscount()),
         ];
     }
 }

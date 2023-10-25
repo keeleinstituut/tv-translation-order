@@ -10,18 +10,19 @@ use App\Http\Requests\API\CatToolSplitRequest;
 use App\Http\Requests\API\CatToolToggleMTEngineRequest;
 use App\Http\Resources\API\CatToolJobResource;
 use App\Http\Resources\API\CatToolMTEngineStatusResource;
+use App\Http\Resources\API\SubProjectCatToolJobsResource;
 use App\Http\Resources\API\SubProjectVolumeAnalysisResource;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
-use App\Services\CatTools\Enums\CatToolSetupStatus;
+use App\Services\CatTools\Enums\CatToolAnalyzingStatus;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Response;
 use InvalidArgumentException;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -36,10 +37,21 @@ class CatToolController extends Controller
         summary: 'Setup CAT tool',
         requestBody: new OAH\RequestBody(CatToolSetupRequest::class),
         tags: ['CAT tool'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid, new OAH\InvalidTmKeys]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\InvalidTmKeys]
     )]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_CREATED, description: 'CAT tool was setup')]
-    public function setup(CatToolSetupRequest $request): Response
+    #[OA\Response(response: Response::HTTP_CREATED, description: 'CAT tool was setup')]
+    #[OA\Response(
+        response: Response::HTTP_UNPROCESSABLE_ENTITY,
+        description: 'Sub project TM keys validation failed',
+        content: new OA\JsonContent(required: ['message'],
+            properties: [
+                new OA\Property(property: 'message', type: 'string'),
+            ],
+            type: 'object',
+            example: ['message' => 'Project should have at least one TM key || Project should have not more than 10 TM keys || Not more than two translation memories can be writable || At least one TM should be writable']
+        )
+    )]
+    public function setup(CatToolSetupRequest $request): \Illuminate\Http\Response
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
@@ -108,18 +120,13 @@ class CatToolController extends Controller
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: CatToolJobResource::class, description: 'CAT tool jobs')]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool setup is in progress, retry request in a few seconds')]
-    public function jobsIndex(Request $request): AnonymousResourceCollection|Response
+    #[OAH\ResourceResponse(dataRef: SubProjectCatToolJobsResource::class, description: 'CAT tool jobs')]
+    public function jobsIndex(Request $request): SubProjectCatToolJobsResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        return match ($subProject->cat()->getSetupStatus()) {
-            CatToolSetupStatus::Done => CatToolJobResource::collection($subProject->catToolJobs),
-            CatToolSetupStatus::InProgress => response()->noContent(),
-            default => throw new HttpException(500, 'CAT tool setup failed, please try to re-create CAT tool project')
-        };
+        return SubProjectCatToolJobsResource::make($subProject);
     }
 
     /**
@@ -132,16 +139,11 @@ class CatToolController extends Controller
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: SubProjectVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
-    public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource|Response
+    #[OAH\ResourceResponse(dataRef: SubProjectVolumeAnalysisResource::class, description: 'CAT tool jobs volume analysis')]
+    public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
-
-        if (! $subProject->cat()->isAnalyzed()) {
-            return response()->noContent();
-        }
 
         return new SubProjectVolumeAnalysisResource($subProject);
     }
@@ -152,11 +154,12 @@ class CatToolController extends Controller
     #[OA\Put(
         path: '/cat-tool/toggle-mt-engine/{sub_project_id}',
         summary: 'Enable/Disable MT engine for CAT tool',
+        requestBody: new OAH\RequestBody(CatToolToggleMTEngineRequest::class),
         tags: ['CAT tool'],
         parameters: [new OAH\UuidPath('sub_project_id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: CatToolMTEngineStatusResource::class, description: 'MT engine enabled flag', response: \Symfony\Component\HttpFoundation\Response::HTTP_OK)]
+    #[OAH\ResourceResponse(dataRef: CatToolMTEngineStatusResource::class, description: 'MT engine enabled flag', response: Response::HTTP_OK)]
     public function toggleMTEngine(CatToolToggleMTEngineRequest $request): CatToolMTEngineStatusResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
@@ -182,7 +185,7 @@ class CatToolController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(
-        response: \Symfony\Component\HttpFoundation\Response::HTTP_OK,
+        response: Response::HTTP_OK,
         description: 'File archive of CAT tool project XLIFF(s)',
         content: new OA\MediaType(
             mediaType: 'application/zip',
@@ -212,7 +215,7 @@ class CatToolController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(
-        response: \Symfony\Component\HttpFoundation\Response::HTTP_OK,
+        response: Response::HTTP_OK,
         description: 'File archive of CAT tool translated files',
         content: new OA\MediaType(
             mediaType: 'application/zip',
@@ -242,21 +245,21 @@ class CatToolController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OA\Response(
-        response: \Symfony\Component\HttpFoundation\Response::HTTP_OK,
+        response: Response::HTTP_OK,
         description: 'File archive of CAT tool translated files',
         content: new OA\MediaType(
             mediaType: 'text/plain',
             schema: new OA\Schema(type: 'string'),
         )
     )]
-    #[OA\Response(response: \Symfony\Component\HttpFoundation\Response::HTTP_NO_CONTENT, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
+    #[OA\Response(response: Response::HTTP_ACCEPTED, description: 'CAT tool volume analysis is in progress, retry request in a few seconds')]
     public function downloadVolumeAnalysisReport(Request $request): StreamedResponse|Response
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        if (! $subProject->cat()->isAnalyzed()) {
-            return response()->noContent();
+        if ($subProject->cat()->getAnalyzingStatus() !== CatToolAnalyzingStatus::Done) {
+            return response()->noContent(Response::HTTP_ACCEPTED);
         }
 
         $file = (new CatToolAnalysisReport($subProject))->getReport();
@@ -269,6 +272,7 @@ class CatToolController extends Controller
     private function getSubProject(string $subProjectId): SubProject
     {
         return SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+            ->with('catToolJobs')
             ->findOrFail($subProjectId);
     }
 }

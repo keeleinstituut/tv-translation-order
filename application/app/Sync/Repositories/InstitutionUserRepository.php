@@ -2,90 +2,95 @@
 
 namespace App\Sync\Repositories;
 
+use App\Models\CachedEntities\InstitutionUser;
 use Arr;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionUserRepository implements CachedEntityRepositoryInterface
 {
     public function save(array $resource): void
     {
-        $this->getBaseQuery()->updateOrInsert(['id' => $resource['id']], [
-            'email' => $resource['email'],
-            'phone' => $resource['phone'],
-            'archived_at' => $resource['archived_at'],
-            'deactivation_date' => $resource['deactivation_date'],
-            'user' => $this->getNestedResourceAsJson(
-                $resource, 'user', [
-                    'id',
-                    'personal_identification_code',
-                    'forename',
-                    'surname',
-                ]),
-            'institution' => $this->getNestedResourceAsJson(
-                $resource, 'institution', [
-                    'id',
-                    'name',
-                    'short_name',
-                    'phone',
-                    'email',
-                    'logo_url',
-                ]),
-            'department' => $this->getNestedResourceAsJson(
-                $resource, 'department', [
-                    'id',
-                    'institution_id',
-                    'name',
-                ]),
-            'roles' => $this->getNestedResourceAsJson(
-                $resource, 'roles', [
-                    'id',
-                    'name',
-                    'institution_id',
-                    'privileges',
-                ]),
-            'synced_at' => Carbon::now()->toISOString(),
-            'deleted_at' => $resource['deleted_at'],
+        $obj = $this->getBaseModel()->withTrashed()->find($resource['id']);
+
+        if (!$obj) {
+            $obj = $this->getBaseModel();
+            $obj->id = $resource['id'];
+        }
+
+        $obj->email = $resource['email'];
+        $obj->phone = $resource['phone'];
+        $obj->archived_at = $resource['archived_at'];
+        $obj->deactivation_date = $resource['deactivation_date'];
+        $obj->user = $this->getNestedResourceAsJson(
+            $resource, 'user', [
+            'id',
+            'personal_identification_code',
+            'forename',
+            'surname',
         ]);
+        $obj->institution = $this->getNestedResourceAsJson(
+            $resource, 'institution', [
+            'id',
+            'name',
+            'short_name',
+            'phone',
+            'email',
+            'logo_url',
+        ]);
+        $obj->department = $this->getNestedResourceAsJson(
+            $resource, 'department', [
+            'id',
+            'institution_id',
+            'name',
+        ]);
+        $obj->roles = $this->getNestedResourceAsJson(
+            $resource, 'roles', [
+            'id',
+            'name',
+            'institution_id',
+            'privileges',
+        ]);
+        $obj->deleted_at = $resource['deleted_at'];
+        $obj->synced_at = Carbon::now();
+
+        $obj->save();
     }
 
     public function delete(string $id): void
     {
-        $this->getBaseQuery()->delete($id);
+        $obj = $this->getBaseModel()->find($id);
+        $obj->delete();
     }
 
     public function deleteNotSynced(): void
     {
-        $this->getBaseQuery()->whereNull('synced_at')
+        $this->getBaseModel()->whereNull('synced_at')
             ->delete();
     }
 
     public function cleanupLastSyncDateTime(): void
     {
-        $this->getBaseQuery()->update(['synced_at' => null]);
+        $this->getBaseModel()->update(['synced_at' => null]);
     }
 
-    private function getBaseQuery(): Builder
+    private function getBaseModel(): InstitutionUser
     {
-        return DB::connection(config('pgsql-connection.sync.name'))->table('cached_institution_users');
+        return InstitutionUser::getModel()->setConnection(config('pgsql-connection.sync.name'));
     }
 
-    private function getNestedResourceAsJson(array $resource, string $key, array $attributes): string
+    private function getNestedResourceAsJson(array $resource, string $key, array $attributes): array
     {
         if (empty($resource[$key])) {
-            return json_encode([]);
+            return [];
         }
 
         if (Arr::isAssoc($resource[$key])) {
-            return json_encode(Arr::only($resource[$key], $attributes));
+            return Arr::only($resource[$key], $attributes);
         }
 
-        return json_encode(
-            collect($resource[$key])->each(
-                fn ($subResource) => Arr::only($subResource, $attributes)
-            )->toArray()
-        );
+        return collect($resource[$key])->each(
+            fn ($subResource) => Arr::only($subResource, $attributes)
+        )->toArray();
     }
 }
