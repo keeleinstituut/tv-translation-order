@@ -23,6 +23,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use InvalidArgumentException;
 use BadMethodCallException;
 use RuntimeException;
+use DomainException;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -84,7 +85,7 @@ class CatToolController extends Controller
 
         try {
             $jobs = $subProject->cat()->split($request->validated('chunks_count'));
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException | DomainException | RuntimeException $e) {
             throw new UnprocessableEntityHttpException($e->getMessage(), previous: $e);
         }
 
