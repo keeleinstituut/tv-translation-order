@@ -21,6 +21,8 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use InvalidArgumentException;
+use BadMethodCallException;
+use RuntimeException;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -57,7 +59,7 @@ class CatToolController extends Controller
         $this->authorize('manageCatTool', $subProject);
         try {
             $subProject->cat()->setupJobs($request->validated('source_files_ids'));
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException | BadMethodCallException | RuntimeException $e) {
             throw new UnprocessableEntityHttpException($e->getMessage(), previous: $e);
         }
 
