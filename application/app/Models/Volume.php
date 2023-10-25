@@ -96,7 +96,7 @@ class Volume extends Model
 
     public function getDiscount(): VolumeAnalysisDiscount
     {
-        $institutionDiscounts = $this->institutionDiscount->only([
+        $institutionDiscounts = filled($this->institutionDiscount) ? $this->institutionDiscount->only([
             'discount_percentage_101',
             'discount_percentage_repetitions',
             'discount_percentage_100',
@@ -105,7 +105,7 @@ class Volume extends Model
             'discount_percentage_75_84',
             'discount_percentage_50_74',
             'discount_percentage_0_49',
-        ]);
+        ]) : [];
 
         if (filled($this->discounts)) {
             return new VolumeAnalysisDiscount(array_merge($institutionDiscounts, (array)$this->discounts));
