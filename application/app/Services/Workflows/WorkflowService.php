@@ -30,7 +30,13 @@ class WorkflowService
         return $response->throw()->json();
     }
 
-    public static function startProcessDefinitionInstance($key, $params = [])
+    /**
+     * @param $key
+     * @param array $params
+     * @return array
+     * @throws RequestException
+     */
+    public static function startProcessDefinition($key, array $params = []): array
     {
         $response = static::client()->post("/process-definition/key/$key/start", $params);
         return $response->throw()->json();

@@ -2,23 +2,15 @@
 
 namespace App\Services\Workflows\Templates;
 
-use App\Models\Project;
-
 interface SubProjectWorkflowTemplateInterface extends WorkflowTemplateInterface
 {
     /**
-     * @return string process template ID
-     */
-
-
-    /**
-     * @param Project $project
-     * @return array variables that are needed to start process instance
-     */
-    public function getVariables(Project $project): array;
-
-    /**
-     * @return string returns ID of the workflow definition ID with prefix that CAT tool should be user
+     * @return string returns internal ID of the workflow template
      */
     public function getId(): string;
+
+    /**
+     * @return string returns workflow process definition ID
+     */
+    public function getWorkflowProcessDefinitionId(): string;
 }

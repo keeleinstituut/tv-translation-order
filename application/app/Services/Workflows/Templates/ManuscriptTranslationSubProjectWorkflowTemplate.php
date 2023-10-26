@@ -6,28 +6,11 @@ use App\Models\Assignment;
 use App\Models\Project;
 use App\Models\SubProject;
 
-class ManuscriptTranslationSubProjectWorkflowTemplate extends BaseSubProjectWorkflowTemplate implements SubProjectWorkflowTemplateInterface
+class ManuscriptTranslationSubProjectWorkflowTemplate extends BaseWorkflowTemplate implements SubProjectWorkflowTemplateInterface
 {
     public function getId(): string
     {
         return 'manuscript-translation-sub-project';
-    }
-
-    public function getVariables(Project $project): array
-    {
-        return $project->subProjects->map(function (SubProject $subProject) use ($project) {
-            return [
-                'workflow_definition_id' => $this->getWorkflowProcessDefinitionId(),
-                'translations' => $subProject->assignments
-                    ->map(function (Assignment $assignment) use ($subProject, $project) {
-                        return $this->buildUserTaskVariables(
-                            $project,
-                            $subProject,
-                            $assignment
-                        );
-                    }),
-            ];
-        })->toArray();
     }
 
     protected function getTemplateFileName(): string

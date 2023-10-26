@@ -25,7 +25,7 @@
     <bpmn:sequenceFlow id="Flow_12s1bgr" sourceRef="Activity_050m3i5" targetRef="Activity_0c0q5m7" />
     <bpmn:callActivity id="Activity_0f1wyiu" name="Call sub-projects workflows" calledElement="${subProject.workflow_definition_id}">
       <bpmn:extensionElements>
-        <camunda:in businessKey="#{execution.processBusinessKey}" />
+        <camunda:in businessKey="#{execution.processBusinessKey}"/>
         <camunda:in source="subProject" target="subProject" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1hvr8l9</bpmn:incoming>

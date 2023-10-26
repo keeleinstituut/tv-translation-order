@@ -11,6 +11,6 @@ class ProjectWorkflowTemplate extends BaseWorkflowTemplate implements WorkflowTe
 
     protected function getTemplateFileName(): string
     {
-        return 'main.bpmn';
+        return 'project.bpmn';
     }
 }

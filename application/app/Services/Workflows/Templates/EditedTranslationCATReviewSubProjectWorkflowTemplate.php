@@ -7,7 +7,7 @@ use App\Models\Assignment;
 use App\Models\Project;
 use App\Models\SubProject;
 
-class EditedTranslationCATReviewSubProjectWorkflowTemplate extends BaseSubProjectWorkflowTemplate implements SubProjectWorkflowTemplateInterface
+class EditedTranslationCATReviewSubProjectWorkflowTemplate extends BaseWorkflowTemplate implements SubProjectWorkflowTemplateInterface
 {
     public function getWorkflowProcessDefinitionId(): string
     {
@@ -17,35 +17,6 @@ class EditedTranslationCATReviewSubProjectWorkflowTemplate extends BaseSubProjec
     public function getId(): string
     {
         return 'cat-edited-translation-review-sub-project';
-    }
-
-    public function getVariables(Project $project): array
-    {
-        return $project->subProjects->map(function (SubProject $subProject) use ($project) {
-            return [
-                'workflow_definition_id' => $this->getWorkflowProcessDefinitionId(),
-                'translations' => $subProject->assignments
-                    ->filter(fn(Assignment $assignment) => $assignment->feature === Feature::JOB_TRANSLATION->value)
-                    ->map(function (Assignment $assignment) use ($subProject, $project) {
-                        return $this->buildUserTaskVariables(
-                            $project,
-                            $subProject,
-                            $assignment,
-                            true
-                        );
-                    })->toArray(),
-                'overviews' => $subProject->assignments
-                    ->filter(fn(Assignment $assignment) => $assignment->feature === Feature::JOB_OVERVIEW->value)
-                    ->map(function (Assignment $assignment) use ($subProject, $project) {
-                        return $this->buildUserTaskVariables(
-                            $project,
-                            $subProject,
-                            $assignment,
-                            true
-                        );
-                    })->toArray(),
-            ];
-        })->toArray();
     }
 
     protected function getTemplateFileName(): string

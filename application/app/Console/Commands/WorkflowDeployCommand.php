@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands\Workflows;
+namespace App\Console\Commands;
 
+use App\Services\Workflows\SubProjectWorkflowTemplatePicker;
 use App\Services\Workflows\Templates\ProjectWorkflowTemplate;
 use App\Services\Workflows\WorkflowService;
-use App\Services\Workflows\SubProjectWorkflowTemplatePicker;
 use Illuminate\Console\Command;
 use RuntimeException;
 
@@ -27,7 +27,7 @@ class WorkflowDeployCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): void
     {
         $workflowProcessTemplateId = $this->argument('id');
         $deployed = collect();
