@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1073mfs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.19.0">
+  <bpmn:process id="manuscript-translation-sub-project" name="Käsikirjaline tõlge" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_16l9ha6</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="Activity_0ssztke" name="Manuscript translations">
+      <bpmn:incoming>Flow_07scm5g</bpmn:incoming>
+      <bpmn:outgoing>Flow_19xxnmy</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${subProject.translations}" camunda:elementVariable="subProcess" />
+      <bpmn:userTask id="manuscript-translation" name="Käsikirjaline tõlge ilma sisemise CAT tööriistata" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
+            <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="type_classifier_value_id">${subProcess.type_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="deadline_at">${subProcess.deadline_at}</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_0298xzb</bpmn:incoming>
+        <bpmn:outgoing>Flow_1vm22rw</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:startEvent id="Event_03idqua">
+        <bpmn:outgoing>Flow_0298xzb</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="Event_07vvf7a">
+        <bpmn:incoming>Flow_1vm22rw</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_0298xzb" sourceRef="Event_03idqua" targetRef="manuscript-translation" />
+      <bpmn:sequenceFlow id="Flow_1vm22rw" sourceRef="manuscript-translation" targetRef="Event_07vvf7a" />
+    </bpmn:subProcess>
+    <bpmn:endEvent id="Event_12xfd2a">
+      <bpmn:incoming>Flow_19xxnmy</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_19xxnmy" sourceRef="Activity_0ssztke" targetRef="Event_12xfd2a" />
+    <bpmn:intermediateCatchEvent id="Event_1kkz1y1" name="Sub-project workflow started">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="sub_project_id">${subProject.sub_project_id}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_16l9ha6</bpmn:incoming>
+      <bpmn:outgoing>Flow_07scm5g</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1933e71" messageRef="Message_343hnr7" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_16l9ha6" sourceRef="StartEvent_1" targetRef="Event_1kkz1y1" />
+    <bpmn:sequenceFlow id="Flow_07scm5g" sourceRef="Event_1kkz1y1" targetRef="Activity_0ssztke" />
+  </bpmn:process>
+  <bpmn:message id="Message_343hnr7" name="SubProjectWorkflowStarted" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="manuscript-translation-sub-project">
+      <bpmndi:BPMNShape id="Event_1kkz1y1_di" bpmnElement="Event_1kkz1y1">
+        <dc:Bounds x="252" y="209" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="230" y="252" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="209" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1vna95m_di" bpmnElement="Activity_0ssztke" isExpanded="true">
+        <dc:Bounds x="340" y="80" width="400" height="281" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_10vxycm_di" bpmnElement="manuscript-translation">
+        <dc:Bounds x="500" y="190" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_03idqua_di" bpmnElement="Event_03idqua">
+        <dc:Bounds x="392" y="212" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_07vvf7a_di" bpmnElement="Event_07vvf7a">
+        <dc:Bounds x="672" y="212" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0298xzb_di" bpmnElement="Flow_0298xzb">
+        <di:waypoint x="428" y="230" />
+        <di:waypoint x="500" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vm22rw_di" bpmnElement="Flow_1vm22rw">
+        <di:waypoint x="600" y="230" />
+        <di:waypoint x="672" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_12xfd2a_di" bpmnElement="Event_12xfd2a">
+        <dc:Bounds x="802" y="209" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_19xxnmy_di" bpmnElement="Flow_19xxnmy">
+        <di:waypoint x="740" y="227" />
+        <di:waypoint x="802" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16l9ha6_di" bpmnElement="Flow_16l9ha6">
+        <di:waypoint x="188" y="227" />
+        <di:waypoint x="252" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_07scm5g_di" bpmnElement="Flow_07scm5g">
+        <di:waypoint x="288" y="227" />
+        <di:waypoint x="340" y="227" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

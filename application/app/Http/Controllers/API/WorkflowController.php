@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TaskResource;
-use App\Services\WorkflowService;
+use App\Services\Workflows\WorkflowService;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
