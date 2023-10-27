@@ -115,6 +115,15 @@ Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
 Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);
 Route::get('/workflow/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
 
+Route::prefix('/media')
+    ->controller(API\MediaController::class)
+    ->whereUuid('id')
+    ->group(function () {
+        Route::post('/bulk', 'bulkStore');
+        Route::delete('/bulk', 'bulkDestroy');
+        Route::get('/download', 'download');
+    });
+
 // ??
 //Route::get('/cat/urls/translate/{project_id}', []);
 //Route::get('/cat/urls/revise/{project_id}', []);
