@@ -79,26 +79,44 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
-    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject): bool
+    public function editSourceFiles(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilege($subProject);
+    }
+
+    public function editFinalFiles(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+    }
+
+    private function hasManageProjectPrivilege(SubProject $subProject): bool
     {
         if (! $this->isInSameInstitutionAsCurrentUser($subProject)) {
-            return false;
-        }
-
-        if (empty($currentInstitutionUserId = Auth::user()?->institutionUserId)) {
             return false;
         }
 
         if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
             return true;
         }
+        return false;
+    }
 
-        return Assignment::where('assigned_vendor_id', $currentInstitutionUserId)
+    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject): bool
+    {
+        if ($this->hasManageProjectPrivilege($subProject)) {
+            return true;
+        }
+
+        return Assignment::where('assigned_vendor_id', Auth::user()->institutionUserId)
             ->where('sub_project_id', $subProject->id)->exists();
     }
 
     private function isInSameInstitutionAsCurrentUser(SubProject $subProject): bool
     {
+        if (empty(Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
         return filled($currentInstitutionId = Auth::user()?->institutionId)
             && $currentInstitutionId === $subProject->project->institution_id &&
             filled($currentInstitutionId = Auth::user()?->institutionUserId);
