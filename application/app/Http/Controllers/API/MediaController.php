@@ -10,15 +10,19 @@ use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\SubProject;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class MediaController extends Controller
 {
     /**
      * Store a newly created resource in storage.
+     * @throws Throwable
      */
     #[OA\Post(
         path: '/media/bulk',
@@ -47,13 +51,15 @@ class MediaController extends Controller
             $data = $filesData->map(function ($file) {
                 $content = $file['content'];
                 [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
-                $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
+                if (empty($entity)) {
+                    abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+                }
 
+                $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
                 $this->authorize($ability, $entity);
 
-                $media = $collectionOwnerEntity->addMedia($content)
+                return $collectionOwnerEntity->addMedia($content)
                     ->toMediaCollection($collectionName);
-                return $media;
             });
 
             return MediaResource::collection($data);
@@ -62,6 +68,7 @@ class MediaController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * @throws Throwable
      */
     #[OA\Delete(
         path: '/media/bulk',
@@ -79,6 +86,10 @@ class MediaController extends Controller
 
             $data = $filesData->map(function ($file) {
                 [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                if (empty($entity)) {
+                    abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+                }
+
                 $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
 
                 $this->authorize($ability, $entity);
@@ -98,6 +109,9 @@ class MediaController extends Controller
         });
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/media/download',
         tags: ['Media'],
@@ -128,7 +142,7 @@ class MediaController extends Controller
         return $media->toResponse($request);
     }
 
-    private function determineEntityAndCollectionName(string $referenceObjectType, string $referenceObjectId, $collection)
+    private function determineEntityAndCollectionName(string $referenceObjectType, string $referenceObjectId, $collection): ?array
     {
         $entityClass = match ($referenceObjectType) {
             'project' => Project::class,
@@ -136,7 +150,14 @@ class MediaController extends Controller
             default => null,
         };
 
-        $entity = $entityClass::find($referenceObjectId);
+        if (empty($entityClass)) {
+            return null;
+        }
+
+        /** @var Project|SubProject|null $entity */
+        if (empty($entity = $entityClass::find($referenceObjectId))) {
+            return null;
+        }
 
         return match ([$referenceObjectType, $collection]) {
             ['project', 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
@@ -146,10 +167,10 @@ class MediaController extends Controller
         };
     }
 
-    private function determineAuthorizationAbility($entity, $collectionName) {
+    private function determineAuthorizationAbility($entity, $collectionName): ?string
+    {
         return match ([$entity::class, $collectionName]) {
-            [Project::class, 'source'] => 'editSourceFiles',
-            [SubProject::class, 'source'] => 'editSourceFiles',
+            [Project::class, 'source'], [SubProject::class, 'source'] => 'editSourceFiles',
             [SubProject::class, 'final'] => 'editFinalFiles',
             default => null,
         };
