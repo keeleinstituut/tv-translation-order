@@ -70,7 +70,7 @@ class MediaDeleteRequest extends FormRequest
                         ['subproject', 'source'],
                         ['subproject', 'final'],
                     ])) {
-                        $validator->errors()->add("files.$idx.collection", 'Not possible to add Media into specified collection');
+                        $validator->errors()->add("files.$idx.collection", 'Such collection is not available for the specified entity');
                     }
                 });
             }
