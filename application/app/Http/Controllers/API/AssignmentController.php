@@ -90,29 +90,34 @@ class AssignmentController extends Controller
         $this->authorize('update', $request->getSubProject());
 
         return DB::transaction(function () use ($request) {
-            if (empty($request->validated('linking'))) {
-                $affectedAssignmentIds = collect();
-                // Delete all relations between assignments and CAT tool jobs in case if empty linking passed.
-                AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
-                    $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
-                        ->where('job_definition_id', $request->getJobDefinition()->id);
-                })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
-                    $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
-                    $assignmentCatToolJob->delete();
+            $affectedAssignmentIds = collect();
+            $assignmentsIndexedById = $request->getAssignments();
+            if (filled($request->validated('linking'))) {
+                collect($request->validated('linking'))->mapToGroups(function (array $item) {
+                    return [$item['assignment_id'] => $item['cat_tool_job_id']];
+                })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById, $affectedAssignmentIds) {
+                    $assignment = $assignmentsIndexedById->get($assignmentId);
+                    $assignment->catToolJobs()->sync($catToolJobsIds);
+                    $affectedAssignmentIds->add($assignment->id);
                 });
-
-                return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
             }
 
-            $assignmentsIndexedById = $request->getAssignments();
-            collect($request->validated('linking'))->mapToGroups(function (array $item) {
-                return [$item['assignment_id'] => $item['cat_tool_job_id']];
-            })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById) {
-                $assignment = $assignmentsIndexedById->get($assignmentId);
-                $assignment->catToolJobs()->sync($catToolJobsIds);
+            AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
+                $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
+                    ->where('job_definition_id', $request->getJobDefinition()->id)
+                    ->when(
+                        filled($request->getAssignments()->keys()),
+                        fn(Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
+                            'id',
+                            $request->getAssignments()->keys()
+                        )
+                    );
+            })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
+                $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
+                $assignmentCatToolJob->delete();
             });
 
-            return AssignmentResource::collection(self::getAssignmentsByIds($assignmentsIndexedById->keys()));
+            return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
         });
     }
 

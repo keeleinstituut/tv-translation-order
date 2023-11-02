@@ -14,12 +14,14 @@ use OpenApi\Attributes as OA;
     required: [
         'id',
         'name',
+        'ext_id',
         'progress_percentage',
         'translate_url',
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'name', type: 'string'),
+        new OA\Property(property: 'ext_id', type: 'string'),
         new OA\Property(property: 'progress_percentage', type: 'integer'),
         new OA\Property(property: 'translate_url', type: 'string', format: 'url'),
     ],
@@ -38,6 +40,7 @@ class CatToolJobResource extends JsonResource
             ...$this->only([
                 'id',
                 'name',
+                'ext_id',
                 'progress_percentage',
                 'translate_url',
             ]),
