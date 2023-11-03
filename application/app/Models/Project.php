@@ -9,6 +9,8 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\ProjectPriceCalculator;
 use App\Services\WorkflowProcessInstanceService;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\ProjectFactory;
 use Eloquent;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -88,10 +90,11 @@ use Throwable;
  * @method static Builder|Project withTrashed()
  * @method static Builder|Project withoutTrashed()
  * @method static Builder|Project hasAnyOfLanguageDirections(array[] $languageDirections)
+ * @method static \Illuminate\Database\Eloquent\Builder|Project wherePrice($value)
  *
  * @mixin Eloquent
  */
-class Project extends Model implements HasMedia
+class Project extends Model implements AuditLoggable, HasMedia
 {
     use HasFactory;
     use HasUuids;
@@ -194,6 +197,7 @@ class Project extends Model implements HasMedia
             $subProject->file_collection_final = self::FINAL_FILES_COLLECTION."/$sourceLanguage->value/$destinationLanguage->value";
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
+
             return $subProject;
         };
 
@@ -255,5 +259,32 @@ class Project extends Model implements HasMedia
     public function getPriceCalculator(): PriceCalculator
     {
         return new ProjectPriceCalculator($this);
+    }
+
+    public function getIdentitySubset(): array
+    {
+        return $this->only(['id', 'ext_id']);
+    }
+
+    public function getAuditLogRepresentation(): array
+    {
+        return $this->withoutRelations()
+            ->refresh()
+            ->load([
+                'institution',
+                'media',
+                'translationDomainClassifierValue',
+                'typeClassifierValue',
+                'typeClassifierValue.projectTypeConfig',
+                'translationDomainClassifierValue',
+                'clientInstitutionUser',
+                'managerInstitutionUser',
+            ])
+            ->toArray();
+    }
+
+    public function getAuditLogObjectType(): AuditLogEventObjectType
+    {
+        return AuditLogEventObjectType::Project;
     }
 }

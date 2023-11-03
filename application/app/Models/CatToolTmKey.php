@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder|CatToolTmKey whereSubProjectId($value)
  * @method static Builder|CatToolTmKey whereTmId($value)
  * @method static Builder|CatToolTmKey whereUpdatedAt($value)
+ * @method static Builder|CatToolTmKey whereKey($value)
  *
  * @mixin Eloquent
  */

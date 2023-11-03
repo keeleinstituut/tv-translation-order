@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\MediaCreateRequest;
 use App\Http\Requests\API\MediaDeleteRequest;
 use App\Http\Requests\API\MediaDownloadRequest;
@@ -10,9 +11,12 @@ use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\SubProject;
+use AuditLogClient\Models\AuditLoggable;
+use AuditLogClient\Services\AuditLogMessageBuilder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
-use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
 
 class MediaController extends Controller
@@ -44,17 +48,28 @@ class MediaController extends Controller
         return DB::transaction(function () use ($params) {
             $filesData = collect($params->get('files'));
 
-            $data = $filesData->map(function ($file) {
-                $content = $file['content'];
-                [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
-                $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
+            $affectedEntities = $filesData
+                ->map(fn ($file) => $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']))
+                ->mapSpread(fn (AuditLoggable $entity) => $entity)
+                ->unique();
 
-                $this->authorize($ability, $entity);
+            $data = $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedEntities,
+                function () use ($filesData) {
+                    return $filesData->map(function ($file) {
+                        $content = $file['content'];
+                        [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                        $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
 
-                $media = $collectionOwnerEntity->addMedia($content)
-                    ->toMediaCollection($collectionName);
-                return $media;
-            });
+                        $this->authorize($ability, $entity);
+
+                        $media = $collectionOwnerEntity->addMedia($content)
+                            ->toMediaCollection($collectionName);
+
+                        return $media;
+                    });
+                }
+            );
 
             return MediaResource::collection($data);
         });
@@ -77,27 +92,43 @@ class MediaController extends Controller
         return DB::transaction(function () use ($params) {
             $filesData = collect($params->get('files'));
 
-            $data = $filesData->map(function ($file) {
-                [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
-                $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
+            $affectedEntities = $filesData
+                ->map(fn ($file) => $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']))
+                ->mapSpread(fn (AuditLoggable $entity) => $entity)
+                ->unique();
 
-                $this->authorize($ability, $entity);
+            $data = $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedEntities,
+                function () use ($filesData) {
+                    return $filesData->map(function ($file) {
+                        [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                        $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
 
-                $media = Media::getModel()
-                    ->where('model_id', $collectionOwnerEntity->id)
-                    ->where('model_type', $collectionOwnerEntity::class)
-                    ->where('collection_name', $collectionName)
-                    ->where('id', $file['id'])
-                    ->first() ?? abort(404);
+                        $this->authorize($ability, $entity);
 
-                $media->delete();
-                return $media;
-            });
+                        $media = Media::getModel()
+                            ->where('model_id', $collectionOwnerEntity->id)
+                            ->where('model_type', $collectionOwnerEntity::class)
+                            ->where('collection_name', $collectionName)
+                            ->where('id', $file['id'])
+                            ->first() ?? abort(404);
+
+                        $media->delete();
+
+                        return $media;
+                    });
+                }
+            );
 
             return MediaResource::collection($data);
         });
     }
 
+    /**
+     * @throws AuthorizationException
+     * @throws \Throwable
+     * @throws ValidationException
+     */
     #[OA\Get(
         path: '/media/download',
         tags: ['Media'],
@@ -113,6 +144,7 @@ class MediaController extends Controller
     {
         $params = collect($request->validated());
 
+        /** @var Project $collectionOwnerEntity */
         [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($params['reference_object_type'], $params['reference_object_id'], $params['collection']);
 
         $this->authorize('view', $entity);
@@ -124,6 +156,14 @@ class MediaController extends Controller
             ->where('id', $params['id'])
             ->first() ?? abort(404);
 
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()->toDownloadProjectFileEvent(
+                $media->id,
+                $collectionOwnerEntity->id,
+                $collectionOwnerEntity->ext_id,
+                $media->file_name
+            )
+        );
 
         return $media->toResponse($request);
     }
@@ -146,7 +186,8 @@ class MediaController extends Controller
         };
     }
 
-    private function determineAuthorizationAbility($entity, $collectionName) {
+    private function determineAuthorizationAbility($entity, $collectionName)
+    {
         return match ([$entity::class, $collectionName]) {
             [Project::class, 'source'] => 'editSourceFiles',
             [SubProject::class, 'source'] => 'editSourceFiles',

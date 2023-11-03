@@ -115,5 +115,6 @@ class WorkflowController extends Controller
     public function completeTask(string $id)
     {
         return WorkflowService::completeTask($id);
+        // TODO: Audit log COMPLETE_ASSIGNMENT and/or APPROVE_ASSIGNMENT_RESULT?
     }
 }

@@ -52,15 +52,18 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @method static Builder|Volume whereUpdatedAt($value)
  * @method static Builder|Volume withTrashed()
  * @method static Builder|Volume withoutTrashed()
+ * @method static Builder|Volume whereCatToolJobId($value)
+ * @method static Builder|Volume whereCustomVolumeAnalysis($value)
+ * @method static Builder|Volume whereDiscounts($value)
  *
  * @mixin Eloquent
  */
 class Volume extends Model
 {
-    use HasUuids,
-        HasFactory,
-        SoftDeletes,
-        HasRelationships;
+    use HasFactory,
+        HasRelationships,
+        HasUuids,
+        SoftDeletes;
 
     protected $table = 'volumes';
 
@@ -108,7 +111,7 @@ class Volume extends Model
         ]) : [];
 
         if (filled($this->discounts)) {
-            return new VolumeAnalysisDiscount(array_merge($institutionDiscounts, (array)$this->discounts));
+            return new VolumeAnalysisDiscount(array_merge($institutionDiscounts, (array) $this->discounts));
         }
 
         return new VolumeAnalysisDiscount($institutionDiscounts);
@@ -121,8 +124,8 @@ class Volume extends Model
         }
 
         return new VolumeAnalysis(array_merge(
-            (array)$this->catToolJob->volume_analysis,
-            (array)$this->custom_volume_analysis
+            (array) $this->catToolJob->volume_analysis,
+            (array) $this->custom_volume_analysis
         ));
     }
 

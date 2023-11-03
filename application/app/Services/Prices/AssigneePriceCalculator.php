@@ -30,6 +30,7 @@ readonly class AssigneePriceCalculator implements PriceCalculator
 
         if ($prices->search(null) === false) {
             $priceList = $this->getPriceList();
+
             return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }
 

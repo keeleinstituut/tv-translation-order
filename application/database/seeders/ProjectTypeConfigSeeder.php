@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Enums\ClassifierValueType;
-use App\Enums\Feature;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\ProjectTypeConfig;
 use Illuminate\Database\Seeder;
@@ -35,102 +34,102 @@ class ProjectTypeConfigSeeder extends Seeder
     private static function getData(): array
     {
         return [
-                'ORAL_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'POST_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'SYNCHRONOUS_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'SIGN_LANGUAGE' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'CAT_TRANSLATION_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => true
-                ],
-                'CAT_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => true
-                ],
-                'TRANSLATION_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'EDITING_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'EDITING' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'EDITED_TRANSLATION_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'EDITED_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'CAT_TRANSLATION_EDITING_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => true
-                ],
-                'CAT_TRANSLATION_EDITING' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => true
-                ],
-                'TRANSLATION_EDITING_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'TRANSLATION_EDITING' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'MANUSCRIPT_TRANSLATION_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'MANUSCRIPT_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'TERMINOLOGY_WORK' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'TERMINOLOGY_WORK_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'SWORN_CAT_TRANSLATION_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => true
-                ],
-                'SWORN_CAT_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => true
-                ],
-                'SWORN_TRANSLATION_REVIEW' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ],
-                'SWORN_TRANSLATION' => [
-                    'workflow_process_definition_id' => 'Sample-subproject',
-                    'cat_tool_enabled' => false
-                ]
+            'ORAL_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'POST_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'SYNCHRONOUS_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'SIGN_LANGUAGE' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'CAT_TRANSLATION_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => true,
+            ],
+            'CAT_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => true,
+            ],
+            'TRANSLATION_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'EDITING_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'EDITING' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'EDITED_TRANSLATION_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'EDITED_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'CAT_TRANSLATION_EDITING_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => true,
+            ],
+            'CAT_TRANSLATION_EDITING' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => true,
+            ],
+            'TRANSLATION_EDITING_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'TRANSLATION_EDITING' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'MANUSCRIPT_TRANSLATION_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'MANUSCRIPT_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'TERMINOLOGY_WORK' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'TERMINOLOGY_WORK_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'SWORN_CAT_TRANSLATION_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => true,
+            ],
+            'SWORN_CAT_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => true,
+            ],
+            'SWORN_TRANSLATION_REVIEW' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
+            'SWORN_TRANSLATION' => [
+                'workflow_process_definition_id' => 'Sample-subproject',
+                'cat_tool_enabled' => false,
+            ],
         ];
     }
 }

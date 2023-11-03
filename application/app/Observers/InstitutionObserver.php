@@ -52,7 +52,7 @@ class InstitutionObserver
      */
     public function saved(Institution $institution): void
     {
-        if (!$institution->institutionProjectSequence) {
+        if (! $institution->institutionProjectSequence) {
             $seq = new Sequence();
             $seq->sequenceable_id = $institution->id;
             $seq->sequenceable_type = Institution::class;

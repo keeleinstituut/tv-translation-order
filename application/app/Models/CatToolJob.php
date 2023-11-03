@@ -45,6 +45,12 @@ use Illuminate\Support\Carbon;
  * @method static Builder|CatToolJob whereUpdatedAt($value)
  * @method static Builder|CatToolJob whereVolumeAnalysis($value)
  *
+ * @property-read int|null $assignments_count
+ *
+ * @method static Builder|CatToolJob whereMetadata($value)
+ * @method static Builder|CatToolJob whereName($value)
+ * @method static Builder|CatToolJob whereVolumeUnitType($value)
+ *
  * @mixin Eloquent
  */
 class CatToolJob extends Model

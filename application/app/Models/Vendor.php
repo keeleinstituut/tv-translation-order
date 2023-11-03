@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Dto\VolumeAnalysisDiscount;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\VendorFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,7 +66,7 @@ use Illuminate\Support\Carbon;
  *
  * @mixin Eloquent
  */
-class Vendor extends Model
+class Vendor extends Model implements AuditLoggable
 {
     use HasFactory;
     use HasUuids;
@@ -147,7 +149,7 @@ class Vendor extends Model
         ]));
     }
 
-    public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, ?string $skillId = null): ?Price
+    public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, string $skillId = null): ?Price
     {
         if (empty($skillId)) {
             return null;
@@ -160,5 +162,40 @@ class Vendor extends Model
         )->where(
             'skill_id', $skillId
         )->first();
+    }
+
+    public function getIdentitySubset(): array
+    {
+        return [
+            'id' => $this->id,
+            'institution_user' => [
+                'id' => $this->institution_user_id,
+                'user' => [
+                    'id' => data_get($this->institutionUser, 'user.id'),
+                    'personal_identification_code' => data_get($this->institutionUser, 'user.personal_identification_code'),
+                    'forename' => data_get($this->institutionUser, 'user.forename'),
+                    'surname' => data_get($this->institutionUser, 'user.surname'),
+                ],
+            ],
+        ];
+    }
+
+    public function getAuditLogRepresentation(): array
+    {
+        return $this->withoutRelations()
+            ->refresh()
+            ->load([
+                'institutionUser',
+                'prices',
+                'prices.destinationLanguageClassifierValue',
+                'prices.sourceLanguageClassifierValue',
+                'prices.skill',
+            ])
+            ->toArray();
+    }
+
+    public function getAuditLogObjectType(): AuditLogEventObjectType
+    {
+        return AuditLogEventObjectType::Vendor;
     }
 }

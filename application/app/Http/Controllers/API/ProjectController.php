@@ -15,7 +15,6 @@ use App\Models\Project;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
@@ -74,9 +73,9 @@ class ProjectController extends Controller
                 schema: new OA\Schema(
                     type: 'array',
                     items: new OA\Items(
-                        description: 'd7719f74-3f27-490f-929d-e2d4954e797e:79c7ed08-501d-463c-a5b5-c8fd7e0c6179',
+                        description: 'Two UUIDs of language classifier values separated by a colon (:) character',
                         type: 'string',
-                        example: 'Two UUIDs of language classifier values separated by a colon (:) character'
+                        example: 'd7719f74-3f27-490f-929d-e2d4954e797e:79c7ed08-501d-463c-a5b5-c8fd7e0c6179'
                     )
                 )
             ),
@@ -197,6 +196,8 @@ class ProjectController extends Controller
 
             $project->workflow()->startProcessInstance();
 
+            $this->auditLogPublisher->publishCreateObject($project);
+
             $project->refresh();
             $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');
 
@@ -247,35 +248,40 @@ class ProjectController extends Controller
         $project = $this->getBaseQuery()->find($id) ?? abort(404);
         $this->authorize('update', $project);
 
-        return DB::transaction(function () use ($project, $params) {
-            // Collect certain keys from input params, filter null values
-            // and fill model with result from filter
-            tap(collect($params)->only([
-                'type_classifier_value_id',
-                'translation_domain_classifier_value_id',
-                'manager_institution_user_id',
-                'client_institution_user_id',
-                'reference_number',
-                'comments',
-                'deadline_at',
-            ])->filter()->toArray(), $project->fill(...));
+        DB::transaction(function () use ($project, $params) {
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $project,
+                function () use ($project, $params): void {
+                    // Collect certain keys from input params, filter null values
+                    // and fill model with result from filter
+                    tap(collect($params)->only([
+                        'type_classifier_value_id',
+                        'translation_domain_classifier_value_id',
+                        'manager_institution_user_id',
+                        'client_institution_user_id',
+                        'reference_number',
+                        'comments',
+                        'deadline_at',
+                    ])->filter()->toArray(), $project->fill(...));
 
-            $project->save();
+                    $project->saveOrFail();
 
-            $tagsInput = $params->get('tags');
-            if (is_array($tagsInput)) {
-                $project->tags()->detach();
-                $project->tags()->attach($tagsInput);
-            }
+                    $tagsInput = $params->get('tags');
+                    if (is_array($tagsInput)) {
+                        $project->tags()->detach();
+                        $project->tags()->attach($tagsInput);
+                    }
 
-            $sourceLang = $params->get('source_language_classifier_value_id', fn () => $project->subProjects->pluck('source_language_classifier_value_id')->first());
-            $destinationLangs = $params->get('destination_language_classifier_value_ids', fn () => $project->subProjects->pluck('destination_language_classifier_value_id'));
+                    $sourceLang = $params->get('source_language_classifier_value_id', fn () => $project->subProjects->pluck('source_language_classifier_value_id')->first());
+                    $destinationLangs = $params->get('destination_language_classifier_value_ids', fn () => $project->subProjects->pluck('destination_language_classifier_value_id'));
 
-            $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
-            $project->initSubProjects(
-                ClassifierValue::findOrFail($sourceLang),
-                ClassifierValue::findMany($destinationLangs),
-                $reInitializeSubProjects
+                    $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
+                    $project->initSubProjects(
+                        ClassifierValue::findOrFail($sourceLang),
+                        ClassifierValue::findMany($destinationLangs),
+                        $reInitializeSubProjects
+                    );
+                }
             );
 
             return new ProjectResource($project);

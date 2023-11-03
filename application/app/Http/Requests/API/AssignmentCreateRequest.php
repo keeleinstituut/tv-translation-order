@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\Feature;
 use App\Enums\JobKey;
 use App\Models\JobDefinition;
 use App\Models\SubProject;
@@ -30,7 +29,6 @@ use OpenApi\Attributes as OA;
 )]
 class AssignmentCreateRequest extends FormRequest
 {
-
     private ?JobDefinition $jobDefinition = null;
 
     private ?SubProject $subProject = null;
@@ -68,11 +66,12 @@ class AssignmentCreateRequest extends FormRequest
                         'job_key',
                         'The project doesn\'t contain '.$this->validated('job_key')
                     );
+
                     return;
                 }
 
                 $validator->errors()->addIf(
-                    !$jobDefinition->multi_assignments_enabled,
+                    ! $jobDefinition->multi_assignments_enabled,
                     'job_key',
                     'Multi-assignments not available for the job'
                 );

@@ -7,7 +7,6 @@ use App\Enums\TagType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\ProjectTypeConfig;
 use App\Models\Tag;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class ProjectUpdateRequest extends ProjectCreateRequest

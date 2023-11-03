@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Enums\Feature;
 use App\Enums\JobKey;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
@@ -58,7 +57,7 @@ class AssignmentController extends Controller
             $request->route('sub_project_id')
         )->when(
             $request->validated('job_key'),
-            fn(Builder $query, string $feature) => $query->whereRelation(
+            fn (Builder $query, string $feature) => $query->whereRelation(
                 'jobDefinition',
                 'job_key',
                 $request->validated('job_key')
@@ -92,30 +91,35 @@ class AssignmentController extends Controller
         return DB::transaction(function () use ($request) {
             $affectedAssignmentIds = collect();
             $assignmentsIndexedById = $request->getAssignments();
-            if (filled($request->validated('linking'))) {
-                collect($request->validated('linking'))->mapToGroups(function (array $item) {
-                    return [$item['assignment_id'] => $item['cat_tool_job_id']];
-                })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById, $affectedAssignmentIds) {
-                    $assignment = $assignmentsIndexedById->get($assignmentId);
-                    $assignment->catToolJobs()->sync($catToolJobsIds);
-                    $affectedAssignmentIds->add($assignment->id);
-                });
-            }
 
-            AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
-                $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
-                    ->where('job_definition_id', $request->getJobDefinition()->id)
-                    ->when(
-                        filled($request->getAssignments()->keys()),
-                        fn(Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
-                            'id',
-                            $request->getAssignments()->keys()
-                        )
-                    );
-            })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
-                $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
-                $assignmentCatToolJob->delete();
-            });
+            $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $assignmentsIndexedById,
+                function () use ($affectedAssignmentIds, $assignmentsIndexedById, $request): void {
+                    if (filled($request->validated('linking'))) {
+                        collect($request->validated('linking'))->mapToGroups(function (array $item) {
+                            return [$item['assignment_id'] => $item['cat_tool_job_id']];
+                        })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById, $affectedAssignmentIds) {
+                            $assignment = $assignmentsIndexedById->get($assignmentId);
+                            $assignment->catToolJobs()->sync($catToolJobsIds);
+                            $affectedAssignmentIds->add($assignment->id);
+                        });
+                    }
+
+                    AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
+                        $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
+                            ->where('job_definition_id', $request->getJobDefinition()->id)
+                            ->when(
+                                filled($request->getAssignments()->keys()),
+                                fn (Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
+                                    'id',
+                                    $request->getAssignments()->keys()
+                                )
+                            );
+                    })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
+                        $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
+                        $assignmentCatToolJob->deleteOrFail();
+                    });
+                });
 
             return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
         });
@@ -144,6 +148,7 @@ class AssignmentController extends Controller
             $assignment->fill($attributes);
             $this->authorize('create', $assignment);
             $assignment->saveOrFail();
+            $this->auditLogPublisher->publishCreateObject($assignment);
             $assignment->refresh();
 
             return AssignmentResource::make($assignment);
@@ -164,11 +169,18 @@ class AssignmentController extends Controller
     public function update(AssignmentUpdateRequest $request)
     {
         return DB::transaction(function () use ($request) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
-            $assignment->fill($request->validated());
-            $this->authorize('update', $assignment);
-            $assignment->saveOrFail();
-            $assignment->refresh();
+
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($request, $assignment): void {
+                    $assignment->fill($request->validated());
+                    $this->authorize('update', $assignment);
+                    $assignment->saveOrFail();
+                    $assignment->refresh();
+                }
+            );
 
             return AssignmentResource::make($assignment);
         });
@@ -188,10 +200,17 @@ class AssignmentController extends Controller
     public function updateAssigneeComment(AssignmentUpdateAssigneeCommentRequest $request)
     {
         return DB::transaction(function () use ($request) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
-            $assignment->fill($request->validated());
-            $this->authorize('updateAssigneeComment', $assignment);
-            $assignment->saveOrFail();
+
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($request, $assignment): void {
+                    $assignment->fill($request->validated());
+                    $this->authorize('updateAssigneeComment', $assignment);
+                    $assignment->saveOrFail();
+                }
+            );
 
             return AssignmentResource::make($assignment);
         });
@@ -214,12 +233,18 @@ class AssignmentController extends Controller
         $params = collect($request->validated());
 
         return DB::transaction(function () use ($assignmentId, $params) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
             $this->authorize('update', $assignment);
 
-            $candidates = collect($params->get('data'))->map(Candidate::make(...));
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($params, $assignment): void {
+                    $candidates = collect($params->get('data'))->map(Candidate::make(...));
 
-            $assignment->candidates()->saveMany($candidates);
+                    $assignment->candidates()->saveMany($candidates);
+                }
+            );
 
             $assignment->load('candidates.vendor.institutionUser');
 
@@ -244,14 +269,21 @@ class AssignmentController extends Controller
         $params = collect($request->validated());
 
         return DB::transaction(function () use ($assignmentId, $params) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
-            $this->authorize('update', $assignment);
 
-            $vendorIds = collect($params->get('data'))->pluck('vendor_id');
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($params, $assignment): void {
+                    $this->authorize('update', $assignment);
 
-            $assignment->candidates()
-                ->whereIn('vendor_id', $vendorIds)
-                ->each(fn(Candidate $candidate) => $candidate->delete());
+                    $vendorIds = collect($params->get('data'))->pluck('vendor_id');
+
+                    $assignment->candidates()
+                        ->whereIn('vendor_id', $vendorIds)
+                        ->each(fn (Candidate $candidate) => $candidate->deleteOrFail());
+                }
+            );
 
             $assignment->load('candidates.vendor.institutionUser');
 
@@ -275,9 +307,12 @@ class AssignmentController extends Controller
     public function destroy(string $id): \Illuminate\Http\Response
     {
         DB::transaction(function () use ($id) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($id);
             $this->authorize('delete', $assignment);
-            $assignment->delete();
+            $assignment->deleteOrFail();
+
+            $this->auditLogPublisher->publishRemoveObject($assignment);
         });
 
         return response()->noContent();
@@ -300,7 +335,7 @@ class AssignmentController extends Controller
                 'assignee.institutionUser',
                 'volumes.institutionDiscount',
                 'catToolJobs',
-                'jobDefinition'
+                'jobDefinition',
             ]);
     }
 

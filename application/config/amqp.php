@@ -24,6 +24,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AMQP publisher properties (remove if not needed)
+    |--------------------------------------------------------------------------
+    */
+    'publisher' => [
+        'exchanges' => [
+            [
+                'exchange' => env('AUDIT_LOG_EVENTS_EXCHANGE'),
+                'type' => 'topic',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | AMQP consumer properties (remove if not needed)
     |--------------------------------------------------------------------------
     */
@@ -59,5 +73,15 @@ return [
                 'institution-user.deleted' => InstitutionUserDeleted::class,
             ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Audit Log AMQP properties (remove if not needed)
+    |--------------------------------------------------------------------------
+    */
+    'audit_logs' => [
+        'exchange' => env('AUDIT_LOG_EVENTS_EXCHANGE'),
+        'trace_id_http_header' => env('AUDIT_LOG_TRACE_ID_HTTP_HEADER'),
     ],
 ];

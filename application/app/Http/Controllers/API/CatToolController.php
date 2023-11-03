@@ -16,24 +16,27 @@ use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\CatToolAnalysisReport;
 use App\Services\CatTools\Enums\CatToolAnalyzingStatus;
+use AuditLogClient\Services\AuditLogMessageBuilder;
+use BadMethodCallException;
+use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
-use BadMethodCallException;
-use RuntimeException;
-use DomainException;
 use OpenApi\Attributes as OA;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use Throwable;
 
 class CatToolController extends Controller
 {
     /**
-     * @throws AuthorizationException
+     * @throws AuthorizationException|ValidationException|Throwable
      */
     #[OA\Post(
         path: '/cat-tool/setup',
@@ -59,8 +62,11 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
         try {
-            $subProject->cat()->setupJobs($request->validated('source_files_ids'));
-        } catch (InvalidArgumentException | BadMethodCallException | RuntimeException $e) {
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $subProject,
+                fn () => $subProject->cat()->setupJobs($request->validated('source_files_ids'))
+            );
+        } catch (InvalidArgumentException|BadMethodCallException|RuntimeException $e) {
             throw new UnprocessableEntityHttpException($e->getMessage(), previous: $e);
         }
 
@@ -68,7 +74,7 @@ class CatToolController extends Controller
     }
 
     /**
-     * @throws AuthorizationException
+     * @throws AuthorizationException|ValidationException|Throwable
      */
     #[OA\Post(
         path: '/cat-tool/split',
@@ -84,8 +90,11 @@ class CatToolController extends Controller
         $this->authorize('manageCatTool', $subProject);
 
         try {
-            $jobs = $subProject->cat()->split($request->validated('chunks_count'));
-        } catch (InvalidArgumentException | DomainException | RuntimeException $e) {
+            $jobs = $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $subProject,
+                fn () => $subProject->cat()->split($request->validated('chunks_count'))
+            );
+        } catch (InvalidArgumentException|DomainException|RuntimeException $e) {
             throw new UnprocessableEntityHttpException($e->getMessage(), previous: $e);
         }
 
@@ -93,7 +102,7 @@ class CatToolController extends Controller
     }
 
     /**
-     * @throws AuthorizationException
+     * @throws AuthorizationException|ValidationException|Throwable
      */
     #[OA\Post(
         path: '/cat-tool/merge',
@@ -108,7 +117,10 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        $jobs = $subProject->cat()->merge();
+        $jobs = $this->auditLogPublisher->publishModifyObjectAfterAction(
+            $subProject,
+            fn () => $subProject->cat()->merge()
+        );
 
         return CatToolJobResource::collection($jobs);
     }
@@ -152,7 +164,7 @@ class CatToolController extends Controller
     }
 
     /**
-     * @throws AuthorizationException
+     * @throws AuthorizationException|ValidationException|Throwable
      */
     #[OA\Put(
         path: '/cat-tool/toggle-mt-engine/{sub_project_id}',
@@ -169,7 +181,10 @@ class CatToolController extends Controller
         $this->authorize('manageCatTool', $subProject);
 
         try {
-            $subProject->cat()->toggleMtEngine($request->validated('mt_enabled'));
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $subProject,
+                fn () => $subProject->cat()->toggleMtEngine($request->validated('mt_enabled'))
+            );
         } catch (RequestException $e) {
             throw new HttpException(500, 'Disabling/Enabling MT failed. Reason: '.$e->getMessage(), $e);
         }
@@ -178,7 +193,7 @@ class CatToolController extends Controller
     }
 
     /**
-     * @throws AuthorizationException
+     * @throws AuthorizationException|ValidationException|Throwable
      */
     #[OA\Get(
         path: '/cat-tool/download-xliff/{sub_project_id}',
@@ -201,6 +216,13 @@ class CatToolController extends Controller
         $this->authorize('downloadXliff', $subProject);
 
         $file = $subProject->cat()->getDownloadableXLIFFsFile();
+
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()->toDownloadSubprojectXliffsEvent(
+                $subProject->id,
+                $subProject->ext_id,
+            )
+        );
 
         return response()->streamDownload(function () use ($file) {
             echo $file->getContent();
@@ -231,6 +253,13 @@ class CatToolController extends Controller
         $this->authorize('downloadTranslations', $subProject);
 
         $file = $subProject->cat()->getDownloadableTranslationsFile();
+
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()->toDownloadSubprojectTranslationsEvent(
+                $subProject->id,
+                $subProject->ext_id,
+            )
+        );
 
         return response()->streamDownload(function () use ($file) {
             echo $file->getContent();

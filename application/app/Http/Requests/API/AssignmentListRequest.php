@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\Feature;
 use App\Enums\JobKey;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;

@@ -35,8 +35,8 @@ use Illuminate\Support\Carbon;
  */
 class Candidate extends Model
 {
-    use HasUuids;
     use HasFactory;
+    use HasUuids;
 
     protected $guarded = [];
 

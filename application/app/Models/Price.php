@@ -61,8 +61,8 @@ use Illuminate\Support\Carbon;
  */
 class Price extends Model
 {
-    use HasUuids;
     use HasFactory;
+    use HasUuids;
     use SoftDeletes;
 
     protected $connection = 'pgsql_app';

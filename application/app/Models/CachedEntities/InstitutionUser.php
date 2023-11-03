@@ -61,7 +61,7 @@ use SyncTools\Traits\IsCachedEntity;
  */
 class InstitutionUser extends Model
 {
-    use IsCachedEntity, HasCachedEntityFactory, HasUuids, SoftDeletes;
+    use HasCachedEntityFactory, HasUuids, IsCachedEntity, SoftDeletes;
 
     protected $table = 'cached_institution_users';
 

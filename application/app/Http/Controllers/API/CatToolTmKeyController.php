@@ -105,31 +105,36 @@ class CatToolTmKeyController extends Controller
             $existingTmKeys = $subProject->catToolTmKeys()->get()->keyBy('key');
             $receivedTmKeysData = collect($request->validated('tm_keys'))->keyBy('key');
 
-            // Create new TM keys
-            $receivedTmKeysData->keys()->diff($existingTmKeys->keys())
-                ->each(function (string $newTmKey) use ($receivedTmKeysData, $subProject) {
-                    $newTmKeyData = $receivedTmKeysData->get($newTmKey);
-                    (new CatToolTmKey())
-                        ->fill([
-                            ...$newTmKeyData,
-                            'sub_project_id' => $subProject->id,
-                        ])->saveOrFail();
-                });
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $subProject,
+                function () use ($existingTmKeys, $receivedTmKeysData, $subProject) {
+                    // Create new TM keys
+                    $receivedTmKeysData->keys()->diff($existingTmKeys->keys())
+                        ->each(function (string $newTmKey) use ($receivedTmKeysData, $subProject) {
+                            $newTmKeyData = $receivedTmKeysData->get($newTmKey);
+                            (new CatToolTmKey())
+                                ->fill([
+                                    ...$newTmKeyData,
+                                    'sub_project_id' => $subProject->id,
+                                ])->saveOrFail();
+                        });
 
-            // Delete missing
-            if (!empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
-                CatToolTmKey::whereIn('key', $tmKeysToRemove)
-                    ->where('sub_project_id', $subProject->id)
-                    ->delete();
-            }
+                    // Delete missing
+                    if (! empty($tmKeysToRemove = $existingTmKeys->keys()->diff($receivedTmKeysData->keys())->toArray())) {
+                        CatToolTmKey::whereIn('key', $tmKeysToRemove)
+                            ->where('sub_project_id', $subProject->id)
+                            ->delete();
+                    }
 
-            if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
-                try {
-                    $subProject->cat()->setTmKeys();
-                } catch (RequestException $e) {
-                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
+                    if ($subProject->cat()->getSetupStatus() === CatToolSetupStatus::Done) {
+                        try {
+                            $subProject->cat()->setTmKeys();
+                        } catch (RequestException $e) {
+                            abort(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage());
+                        }
+                    }
                 }
-            }
+            );
 
             return CatToolTmKeyResource::collection($subProject->catToolTmKeys()->get());
         });
@@ -151,8 +156,14 @@ class CatToolTmKeyController extends Controller
         /** @var CatToolTmKey $tmKey */
         $tmKey = self::getBaseQuery()->findOrFail($request->route('id'));
         $this->authorize('toggleWritable', $tmKey);
-        $tmKey->fill($request->validated());
-        $tmKey->saveOrFail();
+
+        $this->auditLogPublisher->publishModifyObjectAfterAction(
+            $tmKey->subProject,
+            function () use ($tmKey, $request) {
+                $tmKey->fill($request->validated());
+                $tmKey->saveOrFail();
+            }
+        );
 
         return CatToolTmKeyResource::make($tmKey);
     }

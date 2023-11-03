@@ -56,6 +56,10 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
  * @method static Builder|Media whereSize($value)
  * @method static Builder|Media whereUpdatedAt($value)
  * @method static Builder|Media whereUuid($value)
+ * @method static MediaCollection<int, static> all($columns = ['*'])
+ * @method static MediaCollection<int, static> get($columns = ['*'])
+ * @method static MediaCollection<int, static> all($columns = ['*'])
+ * @method static MediaCollection<int, static> get($columns = ['*'])
  *
  * @mixin Eloquent
  */

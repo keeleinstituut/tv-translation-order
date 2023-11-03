@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\Feature;
 use App\Enums\JobKey;
 use App\Models\Assignment;
 use App\Models\CatToolJob;
@@ -45,8 +44,11 @@ use OpenApi\Attributes as OA;
 class AssignmentCatToolJobBulkLinkRequest extends FormRequest
 {
     private ?Collection $catToolJobs = null;
+
     private ?Collection $assignments = null;
+
     private ?JobDefinition $jobDefinition = null;
+
     private ?SubProject $subProject = null;
 
     /**
@@ -148,11 +150,12 @@ class AssignmentCatToolJobBulkLinkRequest extends FormRequest
                         'job_key',
                         'The project doesn\'t contain '.$this->validated('job_key')
                     );
+
                     return;
                 }
 
                 $validator->errors()->addIf(
-                    !$jobDefinition->linking_with_cat_tool_jobs_enabled,
+                    ! $jobDefinition->linking_with_cat_tool_jobs_enabled,
                     'job_key',
                     'The linking is not available for the job '.$this->validated('job_key')
                 );

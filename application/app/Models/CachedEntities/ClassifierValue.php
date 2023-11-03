@@ -46,7 +46,7 @@ use SyncTools\Traits\IsCachedEntity;
  */
 class ClassifierValue extends Model
 {
-    use IsCachedEntity, HasCachedEntityFactory, HasUuids, SoftDeletes;
+    use HasCachedEntityFactory, HasUuids, IsCachedEntity, SoftDeletes;
 
     protected $table = 'cached_classifier_values';
 
