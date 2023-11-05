@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SubProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
@@ -38,8 +39,10 @@ use Throwable;
  * @property string|null $workflow_ref
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
+ * @property string|null $active_job_definition_id
  * @property ArrayObject|null $cat_metadata
  * @property float|null $price
+ * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
  * @property Carbon|null $updated_at
@@ -86,6 +89,7 @@ class SubProject extends Model
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
         'price' => 'float',
+        'status' => SubProjectStatus::class
     ];
 
     public function project(): BelongsTo
@@ -177,6 +181,12 @@ class SubProject extends Model
     {
         return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
     }
+
+    public function isWorkflowStarted(): bool
+    {
+        return filled($this->workflow_ref);
+    }
+
 
     public function getPriceCalculator(): PriceCalculator
     {

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\CatTool;
 
 use App\Models\SubProject;
 use App\Services\CatTools\MateCat\MateCat;

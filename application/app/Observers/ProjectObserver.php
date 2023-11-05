@@ -2,8 +2,11 @@
 
 namespace App\Observers;
 
+use App\Enums\ProjectStatus;
+use App\Enums\SubProjectStatus;
 use App\Models\Project;
 use App\Models\Sequence;
+use App\Models\SubProject;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -36,6 +39,34 @@ class ProjectObserver
         $seq->sequenceable_type = Project::class;
         $seq->name = Sequence::PROJECT_SUBPROJECT_SEQ;
         $seq->saveOrFail();
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function updating(Project $project): void
+    {
+        $newProjectGotManager = $project->status === ProjectStatus::New &&
+            $project->isDirty('manager_institution_user_id') &&
+            is_null($project->getOriginal('manager_institution_user_id'));
+
+        if ($newProjectGotManager) {
+            $project->status = ProjectStatus::Registered;
+            $project->subProjects->each(function (SubProject $subProject) {
+                $subProject->status = SubProjectStatus::Registered;
+                $subProject->saveOrFail();
+            });
+        }
+
+        $projectWasCancelled = $project->status === ProjectStatus::Cancelled &&
+            $project->isDirty('status');
+
+        if ($projectWasCancelled) {
+            $project->subProjects->each(function (SubProject $subProject) {
+                $subProject->status = SubProjectStatus::Cancelled;
+                $subProject->saveOrFail();
+            });
+        }
     }
 
     /**

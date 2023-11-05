@@ -4,10 +4,17 @@ namespace App\Services\Workflows;
 
 use App\Enums\Feature;
 use App\Enums\JobKey;
+use App\Enums\ProjectStatus;
+use App\Enums\SubProjectStatus;
+use App\Jobs\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Models\Vendor;
+use App\Policies\AssignmentPolicy;
 use App\Services\Workflows\Templates\SubProjectWorkflowTemplateInterface;
+use DB;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -47,21 +54,45 @@ class WorkflowProcessInstanceService
         $this->project->saveOrFail();
     }
 
-    public function triggerSubProjectWorkflowStart(SubProject $subProject): void
+    /**
+     * @throws Throwable
+     */
+    public function startSubProjectWorkflow(SubProject $subProject): void
     {
-        WorkflowService::sendMessage([
-            'messageName' => 'SubProjectWorkflowStarted',
-            'businessKey' => $this->getBusinessKey(),
-            'correlationKeys' => [
-                'sub_project_id' => [
-                    'value' => $subProject->id,
-                    'type' => 'String'
+        try {
+            WorkflowService::sendMessage([
+                'messageName' => 'SubProjectWorkflowStarted',
+                'businessKey' => $this->getBusinessKey(),
+                'correlationKeys' => [
+                    'sub_project_id' => [
+                        'value' => $subProject->id,
+                        'type' => 'String'
+                    ]
                 ]
-            ]
-        ]);
+            ]);
+
+            TrackSubProjectStatus::dispatch($subProject);
+        } catch (RequestException $e) {
+            throw new RuntimeException("Starting of the sub-project workflow failed", $e->response->status(), $e);
+        }
     }
 
-    public function completeSubProjectReviewTask(string $taskId, bool $successful = true): void
+    /**
+     * @throws Throwable
+     */
+    public function acceptTask(string $taskId, Vendor $vendor): void
+    {
+        $subProject = $this->getSubProject($taskId);
+
+        try {
+            WorkflowService::setAssignee($taskId, $vendor->id);
+            TrackSubProjectStatus::dispatch($subProject);
+        } catch (RequestException $e) {
+            throw new RuntimeException("Setting of assignee failed", $e->response->status(), $e);
+        }
+    }
+
+    private function completeSubProjectReviewTask(string $taskId, bool $successful = true): void
     {
         WorkflowService::completeTask($taskId, [
             'variables' => [
@@ -70,20 +101,30 @@ class WorkflowProcessInstanceService
                 ]
             ]
         ]);
+
+        $subProject = $this->getSubProject($taskId);
+        TrackSubProjectStatus::dispatch($subProject);
     }
 
-    public function completeProjectReviewTask(string $taskId, bool $successful = true): void
+    /**
+     * @throws Throwable
+     */
+    private function completeProjectReviewTask(string $taskId, bool $acceptedByClient): void
     {
         WorkflowService::completeTask($taskId, [
             'variables' => [
-                "acceptedByClient" => [
-                    'value' => $successful,
+                'acceptedByClient' => [
+                    'value' => $acceptedByClient,
                 ]
             ]
         ]);
+
+        $this->project->status = $acceptedByClient ? ProjectStatus::Accepted :
+            ProjectStatus::Rejected;
+        $this->project->saveOrFail();
     }
 
-    public function cancelProjectWorkflow(): void
+    public function cancel(): void
     {
         WorkflowService::deleteProcessInstances([
             $this->getProcessInstanceId()
@@ -95,6 +136,11 @@ class WorkflowProcessInstanceService
         return WorkflowService::getTask([
             'processInstanceId' => $this->getProcessInstanceId(),
         ]);
+    }
+
+    public function isStarted(): string
+    {
+        return filled($this->project->workflow_instance_ref);
     }
 
     public function updateProcessVariable($variableName, $newValue)
@@ -173,5 +219,15 @@ class WorkflowProcessInstanceService
                 })->toArray()
             ]
         ];
+    }
+
+    /**
+     * TODO: implement getting of the sub-project ID based on the task ID.
+     * @param string $taskId
+     * @return SubProject
+     */
+    private function getSubProject(string $taskId): SubProject
+    {
+        return $this->project->subProjects()->first();
     }
 }

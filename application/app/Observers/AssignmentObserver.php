@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\SubProjectStatus;
 use App\Models\Assignment;
 use App\Models\Volume;
 
@@ -66,19 +67,17 @@ class AssignmentObserver
     private function updateVolumesAssigneeFields(Assignment $assignment): void
     {
         if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
-            if (empty($assignment->volumes)) {
-                return;
+            if (filled($assignment->volumes)) {
+                Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
+                    $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
+                    $volume->unit_fee = $assignment->assignee->getPriceList(
+                        $assignment->subProject->source_language_classifier_value_id,
+                        $assignment->subProject->destination_language_classifier_value_id,
+                        $assignment->jobDefinition?->skill_id
+                    )?->getUnitFee($volume->unit_type);
+                    $volume->save();
+                }));
             }
-
-            Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
-                $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
-                $volume->unit_fee = $assignment->assignee->getPriceList(
-                    $assignment->subProject->source_language_classifier_value_id,
-                    $assignment->subProject->destination_language_classifier_value_id,
-                    $assignment->jobDefinition?->skill_id
-                )?->getUnitFee($volume->unit_type);
-                $volume->save();
-            }));
 
             $subProject = $assignment->subProject;
             if (empty($subProject)) {
@@ -86,7 +85,7 @@ class AssignmentObserver
             }
 
             $subProject->price = $subProject->getPriceCalculator()->getPrice();
-            $subProject->save();
+            $subProject->saveOrFail();
 
             $project = $subProject->project;
 
@@ -95,7 +94,7 @@ class AssignmentObserver
             }
 
             $project->price = $project->getPriceCalculator()->getPrice();
-            $project->save();
+            $project->saveOrFail();
         }
     }
 }

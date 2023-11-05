@@ -86,6 +86,16 @@ class WorkflowService
         return $response->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
+    public static function setAssignee($taskId, string $vendorId)
+    {
+        return static::client()->post("/task/$taskId/assignee", [
+            'userId' => $vendorId
+        ])->throw()->json();
+    }
+
     public static function getHistoryTask($params = [])
     {
         $response = static::client()->get('/history/task', $params);
@@ -100,6 +110,9 @@ class WorkflowService
         return $response->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
     public static function sendMessage($params = [])
     {
         $response = static::client()->post('/message', $params);

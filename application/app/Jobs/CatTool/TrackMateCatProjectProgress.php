@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\CatTool;
 
 use App\Enums\ProjectStatus;
 use App\Models\Project;

@@ -2,9 +2,9 @@
 
 namespace App\Services\CatTools\MateCat;
 
-use App\Jobs\TrackMateCatProjectAnalyzingStatus;
-use App\Jobs\TrackMateCatProjectCreationStatus;
-use App\Jobs\TrackMateCatProjectProgress;
+use App\Jobs\CatTool\TrackMateCatProjectAnalyzingStatus;
+use App\Jobs\CatTool\TrackMateCatProjectCreationStatus;
+use App\Jobs\CatTool\TrackMateCatProjectProgress;
 use App\Models\CatToolTmKey;
 use App\Models\Media;
 use App\Models\SubProject;

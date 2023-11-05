@@ -12,6 +12,7 @@ use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
+use App\Models\SubProject;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -167,7 +168,7 @@ class ProjectController extends Controller
                 'deadline_at' => $params->get('deadline_at'),
                 'comments' => $params->get('comments'),
                 'event_start_at' => $params->get('event_start_at'),
-                'status' => (bool) $params->get('manager_institution_user_id')
+                'status' => filled($params->get('manager_institution_user_id'))
                     ? ProjectStatus::Registered
                     : ProjectStatus::New,
                 'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
@@ -238,12 +239,15 @@ class ProjectController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * @throws AuthorizationException
+     * @throws Throwable
      */
     public function update(ProjectUpdateRequest $request)
     {
         $id = $request->route('id');
         $params = collect($request->validated());
 
+        /** @var Project $project */
         $project = $this->getBaseQuery()->find($id) ?? abort(404);
         $this->authorize('update', $project);
 
@@ -279,6 +283,35 @@ class ProjectController extends Controller
             );
 
             return new ProjectResource($project);
+        });
+    }
+
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Put(
+        path: '/projects/{id}/cancel',
+        tags: ['Projects'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Project with given UUID')]
+    public function cancel(string $id): ProjectResource
+    {
+       return DB::transaction(function () use ($id) {
+            /** @var Project $project */
+            $project = self::getBaseQuery()->with(['subProjects'])
+                ->findOrFail($id);
+
+            if ($project->workflow()->isStarted()) {
+                $project->workflow()->cancel();
+            }
+
+            $project->status = ProjectStatus::Cancelled;
+            $project->saveOrFail();
+
+            return ProjectResource::make($project->refresh());
         });
     }
 

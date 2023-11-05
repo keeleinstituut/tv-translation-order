@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\SubProjectStatus;
 use App\Models\SubProject;
 
 class SubProjectObserver
@@ -31,7 +32,7 @@ class SubProjectObserver
      */
     public function updated(SubProject $subProject): void
     {
-        //
+
     }
 
     /**

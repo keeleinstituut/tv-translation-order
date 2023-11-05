@@ -52,16 +52,22 @@ Route::post('/prices/bulk', [API\PriceController::class, 'bulkStore']);
 Route::put('/prices/bulk', [API\PriceController::class, 'bulkUpdate']);
 Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy']);
 
-Route::get('/projects', [API\ProjectController::class, 'index']);
-Route::post('/projects', [API\ProjectController::class, 'store']);
-Route::get('/projects/{id}', [API\ProjectController::class, 'show']);
-Route::put('/projects/{id}', [API\ProjectController::class, 'update']);
+Route::prefix('/projects')
+    ->controller(API\ProjectController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::get('/', [API\ProjectController::class, 'index']);
+        Route::post('/', [API\ProjectController::class, 'store']);
+        Route::get('/{id}', [API\ProjectController::class, 'show']);
+        Route::put('/{id}', [API\ProjectController::class, 'update']);
+        Route::put('/{id}/cancel', [API\ProjectController::class, 'cancel']);
+    });
 
 Route::prefix('/subprojects')
     ->controller(API\SubProjectController::class)
     ->whereUuid('id')->group(function (): void {
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
+        Route::post('/{id}/start-workflow', 'startWorkflow');
     });
 
 Route::prefix('/cat-tool')
