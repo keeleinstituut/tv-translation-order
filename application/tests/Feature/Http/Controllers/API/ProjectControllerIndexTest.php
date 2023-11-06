@@ -9,20 +9,50 @@ use App\Http\Controllers\API\ProjectController;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
+use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use App\Models\Tag;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Tests\Assertions;
 use Tests\AuthHelpers;
-use Tests\TestCase;
+use Tests\CreatesApplication;
 use Throwable;
 
 class ProjectControllerIndexTest extends TestCase
 {
+    use CreatesApplication;
+
+    protected static bool $isDatabaseSeeded = false;
+
+    protected static InstitutionUser $privilegedActingUser;
+
+    protected static Collection $projects;
+
+    /**
+     * @throws Throwable
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (static::$isDatabaseSeeded) {
+            return;
+        }
+
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        static::$privilegedActingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ViewInstitutionProjectList);
+        $clientUser = InstitutionUser::factory()->create(['institution' => static::$privilegedActingUser->institution]);
+        static::$projects = static::populateDatabaseWithData(static::$privilegedActingUser, $clientUser);
+
+        static::$isDatabaseSeeded = true;
+    }
+
     /** @return array<array{
      *     Closure(Collection, InstitutionUser): array,
      *     Closure(TestCase, TestResponse, array, Collection, InstitutionUser): void,
@@ -358,13 +388,10 @@ class ProjectControllerIndexTest extends TestCase
      */
     public function test_expected_subset_of_projects_returned_for_valid_payloads(Closure $createValidPayload, Closure $performAssertions): void
     {
-        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ViewInstitutionProjectList);
-        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
-        $projects = static::populateDatabaseWithData($actingUser);
-        $payload = $createValidPayload($projects, $actingUser);
+        $payload = $createValidPayload(static::$projects, static::$privilegedActingUser);
 
         $response = $this
-            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser(static::$privilegedActingUser))
             ->getJson(action(
                 [ProjectController::class, 'index'],
                 $payload
@@ -372,18 +399,18 @@ class ProjectControllerIndexTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonIsArray('data');
-        collect($response->json('data'))->each(function (mixed $item) use ($actingUser, $projects) {
+        collect($response->json('data'))->each(function (mixed $item) {
             $this->assertIsArray($item);
-            $this->assertArraysEqualIgnoringOrder(
-                ['id', 'cost', 'ext_id', 'reference_number', 'institution_id', 'deadline_at', 'type_classifier_value', 'tags', 'source_language_classifier_value', 'destination_language_classifier_values', 'status'],
+            Assertions::assertArraysEqualIgnoringOrder(
+                ['comments', 'created_at', 'deadline_at', 'event_start_at', 'ext_id', 'id', 'institution_id', 'price', 'reference_number', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref', 'workflow_template_id'],
                 array_keys($item)
             );
 
-            $this->assertContains($item['id'], $projects->pluck('id'));
-            $this->assertEquals($item['institution_id'], $actingUser->institution['id']);
+            $this->assertContains($item['id'], static::$projects->pluck('id'));
+            $this->assertEquals($item['institution_id'], static::$privilegedActingUser->institution['id']);
         });
 
-        $performAssertions($this, $response, $payload, $projects, $actingUser);
+        $performAssertions($this, $response, $payload, static::$projects, static::$privilegedActingUser);
     }
 
     /**
@@ -417,27 +444,24 @@ class ProjectControllerIndexTest extends TestCase
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
-        $actingUser = $createActingUser();
-        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
+        $unprivilegedActingUser = $createActingUser();
 
         $response = $this
-            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($unprivilegedActingUser))
             ->getJson(action(
                 [ProjectController::class, 'index'],
-                $createPayload($actingUser)
+                $createPayload($unprivilegedActingUser)
             ));
         $response->assertForbidden();
     }
 
-    private static function populateDatabaseWithData(InstitutionUser $actingUser): Collection
+    private static function populateDatabaseWithData(InstitutionUser $actingUser, InstitutionUser $clientUser): Collection
     {
-        $client = InstitutionUser::factory()->create(['institution' => $actingUser->institution]);
-
         $projects = Project::factory()
             ->state([
                 'institution_id' => $actingUser->institution['id'],
-                'client_institution_user_id' => $client->id,
-                'type_classifier_value_id' => ClassifierValue::firstWhere('type', ClassifierValueType::ProjectType)->id,
+                'client_institution_user_id' => $clientUser->id,
+                'type_classifier_value_id' => ProjectTypeConfig::firstOrFail()->type_classifier_value_id,
                 'translation_domain_classifier_value_id' => ClassifierValue::firstWhere('type', ClassifierValueType::TranslationDomain)->id,
             ])
             ->forEachSequence(
@@ -447,9 +471,10 @@ class ProjectControllerIndexTest extends TestCase
                 ['status' => ProjectStatus::Registered],
                 ['manager_institution_user_id' => $actingUser->id],
                 ['client_institution_user_id' => $actingUser->id],
-                ...ClassifierValue::where('type', ClassifierValueType::ProjectType)
-                    ->get()
-                    ->map(fn (ClassifierValue $classifierValue) => ['type_classifier_value_id' => $classifierValue->id]),
+                ...ProjectTypeConfig::all()
+                    ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
+                        'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
+                    ]),
             )
             ->create();
 

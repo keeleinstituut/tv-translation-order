@@ -111,7 +111,7 @@ class InstitutionUser extends Model
         $actualPrivileges = collect($this->roles)
             ->filter(fn (array $role) => empty($role['deleted_at']))
             ->flatMap(fn (array $role) => $role['privileges'])
-            ->map(fn (array $privilege) => $privilege['key'])
+            ->map(fn (array|string $privilege) => is_array($privilege) ? $privilege['key'] : $privilege)
             ->map(PrivilegeKey::from(...));
 
         return collect($expectedPrivileges)
