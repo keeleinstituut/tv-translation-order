@@ -6,14 +6,11 @@ use App\Models\CachedEntities\InstitutionUser;
 use AuditLogClient\Enums\AuditLogEventFailureType;
 use AuditLogClient\Enums\AuditLogEventType;
 use Carbon\CarbonInterface;
-use Carbon\CarbonInterval;
+use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Sleep;
-use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Channel\AMQPChannel;
 use SyncTools\AmqpConnectionRegistry;
-use Tests\AuthHelpers;
-use Tests\TestCase;
 
 /**
  * Important notes:
@@ -23,15 +20,13 @@ use Tests\TestCase;
  */
 class AuditLogTestCase extends TestCase
 {
-    const TRACE_ID = '123-ABC';
+    use CreatesApplication;
 
-    protected CarbonInterval $sleepDuration;
+    const TRACE_ID = '123-ABC';
 
     public function setUp(): void
     {
         parent::setUp();
-
-        $this->sleepDuration = CarbonInterval::milliseconds(100);
 
         Config::set('amqp.consumer', [
             'queues' => [
@@ -47,6 +42,9 @@ class AuditLogTestCase extends TestCase
         Artisan::call('amqp:setup');
 
         AuthHelpers::fakeServiceValidationResponse();
+        /** @var AMQPChannel $channel */
+        $channel = app(AmqpConnectionRegistry::class)->getConnection()->channel();
+        $channel->queue_purge(env('AUDIT_LOG_EVENTS_QUEUE'));
     }
 
     protected function assertMessageIsReceived(array $expectedBody, bool $checkIsSubset = false): void
@@ -54,23 +52,24 @@ class AuditLogTestCase extends TestCase
         $actualBody = $this->retrieveLatestAuditLogMessageBody();
 
         if ($checkIsSubset) {
-            $this->assertArrayHasSubsetIgnoringOrder($expectedBody, $actualBody);
+            Assertions::assertArrayHasSubsetIgnoringOrder($expectedBody, $actualBody);
         } else {
-            $this->assertArraysEqualIgnoringOrder($expectedBody, $actualBody);
+            Assertions::assertArraysEqualIgnoringOrder($expectedBody, $actualBody);
         }
     }
 
-    protected function retrieveLatestAuditLogMessageBody(): array
+    protected function retrieveLatestAuditLogMessageBody(): ?array
     {
+        /** @var AMQPChannel $channel */
         $channel = app(AmqpConnectionRegistry::class)->getConnection()->channel();
-        $queue = env('AUDIT_LOG_EVENTS_QUEUE');
+        $message = $channel->basic_get(env('AUDIT_LOG_EVENTS_QUEUE'));
 
-        /** @var AMQPMessage $message */
-        while (empty($message = $channel->basic_get($queue))) {
-            Sleep::for($this->sleepDuration);
+        if (empty($message)) {
+            return null;
         }
 
         $message->ack(true);
+
         return json_decode($message->getBody(), true);
     }
 
@@ -123,5 +122,10 @@ class AuditLogTestCase extends TestCase
             'event_parameters' => $eventParameters,
             'trace_id' => $traceId ?? self::TRACE_ID,
         ];
+    }
+
+    protected function prepareAuthorizedRequest($accessToken): static
+    {
+        return $this->withHeader('Authorization', 'Bearer '.$accessToken);
     }
 }

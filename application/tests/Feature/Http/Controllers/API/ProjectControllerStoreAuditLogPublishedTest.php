@@ -4,42 +4,49 @@ namespace Feature\Http\Controllers\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
-use App\Enums\ProjectStatus;
 use App\Http\Controllers\API\ProjectController;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\Media;
 use App\Models\Project;
-use App\Models\SubProject;
-use App\Models\Vendor;
 use AuditLogClient\Enums\AuditLogEventFailureType;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Enums\AuditLogEventType;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
-use Illuminate\Http\Testing\File;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Testing\TestResponse;
+use Tests\Assertions;
 use Tests\AuditLogTestCase;
 use Tests\AuthHelpers;
-use Tests\TestCase;
+use Tests\CreatesApplication;
 use Throwable;
 
 class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
 {
+    use CreatesApplication;
+
+    protected static bool $isDatabaseSeeded = false;
+
+    protected static InstitutionUser $privilegedActingUser;
+
     public function setUp(): void
     {
         parent::setUp();
         Date::setTestNow(Date::now());
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
         Http::fake([
             rtrim(env('CAMUNDA_API_URL'), '/').'/*' => Http::response(['hi']),
         ]);
 
+        if (static::$isDatabaseSeeded) {
+            return;
+        }
+
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        static::$privilegedActingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
+        static::$isDatabaseSeeded = true;
     }
 
     /** @return array<array{
@@ -54,7 +61,7 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
             'Required fields only' => [
                 static::createExampleValidPayload(...),
             ],
-            'Include optional fields for project type of value "T"' => [
+            'Include optional fields for project type of value "CAT_TRANSLATION"' => [
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'reference_number' => '1234',
@@ -132,15 +139,10 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
      */
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload): void
     {
-        Storage::fake(config('media-library.disk_name', 'test-disk'));
-        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
-
-        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
-
-        $payload = collect($createValidPayload($actingUser));
+        $payload = collect($createValidPayload(static::$privilegedActingUser));
 
         $response = $this
-            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser(static::$privilegedActingUser))
             ->postJson(
                 action([ProjectController::class, 'store']),
                 $payload->all()
@@ -266,13 +268,9 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
      */
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
-        Storage::fake(config('media-library.disk_name', 'test-disk'));
-        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
-        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
-
-        $payload = $createInvalidPayload($actingUser);
+        $payload = $createInvalidPayload(static::$privilegedActingUser);
         $this
-            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser(static::$privilegedActingUser))
             ->postJson(
                 action([ProjectController::class, 'store']),
                 $payload
@@ -318,10 +316,7 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
      */
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
-        Storage::fake(config('media-library.disk_name', 'test-disk'));
-        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
         $actingUser = $createActingUser();
-
         $payload = $createPayload($actingUser);
 
         $this
@@ -334,7 +329,6 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
 
         $this->assertCreateProjectFailureMessagePublished(AuditLogEventFailureType::FORBIDDEN, $payload);
     }
-
 
     /** @throws Throwable */
     public static function createExampleValidPayload(): array
@@ -360,47 +354,53 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
         ];
     }
 
-    private function assertCreateProjectMessagePublished(Project $project): void {
+    private function assertCreateProjectMessagePublished(Project $project): void
+    {
         $actualMessageBody = $this->retrieveLatestAuditLogMessageBody();
         $this->assertMessageRepresentsProjectCreation($actualMessageBody, $project);
     }
-    private function assertMessageRepresentsProjectCreation(array $actualMessageBody, Project $project): void {
+
+    private function assertMessageRepresentsProjectCreation(array $actualMessageBody, Project $project): void
+    {
         $expectedMessageBodySubset = [
             'event_type' => AuditLogEventType::CreateObject->value,
             'happened_at' => Date::getTestNow()->toISOString(),
-            'failure_type' => null
+            'failure_type' => null,
         ];
 
-        $this->assertArrayHasSubsetIgnoringOrder(
+        Assertions::assertArrayHasSubsetIgnoringOrder(
             collect($expectedMessageBodySubset)->except('event_parameters')->all(),
             collect($actualMessageBody)->except('event_parameters')->all(),
         );
-        $this->assertArraysEqualIgnoringOrder(
+        Assertions::assertArraysEqualIgnoringOrder(
             [
                 'object_type' => AuditLogEventObjectType::Project->value,
                 'object_data' => $project->getAuditLogRepresentation(),
+                'object_identity_subset' => $project->getIdentitySubset(),
             ],
             data_get($actualMessageBody, 'event_parameters'),
         );
     }
 
-    private function assertCreateProjectFailureMessagePublished(AuditLogEventFailureType $failureType, array $expectedInput): void {
+    private function assertCreateProjectFailureMessagePublished(AuditLogEventFailureType $failureType, array $expectedInput): void
+    {
         $actualMessageBody = $this->retrieveLatestAuditLogMessageBody();
         $this->assertMessageRepresentsProjectCreationFailure($actualMessageBody, $failureType, $expectedInput);
     }
 
-    private function assertMessageRepresentsProjectCreationFailure(array $actualMessageBody, AuditLogEventFailureType $failureType, array $expectedInput): void {
+    private function assertMessageRepresentsProjectCreationFailure(array $actualMessageBody, AuditLogEventFailureType $failureType, array $expectedInput): void
+    {
         $expectedMessageBodySubset = [
             'event_type' => AuditLogEventType::CreateObject->value,
             'happened_at' => Date::getTestNow()->toISOString(),
-            'failure_type' => $failureType->value
+            'failure_type' => $failureType->value,
         ];
 
-        $this->assertArrayHasSubsetIgnoringOrder(
+        Assertions::assertArrayHasSubsetIgnoringOrder(
             collect($expectedMessageBodySubset)->except('event_parameters')->all(),
             collect($actualMessageBody)->except('event_parameters')->all(),
         );
-        $this->assertArraysEqualIgnoringOrder(
+        Assertions::assertArraysEqualIgnoringOrder(
             [
                 'object_type' => AuditLogEventObjectType::Project->value,
                 'input' => collect($expectedInput)->except(['input.source_files', 'input.help_files.source_files'])->all(),

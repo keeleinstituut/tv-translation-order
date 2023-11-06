@@ -11,13 +11,12 @@ use AuditLogClient\Enums\AuditLogEventType;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
+use Tests\Assertions;
 use Tests\AuditLogTestCase;
 use Tests\AuthHelpers;
-use Tests\Feature\RepresentationHelpers;
 
 class PriceControllerAuditLogPublishedTest extends AuditLogTestCase
 {
-
     public function test_create_audit_log_published(): void
     {
         // GIVEN
@@ -55,7 +54,6 @@ class PriceControllerAuditLogPublishedTest extends AuditLogTestCase
         // THEN
         $this->assertModifyVendorMessagePublished($testVendor, 0, 1);
     }
-
 
     public function test_bulk_create_audit_log_published(): void
     {
@@ -103,8 +101,8 @@ class PriceControllerAuditLogPublishedTest extends AuditLogTestCase
         Collection::times($payloadVendors->count())->map(function () use ($payloadVendors) {
             $actualMessageBody = $this->retrieveLatestAuditLogMessageBody();
             $actualVendorId = data_get($actualMessageBody, 'event_parameters.object_identity_subset.id');
-            $vendor = collect($payloadVendors)->first(fn(Vendor $vendor) => $vendor->id === $actualVendorId);
-
+            $vendor = collect($payloadVendors)->first(fn (Vendor $vendor) => $vendor->id === $actualVendorId);
+            $this->assertNotNull($vendor);
             $this->assertMessageRepresentsVendorPriceChange($actualMessageBody, $vendor->refresh(), 0, 1);
         });
     }
@@ -146,7 +144,7 @@ class PriceControllerAuditLogPublishedTest extends AuditLogTestCase
 
             $vendor = collect($targetPrices)
                 ->map(fn (Price $price) => $price->vendor)
-                ->first(fn(Vendor $vendor) => $vendor->id === $actualVendorId);
+                ->first(fn (Vendor $vendor) => $vendor->id === $actualVendorId);
 
             $this->assertMessageRepresentsVendorPriceChange($actualMessageBody, $vendor->refresh(), 1, 0);
         });
@@ -198,29 +196,31 @@ class PriceControllerAuditLogPublishedTest extends AuditLogTestCase
 
             $vendor = collect($payloadPrices)
                 ->map(fn (Price $price) => $price->vendor)
-                ->first(fn(Vendor $vendor) => $vendor->id === $actualVendorId);
+                ->first(fn (Vendor $vendor) => $vendor->id === $actualVendorId);
 
             $this->assertMessageRepresentsVendorPriceChange($actualMessageBody, $vendor->refresh(), 1, 1);
         });
     }
 
-    private function assertModifyVendorMessagePublished(Vendor $vendor, int $expectedPricesCountBefore, int $expectedPricesCountAfter): void {
+    private function assertModifyVendorMessagePublished(Vendor $vendor, int $expectedPricesCountBefore, int $expectedPricesCountAfter): void
+    {
         $actualMessageBody = $this->retrieveLatestAuditLogMessageBody();
         $this->assertMessageRepresentsVendorPriceChange($actualMessageBody, $vendor, $expectedPricesCountBefore, $expectedPricesCountAfter);
     }
 
-    private function assertMessageRepresentsVendorPriceChange(array $actualMessageBody, Vendor $vendor, int $expectedPricesCountBefore, int $expectedPricesCountAfter): void {
+    private function assertMessageRepresentsVendorPriceChange(array $actualMessageBody, Vendor $vendor, int $expectedPricesCountBefore, int $expectedPricesCountAfter): void
+    {
         $expectedMessageBodySubset = [
             'event_type' => AuditLogEventType::ModifyObject->value,
             'happened_at' => Date::getTestNow()->toISOString(),
-            'failure_type' => null
+            'failure_type' => null,
         ];
 
-        $this->assertArrayHasSubsetIgnoringOrder(
+        Assertions::assertArrayHasSubsetIgnoringOrder(
             collect($expectedMessageBodySubset)->except('event_parameters')->all(),
             collect($actualMessageBody)->except('event_parameters')->all(),
         );
-        $this->assertArraysEqualIgnoringOrder(
+        Assertions::assertArraysEqualIgnoringOrder(
             [
                 'object_type' => AuditLogEventObjectType::Vendor->value,
                 'object_identity_subset' => $vendor->getIdentitySubset(),
