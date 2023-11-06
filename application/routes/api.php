@@ -114,6 +114,7 @@ Route::prefix('/assignments')
         Route::put('/{id}/assignee-comment', 'updateAssigneeComment');
         Route::post('/{id}/candidates/bulk', 'addCandidates');
         Route::delete('/{id}/candidates/bulk', 'deleteCandidate');
+        Route::post('/{id}/mark-as-completed', 'markAsCompleted');
     });
 
 Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);

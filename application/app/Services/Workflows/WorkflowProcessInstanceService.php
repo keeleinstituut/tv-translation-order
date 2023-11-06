@@ -2,6 +2,7 @@
 
 namespace App\Services\Workflows;
 
+use App\Enums\AssignmentStatus;
 use App\Enums\Feature;
 use App\Enums\JobKey;
 use App\Enums\ProjectStatus;
@@ -35,15 +36,9 @@ class WorkflowProcessInstanceService
      */
     public function startWorkflowProcessInstance(): void
     {
-        $template = SubProjectWorkflowTemplatePicker::getWorkflowTemplate(
-            $this->project->typeClassifierValue
-                ->projectTypeConfig
-                ->workflow_process_definition_id
-        );
-
         $response = WorkflowService::startProcessDefinition($this->getProcessDefinitionId(), [
             'businessKey' => $this->getBusinessKey(),
-            'variables' => $this->composeProcessInstanceVariables($template)
+            'variables' => $this->composeProcessInstanceVariables()
         ]);
 
         if (!isset($response['id'])) {
@@ -77,6 +72,22 @@ class WorkflowProcessInstanceService
         }
     }
 
+    public function syncProcessInstanceVariables(): void
+    {
+        $variables = $this->composeProcessInstanceVariables();
+        try {
+            foreach ($variables as $name => $value) {
+                WorkflowService::updateProcessInstanceVariable(
+                    $this->getProcessInstanceId(),
+                    $name,
+                    $value
+                );
+            }
+        } catch (Throwable $e) {
+            throw new RuntimeException('Updating of the process instance variables failed.', previous: $e);
+        }
+    }
+
     /**
      * @throws Throwable
      */
@@ -92,8 +103,46 @@ class WorkflowProcessInstanceService
         }
     }
 
+    /**
+     * @throws Throwable
+     */
+    public function markTaskAsCompletedBasedOnAssignment(Assignment $assignment): void
+    {
+        // TODO: add fetch of the tasks based on the assignment ID.
+        $tasks = WorkflowService::getTask([
+            'processInstanceId' => $this->getProcessInstanceId(),
+            'processInstanceVariables' => [
+                'assignment_id' => $assignment->id
+            ]
+        ]);
+
+        if (empty($taskId = $tasks[0]['id'] ?? null)) {
+            throw new RuntimeException("Task not found for the assignment");
+        }
+
+        match ($assignment->jobDefinition->job_key) {
+            JobKey::JOB_OVERVIEW => self::completeSubProjectReviewTask($taskId),
+            default => self::completeSimpleTask($taskId)
+        };
+
+        $assignment->status = AssignmentStatus::Done;
+        $assignment->saveOrFail();
+
+        TrackSubProjectStatus::dispatch($assignment->subProject);
+    }
+
+    private function completeSimpleTask(string $taskId): void
+    {
+        try {
+            WorkflowService::completeTask($taskId);
+        } catch (RequestException $e) {
+            throw new RuntimeException("Marking task as completed failed", $e->getCode(), previous: $e);
+        }
+    }
+
     private function completeSubProjectReviewTask(string $taskId, bool $successful = true): void
     {
+        try {
         WorkflowService::completeTask($taskId, [
             'variables' => [
                 'subProjectFinished' => [
@@ -101,9 +150,9 @@ class WorkflowProcessInstanceService
                 ]
             ]
         ]);
-
-        $subProject = $this->getSubProject($taskId);
-        TrackSubProjectStatus::dispatch($subProject);
+        } catch (RequestException $e) {
+            throw new RuntimeException("Marking sub-project review task as completed failed", $e->getCode(), previous: $e);
+        }
     }
 
     /**
@@ -164,8 +213,10 @@ class WorkflowProcessInstanceService
         return 'workflow.' . $this->project->id;
     }
 
-    private function composeProcessInstanceVariables(SubProjectWorkflowTemplateInterface $template): array
+    private function composeProcessInstanceVariables(): array
     {
+        $template = $this->getSubProjectWorkflowTemplate();
+
         return [
             'subProjects' => [
                 'value' => $this->project->subProjects->map(function (SubProject $subProject) use ($template) {
@@ -229,5 +280,14 @@ class WorkflowProcessInstanceService
     private function getSubProject(string $taskId): SubProject
     {
         return $this->project->subProjects()->first();
+    }
+
+    private function getSubProjectWorkflowTemplate(): SubProjectWorkflowTemplateInterface
+    {
+        return SubProjectWorkflowTemplatePicker::getWorkflowTemplate(
+            $this->project->typeClassifierValue
+                ->projectTypeConfig
+                ->workflow_process_definition_id
+        );
     }
 }

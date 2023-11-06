@@ -182,9 +182,13 @@ class SubProject extends Model
         return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
     }
 
-    public function isWorkflowStarted(): bool
+    public function workflowStarted(): bool
     {
-        return filled($this->workflow_ref);
+        return !in_array($this->status, [
+            SubProjectStatus::New,
+            SubProjectStatus::Registered,
+            SubProjectStatus::Cancelled
+        ]);
     }
 
 

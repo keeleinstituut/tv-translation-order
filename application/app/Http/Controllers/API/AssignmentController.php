@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Enums\Feature;
+use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
@@ -165,12 +165,12 @@ class AssignmentController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
-            $assignment->fill($request->validated());
             $this->authorize('update', $assignment);
-            $assignment->saveOrFail();
-            $assignment->refresh();
 
-            return AssignmentResource::make($assignment);
+            $assignment->fill($request->validated());
+            $assignment->saveOrFail();
+
+            return AssignmentResource::make($assignment->refresh());
         });
     }
 
@@ -189,8 +189,9 @@ class AssignmentController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
-            $assignment->fill($request->validated());
             $this->authorize('updateAssigneeComment', $assignment);
+
+            $assignment->fill($request->validated());
             $assignment->saveOrFail();
 
             return AssignmentResource::make($assignment);
@@ -214,6 +215,7 @@ class AssignmentController extends Controller
         $params = collect($request->validated());
 
         return DB::transaction(function () use ($assignmentId, $params) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
             $this->authorize('update', $assignment);
 
@@ -244,6 +246,7 @@ class AssignmentController extends Controller
         $params = collect($request->validated());
 
         return DB::transaction(function () use ($assignmentId, $params) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
             $this->authorize('update', $assignment);
 
@@ -261,26 +264,74 @@ class AssignmentController extends Controller
 
     /**
      * @throws Throwable
-     * TODO: Implement logic of removing assignment in case if it's an additional assignment, not the main one.
-     * TODO: Implement interaction with Camunda
      */
-    //    #[OA\Delete(
-    //        path: '/assignment/{id}',
-    //        summary: 'Delete assignment',
-    //        tags: ['Assignment management'],
-    //        parameters: [new OAH\UuidPath('id')],
-    //        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    //    )]
-    //    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
+    #[OA\Delete(
+        path: '/assignment/{id}',
+        summary: 'Delete assignment',
+        tags: ['Assignment management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
     public function destroy(string $id): \Illuminate\Http\Response
     {
         DB::transaction(function () use ($id) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($id);
             $this->authorize('delete', $assignment);
+
+            $subProjectHasAssignmentWithTheSameJobDefinition = $assignment
+                ->getSameJobDefinitionAssignmentsQuery()->exists();
+
+            if (!$subProjectHasAssignmentWithTheSameJobDefinition) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the last assignment');
+            }
+
+            if ($assignment->status === AssignmentStatus::InProgress) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the assignment as the sub-project workflow is in progress.');
+            } elseif ($assignment->status === AssignmentStatus::Done) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the assignment as the task related to it is done.');
+            }
+
+            $workflow = $assignment->subProject->project->workflow();
             $assignment->delete();
+
+            if ($workflow->isStarted()) {
+                $workflow->syncProcessInstanceVariables();
+            }
         });
 
         return response()->noContent();
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/assignments/{id}/mark-as-completed',
+        description: 'Note: available only for assignments with status `IN_PROGRESS`',
+        summary: 'Mark assignment as completed',
+        tags: ['Assignment management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
+    public function markAsCompleted(string $id): AssignmentResource
+    {
+        return DB::transaction(function () use ($id) {
+            /** @var Assignment $assignment */
+            $assignment = self::getBaseQuery()->findOrFail($id);
+            $this->authorize('markAsCompleted', $assignment);
+
+            if ($assignment->status !== AssignmentStatus::InProgress) {
+                abort(Response::HTTP_BAD_REQUEST, 'Marking task as completed failed as the assignment task is not in progress');
+            }
+
+            $assignment->subProject->project->workflow()
+                ->markTaskAsCompletedBasedOnAssignment($assignment);
+
+            return AssignmentResource::make($assignment);
+        });
     }
 
     private static function getSubProjectOrFail(string $id): SubProject
@@ -304,7 +355,11 @@ class AssignmentController extends Controller
             ]);
     }
 
-    private static function getAssignmentsByIds(Collection $ids): mixed
+    /**
+     * @param Collection $ids
+     * @return \Illuminate\Database\Eloquent\Collection<int, Assignment>
+     */
+    private static function getAssignmentsByIds(Collection $ids): \Illuminate\Database\Eloquent\Collection
     {
         return self::getBaseQuery()->whereIn('id', $ids)->get();
     }

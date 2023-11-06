@@ -42,6 +42,9 @@ class WorkflowService
         return $response->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
     public static function updateProcessInstanceVariable($processInstanceId, $variableName, $params = [])
     {
         $response = static::client()->put("/process-instance/$processInstanceId/variables/$variableName", $params);
@@ -80,6 +83,9 @@ class WorkflowService
         return $response->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
     public static function completeTask($taskId, $params = [])
     {
         $response = static::client()->post("/task/$taskId/complete", $params);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\AssignmentStatus;
 use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -21,6 +22,7 @@ use OpenApi\Attributes as OA;
         'comments',
         'assignee_comments',
         'job_definition',
+        'status',
         'created_at',
         'updated_at',
     ],
@@ -30,6 +32,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'ext_id', type: 'string'),
         new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'comments', type: 'string'),
+        new OA\Property(property: 'status', type: 'string', format: 'enum', enum: AssignmentStatus::class),
         new OA\Property(property: 'assignee_comments', type: 'string'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
@@ -55,6 +58,7 @@ class AssignmentResource extends JsonResource
                 'id',
                 'sub_project_id',
                 'ext_id',
+                'status',
                 'deadline_at',
                 'comments',
                 'assignee_comments',

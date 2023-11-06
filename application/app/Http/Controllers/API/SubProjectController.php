@@ -9,6 +9,7 @@ use App\Http\Requests\API\SubProjectListRequest;
 use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Resources\API\SubProjectResource;
 use App\Http\Resources\API\VolumeResource;
+use App\Models\Assignment;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use DB;
@@ -189,8 +190,15 @@ class SubProjectController extends Controller
 
         $this->authorize('startWorkflow', $subProject);
 
-        if ($subProject->isWorkflowStarted()) {
+        if ($subProject->workflowStarted()) {
             abort(400, 'Workflow is already started for the sub-project');
+        }
+
+        $hasAssignmentWithoutCandidates = $subProject->assignments()
+            ->whereDoesntHave('candidates')->exists();
+
+        if ($hasAssignmentWithoutCandidates) {
+            abort(400, 'Sub-project contains job(s) without candidates');
         }
 
         $subProject->project->workflow()->startSubProjectWorkflow($subProject);

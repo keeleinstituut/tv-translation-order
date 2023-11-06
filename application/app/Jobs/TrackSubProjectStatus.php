@@ -4,8 +4,11 @@ namespace App\Jobs;
 
 use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
+use App\Models\Assignment;
+use App\Models\Candidate;
 use App\Models\JobDefinition;
 use App\Models\SubProject;
+use DB;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -48,59 +51,61 @@ class TrackSubProjectStatus implements ShouldQueue, ShouldBeUnique
         $jobDefinition = $this->getWorkflowActiveJobDefinition();
 
         /** Empty job definition means that there are no tasks that have relation with assignments */
-        if (empty($jobDefinition)) {
-            if ($this->subProject->status === SubProjectStatus::TasksInProgress) {
-                $this->subProject->status = SubProjectStatus::Completed;
-                $this->subProject->active_job_definition_id = null;
-                $this->subProject->saveOrFail();
-            }
-
-            return;
-        }
-
-        if (in_array($this->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
-            $this->subProject->status = SubProjectStatus::TasksSubmittedToVendors;
-            $this->subProject->active_job_definition_id = $jobDefinition->id;
-            $this->subProject->saveOrFail();
-            return;
-        }
-
-        if ($this->subProject->status === SubProjectStatus::TasksCompleted) {
-            if ($this->hasAssignmentWithoutCandidates($jobDefinition)) {
-                return;
-            }
-
-            $this->subProject->status = $this->hasAssignmentWithoutAssignee($jobDefinition) ?
-                SubProjectStatus::TasksSubmittedToVendors :
-                SubProjectStatus::TasksInProgress;
-
-            $this->subProject->active_job_definition_id = $jobDefinition->id;
-            $this->subProject->saveOrFail();
-        }
-
-        if ($this->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
-            if ($this->hasAssigneeForAllAssignments($jobDefinition)) {
-                $this->subProject->status = SubProjectStatus::TasksInProgress;
-                $this->subProject->active_job_definition_id = $jobDefinition->id;
-                return;
-            }
-        }
-
-        if ($this->subProject->status === SubProjectStatus::TasksInProgress) {
-            if ($this->subProject->active_job_definition_id !== $jobDefinition->id) {
-                if ($this->hasAssignmentWithoutCandidates($jobDefinition)) {
-                    $this->subProject->status = SubProjectStatus::TasksCompleted;
-                } elseif ($this->hasAssignmentWithoutAssignee($jobDefinition)) {
-                    $this->subProject->status = SubProjectStatus::TasksSubmittedToVendors;
-                    $this->subProject->active_job_definition_id = $jobDefinition->id;
-                } else {
-                    $this->subProject->status = SubProjectStatus::TasksInProgress;
-                    $this->subProject->active_job_definition_id = $jobDefinition->id;
+        DB::transaction(function () use ($jobDefinition) {
+            if (empty($jobDefinition)) {
+                if ($this->subProject->status === SubProjectStatus::TasksInProgress) {
+                    $this->subProject->status = SubProjectStatus::Completed;
+                    $this->subProject->active_job_definition_id = null;
+                    $this->subProject->saveOrFail();
                 }
 
+                return;
+            }
+
+            if (in_array($this->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+                $this->subProject->status = SubProjectStatus::TasksSubmittedToVendors;
+                $this->subProject->active_job_definition_id = $jobDefinition->id;
+                $this->subProject->saveOrFail();
+                return;
+            }
+
+            if ($this->subProject->status === SubProjectStatus::TasksCompleted) {
+                if ($this->hasAssignmentWithoutCandidates($jobDefinition)) {
+                    return;
+                }
+
+                $this->subProject->status = $this->hasAssignmentWithoutAssignee($jobDefinition) ?
+                    SubProjectStatus::TasksSubmittedToVendors :
+                    SubProjectStatus::TasksInProgress;
+
+                $this->subProject->active_job_definition_id = $jobDefinition->id;
                 $this->subProject->saveOrFail();
             }
-        }
+
+            if ($this->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
+                if ($this->hasAssigneeForAllAssignments($jobDefinition)) {
+                    $this->subProject->status = SubProjectStatus::TasksInProgress;
+                    $this->subProject->active_job_definition_id = $jobDefinition->id;
+                    return;
+                }
+            }
+
+            if ($this->subProject->status === SubProjectStatus::TasksInProgress) {
+                if ($this->subProject->active_job_definition_id !== $jobDefinition->id) {
+                    if ($this->hasAssignmentWithoutCandidates($jobDefinition)) {
+                        $this->subProject->status = SubProjectStatus::TasksCompleted;
+                    } elseif ($this->hasAssignmentWithoutAssignee($jobDefinition)) {
+                        $this->subProject->status = SubProjectStatus::TasksSubmittedToVendors;
+                        $this->subProject->active_job_definition_id = $jobDefinition->id;
+                    } else {
+                        $this->subProject->status = SubProjectStatus::TasksInProgress;
+                        $this->subProject->active_job_definition_id = $jobDefinition->id;
+                    }
+
+                    $this->subProject->saveOrFail();
+                }
+            }
+        });
     }
 
 

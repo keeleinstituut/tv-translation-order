@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Enums\SubProjectStatus;
 use App\Models\Assignment;
 use App\Models\Volume;
+use Throwable;
 
 class AssignmentObserver
 {
@@ -13,19 +14,12 @@ class AssignmentObserver
      */
     public function creating(Assignment $assignment): void
     {
-        $idx = $assignment->jobDefinition?->sequence ?: 0;
-
-        $assignment->ext_id = collect([
-            $assignment->subProject->ext_id, '/', ++$idx,
-            '.',
-            Assignment::where('sub_project_id', $assignment->sub_project_id)
-                ->where('job_definition_id', $assignment->job_definition_id)
-                ->count() + 1,
-        ])->implode('');
+        $this->setExternalId($assignment);
     }
 
     /**
      * Handle the Assignment "created" event.
+     * @throws Throwable
      */
     public function created(Assignment $assignment): void
     {
@@ -34,10 +28,26 @@ class AssignmentObserver
 
     /**
      * Handle the Assignment "updated" event.
+     * @throws Throwable
      */
     public function updated(Assignment $assignment): void
     {
         $this->updateVolumesAssigneeFields($assignment);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function deleting(Assignment $assignment): void
+    {
+        $assignments = $assignment->getSameJobDefinitionAssignmentsQuery()
+            ->orderBy('created_at')
+            ->get();
+
+        $assignments->each(function (Assignment $assignment, int $idx) {
+            $this->setExternalId($assignment, $idx);
+            $assignment->saveOrFail();
+        });
     }
 
     /**
@@ -64,6 +74,9 @@ class AssignmentObserver
         //
     }
 
+    /**
+     * @throws Throwable
+     */
     private function updateVolumesAssigneeFields(Assignment $assignment): void
     {
         if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
@@ -96,5 +109,17 @@ class AssignmentObserver
             $project->price = $project->getPriceCalculator()->getPrice();
             $project->saveOrFail();
         }
+    }
+
+    private function setExternalId(Assignment $assignment, int $sequence = null): void
+    {
+        $idx = $assignment->jobDefinition?->sequence ?: 0;
+        $sequence = $sequence ?: $assignment->getSameJobDefinitionAssignmentsQuery()
+                ->count() + 1;
+        $assignment->ext_id = collect([
+            $assignment->subProject->ext_id, '/', ++$idx,
+            '.',
+            $sequence,
+        ])->implode('');
     }
 }

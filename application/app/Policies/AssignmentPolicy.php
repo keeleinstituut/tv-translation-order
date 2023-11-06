@@ -61,25 +61,30 @@ class AssignmentPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, Project $project): bool
+    public function delete(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return false; // TODO
+        return Gate::allows('update', [$assignment->subProject->project]);
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, Project $project): bool
+    public function restore(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return false; // TODO
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, Project $project): bool
+    public function forceDelete(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return false; // TODO
+        return false;
+    }
+
+    public function markAsCompleted(JwtPayloadUser $user, Assignment $assignment): bool
+    {
+        return Gate::allows('update', [$assignment->subProject->project]);
     }
 
     public static function isInSameInstitutionAsCurrentUser(Assignment $assignment): bool
