@@ -70,6 +70,7 @@ class AssignmentResource extends JsonResource
             'candidates' => CandidateResource::collection($this->whenLoaded('candidates')),
             'volumes' => VolumeResource::collection($this->whenLoaded('volumes')),
             'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
+            'subProject' => SubProjectResource::make($this->whenLoaded('subProject')),
         ];
     }
 }
