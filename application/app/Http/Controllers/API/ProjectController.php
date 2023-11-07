@@ -195,7 +195,7 @@ class ProjectController extends Controller
                 ClassifierValue::findMany($params->get('destination_language_classifier_value_ids'))
             );
 
-            $project->workflow()->startProcessInstance();
+            $project->workflow()->startWorkflowProcessInstance();
 
             $project->refresh();
             $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');

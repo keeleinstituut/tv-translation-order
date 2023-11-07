@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1r9j20p" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.19.0">
+  <bpmn:process id="post-translation-sub-project" name="Järeltõlge" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_0wpeofx</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="Event_0ynga9c">
+      <bpmn:incoming>Flow_07t3pcc</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Activity_18oruzy">
+      <bpmn:incoming>Flow_0j4ny63</bpmn:incoming>
+      <bpmn:outgoing>Flow_07t3pcc</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${subProject.translations}" camunda:elementVariable="subProcess" />
+      <bpmn:startEvent id="Event_1vqexsa">
+        <bpmn:outgoing>Flow_0k66thw</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:userTask id="Activity_0yz3jju" name=" Järeltõlge ilma CAT tööriistata" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
+            <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="type_classifier_value_id">${subProcess.type_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="deadline_at">${subProcess.deadline_at}</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_0k66thw</bpmn:incoming>
+        <bpmn:outgoing>Flow_16llxd7</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:sequenceFlow id="Flow_0k66thw" sourceRef="Event_1vqexsa" targetRef="Activity_0yz3jju" />
+      <bpmn:endEvent id="Event_0e8e6lg">
+        <bpmn:incoming>Flow_16llxd7</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_16llxd7" sourceRef="Activity_0yz3jju" targetRef="Event_0e8e6lg" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_07t3pcc" sourceRef="Activity_18oruzy" targetRef="Event_0ynga9c" />
+    <bpmn:intermediateCatchEvent id="Event_1kkz1y1" name="Sub-project workflow started">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="sub_project_id">${subProject.sub_project_id}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0wpeofx</bpmn:incoming>
+      <bpmn:outgoing>Flow_0j4ny63</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1933e71" messageRef="Message_343hnr7" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_0wpeofx" sourceRef="StartEvent_1" targetRef="Event_1kkz1y1" />
+    <bpmn:sequenceFlow id="Flow_0j4ny63" sourceRef="Event_1kkz1y1" targetRef="Activity_18oruzy" />
+  </bpmn:process>
+  <bpmn:message id="Message_343hnr7" name="SubProjectWorkflowStarted" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="post-translation-sub-project">
+      <bpmndi:BPMNShape id="Event_0ynga9c_di" bpmnElement="Event_0ynga9c">
+        <dc:Bounds x="742" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1kkz1y1_di" bpmnElement="Event_1kkz1y1">
+        <dc:Bounds x="242" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="220" y="205" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_18oruzy_di" bpmnElement="Activity_18oruzy" isExpanded="true">
+        <dc:Bounds x="330" y="80" width="350" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1vqexsa_di" bpmnElement="Event_1vqexsa">
+        <dc:Bounds x="370" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1puaj76" bpmnElement="Activity_0yz3jju">
+        <dc:Bounds x="460" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0hni9og" bpmnElement="Event_0e8e6lg">
+        <dc:Bounds x="612" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0k66thw_di" bpmnElement="Flow_0k66thw">
+        <di:waypoint x="406" y="180" />
+        <di:waypoint x="460" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16llxd7_di" bpmnElement="Flow_16llxd7">
+        <di:waypoint x="560" y="180" />
+        <di:waypoint x="612" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_07t3pcc_di" bpmnElement="Flow_07t3pcc">
+        <di:waypoint x="680" y="180" />
+        <di:waypoint x="742" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0wpeofx_di" bpmnElement="Flow_0wpeofx">
+        <di:waypoint x="188" y="180" />
+        <di:waypoint x="242" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0j4ny63_di" bpmnElement="Flow_0j4ny63">
+        <di:waypoint x="278" y="180" />
+        <di:waypoint x="330" y="180" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

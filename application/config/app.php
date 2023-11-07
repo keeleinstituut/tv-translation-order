@@ -220,7 +220,7 @@ return [
 
     'workflows' => [
         'process_definitions' => [
-            'project' => env('PROJECT_CAMUNDA_PROCESS_DEFINITION_KEY', 'Sample-project'),
+            'project' => env('PROJECT_CAMUNDA_PROCESS_DEFINITION_KEY', 'project-workflow'),
         ],
     ],
 ];
