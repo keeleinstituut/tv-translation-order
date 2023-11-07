@@ -195,11 +195,10 @@ class ProjectController extends Controller
                 ClassifierValue::findMany($params->get('destination_language_classifier_value_ids'))
             );
 
+            $project->refresh();
             $project->workflow()->startWorkflowProcessInstance();
 
-            $project->refresh();
             $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');
-
             return new ProjectResource($project);
         });
     }
@@ -229,6 +228,7 @@ class ProjectController extends Controller
             'sourceFiles',
             'finalFiles',
             'helpFiles',
+            'tags',
         ])->findOrFail($id);
 
         $this->authorize('view', $project);

@@ -68,14 +68,14 @@ class WorkflowService
 
     public static function getTask($params = [])
     {
-        $response = static::client()->get('/task', $params);
+        $response = static::client()->post('/task', $params);
 
         return $response->throw()->json();
     }
 
     public static function getTaskCount($params = [])
     {
-        $response = static::client()->get('/task/count', $params);
+        $response = static::client()->post('/task/count', $params);
 
         return $response->throw()->json();
     }
@@ -103,6 +103,13 @@ class WorkflowService
     public static function sendMessage($params = [])
     {
         $response = static::client()->post('/message', $params);
+
+        return $response->throw()->json();
+    }
+
+    public static function getVariableInstance($params = [])
+    {
+        $response = static::client()->get('/variable-instance', $params);
 
         return $response->throw()->json();
     }

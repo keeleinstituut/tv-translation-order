@@ -12,6 +12,7 @@
       <bpmn:userTask id="translation" name="Vandetõlge" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
         <bpmn:extensionElements>
           <camunda:inputOutput>
+            <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
             <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
             <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
@@ -48,6 +49,7 @@
     <bpmn:userTask id="Activity_08667vg" name="Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus" camunda:assignee="${subProject.overview.assignee}" camunda:candidateUsers="${subProject.overview.candidateUsers}">
       <bpmn:extensionElements>
         <camunda:inputOutput>
+          <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
           <camunda:inputParameter name="assignment_id">${subProject.overview.assignment_id}</camunda:inputParameter>
           <camunda:inputParameter name="source_language_classifier_value_id">${subProject.overview.source_language_classifier_value_id}</camunda:inputParameter>
           <camunda:inputParameter name="destination_language_classifier_value_id">${subProject.overview.destination_language_classifier_value_id}</camunda:inputParameter>

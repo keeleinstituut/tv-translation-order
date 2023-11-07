@@ -11,6 +11,7 @@
       <bpmn:userTask id="translation" name="Tõlkimine" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
         <bpmn:extensionElements>
           <camunda:inputOutput>
+            <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
             <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
             <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
