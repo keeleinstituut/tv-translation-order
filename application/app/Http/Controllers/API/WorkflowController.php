@@ -5,7 +5,6 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
-use App\Http\Resources\API\AssignmentResource;
 use App\Http\Resources\TaskResource;
 use App\Models\Assignment;
 use App\Models\Vendor;
@@ -123,6 +122,46 @@ class WorkflowController extends Controller
         $data = $this->mapWithExtraInfo($data);
 
         return TaskResource::collection($pagination->toPaginator($data, $count));
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/accept',
+        description: 'Note: available only for tasks without assignee',
+        summary: 'Assign user to the task',
+        tags: ['Workflow management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Updated task', response: Response::HTTP_OK)]
+    public function acceptTask(string $id): TaskResource
+    {
+        $task = WorkflowService::getTask(['id' => $id]);
+        $assignment = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
+            ->find($task['assignment_id']);
+
+
+        $institutionUserId = Auth::user()->institutionUserId;
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', $institutionUserId)
+            ->first();
+
+        if (!in_array($vendor->id, $task['candidates'])) {
+            abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
+        }
+
+        WorkflowService::setAssignee($id, $vendor->id);
+
+        if (filled($assignment)) {
+            DB::transaction(function () use ($assignment, $vendor) {
+                $assignment->assigned_vendor_id = $vendor->id;
+                $assignment->saveOrFail();
+            });
+        }
+
+        return TaskResource::make($task);
     }
 
     public function completeTask(string $id)
@@ -288,45 +327,5 @@ class PaginationBuilder {
         return Container::getInstance()->makeWith(LengthAwarePaginator::class, compact(
             'items', 'total', 'perPage', 'currentPage', 'options'
         ));
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[OA\Post(
-        path: '/workflow/tasks/{id}/accept',
-        description: 'Note: available only for tasks without assignee',
-        summary: 'Assign user to the task',
-        tags: ['Workflow management'],
-        parameters: [new OAH\UuidPath('id')],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Updated task', response: Response::HTTP_OK)]
-    public function acceptTask(string $id): TaskResource
-    {
-        $task = WorkflowService::getTask(['id' => $id]);
-        $assignment = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
-            ->find($task['assignment_id']);
-
-
-        $institutionUserId = Auth::user()->institutionUserId;
-        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
-            ->where('institution_user_id', $institutionUserId)
-            ->first();
-
-        if (!in_array($vendor->id, $task['candidates'])) {
-            abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
-        }
-
-        WorkflowService::setAssignee($id, $vendor->id);
-
-        if (filled($assignment)) {
-            DB::transaction(function () use ($assignment, $vendor) {
-                $assignment->assigned_vendor_id = $vendor->id;
-                $assignment->saveOrFail();
-            });
-        }
-
-        return TaskResource::make($task);
     }
 }
