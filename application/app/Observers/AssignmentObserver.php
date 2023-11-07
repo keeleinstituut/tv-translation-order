@@ -2,8 +2,10 @@
 
 namespace App\Observers;
 
+use App\Enums\CandidateStatus;
 use App\Enums\SubProjectStatus;
 use App\Models\Assignment;
+use App\Models\Candidate;
 use App\Models\Volume;
 use Throwable;
 
@@ -90,6 +92,16 @@ class AssignmentObserver
                     )?->getUnitFee($volume->unit_type);
                     $volume->save();
                 }));
+            }
+
+            /** @var Candidate $candidate */
+            $candidate = $assignment->candidates()
+                ->where('vendor_id', $assignment->assigned_vendor_id)
+                ->first();
+
+            if (filled($candidate)) {
+                $candidate->status = CandidateStatus::Accepted;
+                $candidate->saveOrFail();
             }
 
             $subProject = $assignment->subProject;

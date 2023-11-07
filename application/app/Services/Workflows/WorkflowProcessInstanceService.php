@@ -16,6 +16,7 @@ use App\Models\Vendor;
 use App\Policies\AssignmentPolicy;
 use App\Services\Workflows\Templates\SubProjectWorkflowTemplateInterface;
 use DB;
+use DomainException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -91,37 +92,50 @@ class WorkflowProcessInstanceService
     /**
      * @throws Throwable
      */
-    public function acceptTask(string $taskId, Vendor $vendor): void
+    public function markTaskAsCompletedBasedOnAssignment(Assignment $assignment): void
     {
-        $subProject = $this->getSubProject($taskId);
-
-        try {
-            WorkflowService::setAssignee($taskId, $vendor->id);
-            TrackSubProjectStatus::dispatch($subProject);
-        } catch (RequestException $e) {
-            throw new RuntimeException("Setting of assignee failed", $e->response->status(), $e);
+        $taskId = $this->retrieveTaskIdBasedOnAssignment($assignment);
+        if (empty($taskId)) {
+            $assignment->status = AssignmentStatus::Done;
+            $assignment->saveOrFail();
+            $this->syncProcessInstanceVariables();
         }
+
+        $this->markAssignmentTaskAsCompleted($taskId, $assignment);
     }
 
     /**
      * @throws Throwable
      */
-    public function markTaskAsCompletedBasedOnAssignment(Assignment $assignment): void
+    public function markTaskAsCompleted(string $taskId): void
     {
-        // TODO: add fetch of the tasks based on the assignment ID.
-        $tasks = WorkflowService::getTask([
-            'processInstanceId' => $this->getProcessInstanceId(),
-            'processInstanceVariables' => [
-                'assignment_id' => $assignment->id
-            ]
-        ]);
+        if (filled($assignment = $this->retrieveAssignmentBasedOnTaskId($taskId))) {
+            $this->markAssignmentTaskAsCompleted($taskId, $assignment);
+            return;
+        }
+    }
 
-        if (empty($taskId = $tasks[0]['id'] ?? null)) {
-            throw new RuntimeException("Task not found for the assignment");
+    private function retrieveTaskIdBasedOnAssignment(Assignment $assignment): ?string
+    {
+        $tasks = $this->getTasks();
+        foreach ($tasks as $task) {
+            if (filled($task['assignment_id']) && $task['assignment_id'] === $assignment->id) {
+                return $task['id'] ?? null;
+            }
         }
 
+        return null;
+    }
+
+    /**
+     * @throws Throwable
+     */
+    private function markAssignmentTaskAsCompleted(string $taskId, Assignment $assignment, array $params = []): void
+    {
         match ($assignment->jobDefinition->job_key) {
-            JobKey::JOB_OVERVIEW => self::completeSubProjectReviewTask($taskId),
+            JobKey::JOB_OVERVIEW => self::completeSubProjectReviewTask(
+                $taskId, data_get($params, 'is_successful')
+            ),
             default => self::completeSimpleTask($taskId)
         };
 
@@ -129,6 +143,24 @@ class WorkflowProcessInstanceService
         $assignment->saveOrFail();
 
         TrackSubProjectStatus::dispatch($assignment->subProject);
+    }
+
+
+    private function retrieveAssignmentBasedOnTaskId(string $taskId): ?Assignment
+    {
+        $tasks = $this->getTasks();
+        foreach ($tasks as $task) {
+            if (filled($task['assignment_id'])) {
+                return Assignment::find($task['assignment_id']);
+            }
+        }
+
+        return null;
+    }
+
+    private function retrieveTaskData(string $taskId): array
+    {
+        return WorkflowService::getTask(['id' => $taskId]);
     }
 
     private function completeSimpleTask(string $taskId): void
@@ -143,13 +175,13 @@ class WorkflowProcessInstanceService
     private function completeSubProjectReviewTask(string $taskId, bool $successful = true): void
     {
         try {
-        WorkflowService::completeTask($taskId, [
-            'variables' => [
-                'subProjectFinished' => [
-                    'value' => $successful,
+            WorkflowService::completeTask($taskId, [
+                'variables' => [
+                    'subProjectFinished' => [
+                        'value' => $successful,
+                    ]
                 ]
-            ]
-        ]);
+            ]);
         } catch (RequestException $e) {
             throw new RuntimeException("Marking sub-project review task as completed failed", $e->getCode(), previous: $e);
         }
@@ -171,6 +203,31 @@ class WorkflowProcessInstanceService
         $this->project->status = $acceptedByClient ? ProjectStatus::Accepted :
             ProjectStatus::Rejected;
         $this->project->saveOrFail();
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function acceptTask(string $taskId, Vendor $vendor): void
+    {
+        $subProject = $this->getSubProject($taskId);
+
+        try {
+            WorkflowService::setAssignee($taskId, $vendor->id);
+            TrackSubProjectStatus::dispatch($subProject);
+        } catch (RequestException $e) {
+            throw new RuntimeException("Setting of assignee failed", $e->response->status(), $e);
+        }
+    }
+
+    /**
+     * TODO: implement getting of the sub-project ID based on the task ID.
+     * @param string $taskId
+     * @return SubProject
+     */
+    private function getSubProject(string $taskId): SubProject
+    {
+        return $this->project->subProjects()->first();
     }
 
     public function cancel(): void
@@ -270,16 +327,6 @@ class WorkflowProcessInstanceService
                 })->toArray()
             ]
         ];
-    }
-
-    /**
-     * TODO: implement getting of the sub-project ID based on the task ID.
-     * @param string $taskId
-     * @return SubProject
-     */
-    private function getSubProject(string $taskId): SubProject
-    {
-        return $this->project->subProjects()->first();
     }
 
     private function getSubProjectWorkflowTemplate(): SubProjectWorkflowTemplateInterface
