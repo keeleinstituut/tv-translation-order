@@ -143,6 +143,7 @@ class WorkflowProcessInstanceService
                                 $deadline = ($assignment->deadline_at ?: $subProject->deadline_at) ?: $this->project->deadline_at;
                                 return [
                                     'overview' => [
+                                        'institution_id' => $assignment->subProject->project->institution_id,
                                         'assignee' => $assignment->assigned_vendor_id,
                                         'candidateUsers' => $assignment->candidates->pluck('vendor_id')->toArray(),
                                         'assignment_id' => $assignment->id,
@@ -158,6 +159,7 @@ class WorkflowProcessInstanceService
                                 $variableName => $assignments->map(function (Assignment $assignment) use ($subProject) {
                                     $deadline = ($assignment->deadline_at ?: $subProject->deadline_at) ?: $this->project->deadline_at;
                                     return [
+                                        'institution_id' => $assignment->subProject->project->institution_id,
                                         'assignee' => $assignment->assigned_vendor_id,
                                         'candidateUsers' => $assignment->candidates->pluck('vendor_id')->toArray(),
                                         'assignment_id' => $assignment->id,
