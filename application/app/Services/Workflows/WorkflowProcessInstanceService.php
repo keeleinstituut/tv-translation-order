@@ -160,7 +160,7 @@ class WorkflowProcessInstanceService
 
     private function retrieveTaskData(string $taskId): array
     {
-        return WorkflowService::getTask(['id' => $taskId]);
+        return WorkflowService::getTasks(['id' => $taskId]);
     }
 
     private function completeSimpleTask(string $taskId): void
@@ -206,21 +206,6 @@ class WorkflowProcessInstanceService
     }
 
     /**
-     * @throws Throwable
-     */
-    public function acceptTask(string $taskId, Vendor $vendor): void
-    {
-        $subProject = $this->getSubProject($taskId);
-
-        try {
-            WorkflowService::setAssignee($taskId, $vendor->id);
-            TrackSubProjectStatus::dispatch($subProject);
-        } catch (RequestException $e) {
-            throw new RuntimeException("Setting of assignee failed", $e->response->status(), $e);
-        }
-    }
-
-    /**
      * TODO: implement getting of the sub-project ID based on the task ID.
      * @param string $taskId
      * @return SubProject
@@ -239,7 +224,7 @@ class WorkflowProcessInstanceService
 
     public function getTasks()
     {
-        return WorkflowService::getTask([
+        return WorkflowService::getTasks([
             'processInstanceId' => $this->getProcessInstanceId(),
         ]);
     }
@@ -248,12 +233,6 @@ class WorkflowProcessInstanceService
     {
         return filled($this->project->workflow_instance_ref);
     }
-
-    public function updateProcessVariable($variableName, $newValue)
-    {
-        return WorkflowService::updateProcessInstanceVariable($this->getProcessInstanceId(), $variableName, $newValue);
-    }
-
 
     private function getProcessDefinitionId(): ?string
     {

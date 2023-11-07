@@ -69,14 +69,24 @@ class WorkflowService
             ->throw()->json();
     }
 
-    public static function getTask($params = [])
+    public static function getTasks($params = [])
     {
         $response = static::client()->post('/task', $params);
 
         return $response->throw()->json();
     }
 
-    public static function getTaskCount($params = [])
+    /**
+     * @throws RequestException
+     */
+    public static function getTask(string $id)
+    {
+        $response = static::client()->post("/task/$id");
+
+        return $response->throw()->json();
+    }
+
+    public static function getTasksCount($params = [])
     {
         $response = static::client()->post('/task/count', $params);
 

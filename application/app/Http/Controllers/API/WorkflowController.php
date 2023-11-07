@@ -2,18 +2,26 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\AssignmentStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\CompleteReviewTaskRequest;
 use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
+use App\Jobs\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Policies\AssignmentPolicy;
+use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
 use App\Services\Workflows\WorkflowService;
 use Auth;
 use DB;
 use Illuminate\Container\Container;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Symfony\Component\HttpFoundation\Response;
@@ -54,7 +62,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\PaginatedCollectionResponse(itemsRef: TaskResource::class, description: 'Filtered tasks of current institution')]
-    public function getTasks(WorkflowTaskListRequest $request)
+    public function getTasks(WorkflowTaskListRequest $request): AnonymousResourceCollection
     {
         $requestParams = collect($request->validated());
         $pagination = new PaginationBuilder();
@@ -65,8 +73,8 @@ class WorkflowController extends Controller
             'processInstanceBusinessKeyLike' => 'workflow.%',
         ]);
 
-        $tasks = WorkflowService::getTask($params);
-        $count = WorkflowService::getTaskCount($params)['count'];
+        $tasks = WorkflowService::getTasks($params);
+        $count = WorkflowService::getTasksCount($params)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
@@ -102,7 +110,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\PaginatedCollectionResponse(itemsRef: TaskResource::class, description: 'Filtered tasks of current institution')]
-    public function getHistoryTasks(WorkflowHistoryTaskListRequest $request)
+    public function getHistoryTasks(WorkflowHistoryTaskListRequest $request): AnonymousResourceCollection
     {
         $requestParams = collect($request->validated());
         $pagination = new PaginationBuilder();
@@ -131,45 +139,151 @@ class WorkflowController extends Controller
         path: '/workflow/tasks/{id}/accept',
         description: 'Note: available only for tasks without assignee',
         summary: 'Assign user to the task',
-        tags: ['Workflow management'],
+        tags: ['Workflow'],
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Updated task', response: Response::HTTP_OK)]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
     public function acceptTask(string $id): TaskResource
     {
-        $task = WorkflowService::getTask(['id' => $id]);
-        $assignment = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
-            ->find($task['assignment_id']);
+        $taskData = $this->getTaskDataOrFail($id);
 
+        if (data_get($taskData, 'assignee')) {
+            abort(Response::HTTP_BAD_REQUEST, 'The task already has assignee');
+        }
 
-        $institutionUserId = Auth::user()->institutionUserId;
-        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
-            ->where('institution_user_id', $institutionUserId)
+        $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
             ->first();
 
-        if (!in_array($vendor->id, $task['candidates'])) {
+        $candidates = data_get($taskData, 'variables.candidateUsers');
+        if (!in_array($activeVendor->id, $candidates)) {
             abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
         }
 
-        WorkflowService::setAssignee($id, $vendor->id);
-
-        if (filled($assignment)) {
-            DB::transaction(function () use ($assignment, $vendor) {
-                $assignment->assigned_vendor_id = $vendor->id;
+        WorkflowService::setAssignee($id, $activeVendor->id);
+        /** @var Assignment $assignment */
+        if (filled($assignment = $taskData['assignment'])) {
+            DB::transaction(function () use ($assignment, $activeVendor) {
+                $assignment->assigned_vendor_id = $activeVendor->id;
                 $assignment->saveOrFail();
             });
+
+            TrackSubProjectStatus::dispatch($assignment->subProject);
         }
 
-        return TaskResource::make($task);
+        return TaskResource::make($taskData);
     }
 
-    public function completeTask(string $id)
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/complete-simple',
+        description: 'Note: available only for simple tasks',
+        summary: 'Complete the task',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function completeSimpleTask(string $id): TaskResource
     {
-        return WorkflowService::completeTask($id);
+        $taskData = $this->getTaskDataOrFail($id);
+        WorkflowService::completeTask($id);
+
+        /** @var Assignment $assignment */
+        if (filled($assignment = $taskData['assignment'])) {
+            $assignment->status = AssignmentStatus::Done;
+            $assignment->saveOrFail();
+            TrackSubProjectStatus::dispatch($assignment->subProject);
+        }
+
+        return TaskResource::make($taskData);
     }
 
-    private function buildAdditionalParams(Collection $requestParams) {
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/complete-review',
+        description: 'Note: available only for review tasks',
+        summary: 'Complete the task',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function completeReviewTask(CompleteReviewTaskRequest $request): TaskResource
+    {
+        $taskId = $request->route('id');
+        $taskData = $this->getTaskDataOrFail($taskId);
+
+        WorkflowService::completeTask($taskId, [
+            'variables' => [
+                'subProjectFinished' => [
+                    'value' => $request->validated('accepted'),
+                ]
+            ]
+        ]);
+
+        /** @var Assignment $assignment */
+        if (filled($assignment = $taskData['assignment'])) {
+            $assignment->status = AssignmentStatus::Done;
+            $assignment->saveOrFail();
+            TrackSubProjectStatus::dispatch($assignment->subProject);
+        }
+
+        return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws RequestException
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/complete-project-review',
+        description: 'Note: available only for project review tasks',
+        summary: 'Complete the task',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function completeProjectReviewTask(Request $request)
+    {
+        $taskId = $request->route('id');
+        $taskData = $this->getTaskDataOrFail($taskId);
+
+        WorkflowService::completeTask($taskId, [
+            'variables' => [
+                'subProjectFinished' => [
+                    'value' => $request->validated('accepted'),
+                ]
+            ]
+        ]);
+    }
+
+    /**
+     * @throws RequestException
+     */
+    private function getTaskDataOrFail(string $id): Collection
+    {
+        if (empty($task = WorkflowService::getTask($id))) {
+            abort(Response::HTTP_NOT_FOUND, 'Task not found');
+        }
+
+        $variableInstances = $this->fetchVariableInstancesForTasks([$task]);
+        $data = $this->mapWithVariables([$task], $variableInstances);
+        if (empty($this->mapWithExtraInfo($data)[0])) {
+            abort(Response::HTTP_NOT_FOUND, 'Task data not found');
+        }
+        return $this->mapWithExtraInfo($data)[0];
+    }
+
+    private function buildAdditionalParams(Collection $requestParams): Collection
+    {
         $processVariablesFilter = collect();
         $sortingParams = collect();
 
@@ -236,14 +350,16 @@ class WorkflowController extends Controller
         return $params;
     }
 
-    private function fetchVariableInstancesForTasks(array $tasks) {
+    private function fetchVariableInstancesForTasks(array $tasks)
+    {
         $executionIds = collect($tasks)->pluck('executionId')->implode(',');
         return WorkflowService::getVariableInstance([
             'executionIdIn' => $executionIds,
         ]);
     }
 
-    private function mapWithVariables($tasks, $variableInstances) {
+    private function mapWithVariables($tasks, $variableInstances): Collection
+    {
         $vars = collect($variableInstances);
 
         return collect($tasks)->map(function ($task) use ($vars) {
@@ -260,7 +376,8 @@ class WorkflowController extends Controller
         });
     }
 
-    private function mapWithExtraInfo($tasks) {
+    private function mapWithExtraInfo($tasks): Collection
+    {
         $assignmentIds = collect($tasks)->map(fn ($task) => data_get($task, 'variables.assignment_id'));
         $assignments = Assignment::getModel()
             ->whereIn('id', $assignmentIds)

@@ -117,10 +117,16 @@ Route::prefix('/assignments')
         Route::post('/{id}/mark-as-completed', 'markAsCompleted');
     });
 
-Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
-Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
-Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);
-Route::get('/workflow/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
+Route::prefix('/workflow')
+    ->controller(API\WorkflowController::class)
+    ->whereUuid('id')->group(function (): void {
+        Route::get('/tasks', [API\WorkflowController::class, 'getTasks']);
+        Route::get('/tasks/{id}', [API\WorkflowController::class, 'getTask']);
+        Route::post('/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);
+        Route::post('/tasks/{id}/accept', [API\WorkflowController::class, 'acceptTask']);
+        Route::get('/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
+    });
+
 
 Route::prefix('/media')
     ->controller(API\MediaController::class)
