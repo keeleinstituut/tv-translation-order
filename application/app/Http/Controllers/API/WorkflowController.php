@@ -226,7 +226,8 @@ class WorkflowController extends Controller
                     ->where('institution_user_id', Auth::user()->institutionUserId)
                     ->first();
                 $params['assigned'] = true;
-                $params['assignee'] = $vendor->id;
+                // Use 'empty' as fallback since leaving fallback as null will be treated as all assignees
+                $params['assignee'] = $vendor?->id || '--empty--';
             } else {
                 $params['unassigned'] = true;
             }
