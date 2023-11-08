@@ -73,6 +73,12 @@ class ProjectPolicy
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
+    public function editHelpFiles(JwtPayloadUser $user, Project $project): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($project) &&
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+    }
+
     /**
      * Determine whether the user can delete the model.
      */
