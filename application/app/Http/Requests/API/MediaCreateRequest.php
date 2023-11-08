@@ -47,7 +47,7 @@ class MediaCreateRequest extends FormRequest
         return [
             'files' => 'required|array|min:1',
             'files.*.content' => 'required|file',
-            'files.*.collection' => ['required', 'string', Rule::in([Project::SOURCE_FILES_COLLECTION, Project::FINAL_FILES_COLLECTION])],
+            'files.*.collection' => ['required', 'string', Rule::in([Project::SOURCE_FILES_COLLECTION, Project::FINAL_FILES_COLLECTION, Project::HELP_FILES_COLLECTION])],
             'files.*.reference_object_id' => 'required|uuid',
             'files.*.reference_object_type' => ['required', 'string', Rule::in(['project', 'subproject'])]
         ];
@@ -64,6 +64,7 @@ class MediaCreateRequest extends FormRequest
                 collect($this->validated('files'))->each(function (array $fileData, int $idx) use ($validator) {
                      if (!in_array([$fileData['reference_object_type'], $fileData['collection']], [
                          ['project', 'source'],
+                         ['project', 'help'],
                          ['subproject', 'source'],
                          ['subproject', 'final'],
                      ])) {
