@@ -161,6 +161,7 @@ class MediaController extends Controller
 
         return match ([$referenceObjectType, $collection]) {
             ['project', 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
+            ['project', 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
             ['subproject', 'source'] => [$entity, $entity->project, $entity->file_collection],
             ['subproject', 'final'] => [$entity, $entity->project, $entity->file_collection_final],
             default => null,
@@ -170,7 +171,9 @@ class MediaController extends Controller
     private function determineAuthorizationAbility($entity, $collectionName): ?string
     {
         return match ([$entity::class, $collectionName]) {
-            [Project::class, 'source'], [SubProject::class, 'source'] => 'editSourceFiles',
+            [Project::class, 'source'] => 'editSourceFiles',
+            [Project::class, 'help'] => 'editHelpFiles',
+            [SubProject::class, 'source'] => 'editSourceFiles',
             [SubProject::class, 'final'] => 'editFinalFiles',
             default => null,
         };

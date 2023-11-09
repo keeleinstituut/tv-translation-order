@@ -73,6 +73,12 @@ class ProjectPolicy
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
+    public function editHelpFiles(JwtPayloadUser $user, Project $project): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($project) &&
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+    }
+
     public function cancel(JwtPayloadUser $user, Project $project): bool
     {
         $currentInstitutionUserId = Auth::user()?->institutionUserId;
