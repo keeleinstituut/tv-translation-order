@@ -4,19 +4,13 @@ namespace App\Services\Workflows;
 
 use App\Services\Workflows\Templates\SubProjectWorkflowTemplateInterface;
 use App\Services\Workflows\Templates\WorkflowTemplateInterface;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use phpseclib3\Math\BigInteger\Engines\PHP;
 
 class WorkflowService
 {
-    public static function processDefinitionList()
-    {
-        $response = static::client()->get('/process-definition');
-
-        return $response;
-    }
-
     public static function createDeployment(WorkflowTemplateInterface $workflowTemplate)
     {
         $response = static::client()->attach(
@@ -51,22 +45,17 @@ class WorkflowService
         return $response->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
     public static function deleteProcessInstances($processInstanceIds, string $deleteReason)
     {
-        $response = static::client()->post("/process-instance/delete", [
+        return static::client()->post("/process-instance/delete", [
             'deleteReason' => $deleteReason,
             'processInstanceIds' => $processInstanceIds,
-            'skipCustomListeners' => true,
-            'skipSubprocesses' => true
-        ]);
-
-        return $response->throw()->json();
-    }
-
-    public static function getProcessInstanceVariable($processInstanceId, $variableName, $params = [])
-    {
-        return static::client()->get("/process-instance/$processInstanceId/variables/$variableName", $params)
-            ->throw()->json();
+            'skipCustomListeners' => false,
+            'skipSubprocesses' => false
+        ])->throw()->json();
     }
 
     public static function getTasks($params = [])
@@ -81,7 +70,7 @@ class WorkflowService
      */
     public static function getTask(string $id)
     {
-        $response = static::client()->post("/task/$id");
+        $response = static::client()->get("/task/$id");
 
         return $response->throw()->json();
     }
@@ -96,11 +85,41 @@ class WorkflowService
     /**
      * @throws RequestException
      */
-    public static function completeTask($taskId, $params = [])
+    public static function completeTask($taskId, $variables = [])
     {
-        $response = static::client()->post("/task/$taskId/complete", $params);
-        return $response->throw()->json();
+        return static::client()->post("/task/$taskId/complete", [
+            'variables' => empty($variables) ? null : $variables
+        ])->throw()->json();
     }
+
+    /**
+     * @throws RequestException
+     */
+    public static function completeReviewTask($taskId, bool $isAccepted)
+    {
+        return static::client()->post("/task/$taskId/complete", [
+            'variables' => [
+                'subProjectFinished' => [
+                    'value' => $isAccepted,
+                ]
+            ]
+        ])->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function completeProjectReviewTask($taskId, bool $isAccepted)
+    {
+        return static::client()->post("/task/$taskId/complete", [
+            'variables' => [
+                'acceptedByClient' => [
+                    'value' => $isAccepted,
+                ]
+            ]
+        ])->throw()->json();
+    }
+
 
     /**
      * @throws RequestException
@@ -143,7 +162,7 @@ class WorkflowService
         return $response->throw()->json();
     }
 
-    private static function client()
+    private static function client(): PendingRequest
     {
         $baseUrl = getenv('CAMUNDA_API_URL');
 

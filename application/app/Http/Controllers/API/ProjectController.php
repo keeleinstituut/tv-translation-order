@@ -290,8 +290,9 @@ class ProjectController extends Controller
     /**
      * @throws Throwable
      */
-    #[OA\Put(
+    #[OA\Post(
         path: '/projects/{id}/cancel',
+        description: 'Only projects with status `NEW` or `REGISTERED` can be cancelled. The project can be cancelled by the client or PM',
         tags: ['Projects'],
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
@@ -301,8 +302,15 @@ class ProjectController extends Controller
     {
        return DB::transaction(function () use ($id) {
             /** @var Project $project */
-            $project = self::getBaseQuery()->with(['subProjects'])
+            $project = self::getBaseQuery()
+                ->with(['subProjects'])
                 ->findOrFail($id);
+
+            $this->authorize('cancel', $project);
+
+            if (!in_array($project->status, [ProjectStatus::New, ProjectStatus::Registered])) {
+                abort(Response::HTTP_BAD_REQUEST, 'Only projects with status `NEW` or `REGISTERED` can be cancelled.');
+            }
 
             if ($project->workflow()->isStarted()) {
                 $project->workflow()->cancel();

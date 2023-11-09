@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\JobKey;
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
@@ -33,7 +34,7 @@ class ProjectSeeder extends Seeder
     public function run(): void
     {
         $client = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
-        $projectTypes = ClassifierValue::where('type', ClassifierValueType::ProjectType)->get();
+        $projectTypes = ClassifierValue::where('value', 'CAT_TRANSLATION_EDITING_REVIEW')->get();
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
 
         $projects = Project::factory()
@@ -47,19 +48,19 @@ class ProjectSeeder extends Seeder
 
         $projects->each($this->addRandomFilesToProject(...));
         $projects->each(function (Project $project) use ($languages) {
-            $destinationLanguagesCount = 3; //fake()->numberBetween(1, 1);
+            $destinationLanguagesCount = 1;
             $languagesSelection = collect(fake()->randomElements($languages, $destinationLanguagesCount + 1));
             $sourceLanguage = $languagesSelection->get(0);
             $destinationLanguages = $languagesSelection->skip(1);
             $project->initSubProjects($sourceLanguage, $destinationLanguages);
+
+            $project->refresh();
+
+            $project->subProjects->each(function (SubProject $subProject) {
+                $subProject->assignments->each($this->setAssigneeOrCandidates(...));
+            });
             $project->workflow()->startWorkflowProcessInstance();
         });
-
-        //        $projects->pluck('subProjects')->flatten()->each(function (SubProject $subProject) {
-        //            $subProject->cat()->setupJobs();
-        //        });
-
-        // Assignment::all()->each($this->setAssigneeOrCandidates(...));
     }
 
     private function addRandomFilesToProject(Project $project)
@@ -91,25 +92,25 @@ class ProjectSeeder extends Seeder
             });
     }
 
-    private function setAssigneeOrCandidates(Assignment $assignment)
+    private function setAssigneeOrCandidates(Assignment $assignment): void
     {
-        $setAssignee = fake()->randomElement([false, false, true]);
+        $setAssignee = $assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW;
 
         if ($setAssignee) {
             $assignment->assigned_vendor_id = Vendor::factory()->create()->id;
-            $assignment->save();
+            $assignment->saveOrFail();
 
             $candidate = new Candidate();
             $candidate->vendor_id = $assignment->assigned_vendor_id;
             $candidate->assignment_id = $assignment->id;
-            $candidate->save();
+            $candidate->saveOrFail();
         } else {
-            $count = fake()->numberBetween(0, 3);
+            $count = fake()->numberBetween(1, 4);
             collect()->times($count)->each(function () use ($assignment) {
                 $candidate = new Candidate();
                 $candidate->vendor_id = Vendor::factory()->create()->id;
                 $candidate->assignment_id = $assignment->id;
-                $candidate->save();
+                $candidate->saveOrFail();
             });
         }
     }

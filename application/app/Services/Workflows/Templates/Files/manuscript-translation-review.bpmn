@@ -12,12 +12,14 @@
       <bpmn:userTask id="manuscript-translation" name="Käsikirjaline tõlge ilma sisemise CAT tööriistata" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
         <bpmn:extensionElements>
           <camunda:inputOutput>
+            <camunda:inputParameter name="sub_project_id">${subProcess.sub_project_id}</camunda:inputParameter>
             <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
             <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
             <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="type_classifier_value_id">${subProcess.type_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="deadline_at">${subProcess.deadline_at}</camunda:inputParameter>
+            <camunda:inputParameter name="task_type">DEFAULT</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>Flow_0298xzb</bpmn:incoming>
@@ -61,12 +63,14 @@
     <bpmn:userTask id="Activity_0sfneiw" name="Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus" camunda:assignee="${subProject.overview.assignee}" camunda:candidateUsers="${subProject.overview.candidateUsers}">
       <bpmn:extensionElements>
         <camunda:inputOutput>
-          <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
+          <camunda:inputParameter name="sub_project_id">${subProject.overview.sub_project_id}</camunda:inputParameter>
+          <camunda:inputParameter name="institution_id">${subProject.overview.institution_id}</camunda:inputParameter>
           <camunda:inputParameter name="assignment_id">${subProject.overview.assignment_id}</camunda:inputParameter>
           <camunda:inputParameter name="source_language_classifier_value_id">${subProject.overview.source_language_classifier_value_id}</camunda:inputParameter>
           <camunda:inputParameter name="destination_language_classifier_value_id">${subProject.overview.destination_language_classifier_value_id}</camunda:inputParameter>
           <camunda:inputParameter name="type_classifier_value_id">${subProject.overview.type_classifier_value_id}</camunda:inputParameter>
           <camunda:inputParameter name="deadline_at">${subProject.overview.deadline_at}</camunda:inputParameter>
+          <camunda:inputParameter name="task_type">REVIEW</camunda:inputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1085q0c</bpmn:incoming>

@@ -55,6 +55,7 @@ class AssignmentAddCandidatesRequest extends FormRequest
 
                     if (! $exists) {
                         $fail('Vendor with such ID does not exist');
+                        return;
                     }
 
                     $candidateExists = Candidate::where('assignment_id', $this->route('id'))

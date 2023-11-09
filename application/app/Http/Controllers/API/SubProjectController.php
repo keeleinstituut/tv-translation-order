@@ -182,7 +182,7 @@ class SubProjectController extends Controller
         tags: ['Sub-projects'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: VolumeResource::class, description: 'Created volume', response: Response::HTTP_OK)]
+    #[OAH\ResourceResponse(dataRef: SubProjectResource::class, description: 'Sub-project resource', response: Response::HTTP_OK)]
     public function startWorkflow(string $id): SubProjectResource
     {
         /** @var SubProject $subProject */
@@ -190,16 +190,20 @@ class SubProjectController extends Controller
 
         $this->authorize('startWorkflow', $subProject);
 
-        if ($subProject->workflowStarted()) {
+        if ($subProject->workflow_started) {
             abort(400, 'Workflow is already started for the sub-project');
+        }
+
+        if ($subProject->status === SubProjectStatus::Cancelled) {
+            abort(400, 'Not possible to start workflow for the cancelled sub-project');
         }
 
         $hasAssignmentWithoutCandidates = $subProject->assignments()
             ->whereDoesntHave('candidates')->exists();
 
-        if ($hasAssignmentWithoutCandidates) {
-            abort(400, 'Sub-project contains job(s) without candidates');
-        }
+//        if ($hasAssignmentWithoutCandidates) {
+//            abort(400, 'Sub-project contains job(s) without candidates');
+//        }
 
         $subProject->project->workflow()->startSubProjectWorkflow($subProject);
 

@@ -59,7 +59,7 @@ Route::prefix('/projects')
         Route::post('/', [API\ProjectController::class, 'store']);
         Route::get('/{id}', [API\ProjectController::class, 'show']);
         Route::put('/{id}', [API\ProjectController::class, 'update']);
-        Route::put('/{id}/cancel', [API\ProjectController::class, 'cancel']);
+        Route::post('/{id}/cancel', [API\ProjectController::class, 'cancel']);
     });
 
 Route::prefix('/subprojects')
@@ -115,6 +115,7 @@ Route::prefix('/assignments')
         Route::post('/{id}/candidates/bulk', 'addCandidates');
         Route::delete('/{id}/candidates/bulk', 'deleteCandidate');
         Route::post('/{id}/mark-as-completed', 'markAsCompleted');
+        Route::post('/{id}/mark-review-as-completed', 'markReviewAsCompleted');
     });
 
 Route::prefix('/workflow')
@@ -123,6 +124,8 @@ Route::prefix('/workflow')
         Route::get('/tasks', [API\WorkflowController::class, 'getTasks']);
         Route::get('/tasks/{id}', [API\WorkflowController::class, 'getTask']);
         Route::post('/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);
+        Route::post('/tasks/{id}/complete-review', [API\WorkflowController::class, 'completeReviewTask']);
+        Route::post('/tasks/{id}/complete-project-review', [API\WorkflowController::class, 'completeProjectReviewTask']);
         Route::post('/tasks/{id}/accept', [API\WorkflowController::class, 'acceptTask']);
         Route::get('/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
     });

@@ -49,6 +49,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'cat_jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class), nullable: true),
         new OA\Property(property: 'mt_enabled', type: 'boolean'),
         new OA\Property(property: 'status', type: 'string', format: 'enum', enum: SubProjectStatus::class),
+        new OA\Property(property: 'workflow_started', type: 'boolean'),
     ],
     type: 'object'
 )]
@@ -71,6 +72,7 @@ class SubProjectResource extends JsonResource
                 'updated_at',
                 'price',
                 'status',
+                'workflow_started',
             ]),
             'features' => $this->project->typeClassifierValue->projectTypeConfig->features,
             'project' => new ProjectResource($this->whenLoaded('project')),

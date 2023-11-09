@@ -21,7 +21,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 use RuntimeException;
+use Spatie\MediaLibrary\InteractsWithMedia;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
@@ -36,7 +38,7 @@ use Throwable;
  * @property string|null $project_id
  * @property string|null $file_collection
  * @property string|null $file_collection_final
- * @property string|null $workflow_ref
+ * @property boolean $workflow_started
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
  * @property string|null $active_job_definition_id
@@ -89,7 +91,8 @@ class SubProject extends Model
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
         'price' => 'float',
-        'status' => SubProjectStatus::class
+        'status' => SubProjectStatus::class,
+        'workflow_started' => 'boolean',
     ];
 
     public function project(): BelongsTo
@@ -177,20 +180,32 @@ class SubProject extends Model
         });
     }
 
+    public function moveFinalFilesToProjectFinalFiles($finalFilesIds): void
+    {
+        if (empty($finalFilesIds)) {
+            throw new InvalidArgumentException('No final files specified');
+        }
+
+
+        $files = $this->finalFiles->filter(fn (Media $media) => in_array($media->id, $finalFilesIds))
+            ->values();
+
+        $wrongFilesPassed = $files->count() !== count($finalFilesIds);
+
+        if ($wrongFilesPassed) {
+            throw new InvalidArgumentException('Files IDs are incorrect');
+        }
+
+        $project = $this->project;
+        $files->each(function (Media $media) use ($project) {
+            $media->copy($project, Project::FINAL_FILES_COLLECTION);
+        });
+    }
+
     public function cat(): CatToolService
     {
         return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
     }
-
-    public function workflowStarted(): bool
-    {
-        return !in_array($this->status, [
-            SubProjectStatus::New,
-            SubProjectStatus::Registered,
-            SubProjectStatus::Cancelled
-        ]);
-    }
-
 
     public function getPriceCalculator(): PriceCalculator
     {

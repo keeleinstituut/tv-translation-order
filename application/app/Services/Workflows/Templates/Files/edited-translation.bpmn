@@ -17,12 +17,14 @@
       <bpmn:userTask id="editing" name="Toimetatud tõlge" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
         <bpmn:extensionElements>
           <camunda:inputOutput>
+            <camunda:inputParameter name="sub_project_id">${subProcess.sub_project_id}</camunda:inputParameter>
             <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
             <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
             <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="type_classifier_value_id">${subProcess.type_classifier_value_id}</camunda:inputParameter>
             <camunda:inputParameter name="deadline_at">${subProcess.deadline_at}</camunda:inputParameter>
+            <camunda:inputParameter name="task_type">DEFAULT</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>Flow_08qm9no</bpmn:incoming>

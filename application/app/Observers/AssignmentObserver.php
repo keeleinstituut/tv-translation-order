@@ -3,7 +3,6 @@
 namespace App\Observers;
 
 use App\Enums\CandidateStatus;
-use App\Enums\SubProjectStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\Volume;
@@ -26,6 +25,8 @@ class AssignmentObserver
     public function created(Assignment $assignment): void
     {
         $this->updateVolumesAssigneeFields($assignment);
+        $workflow = $assignment->subProject->project->workflow();
+        $workflow->isStarted() && $workflow->syncProcessInstanceVariables();
     }
 
     /**
@@ -57,7 +58,8 @@ class AssignmentObserver
      */
     public function deleted(Assignment $assignment): void
     {
-        //
+        $workflow = $assignment->subProject->project->workflow();
+        $workflow->isStarted() && $workflow->syncProcessInstanceVariables();
     }
 
     /**
@@ -126,12 +128,9 @@ class AssignmentObserver
     private function setExternalId(Assignment $assignment, int $sequence = null): void
     {
         $idx = $assignment->jobDefinition?->sequence ?: 0;
-        $sequence = $sequence ?: $assignment->getSameJobDefinitionAssignmentsQuery()
-                ->count() + 1;
-        $assignment->ext_id = collect([
-            $assignment->subProject->ext_id, '/', ++$idx,
-            '.',
-            $sequence,
-        ])->implode('');
+        $sequence = is_null($sequence) ? $assignment->getSameJobDefinitionAssignmentsQuery()
+                ->count(): $sequence;
+        $assignment->ext_id = collect([$assignment->subProject->ext_id, '/', ++$idx, '.', ++$sequence])
+            ->implode('');
     }
 }

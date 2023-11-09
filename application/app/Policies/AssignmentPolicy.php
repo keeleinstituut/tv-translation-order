@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
-use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
@@ -63,7 +63,7 @@ class AssignmentPolicy
      */
     public function delete(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**
@@ -84,7 +84,18 @@ class AssignmentPolicy
 
     public function markAsCompleted(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return $this->isInSameInstitutionAsCurrentUser($assignment) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isAssigned($assignment)
+            );
+    }
+
+    private function isAssigned(Assignment $assignment): bool
+    {
+        return filled($assignment->assigned_vendor_id) &&
+            filled($currentInstitutionUserId = Auth::user()?->institutionUserId) &&
+            filled($vendor = Vendor::where('institution_user_id', $currentInstitutionUserId)->first()) &&
+            $assignment->assigned_vendor_id === $vendor->id;
     }
 
     public static function isInSameInstitutionAsCurrentUser(Assignment $assignment): bool
