@@ -46,6 +46,22 @@ class ProjectObserver
      */
     public function updating(Project $project): void
     {
+//        if ($project->isDirty('manager_institution_user_id')) {
+//            $project->workflow()->isStarted() && $project->workflow()
+//                ->updateProcessInstanceVariable(
+//                    'manager_institution_user_id',
+//                    $project->manager_institution_user_id
+//                );
+//        }
+
+//        if ($project->isDirty('client_institution_user_id')) {
+//            $project->workflow()->isStarted() && $project->workflow()
+//                ->updateProcessInstanceVariable(
+//                    'client_institution_user_id',
+//                    $project->client_institution_user_id
+//                );
+//        }
+
         $newProjectGotManager = $project->status === ProjectStatus::New &&
             $project->isDirty('manager_institution_user_id') &&
             is_null($project->getOriginal('manager_institution_user_id'));

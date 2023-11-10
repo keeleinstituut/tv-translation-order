@@ -92,6 +92,18 @@ class WorkflowProcessInstanceService
         }
     }
 
+    /**
+     * @throws RequestException
+     */
+    public function updateProcessInstanceVariable(string $name, $value)
+    {
+        WorkflowService::updateProcessInstanceVariable(
+            $this->getProcessInstanceId(),
+            $name,
+            $value
+        );
+    }
+
 
     /**
      * @throws Throwable
@@ -141,6 +153,12 @@ class WorkflowProcessInstanceService
         return [
             'project_id' => [
                 'value' => $this->project->id,
+            ],
+            'client_institution_user_id' => [
+                'value' => $this->project->client_institution_user_id
+            ],
+            'manager_institution_user_id' => [
+                'value' => $this->project->manager_institution_user_id
             ],
             'subProjects' => [
                 'value' => $this->project->subProjects->map(function (SubProject $subProject) use ($template) {

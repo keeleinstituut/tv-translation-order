@@ -12,7 +12,7 @@
     <bpmn:endEvent id="Event_0jkhxm0" name="Project is ready (Accepted)">
       <bpmn:incoming>Flow_1o79ups</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:userTask id="Activity_0c0q5m7" name="Tõlketellimuse vastuvõtmine">
+    <bpmn:userTask id="Activity_0c0q5m7" name="Tõlketellimuse vastuvõtmine" camunda:assignee="${client_institution_user_id}">
       <bpmn:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="task_type">CLIENT_REVIEW</camunda:inputParameter>
@@ -23,7 +23,7 @@
       <bpmn:incoming>Flow_12s1bgr</bpmn:incoming>
       <bpmn:outgoing>Flow_1x5sfin</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:userTask id="Activity_050m3i5" name="Tõlketellimuse parandamine">
+    <bpmn:userTask id="Activity_050m3i5" name="Tõlketellimuse parandamine" camunda:assignee="${manager_institution_user_id}">
       <bpmn:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="task_type">CORRECTING</camunda:inputParameter>

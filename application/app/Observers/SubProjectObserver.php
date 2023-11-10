@@ -39,7 +39,7 @@ class SubProjectObserver
             $subProject->assignments()
                 ->where('job_definition_id', $subProject->active_job_definition_id)
                 ->whereNull('assigned_vendor_id')
-                ->each(fn(Assignment $assignment) => NotifyAssignmentCandidates::dispatch($assignment));
+                ->each(fn(Assignment $assignment) => NotifyAssignmentCandidates::dispatch(...));
 
             $prevActiveJobDefinitionId = $subProject->getOriginal('active_job_definition_id');
             if (filled($prevActiveJobDefinitionId)) {

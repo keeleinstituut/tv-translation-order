@@ -28,7 +28,6 @@ use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
 use App\Services\Workflows\WorkflowService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -307,12 +306,7 @@ class AssignmentController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the assignment as the task related to it is done.');
             }
 
-            $workflow = $assignment->subProject->project->workflow();
             $assignment->delete();
-
-            if ($workflow->isStarted()) {
-                $workflow->syncProcessInstanceVariables();
-            }
         });
 
         return response()->noContent();

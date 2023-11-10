@@ -25,8 +25,6 @@ class AssignmentObserver
     public function created(Assignment $assignment): void
     {
         $this->updateVolumesAssigneeFields($assignment);
-        $workflow = $assignment->subProject->project->workflow();
-        $workflow->isStarted() && $workflow->syncProcessInstanceVariables();
     }
 
     /**
@@ -58,8 +56,6 @@ class AssignmentObserver
      */
     public function deleted(Assignment $assignment): void
     {
-        $workflow = $assignment->subProject->project->workflow();
-        $workflow->isStarted() && $workflow->syncProcessInstanceVariables();
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
@@ -176,6 +177,11 @@ class SubProject extends Model
             $assignment = new Assignment();
             $assignment->sub_project_id = $this->id;
             $assignment->job_definition_id = $jobDefinition->id;
+
+            if ($jobDefinition->job_key === JobKey::JOB_OVERVIEW && filled($this->project->manager_institution_user_id)) {
+                $assignment->assigned_vendor_id = $this->project->manager_institution_user_id;
+            }
+
             $assignment->saveOrFail();
         });
     }

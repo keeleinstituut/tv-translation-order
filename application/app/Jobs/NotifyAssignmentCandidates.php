@@ -32,6 +32,11 @@ class NotifyAssignmentCandidates implements ShouldQueue
             return;
         }
 
+        /** We need to notify candidates only in case if tasks are populated */
+        if ($this->assignment->job_definition_id !== $this->assignment->subProject->active_job_definition_id) {
+            return;
+        }
+
         $this->assignment->candidates->each(function (Candidate $candidate) {
             if ($candidate->status === CandidateStatus::New) {
                 // TODO: send email notification
