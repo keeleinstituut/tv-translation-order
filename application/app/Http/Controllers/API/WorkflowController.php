@@ -16,6 +16,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Response;
 
 class WorkflowController extends Controller
 {
@@ -72,6 +73,34 @@ class WorkflowController extends Controller
     }
 
     #[OA\Get(
+        path: '/workflow/tasks/{id}',
+        summary: 'Get task',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function getTask(string $id)
+    {
+        $params = collect([
+            ...$this->buildAdditionalParams(collect([
+                'skip_assigned_param' => true,
+            ])),
+            'processInstanceBusinessKeyLike' => 'workflow.%',
+            'taskId' => $id,
+        ]);
+
+        $tasks = WorkflowService::getTask($params);
+
+        $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
+
+        $data = $this->mapWithVariables($tasks, $variableInstances);
+        $data = $this->mapWithExtraInfo($data);
+
+        return TaskResource::collection($data);
+    }
+
+    #[OA\Get(
         path: '/workflow/history/tasks',
         tags: ['Workflow'],
         parameters: [
@@ -117,6 +146,35 @@ class WorkflowController extends Controller
         $data = $this->mapWithExtraInfo($data);
 
         return TaskResource::collection($pagination->toPaginator($data, $count));
+    }
+
+    #[OA\Get(
+        path: '/workflow/history/tasks/{id}',
+        summary: 'Get historic task',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function getHistoryTask(string $id)
+    {
+        $params = collect([
+            ...$this->buildAdditionalParams(collect([
+                'skip_assigned_param' => true,
+            ])),
+            'processInstanceBusinessKeyLike' => 'workflow.%',
+            'finished' => true,
+            'taskId' => $id,
+        ]);
+
+        $tasks = WorkflowService::getHistoryTask($params);
+
+        $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
+
+        $data = $this->mapWithVariables($tasks, $variableInstances);
+        $data = $this->mapWithExtraInfo($data);
+
+        return TaskResource::collection($data);
     }
 
     public function completeTask(string $id)
@@ -175,7 +233,7 @@ class WorkflowController extends Controller
         ]);
 
         $assignedToMe = $requestParams->get('assigned_to_me', true);
-        if (filled($assignedToMe)) {
+        if (!$requestParams->get('skip_assigned_param') && filled($assignedToMe)) {
             if ($assignedToMe) {
                 $vendor = Vendor::getModel()
                     ->where('institution_user_id', Auth::user()->institutionUserId)

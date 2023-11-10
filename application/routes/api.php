@@ -114,6 +114,7 @@ Route::get('/workflow/tasks', [API\WorkflowController::class, 'getTasks']);
 Route::get('/workflow/tasks/{id}', [API\WorkflowController::class, 'getTask']);
 Route::post('/workflow/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask']);
 Route::get('/workflow/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
+Route::get('/workflow/history/tasks/{id}', [API\WorkflowController::class, 'getHistoryTask']);
 
 Route::prefix('/media')
     ->controller(API\MediaController::class)
