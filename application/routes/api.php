@@ -128,6 +128,7 @@ Route::prefix('/workflow')
         Route::post('/tasks/{id}/complete-project-review', [API\WorkflowController::class, 'completeProjectReviewTask']);
         Route::post('/tasks/{id}/accept', [API\WorkflowController::class, 'acceptTask']);
         Route::get('/history/tasks', [API\WorkflowController::class, 'getHistoryTasks']);
+        Route::get('/history/tasks/{id}', [API\WorkflowController::class, 'getHistoryTask']);
     });
 
 
