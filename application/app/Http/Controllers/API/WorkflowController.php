@@ -173,7 +173,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function getHistoryTask(string $id)
+    public function getHistoryTask(string $id): AnonymousResourceCollection
     {
         $params = collect([
             ...$this->buildAdditionalParams(collect([
