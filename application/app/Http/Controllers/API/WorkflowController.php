@@ -6,14 +6,13 @@ use App\Enums\AssignmentStatus;
 use App\Enums\PrivilegeKey;
 use App\Enums\TaskType;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\API\CompleteProjectReviewTaskRequest;
-use App\Http\Requests\API\CompleteReviewTaskRequest;
 use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
 use App\Jobs\TrackProjectStatus;
 use App\Jobs\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\Media;
 use App\Models\Project;
 use App\Models\Vendor;
 use App\Policies\ProjectPolicy;
@@ -26,12 +25,16 @@ use Gate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Container;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 use Illuminate\Support\Collection;
 
@@ -248,16 +251,43 @@ class WorkflowController extends Controller
      */
     #[OA\Post(
         path: '/workflow/tasks/{id}/complete',
-        description: 'Note: available only for simple tasks',
+        description: 'Note: `accepted` param is required in case if task has type `CLIENT_REVIEW` or `REVIEW`. The `final_file_id` param is required in case if task has type `REVIEW`',
         summary: 'Complete the task',
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                required: [],
+                properties: [
+                    new OA\Property(property: 'accepted', type: 'boolean'),
+                    new OA\Property(property: 'final_file_id', type: 'array', items: new OA\Items(type: 'integer')),
+                ]
+            )
+        ),
         tags: ['Workflow'],
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function completeTask(string $id): TaskResource
+    public function completeTask(Request $request): TaskResource
     {
-        $taskData = $this->getTaskDataOrFail($id);
+        $taskData = $this->getTaskDataOrFail($request->route('id'));
+        $taskType = data_get($taskData, 'variables.task_type', TaskType::Default->value);
+
+        return match ($taskType) {
+            TaskType::Default->value, TaskType::Correcting->value => $this->completeDefaultTask($taskData),
+            TaskType::Review->value => $this->completeReviewTask($request, $taskData),
+            TaskType::ClientReview->value => $this->completeProjectReviewTask($request, $taskData),
+            default => throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unexpected task type')
+        };
+    }
+
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    private function completeDefaultTask(array $taskData): TaskResource
+    {
+        $id = data_get($taskData, 'task.id');
         $taskType = data_get($taskData, 'variables.task_type', TaskType::Default->value);
 
         switch ($taskType) {
@@ -268,7 +298,7 @@ class WorkflowController extends Controller
                 $this->authorizeProjectManagerTaskCompletion($taskData);
                 break;
             default:
-                abort(Response::HTTP_BAD_REQUEST, 'The task can not be completed as it is review task');
+                throw new InvalidArgumentException('Task with incorrect type passed');
         }
 
         WorkflowService::completeTask($id);
@@ -289,20 +319,17 @@ class WorkflowController extends Controller
      * @throws RequestException
      * @throws Throwable
      */
-    #[OA\Post(
-        path: '/workflow/tasks/{id}/complete-review',
-        description: 'Note: available only for review tasks',
-        summary: 'Complete the task',
-        requestBody: new OAH\RequestBody(CompleteReviewTaskRequest::class),
-        tags: ['Workflow'],
-        parameters: [new OAH\UuidPath('id')],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function completeReviewTask(CompleteReviewTaskRequest $request): TaskResource
+    private function completeReviewTask(Request $request, array $taskData): TaskResource
     {
-        $taskId = $request->route('id');
-        $taskData = $this->getTaskDataOrFail($taskId);
+        $validated = $request->validate([
+            'accepted' => ['required', 'boolean'],
+            'final_file_id' => ['required_if:accepted,1', 'array'],
+            'final_file_id.*' => [
+                'required',
+                'integer',
+                Rule::exists(Media::class, 'id'),
+            ],
+        ]);
 
         if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Review->value) {
             abort(Response::HTTP_BAD_REQUEST, 'The task type is not review');
@@ -314,14 +341,14 @@ class WorkflowController extends Controller
         }
 
         $this->authorizeProjectManagerTaskCompletion($taskData);
-        WorkflowService::completeReviewTask($taskId, $request->validated('accepted'));
+        WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
 
-        DB::transaction(function () use ($assignment, $request) {
+        DB::transaction(function () use ($assignment, $validated) {
             $assignment->status = AssignmentStatus::Done;
             $assignment->saveOrFail();
 
             $assignment->subProject->moveFinalFilesToProjectFinalFiles(
-                $request->validated('final_file_id')
+                $validated['final_file_id']
             );
         });
 
@@ -334,20 +361,11 @@ class WorkflowController extends Controller
      * @throws RequestException
      * @throws Throwable
      */
-    #[OA\Post(
-        path: '/workflow/tasks/{id}/complete-project-review',
-        description: 'Note: available only for project review tasks',
-        summary: 'Complete the task',
-        requestBody: new OAH\RequestBody(CompleteProjectReviewTaskRequest::class),
-        tags: ['Workflow'],
-        parameters: [new OAH\UuidPath('id')],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function completeProjectReviewTask(CompleteProjectReviewTaskRequest $request): TaskResource
+    private function completeProjectReviewTask(Request $request, array $taskData): TaskResource
     {
-        $taskId = $request->route('id');
-        $taskData = $this->getTaskDataOrFail($taskId);
+        $validated = $request->validate([
+            'accepted' => ['required', 'boolean'],
+        ]);
 
         if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::ClientReview->value) {
             abort(Response::HTTP_BAD_REQUEST, 'The task type is not client review');
@@ -359,9 +377,10 @@ class WorkflowController extends Controller
 
         $this->authorize('review', $project);
 
-        WorkflowService::completeProjectReviewTask($taskId, $request->validated('accepted'));
+        WorkflowService::completeProjectReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
 
         TrackProjectStatus::dispatch($project);
+
         return TaskResource::make($taskData);
     }
 

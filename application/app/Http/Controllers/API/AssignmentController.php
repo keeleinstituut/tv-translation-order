@@ -14,13 +14,13 @@ use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
 use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
-use App\Http\Requests\API\CompleteReviewTaskRequest;
 use App\Http\Resources\API\AssignmentResource;
 use App\Jobs\NotifyAssignmentCandidates;
 use App\Jobs\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
+use App\Models\Media;
 use App\Models\SubProject;
 use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
@@ -28,9 +28,11 @@ use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
 use App\Services\Workflows\WorkflowService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -317,55 +319,24 @@ class AssignmentController extends Controller
      */
     #[OA\Post(
         path: '/assignments/{id}/mark-as-completed',
-        description: 'Note: available only for assignments with status `IN_PROGRESS`',
+        description: 'Note: available only for assignments with status `IN_PROGRESS`. For the assignments with job key  `job_overview` the request body is required.',
         summary: 'Mark assignment as completed',
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                required: [],
+                properties: [
+                    new OA\Property(property: 'accepted', type: 'boolean'),
+                    new OA\Property(property: 'final_file_id', type: 'array', items: new OA\Items(type: 'integer')),
+                ]
+            )
+        ),
         tags: ['Assignment management'],
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
-    public function markAsCompleted(string $id): AssignmentResource
-    {
-        return DB::transaction(function () use ($id) {
-            /** @var Assignment $assignment */
-            $assignment = self::getBaseQuery()->findOrFail($id);
-            $this->authorize('markAsCompleted', $assignment);
-
-            $taskData = $this->retrieveTaskBasedOnAssignmentOrFail($assignment);
-            if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Default->value) {
-                abort(Response::HTTP_BAD_REQUEST, 'The task can not be completed as it is not default task');
-            }
-
-            if (empty($taskId = data_get($taskData, 'task.id'))) {
-                abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task data has incorrect format');
-            }
-
-            WorkflowService::completeTask($taskId);
-            DB::transaction(function () use ($assignment) {
-                $assignment->status = AssignmentStatus::Done;
-                $assignment->saveOrFail();
-            });
-
-            TrackSubProjectStatus::dispatch($assignment->subProject);
-
-            return AssignmentResource::make($assignment);
-        });
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[OA\Post(
-        path: '/assignments/{id}/mark-review-as-completed',
-        description: 'Note: available only for assignments with `job_definition.job_key` === `job_overview`',
-        summary: 'Mark assignment as completed',
-        requestBody: new OAH\RequestBody(CompleteReviewTaskRequest::class),
-        tags: ['Assignment management'],
-        parameters: [new OAH\UuidPath('id')],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
-    public function markReviewAsCompleted(CompleteReviewTaskRequest $request): AssignmentResource
+    public function markAsCompleted(Request $request): AssignmentResource
     {
         return DB::transaction(function () use ($request) {
             /** @var Assignment $assignment */
@@ -373,30 +344,49 @@ class AssignmentController extends Controller
             $this->authorize('markAsCompleted', $assignment);
 
             $taskData = $this->retrieveTaskBasedOnAssignmentOrFail($assignment);
-            if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Review->value) {
-                abort(Response::HTTP_BAD_REQUEST, 'The task can not be completed as it is not the review task');
-            }
 
             if (empty($taskId = data_get($taskData, 'task.id'))) {
                 abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task data has incorrect format');
             }
 
-            WorkflowService::completeReviewTask($taskId, $request->validated('accepted'));
-            TrackSubProjectStatus::dispatch($assignment->subProject);
+            if ($assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Review->value) {
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task has the wrong type that not match with the assignment');
+                }
 
-            try {
-                DB::transaction(function () use ($assignment, $request) {
-                    $assignment->status = AssignmentStatus::Done;
-                    $assignment->saveOrFail();
+                $validated = $request->validate([
+                    'accepted' => ['required', 'boolean'],
+                    'final_file_id' => ['required_if:accepted,1', 'array'],
+                    'final_file_id.*' => [
+                        'required',
+                        'integer',
+                        Rule::exists(Media::class, 'id'),
+                    ],
+                ]);
 
-                    $request->validated('accepted') && $assignment->subProject
+                WorkflowService::completeReviewTask($taskId, $validated['accepted']);
+                try {
+                    $validated['accepted'] && $assignment->subProject
                         ->moveFinalFilesToProjectFinalFiles(
-                            $request->validated('final_file_id')
+                            $validated['final_file_id']
                         );
-                });
-            } catch (InvalidArgumentException $e) {
-                abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
+                } catch (InvalidArgumentException $e) {
+                    abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
+                }
+            } else {
+                if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Default->value) {
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task has the wrong type that not match with the assignment');
+                }
+
+                WorkflowService::completeTask($taskId);
             }
+
+            DB::transaction(function () use ($assignment) {
+                $assignment->status = AssignmentStatus::Done;
+                $assignment->saveOrFail();
+            });
+
+            TrackSubProjectStatus::dispatch($assignment->subProject);
 
             return AssignmentResource::make($assignment);
         });
