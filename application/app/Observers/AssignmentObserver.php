@@ -2,8 +2,11 @@
 
 namespace App\Observers;
 
+use App\Enums\CandidateStatus;
 use App\Models\Assignment;
+use App\Models\Candidate;
 use App\Models\Volume;
+use Throwable;
 
 class AssignmentObserver
 {
@@ -12,19 +15,12 @@ class AssignmentObserver
      */
     public function creating(Assignment $assignment): void
     {
-        $idx = $assignment->jobDefinition?->sequence ?: 0;
-
-        $assignment->ext_id = collect([
-            $assignment->subProject->ext_id, '/', ++$idx,
-            '.',
-            Assignment::where('sub_project_id', $assignment->sub_project_id)
-                ->where('job_definition_id', $assignment->job_definition_id)
-                ->count() + 1,
-        ])->implode('');
+        $this->setExternalId($assignment);
     }
 
     /**
      * Handle the Assignment "created" event.
+     * @throws Throwable
      */
     public function created(Assignment $assignment): void
     {
@@ -33,6 +29,7 @@ class AssignmentObserver
 
     /**
      * Handle the Assignment "updated" event.
+     * @throws Throwable
      */
     public function updated(Assignment $assignment): void
     {
@@ -40,11 +37,25 @@ class AssignmentObserver
     }
 
     /**
+     * @throws Throwable
+     */
+    public function deleting(Assignment $assignment): void
+    {
+        $assignments = $assignment->getSameJobDefinitionAssignmentsQuery()
+            ->orderBy('created_at')
+            ->get();
+
+        $assignments->each(function (Assignment $assignment, int $idx) {
+            $this->setExternalId($assignment, $idx);
+            $assignment->saveOrFail();
+        });
+    }
+
+    /**
      * Handle the Assignment "deleted" event.
      */
     public function deleted(Assignment $assignment): void
     {
-        //
     }
 
     /**
@@ -63,22 +74,33 @@ class AssignmentObserver
         //
     }
 
+    /**
+     * @throws Throwable
+     */
     private function updateVolumesAssigneeFields(Assignment $assignment): void
     {
         if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
-            if (empty($assignment->volumes)) {
-                return;
+            if (filled($assignment->volumes)) {
+                Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
+                    $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
+                    $volume->unit_fee = $assignment->assignee->getPriceList(
+                        $assignment->subProject->source_language_classifier_value_id,
+                        $assignment->subProject->destination_language_classifier_value_id,
+                        $assignment->jobDefinition?->skill_id
+                    )?->getUnitFee($volume->unit_type);
+                    $volume->save();
+                }));
             }
 
-            Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
-                $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
-                $volume->unit_fee = $assignment->assignee->getPriceList(
-                    $assignment->subProject->source_language_classifier_value_id,
-                    $assignment->subProject->destination_language_classifier_value_id,
-                    $assignment->jobDefinition?->skill_id
-                )?->getUnitFee($volume->unit_type);
-                $volume->save();
-            }));
+            /** @var Candidate $candidate */
+            $candidate = $assignment->candidates()
+                ->where('vendor_id', $assignment->assigned_vendor_id)
+                ->first();
+
+            if (filled($candidate)) {
+                $candidate->status = CandidateStatus::Accepted;
+                $candidate->saveOrFail();
+            }
 
             $subProject = $assignment->subProject;
             if (empty($subProject)) {
@@ -86,7 +108,7 @@ class AssignmentObserver
             }
 
             $subProject->price = $subProject->getPriceCalculator()->getPrice();
-            $subProject->save();
+            $subProject->saveOrFail();
 
             $project = $subProject->project;
 
@@ -95,7 +117,16 @@ class AssignmentObserver
             }
 
             $project->price = $project->getPriceCalculator()->getPrice();
-            $project->save();
+            $project->saveOrFail();
         }
+    }
+
+    private function setExternalId(Assignment $assignment, int $sequence = null): void
+    {
+        $idx = $assignment->jobDefinition?->sequence ?: 0;
+        $sequence = is_null($sequence) ? $assignment->getSameJobDefinitionAssignmentsQuery()
+                ->count(): $sequence;
+        $assignment->ext_id = collect([$assignment->subProject->ext_id, '/', ++$idx, '.', ++$sequence])
+            ->implode('');
     }
 }

@@ -2,6 +2,10 @@
 
 namespace App\Observers;
 
+use App\Enums\AssignmentStatus;
+use App\Enums\SubProjectStatus;
+use App\Jobs\NotifyAssignmentCandidates;
+use App\Models\Assignment;
 use App\Models\SubProject;
 
 class SubProjectObserver
@@ -13,7 +17,7 @@ class SubProjectObserver
     {
         $subProject->ext_id = collect([
             $subProject->project->ext_id,
-            $subProject->sourceLanguageClassifierValue->value.$subProject->destinationLanguageClassifierValue->value,
+            $subProject->sourceLanguageClassifierValue->value . $subProject->destinationLanguageClassifierValue->value,
             $subProject->project->subProjectSequence->incrementCurrentValue(),
         ])->implode('-');
     }
@@ -31,7 +35,29 @@ class SubProjectObserver
      */
     public function updated(SubProject $subProject): void
     {
-        //
+        if ($subProject->wasChanged('active_job_definition_id')) {
+            $subProject->assignments()
+                ->where('job_definition_id', $subProject->active_job_definition_id)
+                ->whereNull('assigned_vendor_id')
+                ->each(fn(Assignment $assignment) => NotifyAssignmentCandidates::dispatch(...));
+
+            $prevActiveJobDefinitionId = $subProject->getOriginal('active_job_definition_id');
+            if (filled($prevActiveJobDefinitionId)) {
+                $subProject->assignments()->where('job_definition_id', $prevActiveJobDefinitionId)
+                    ->each(function (Assignment $assignment) {
+                        $assignment->status = AssignmentStatus::Done;
+                        $assignment->saveOrFail();
+                    });
+            }
+
+            if (filled($subProject->active_job_definition_id)) {
+                $subProject->assignments()->where('job_definition_id', $subProject->active_job_definition_id)
+                    ->each(function (Assignment $assignment) {
+                        $assignment->status = AssignmentStatus::InProgress;
+                        $assignment->saveOrFail();
+                    });
+            }
+        }
     }
 
     /**

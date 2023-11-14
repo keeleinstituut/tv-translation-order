@@ -79,6 +79,24 @@ class ProjectPolicy
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
+    public function cancel(JwtPayloadUser $user, Project $project): bool
+    {
+        $currentInstitutionUserId = Auth::user()?->institutionUserId;
+
+        if (empty($currentInstitutionUserId)) {
+            return false;
+        }
+
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+            $project->client_institution_user_id === $currentInstitutionUserId;
+    }
+
+    public function review(JwtPayloadUser $user, Project $project): bool
+    {
+        $currentInstitutionUserId = Auth::user()?->institutionUserId;
+        return $currentInstitutionUserId === $project->client_institution_user_id;
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

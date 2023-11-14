@@ -6,15 +6,21 @@ use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\SubProjectListRequest;
+use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Resources\API\SubProjectResource;
+use App\Http\Resources\API\VolumeResource;
+use App\Models\Assignment;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
+use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class SubProjectController extends Controller
 {
@@ -164,6 +170,44 @@ class SubProjectController extends Controller
     public function update(Request $request, string $id)
     {
         //
+    }
+
+    /**
+     * @throws AuthorizationException
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/subprojects/{id}/start-workflow',
+        summary: 'Start sub-project workflow',
+        tags: ['Sub-projects'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: SubProjectResource::class, description: 'Sub-project resource', response: Response::HTTP_OK)]
+    public function startWorkflow(string $id): SubProjectResource
+    {
+        /** @var SubProject $subProject */
+        $subProject = self::getBaseQuery()->findOrFail($id);
+
+        $this->authorize('startWorkflow', $subProject);
+
+        if ($subProject->workflow_started) {
+            abort(400, 'Workflow is already started for the sub-project');
+        }
+
+        if ($subProject->status === SubProjectStatus::Cancelled) {
+            abort(400, 'Not possible to start workflow for the cancelled sub-project');
+        }
+
+        $hasAssignmentWithoutCandidates = $subProject->assignments()
+            ->whereDoesntHave('candidates')->exists();
+
+//        if ($hasAssignmentWithoutCandidates) {
+//            abort(400, 'Sub-project contains job(s) without candidates');
+//        }
+
+        $subProject->project->workflow()->startSubProjectWorkflow($subProject);
+
+        return SubProjectResource::make($subProject);
     }
 
     private static function getBaseQuery(): Builder

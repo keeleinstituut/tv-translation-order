@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\JobKey;
+use App\Enums\SubProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
@@ -20,7 +22,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 use RuntimeException;
+use Spatie\MediaLibrary\InteractsWithMedia;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
@@ -35,11 +39,13 @@ use Throwable;
  * @property string|null $project_id
  * @property string|null $file_collection
  * @property string|null $file_collection_final
- * @property string|null $workflow_ref
+ * @property boolean $workflow_started
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
+ * @property string|null $active_job_definition_id
  * @property ArrayObject|null $cat_metadata
  * @property float|null $price
+ * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
  * @property Carbon|null $updated_at
@@ -86,6 +92,8 @@ class SubProject extends Model
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
         'price' => 'float',
+        'status' => SubProjectStatus::class,
+        'workflow_started' => 'boolean',
     ];
 
     public function project(): BelongsTo
@@ -169,7 +177,34 @@ class SubProject extends Model
             $assignment = new Assignment();
             $assignment->sub_project_id = $this->id;
             $assignment->job_definition_id = $jobDefinition->id;
+
+            if ($jobDefinition->job_key === JobKey::JOB_OVERVIEW && filled($this->project->manager_institution_user_id)) {
+                $assignment->assigned_vendor_id = $this->project->manager_institution_user_id;
+            }
+
             $assignment->saveOrFail();
+        });
+    }
+
+    public function moveFinalFilesToProjectFinalFiles($finalFilesIds): void
+    {
+        if (empty($finalFilesIds)) {
+            throw new InvalidArgumentException('No final files specified');
+        }
+
+
+        $files = $this->finalFiles->filter(fn (Media $media) => in_array($media->id, $finalFilesIds))
+            ->values();
+
+        $wrongFilesPassed = $files->count() !== count($finalFilesIds);
+
+        if ($wrongFilesPassed) {
+            throw new InvalidArgumentException('Files IDs are incorrect');
+        }
+
+        $project = $this->project;
+        $files->each(function (Media $media) use ($project) {
+            $media->copy($project, Project::FINAL_FILES_COLLECTION);
         });
     }
 

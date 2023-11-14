@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AssignmentStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use Database\Factories\AssignmentFactory;
@@ -24,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $job_definition_id
  * @property string|null $assigned_vendor_id
  * @property string|null $ext_id
+ * @property AssignmentStatus $status
  * @property string|null $deadline_at
  * @property string|null $comments
  * @property string|null $assignee_comments
@@ -62,6 +64,10 @@ class Assignment extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'status' => AssignmentStatus::class
+    ];
+
     public function subProject(): BelongsTo
     {
         return $this->belongsTo(SubProject::class);
@@ -96,5 +102,12 @@ class Assignment extends Model
     public function getPriceCalculator(): PriceCalculator
     {
         return new AssigneePriceCalculator($this);
+    }
+
+    public function getSameJobDefinitionAssignmentsQuery(): Builder
+    {
+        return Assignment::where('job_definition_id', $this->job_definition_id)
+            ->where('sub_project_id', $this->sub_project_id)
+            ->whereNot('id', $this->id);
     }
 }

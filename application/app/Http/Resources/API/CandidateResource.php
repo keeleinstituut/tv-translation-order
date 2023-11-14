@@ -21,6 +21,7 @@ class CandidateResource extends JsonResource
     {
         return [
             'vendor' => VendorResource::make($this->vendor),
+            'status' => $this->status,
             'price' => filled($this->vendor) ?
                 (new CandidatePriceCalculator(
                     $this->assignment,

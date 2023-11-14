@@ -2,14 +2,17 @@
 
 namespace App\Services\Workflows;
 
-use App\Enums\Feature;
 use App\Enums\JobKey;
+use App\Jobs\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Services\Workflows\Tasks\TasksSearchResult;
+use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
 use App\Services\Workflows\Templates\SubProjectWorkflowTemplateInterface;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
@@ -28,15 +31,15 @@ class WorkflowProcessInstanceService
      */
     public function startWorkflowProcessInstance(): void
     {
-        $template = SubProjectWorkflowTemplatePicker::getWorkflowTemplate(
-            $this->project->typeClassifierValue
-                ->projectTypeConfig
-                ->workflow_process_definition_id
-        );
+        $variables = $this->composeProcessInstanceVariables();
+
+        if (empty($variables['subProjects'])) {
+            throw new InvalidArgumentException("Trying to start workflow for the project without sub-projects");
+        }
 
         $response = WorkflowService::startProcessDefinition($this->getProcessDefinitionId(), [
             'businessKey' => $this->getBusinessKey(),
-            'variables' => $this->composeProcessInstanceVariables($template)
+            'variables' => $this->composeProcessInstanceVariables()
         ]);
 
         if (!isset($response['id'])) {
@@ -47,61 +50,86 @@ class WorkflowProcessInstanceService
         $this->project->saveOrFail();
     }
 
-    public function triggerSubProjectWorkflowStart(SubProject $subProject): void
+    /**
+     * @throws Throwable
+     */
+    public function startSubProjectWorkflow(SubProject $subProject): void
     {
-        WorkflowService::sendMessage([
-            'messageName' => 'SubProjectWorkflowStarted',
-            'businessKey' => $this->getBusinessKey(),
-            'correlationKeys' => [
-                'sub_project_id' => [
-                    'value' => $subProject->id,
-                    'type' => 'String'
+        try {
+            WorkflowService::sendMessage([
+                'messageName' => 'SubProjectWorkflowStarted',
+                'businessKey' => $this->getBusinessKey(),
+                'correlationKeys' => [
+                    'sub_project_id' => [
+                        'value' => $subProject->id,
+                        'type' => 'String'
+                    ]
                 ]
-            ]
-        ]);
+            ]);
+
+            $subProject->workflow_started = true;
+            $subProject->saveOrFail();
+
+            TrackSubProjectStatus::dispatch($subProject);
+        } catch (RequestException $e) {
+            throw new RuntimeException("Starting of the sub-project workflow failed", $e->response->status(), $e);
+        }
     }
 
-    public function completeSubProjectReviewTask(string $taskId, bool $successful = true): void
+    public function syncProcessInstanceVariables(): void
     {
-        WorkflowService::completeTask($taskId, [
-            'variables' => [
-                'subProjectFinished' => [
-                    'value' => $successful,
-                ]
-            ]
-        ]);
+        $variables = $this->composeProcessInstanceVariables();
+        try {
+            foreach ($variables as $name => $value) {
+                WorkflowService::updateProcessInstanceVariable(
+                    $this->getProcessInstanceId(),
+                    $name,
+                    $value
+                );
+            }
+        } catch (Throwable $e) {
+            throw new RuntimeException('Updating of the process instance variables failed.', previous: $e);
+        }
     }
 
-    public function completeProjectReviewTask(string $taskId, bool $successful = true): void
+    /**
+     * @throws RequestException
+     */
+    public function updateProcessInstanceVariable(string $name, $value)
     {
-        WorkflowService::completeTask($taskId, [
-            'variables' => [
-                "acceptedByClient" => [
-                    'value' => $successful,
-                ]
-            ]
-        ]);
+        WorkflowService::updateProcessInstanceVariable(
+            $this->getProcessInstanceId(),
+            $name,
+            $value
+        );
     }
 
-    public function cancelProjectWorkflow(): void
+
+    /**
+     * @throws Throwable
+     */
+    public function cancel(): void
     {
         WorkflowService::deleteProcessInstances([
             $this->getProcessInstanceId()
         ], 'Project cancelled');
+
+        $this->project->workflow_instance_ref = null;
+        $this->project->saveOrFail();
     }
 
-    public function getTasks()
+    public function getTasksSearchResult(array $params = []): TasksSearchResult
     {
-        return WorkflowService::getTask([
-            'processInstanceId' => $this->getProcessInstanceId(),
+        return (new WorkflowTasksDataProvider)->search([
+            ...$params,
+            'processInstanceBusinessKey' => $this->getBusinessKey()
         ]);
     }
 
-    public function updateProcessVariable($variableName, $newValue)
+    public function isStarted(): bool
     {
-        return WorkflowService::updateProcessInstanceVariable($this->getProcessInstanceId(), $variableName, $newValue);
+        return filled($this->project->workflow_instance_ref);
     }
-
 
     private function getProcessDefinitionId(): ?string
     {
@@ -118,9 +146,20 @@ class WorkflowProcessInstanceService
         return 'workflow.' . $this->project->id;
     }
 
-    private function composeProcessInstanceVariables(SubProjectWorkflowTemplateInterface $template): array
+    private function composeProcessInstanceVariables(): array
     {
+        $template = $this->getSubProjectWorkflowTemplate();
+
         return [
+            'project_id' => [
+                'value' => $this->project->id,
+            ],
+            'client_institution_user_id' => [
+                'value' => $this->project->client_institution_user_id
+            ],
+            'manager_institution_user_id' => [
+                'value' => $this->project->manager_institution_user_id
+            ],
             'subProjects' => [
                 'value' => $this->project->subProjects->map(function (SubProject $subProject) use ($template) {
                     return [
@@ -143,7 +182,8 @@ class WorkflowProcessInstanceService
                                 $deadline = ($assignment->deadline_at ?: $subProject->deadline_at) ?: $this->project->deadline_at;
                                 return [
                                     'overview' => [
-                                        'institution_id' => $assignment->subProject->project->institution_id,
+                                        'sub_project_id' => $subProject->id,
+                                        'institution_id' => $this->project->institution_id,
                                         'assignee' => $assignment->assigned_vendor_id,
                                         'candidateUsers' => $assignment->candidates->pluck('vendor_id')->toArray(),
                                         'assignment_id' => $assignment->id,
@@ -159,7 +199,8 @@ class WorkflowProcessInstanceService
                                 $variableName => $assignments->map(function (Assignment $assignment) use ($subProject) {
                                     $deadline = ($assignment->deadline_at ?: $subProject->deadline_at) ?: $this->project->deadline_at;
                                     return [
-                                        'institution_id' => $assignment->subProject->project->institution_id,
+                                        'sub_project_id' => $subProject->id,
+                                        'institution_id' => $this->project->institution_id,
                                         'assignee' => $assignment->assigned_vendor_id,
                                         'candidateUsers' => $assignment->candidates->pluck('vendor_id')->toArray(),
                                         'assignment_id' => $assignment->id,
@@ -175,5 +216,14 @@ class WorkflowProcessInstanceService
                 })->toArray()
             ]
         ];
+    }
+
+    private function getSubProjectWorkflowTemplate(): SubProjectWorkflowTemplateInterface
+    {
+        return SubProjectWorkflowTemplatePicker::getWorkflowTemplate(
+            $this->project->typeClassifierValue
+                ->projectTypeConfig
+                ->workflow_process_definition_id
+        );
     }
 }

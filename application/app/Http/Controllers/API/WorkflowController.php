@@ -2,21 +2,41 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\AssignmentStatus;
+use App\Enums\PrivilegeKey;
+use App\Enums\TaskType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
+use App\Jobs\TrackProjectStatus;
+use App\Jobs\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\Media;
+use App\Models\Project;
 use App\Models\Vendor;
+use App\Policies\ProjectPolicy;
+use App\Policies\VendorPolicy;
 use App\Services\Workflows\WorkflowService;
+use Auth;
+use BadMethodCallException;
+use DB;
+use Gate;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Container;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\Response;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
+use Illuminate\Support\Collection;
 
 class WorkflowController extends Controller
 {
@@ -50,7 +70,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\PaginatedCollectionResponse(itemsRef: TaskResource::class, description: 'Filtered tasks of current institution')]
-    public function getTasks(WorkflowTaskListRequest $request)
+    public function getTasks(WorkflowTaskListRequest $request): AnonymousResourceCollection
     {
         $requestParams = collect($request->validated());
         $pagination = new PaginationBuilder();
@@ -61,8 +81,8 @@ class WorkflowController extends Controller
             'processInstanceBusinessKeyLike' => 'workflow.%',
         ]);
 
-        $tasks = WorkflowService::getTask($params);
-        $count = WorkflowService::getTaskCount($params)['count'];
+        $tasks = WorkflowService::getTasks($params);
+        $count = WorkflowService::getTasksCount($params)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
@@ -126,7 +146,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\PaginatedCollectionResponse(itemsRef: TaskResource::class, description: 'Filtered tasks of current institution')]
-    public function getHistoryTasks(WorkflowHistoryTaskListRequest $request)
+    public function getHistoryTasks(WorkflowHistoryTaskListRequest $request): AnonymousResourceCollection
     {
         $requestParams = collect($request->validated());
         $pagination = new PaginationBuilder();
@@ -156,7 +176,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function getHistoryTask(string $id)
+    public function getHistoryTask(string $id): AnonymousResourceCollection
     {
         $params = collect([
             ...$this->buildAdditionalParams(collect([
@@ -177,12 +197,213 @@ class WorkflowController extends Controller
         return TaskResource::collection($data);
     }
 
-    public function completeTask(string $id)
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/accept',
+        description: 'Note: available only for tasks without assignee',
+        summary: 'Assign user to the task',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function acceptTask(string $id): TaskResource
     {
-        return WorkflowService::completeTask($id);
+        $taskData = $this->getTaskDataOrFail($id);
+
+        if (data_get($taskData, 'task.assignee')) {
+            abort(Response::HTTP_BAD_REQUEST, 'The task already has assignee');
+        }
+
+        $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->first();
+
+        if (empty($activeVendor)) {
+            abort(Response::HTTP_BAD_REQUEST, 'The active user is not a vendor');
+        }
+
+        // TODO: add check that the current vendor is candidate based on the identity-links/process instance variables
+//        $candidates = data_get($taskData, 'variables.candidateUsers');
+//        if (!in_array($activeVendor->id, $candidates)) {
+//            abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
+//        }
+
+        WorkflowService::setAssignee($id, $activeVendor->id);
+        /** @var Assignment $assignment */
+        if (filled($assignment = $taskData['assignment'])) {
+            DB::transaction(function () use ($assignment, $activeVendor) {
+                $assignment->assigned_vendor_id = $activeVendor->id;
+                $assignment->saveOrFail();
+            });
+
+            TrackSubProjectStatus::dispatch($assignment->subProject);
+        }
+
+        return TaskResource::make($taskData);
     }
 
-    private function buildAdditionalParams(Collection $requestParams) {
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/complete',
+        description: 'Note: `accepted` param is required in case if task has type `CLIENT_REVIEW` or `REVIEW`. The `final_file_id` param is required in case if task has type `REVIEW`',
+        summary: 'Complete the task',
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                required: [],
+                properties: [
+                    new OA\Property(property: 'accepted', type: 'boolean'),
+                    new OA\Property(property: 'final_file_id', type: 'array', items: new OA\Items(type: 'integer')),
+                ]
+            )
+        ),
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function completeTask(Request $request): TaskResource
+    {
+        $taskData = $this->getTaskDataOrFail($request->route('id'));
+        $taskType = data_get($taskData, 'variables.task_type', TaskType::Default->value);
+
+        return match ($taskType) {
+            TaskType::Default->value, TaskType::Correcting->value => $this->completeDefaultTask($taskData),
+            TaskType::Review->value => $this->completeReviewTask($request, $taskData),
+            TaskType::ClientReview->value => $this->completeProjectReviewTask($request, $taskData),
+            default => throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unexpected task type')
+        };
+    }
+
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    private function completeDefaultTask(array $taskData): TaskResource
+    {
+        $id = data_get($taskData, 'task.id');
+        $taskType = data_get($taskData, 'variables.task_type', TaskType::Default->value);
+
+        switch ($taskType) {
+            case TaskType::Default->value:
+                $this->authorizeVendorTaskCompletion($taskData);
+                break;
+            case TaskType::Correcting->value:
+                $this->authorizeProjectManagerTaskCompletion($taskData);
+                break;
+            default:
+                throw new InvalidArgumentException('Task with incorrect type passed');
+        }
+
+        WorkflowService::completeTask($id);
+
+        /** @var Assignment $assignment */
+        if (filled($assignment = $taskData['assignment'])) {
+            $assignment->status = AssignmentStatus::Done;
+            $assignment->saveOrFail();
+            TrackSubProjectStatus::dispatch($assignment->subProject);
+        } elseif (filled($project = $this->getTaskProject($taskData))) {
+            TrackProjectStatus::dispatch($project);
+        }
+
+        return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    private function completeReviewTask(Request $request, array $taskData): TaskResource
+    {
+        $validated = $request->validate([
+            'accepted' => ['required', 'boolean'],
+            'final_file_id' => ['required_if:accepted,1', 'array'],
+            'final_file_id.*' => [
+                'required',
+                'integer',
+                Rule::exists(Media::class, 'id'),
+            ],
+        ]);
+
+        if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Review->value) {
+            abort(Response::HTTP_BAD_REQUEST, 'The task type is not review');
+        }
+
+        /** @var Assignment $assignment */
+        if (empty($assignment = $taskData['assignment'])) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Assignment not found for the task');
+        }
+
+        $this->authorizeProjectManagerTaskCompletion($taskData);
+        WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
+
+        DB::transaction(function () use ($assignment, $validated) {
+            $assignment->status = AssignmentStatus::Done;
+            $assignment->saveOrFail();
+
+            $assignment->subProject->moveFinalFilesToProjectFinalFiles(
+                $validated['final_file_id']
+            );
+        });
+
+        TrackSubProjectStatus::dispatch($assignment->subProject);
+
+        return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    private function completeProjectReviewTask(Request $request, array $taskData): TaskResource
+    {
+        $validated = $request->validate([
+            'accepted' => ['required', 'boolean'],
+        ]);
+
+        if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::ClientReview->value) {
+            abort(Response::HTTP_BAD_REQUEST, 'The task type is not client review');
+        }
+
+        if (empty($project = $this->getTaskProject($taskData))) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Could not determine project for the task');
+        }
+
+        $this->authorize('review', $project);
+
+        WorkflowService::completeProjectReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
+
+        TrackProjectStatus::dispatch($project);
+
+        return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws RequestException
+     */
+    private function getTaskDataOrFail(string $id): array
+    {
+        if (empty($task = WorkflowService::getTask($id))) {
+            abort(Response::HTTP_NOT_FOUND, 'Task not found');
+        }
+
+        $variableInstances = $this->fetchVariableInstancesForTasks([$task]);
+        $data = $this->mapWithVariables([$task], $variableInstances);
+        if (empty($this->mapWithExtraInfo($data)[0])) {
+            abort(Response::HTTP_NOT_FOUND, 'Task data not found');
+        }
+
+        return $this->mapWithExtraInfo($data)[0];
+    }
+
+    private function buildAdditionalParams(Collection $requestParams): Collection
+    {
         $processVariablesFilter = collect();
         $sortingParams = collect();
 
@@ -249,14 +470,16 @@ class WorkflowController extends Controller
         return $params;
     }
 
-    private function fetchVariableInstancesForTasks(array $tasks) {
+    private function fetchVariableInstancesForTasks(array $tasks)
+    {
         $executionIds = collect($tasks)->pluck('executionId')->implode(',');
         return WorkflowService::getVariableInstance([
             'executionIdIn' => $executionIds,
         ]);
     }
 
-    private function mapWithVariables($tasks, $variableInstances) {
+    private function mapWithVariables($tasks, $variableInstances): Collection
+    {
         $vars = collect($variableInstances);
 
         return collect($tasks)->map(function ($task) use ($vars) {
@@ -273,8 +496,9 @@ class WorkflowController extends Controller
         });
     }
 
-    private function mapWithExtraInfo($tasks) {
-        $assignmentIds = collect($tasks)->map(fn ($task) => data_get($task, 'variables.assignment_id'));
+    private function mapWithExtraInfo($tasks): Collection
+    {
+        $assignmentIds = collect($tasks)->map(fn($task) => data_get($task, 'variables.assignment_id'));
         $assignments = Assignment::getModel()
             ->whereIn('id', $assignmentIds)
             ->with([
@@ -283,20 +507,62 @@ class WorkflowController extends Controller
                 'subProject.project.typeClassifierValue',
                 'subProject.sourceLanguageClassifierValue',
                 'subProject.destinationLanguageClassifierValue',
-            ])
-            ->get();
+            ])->get();
 
         return collect($tasks)->map(function ($task) use ($assignments) {
-           return [
-               ...$task,
-               'assignment' => $assignments->firstWhere('id', data_get($task, 'variables.assignment_id'))
-           ];
+            return [
+                ...$task,
+                'assignment' => $assignments->firstWhere('id', data_get($task, 'variables.assignment_id'))
+            ];
         });
     }
 
+    /**
+     * @throws AuthorizationException
+     */
+    private function authorizeVendorTaskCompletion(array $taskData): void
+    {
+        Gate::denyIf(empty($institutionUserId = Auth::user()->institutionUserId), 'Unauthorized');
+        $taskType = data_get($taskData, 'variables.task_type');
+        if ($taskType !== TaskType::Default->value) {
+            throw new BadMethodCallException('Trying to authorize vendor task completion with wrong task type');
+        }
+
+        Gate::denyIf(empty($assignee = data_get($taskData, 'task.assignee')), 'Task can be completed only by assigned user');
+
+        $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', $institutionUserId)
+            ->first();
+
+        Gate::denyIf(empty($activeVendor), 'Active user is not a vendor');
+        Gate::denyIf($assignee !== $activeVendor->id, 'You are not assigned to the task');
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    private function authorizeProjectManagerTaskCompletion(array $taskData): void
+    {
+        $taskType = data_get($taskData, 'variables.task_type');
+        if ($taskType !== TaskType::Correcting->value && $taskType !== TaskType::Review->value) {
+            throw new BadMethodCallException('Trying to authorize PM task completion with wrong task type');
+        }
+
+        Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::ManageProject->value));
+    }
+
+    private function getTaskProject(array $taskData): ?Project
+    {
+        if (empty($projectId = data_get($taskData, 'variables.project_id'))) {
+            return null;
+        }
+
+        return Project::withGlobalScope('policy', ProjectPolicy::scope())->find($projectId);
+    }
 }
 
-class PaginationBuilder {
+class PaginationBuilder
+{
     private int $perPage;
     private string $pageName;
 

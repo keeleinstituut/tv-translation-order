@@ -89,6 +89,11 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
+    public function startWorkflow(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilege($subProject);
+    }
+
     private function hasManageProjectPrivilege(SubProject $subProject): bool
     {
         if (! $this->isInSameInstitutionAsCurrentUser($subProject)) {
