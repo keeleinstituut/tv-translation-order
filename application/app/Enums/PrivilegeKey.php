@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum PrivilegeKey: string
 {
+
     case AddRole = 'ADD_ROLE';
     case ViewRole = 'VIEW_ROLE';
     case EditRole = 'EDIT_ROLE';
@@ -45,6 +46,8 @@ enum PrivilegeKey: string
     case EditTranslationMemory = 'EDIT_TM';
     case DeleteTranslationMemory = 'DELETE_TM';
     case ViewTranslationMemory = 'VIEW_TM';
+    case ViewAuditLog = 'VIEW_AUDIT_LOG';
+    case ExportAuditLog = 'EXPORT_AUDIT_LOG';
 
     public static function values(): array
     {
