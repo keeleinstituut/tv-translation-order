@@ -5,17 +5,22 @@ namespace App\Http\Requests\API;
 use App\Enums\ClassifierValueType;
 use App\Enums\TagType;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\Project;
 use App\Models\ProjectTypeConfig;
+use App\Models\SubProject;
 use App\Models\Tag;
+use App\Policies\ProjectPolicy;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class ProjectUpdateRequest extends ProjectCreateRequest
 {
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
+     * @return array<string, ValidationRule|array|string>
      */
     public function rules(): array
     {

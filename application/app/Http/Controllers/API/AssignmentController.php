@@ -16,7 +16,9 @@ use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
 use App\Jobs\NotifyAssignmentCandidates;
-use App\Jobs\TrackSubProjectStatus;
+use App\Jobs\Workflows\AddCandidatesToWorkflow;
+use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
+use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
@@ -144,6 +146,10 @@ class AssignmentController extends Controller
     public function store(AssignmentCreateRequest $request): AssignmentResource
     {
         return DB::transaction(function () use ($request) {
+            if ($request->getSubProject()->workflow()->isStarted()) {
+                abort(Response::HTTP_BAD_REQUEST, 'Adding of assignments not allowed for sub-projects with already started workflow');
+            }
+
             $assignment = new Assignment();
 
             $attributes = $request->validated();
@@ -232,13 +238,21 @@ class AssignmentController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Not possible to add candidates for the assignment that is done');
             }
 
-            $candidates = collect($params->get('data'))->map(Candidate::make(...));
+            if ($assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                abort(Response::HTTP_BAD_REQUEST, 'Review task can be done only by the assigned project manager');
+            }
+
+            $candidates = collect($params->get('data'))
+                ->unique(fn ($data) => $data['vendor_id'])
+                ->map(Candidate::make(...));
 
             $assignment->candidates()->saveMany($candidates);
 
             $assignment->load('candidates.vendor.institutionUser');
 
             NotifyAssignmentCandidates::dispatch($assignment);
+
+            AddCandidatesToWorkflow::dispatch($assignment, $params->pluck('data.*.vendor_id')->toArray());
 
             return AssignmentResource::make($assignment);
         });
@@ -273,6 +287,8 @@ class AssignmentController extends Controller
 
             $assignment->load('candidates.vendor.institutionUser');
 
+            DeleteCandidatesFromWorkflow::dispatch($assignment, $vendorIds->toArray());
+
             return AssignmentResource::make($assignment);
         });
     }
@@ -294,6 +310,10 @@ class AssignmentController extends Controller
             /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($id);
             $this->authorize('delete', $assignment);
+
+            if ($assignment->subProject->workflow()->isStarted()) {
+                abort(Response::HTTP_BAD_REQUEST, 'Deleting of assignments not allowed for sub-projects with already started workflow');
+            }
 
             $subProjectHasAssignmentWithTheSameJobDefinition = $assignment
                 ->getSameJobDefinitionAssignmentsQuery()->exists();

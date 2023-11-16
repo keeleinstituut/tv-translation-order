@@ -59,7 +59,7 @@ class ProjectSeeder extends Seeder
             $project->subProjects->each(function (SubProject $subProject) {
                 $subProject->assignments->each($this->setAssigneeOrCandidates(...));
             });
-            $project->workflow()->startWorkflowProcessInstance();
+            $project->workflow()->start();
         });
     }
 

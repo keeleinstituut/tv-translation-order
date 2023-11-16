@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
@@ -90,6 +91,7 @@ class SubProjectController extends Controller
             'sourceLanguageClassifierValue',
             'destinationLanguageClassifierValue',
             'project.typeClassifierValue',
+            'activeJobDefinition'
         ]);
 
         if ($param = $params->get('ext_id')) {
@@ -107,7 +109,7 @@ class SubProjectController extends Controller
         if ($param = $params->get('type_classifier_value_id')) {
             $query = $query->whereRelation(
                 'project',
-                fn (Builder $projectQuery) => $projectQuery->whereIn('type_classifier_value_id', $param)
+                fn(Builder $projectQuery) => $projectQuery->whereIn('type_classifier_value_id', $param)
             );
         }
 
@@ -157,6 +159,7 @@ class SubProjectController extends Controller
             'assignments.catToolJobs',
             'assignments.jobDefinition',
             'catToolJobs',
+            'activeJobDefinition'
         ])->findOrFail($id);
 
         $this->authorize('view', $subProject);
@@ -190,7 +193,7 @@ class SubProjectController extends Controller
 
         $this->authorize('startWorkflow', $subProject);
 
-        if ($subProject->workflow_started) {
+        if ($subProject->workflow()->isStarted()) {
             abort(400, 'Workflow is already started for the sub-project');
         }
 
@@ -199,14 +202,22 @@ class SubProjectController extends Controller
         }
 
         $hasAssignmentWithoutCandidates = $subProject->assignments()
-            ->whereDoesntHave('candidates')->exists();
+            ->whereRelation('jobDefinition', function (Builder $jobDefinitionQuery) {
+                $jobDefinitionQuery->whereNot('job_key', JobKey::JOB_OVERVIEW);
+            })->whereDoesntHave('candidates')->exists();
 
-//        if ($hasAssignmentWithoutCandidates) {
-//            abort(400, 'Sub-project contains job(s) without candidates');
-//        }
+        if ($hasAssignmentWithoutCandidates) {
+            abort(400, 'Sub-project contains job(s) without candidates');
+        }
 
-        $subProject->project->workflow()->startSubProjectWorkflow($subProject);
+        $hasAssignmentWithoutDeadline = $subProject->assignments()
+            ->whereNull('deadline_at')->exists();
 
+        if ($hasAssignmentWithoutDeadline) {
+            abort(400, 'Sub-project contains assignments without deadline');
+        }
+
+        $subProject->workflow()->start();
         return SubProjectResource::make($subProject);
     }
 

@@ -197,7 +197,7 @@ class ProjectController extends Controller
             );
 
             $project->refresh();
-            $project->workflow()->startWorkflowProcessInstance();
+            $project->workflow()->start();
 
             $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');
             return new ProjectResource($project);
@@ -226,6 +226,7 @@ class ProjectController extends Controller
             'subProjects',
             'subProjects.sourceLanguageClassifierValue',
             'subProjects.destinationLanguageClassifierValue',
+            'subProjects.activeJobDefinition',
             'sourceFiles',
             'finalFiles',
             'helpFiles',
@@ -272,15 +273,26 @@ class ProjectController extends Controller
                 $project->tags()->attach($tagsInput);
             }
 
-            $sourceLang = $params->get('source_language_classifier_value_id', fn () => $project->subProjects->pluck('source_language_classifier_value_id')->first());
-            $destinationLangs = $params->get('destination_language_classifier_value_ids', fn () => $project->subProjects->pluck('destination_language_classifier_value_id'));
-
+            $sourceLang = $params->get('source_language_classifier_value_id', fn() => $project->subProjects->pluck('source_language_classifier_value_id')->first());
+            $destinationLangs = $params->get('destination_language_classifier_value_ids', fn() => $project->subProjects->pluck('destination_language_classifier_value_id'));
             $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
-            $project->initSubProjects(
+            $projectHasStartedSubProjectWorkflow = $project->subProjects
+                    ->filter(fn(SubProject $subProject) => $subProject->workflow()->isStarted())
+                    ->count() > 0;
+
+            [$createdCount, $deletedCount] = $project->initSubProjects(
                 ClassifierValue::findOrFail($sourceLang),
                 ClassifierValue::findMany($destinationLangs),
                 $reInitializeSubProjects
             );
+
+            if ($projectHasStartedSubProjectWorkflow && ($createdCount || $deletedCount)) {
+                abort(Response::HTTP_BAD_REQUEST, 'Updating of sub-projects not allowed in case at least one sub-project workflow started');
+            }
+
+            if ($project->workflow()->isStarted() && ($createdCount || $deletedCount)) {
+                $project->workflow()->restart();
+            }
 
             return new ProjectResource($project);
         });
@@ -300,7 +312,7 @@ class ProjectController extends Controller
     #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Project with given UUID')]
     public function cancel(string $id): ProjectResource
     {
-       return DB::transaction(function () use ($id) {
+        return DB::transaction(function () use ($id) {
             /** @var Project $project */
             $project = self::getBaseQuery()
                 ->with(['subProjects'])

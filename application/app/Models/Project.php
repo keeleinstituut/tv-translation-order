@@ -8,7 +8,7 @@ use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\ProjectPriceCalculator;
-use App\Services\Workflows\WorkflowProcessInstanceService;
+use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use Database\Factories\ProjectFactory;
 use Eloquent;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -179,13 +179,13 @@ class Project extends Model implements HasMedia
         return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
     }
 
-    public function workflow(): WorkflowProcessInstanceService
+    public function workflow(): ProjectWorkflowProcessInstance
     {
-        return new WorkflowProcessInstanceService($this);
+        return new ProjectWorkflowProcessInstance($this);
     }
 
     /** @throws Throwable */
-    public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages, $reinitialize = false): void
+    public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages, $reinitialize = false): array
     {
         $makeSubProject = function ($destinationLanguage) use ($sourceLanguage) {
             $subProject = new SubProject();
@@ -194,6 +194,7 @@ class Project extends Model implements HasMedia
             $subProject->file_collection_final = self::FINAL_FILES_COLLECTION."/$sourceLanguage->value/$destinationLanguage->value";
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
+            $subProject->deadline_at = $this->deadline_at;
             return $subProject;
         };
 
@@ -231,6 +232,8 @@ class Project extends Model implements HasMedia
 
             $subProject->initAssignments();
         });
+
+        return [$toCreate->count(), $toDelete->count()];
     }
 
     /**

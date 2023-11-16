@@ -2,12 +2,10 @@
 
 namespace App\Services\Workflows;
 
-use App\Services\Workflows\Templates\SubProjectWorkflowTemplateInterface;
 use App\Services\Workflows\Templates\WorkflowTemplateInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-use phpseclib3\Math\BigInteger\Engines\PHP;
 
 class WorkflowService
 {
@@ -34,6 +32,47 @@ class WorkflowService
     {
         $response = static::client()->post("/process-definition/key/$key/start", $params);
         return $response->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function getProcessInstances(array $params = []): array
+    {
+        return static::client()->post('/process-instance', $params)
+            ->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function addIdentityLink(string $taskId, string $identityId, string $identityType)
+    {
+        return static::client()->post("/task/$taskId/identity-links", [
+            'userId' => $identityId,
+            'type' => $identityType
+        ])->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function getIdentityLinks(string $taskId, string $identityType)
+    {
+        return static::client()->get("/task/$taskId/identity-links", [
+            'type' => $identityType
+        ])->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function deleteIdentityLink(string $taskId, string $identityId, string $identityType)
+    {
+        return static::client()->post("/task/$taskId/identity-links/delete", [
+            'userId' => $identityId,
+            'type' => $identityType
+        ])->throw()->json();
     }
 
     /**
@@ -118,6 +157,18 @@ class WorkflowService
                 ]
             ]
         ])->throw()->json();
+    }
+
+    /**
+     * @param $taskId
+     * @param array $params
+     * @return array|mixed
+     * @throws RequestException
+     */
+    public static function updateTask($taskId, array $params): mixed
+    {
+        return static::client()->put("/task/$taskId", $params)
+            ->throw()->json();
     }
 
 

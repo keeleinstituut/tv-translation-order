@@ -37,6 +37,10 @@ class NotifyAssignmentCandidates implements ShouldQueue
             return;
         }
 
+        if (empty($this->assignment->candidates)) {
+            return;
+        }
+
         $this->assignment->candidates->each(function (Candidate $candidate) {
             if ($candidate->status === CandidateStatus::New) {
                 // TODO: send email notification

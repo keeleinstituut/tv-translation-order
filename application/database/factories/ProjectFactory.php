@@ -24,7 +24,7 @@ class ProjectFactory extends Factory
         return [
             'institution_id' => Institution::factory(),
             'comments' => fake()->text(),
-            'deadline_at' => fake()->dateTime(),
+            'deadline_at' => fake()->dateTimeBetween('+1 week', '+1 month'),
             'reference_number' => fake()->uuid(),
             'client_institution_user_id' => InstitutionUser::factory(),
             'status' => ProjectStatus::New,
