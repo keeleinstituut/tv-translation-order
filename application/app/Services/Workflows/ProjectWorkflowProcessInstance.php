@@ -126,7 +126,7 @@ readonly class ProjectWorkflowProcessInstance
                 'value' => $this->project->type_classifier_value_id,
             ],
             'deadline_at' => [
-                'value' => $this->project->deadline_at->toIso8601String(),
+                'value' => $this->project->deadline_at?->format(WorkflowService::DATETIME_FORMAT),
             ],
             'subProjects' => [
                 'value' => $this->project->subProjects->map(function (SubProject $subProject) {

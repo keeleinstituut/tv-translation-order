@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Http;
 
 class WorkflowService
 {
+    const DATETIME_FORMAT = 'Y-m-d\TH:i:s.vO';
+
     public static function createDeployment(WorkflowTemplateInterface $workflowTemplate)
     {
         $response = static::client()->attach(
@@ -110,6 +112,16 @@ class WorkflowService
     public static function getTask(string $id)
     {
         $response = static::client()->get("/task/$id");
+
+        return $response->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function getTaskLocalVariables(string $id)
+    {
+        $response = static::client()->get("/task/$id/localVariables");
 
         return $response->throw()->json();
     }

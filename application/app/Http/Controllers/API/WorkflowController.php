@@ -202,7 +202,7 @@ class WorkflowController extends Controller
      */
     #[OA\Post(
         path: '/workflow/tasks/{id}/accept',
-        description: 'Note: available only for tasks without assignee',
+        description: 'Note: available only for tasks without assignee && tasks with type === `DEFAULT` as only these tasks will be done by vendors who should accept the task.',
         summary: 'Assign user to the task',
         tags: ['Workflow'],
         parameters: [new OAH\UuidPath('id')],
@@ -217,6 +217,14 @@ class WorkflowController extends Controller
             abort(Response::HTTP_BAD_REQUEST, 'The task already has assignee');
         }
 
+        if (empty($taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type')))) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unknown task type');
+        }
+
+        if ($taskType !== TaskType::Default) {
+            abort(Response::HTTP_BAD_REQUEST, 'Accepting of the tasks available only for vendor tasks');
+        }
+
         $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
             ->where('institution_user_id', Auth::user()->institutionUserId)
             ->first();
@@ -225,11 +233,12 @@ class WorkflowController extends Controller
             abort(Response::HTTP_BAD_REQUEST, 'The active user is not a vendor');
         }
 
-        // TODO: add check that the current vendor is candidate based on the identity-links/process instance variables
-//        $candidates = data_get($taskData, 'variables.candidateUsers');
-//        if (!in_array($activeVendor->id, $candidates)) {
-//            abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
-//        }
+        $candidatesVendorIds = collect(WorkflowService::getIdentityLinks($id, 'candidate'))
+            ->pluck('userId');
+
+        if (!$candidatesVendorIds->contains($activeVendor->id)) {
+            abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
+        }
 
         WorkflowService::setAssignee($id, $activeVendor->id);
         /** @var Assignment $assignment */
@@ -288,13 +297,13 @@ class WorkflowController extends Controller
     private function completeDefaultTask(array $taskData): TaskResource
     {
         $id = data_get($taskData, 'task.id');
-        $taskType = data_get($taskData, 'variables.task_type', TaskType::Default->value);
+        $taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type'));
 
         switch ($taskType) {
-            case TaskType::Default->value:
+            case TaskType::Default:
                 $this->authorizeVendorTaskCompletion($taskData);
                 break;
-            case TaskType::Correcting->value:
+            case TaskType::Correcting:
                 $this->authorizeProjectManagerTaskCompletion($taskData);
                 break;
             default:
@@ -302,6 +311,7 @@ class WorkflowController extends Controller
         }
 
         WorkflowService::completeTask($id);
+        // TODO: update status for candidate who completed the task.
 
         /** @var Assignment $assignment */
         if (filled($assignment = $taskData['assignment'])) {
@@ -548,7 +558,8 @@ class WorkflowController extends Controller
             throw new BadMethodCallException('Trying to authorize PM task completion with wrong task type');
         }
 
-        Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::ManageProject->value));
+        Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::ManageProject->value), 'You do not have privilege to complete the task');
+        Gate::denyIf(Auth::user()->institutionId !== data_get($taskData, 'variables.institution_id'));
     }
 
     private function getTaskProject(array $taskData): ?Project

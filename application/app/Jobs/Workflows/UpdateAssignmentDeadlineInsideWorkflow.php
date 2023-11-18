@@ -18,6 +18,11 @@ class UpdateAssignmentDeadlineInsideWorkflow implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * The number of times the job may be attempted.
+     */
+    public int $tries = 5;
+
+    /**
      * Create a new job instance.
      */
     public function __construct(private readonly Assignment $assignment)
@@ -37,25 +42,12 @@ class UpdateAssignmentDeadlineInsideWorkflow implements ShouldQueue
 
         $workflow->syncVariables();
 
-        $searchResult = $workflow->getTasksSearchResult([
-            'processVariables' => [
-                'name' => 'assignment_id',
-                'value' => $this->assignment->id,
-                'operator' => 'eq'
-            ]
-        ]);
-
-        if ($searchResult->getCount() === 0) {
+        if (empty($taskData = $workflow->getTaskDataBasedOnAssignment($this->assignment))) {
             return;
         }
 
-        if ($searchResult->getCount() > 1) {
-            throw new DomainException('Assignment has multiple tasks inside the workflow');
-        }
-
-        $taskData = $searchResult->getTasks()->get(0);
         WorkflowService::updateTask(data_get($taskData, 'task.id'), [
-            'due' => $this->assignment->deadline_at?->toIso8601String()
+            'due' => $this->assignment->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
         ]);
     }
 }

@@ -18,6 +18,11 @@ class UpdateProjectClientInsideWorkflow implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * The number of times the job may be attempted.
+     */
+    public int $tries = 5;
+
+    /**
      * Create a new job instance.
      */
     public function __construct(private readonly Project $project)
@@ -42,9 +47,11 @@ class UpdateProjectClientInsideWorkflow implements ShouldQueue
 
         $searchResult = $this->project->workflow()->getTasksSearchResult([
             'processVariables' => [
-                'name' => 'task_type',
-                'value' => TaskType::ClientReview->value,
-                'operator' => 'eq'
+                [
+                    'name' => 'task_type',
+                    'value' => TaskType::ClientReview->value,
+                    'operator' => 'eq'
+                ]
             ]
         ]);
 

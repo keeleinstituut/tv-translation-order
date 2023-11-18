@@ -69,20 +69,15 @@ readonly class SubProjectWorkflowProcessInstance
     {
         return $this->project->workflow()->getTasksSearchResult(
             array_merge_recursive($params, [
-                'processVariables' => [
-                    [
-                        'name' => 'sub_project_id',
-                        'value' => $this->subProject->id,
-                        'operator' => 'eq'
-                    ]
-                ]
-            ]));
+                'processInstanceId' => $this->getId()
+            ])
+        );
     }
 
     public function getTaskDataBasedOnAssignment(Assignment $assignment): ?array
     {
         $searchResult = $this->getTasksSearchResult([
-            'taskVariables' => [
+            'processVariables' => [
                 [
                     'name' => 'assignment_id',
                     'value' => $assignment->id,
@@ -95,8 +90,21 @@ readonly class SubProjectWorkflowProcessInstance
             return null;
         }
 
+        /**
+         * Filtering based on the processVariables doesn't work properly
+         * as all user tasks for a `job_key` will have all assignment_id's as process variables
+         * Possible improvement: Mark task input variables as task local variables.
+         */
         if ($searchResult->getCount() > 1) {
-            throw new DomainException($searchResult->getTasks()->toJson());
+            $tasks = $searchResult->getTasks()->filter(
+                fn(array $taskData) => data_get($taskData, 'variables.assignment_id') === $assignment->id
+            );
+
+            if ($tasks->count() === 1) {
+                return $tasks->first();
+            }
+
+            throw new DomainException('Workflow contains multiple tasks for the assignment');
         }
 
         return $searchResult->getTasks()->get(0);
@@ -145,7 +153,7 @@ readonly class SubProjectWorkflowProcessInstance
                             'source_language_classifier_value_id' => $this->subProject->source_language_classifier_value_id,
                             'destination_language_classifier_value_id' => $this->subProject->destination_language_classifier_value_id,
                             'type_classifier_value_id' => $this->project->type_classifier_value_id,
-                            'deadline_at' => $assignment->deadline_at?->toIso8601String()
+                            'deadline_at' => $assignment->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
                         ]
                     ];
                 }
@@ -161,7 +169,7 @@ readonly class SubProjectWorkflowProcessInstance
                             'source_language_classifier_value_id' => $this->subProject->source_language_classifier_value_id,
                             'destination_language_classifier_value_id' => $this->subProject->destination_language_classifier_value_id,
                             'type_classifier_value_id' => $this->project->type_classifier_value_id,
-                            'deadline_at' => $assignment->deadline_at?->toIso8601String()
+                            'deadline_at' => $assignment->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
                         ];
                     })->toArray()
                 ];

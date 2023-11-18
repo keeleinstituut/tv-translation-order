@@ -99,7 +99,7 @@ class ProjectObserver
                 }
             });
 
-            UpdateProjectDeadlineInsideWorkflow::dispatch($project);
+            UpdateProjectDeadlineInsideWorkflow::dispatchSync($project);
         }
     }
 

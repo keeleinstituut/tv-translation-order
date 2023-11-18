@@ -228,7 +228,6 @@ class AssignmentController extends Controller
     {
         $assignmentId = $request->route('id');
         $params = collect($request->validated());
-
         return DB::transaction(function () use ($assignmentId, $params) {
             /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
@@ -252,7 +251,7 @@ class AssignmentController extends Controller
 
             NotifyAssignmentCandidates::dispatch($assignment);
 
-            AddCandidatesToWorkflow::dispatch($assignment, $params->pluck('data.*.vendor_id')->toArray());
+            AddCandidatesToWorkflow::dispatch($assignment, $candidates->pluck('vendor_id')->toArray());
 
             return AssignmentResource::make($assignment);
         });

@@ -16,6 +16,11 @@ class DeleteCandidatesFromWorkflow implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * The number of times the job may be attempted.
+     */
+    public int $tries = 5;
+
+    /**
      * Create a new job instance.
      */
     public function __construct(private readonly Assignment $assignment, private readonly array $candidatesIds)

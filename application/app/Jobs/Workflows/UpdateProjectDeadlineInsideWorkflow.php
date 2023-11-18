@@ -8,12 +8,19 @@ use App\Services\Workflows\WorkflowService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Symfony\Component\HttpFoundation\Response;
 
 class UpdateProjectDeadlineInsideWorkflow implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * The number of times the job may be attempted.
+     */
+    public int $tries = 5;
 
     /**
      * Create a new job instance.
@@ -41,8 +48,9 @@ class UpdateProjectDeadlineInsideWorkflow implements ShouldQueue
         }
 
         foreach ($searchResult->getTasks() as $taskData) {
-            $taskId = data_get($taskData, 'task.id');
-            // TODO: update deadline for project workflow tasks
+            WorkflowService::updateTask(data_get($taskData, 'task.id'), [
+                'due' => $this->project->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
+            ]);
         }
     }
 }
