@@ -13,6 +13,8 @@ use Throwable;
 
 readonly class ProjectWorkflowProcessInstance
 {
+    const BUSINESS_KEY_PREFIX = 'workflow.';
+
     public function __construct(private Project $project)
     {
     }
@@ -104,7 +106,7 @@ readonly class ProjectWorkflowProcessInstance
 
     public function getBusinessKey(): string
     {
-        return 'workflow.workflow' . $this->project->id;
+        return self::BUSINESS_KEY_PREFIX . $this->project->id;
     }
 
     private function composeVariables(): array

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\CandidateStatus;
 use App\Enums\PrivilegeKey;
 use App\Enums\TaskType;
 use App\Http\Controllers\Controller;
@@ -13,11 +14,13 @@ use App\Http\Resources\TaskResource;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\Candidate;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\Vendor;
 use App\Policies\ProjectPolicy;
 use App\Policies\VendorPolicy;
+use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
 use Auth;
 use BadMethodCallException;
@@ -53,6 +56,7 @@ class WorkflowController extends Controller
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(name: 'type_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'assigned_to_me', schema: new OA\Schema(type: 'boolean', default: true)),
+            new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(
                 name: 'lang_pair[]',
                 schema: new OA\Schema(
@@ -78,8 +82,8 @@ class WorkflowController extends Controller
         $params = collect([
             ...$pagination->getPaginationParams(),
             ...$this->buildAdditionalParams($requestParams),
-            'processInstanceBusinessKeyLike' => 'workflow.%',
         ]);
+
 
         $tasks = WorkflowService::getTasks($params);
         $count = WorkflowService::getTasksCount($params)['count'];
@@ -100,13 +104,12 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function getTask(string $id)
+    public function getTask(string $id): AnonymousResourceCollection
     {
         $params = collect([
             ...$this->buildAdditionalParams(collect([
                 'skip_assigned_param' => true,
             ])),
-            'processInstanceBusinessKeyLike' => 'workflow.%',
             'taskId' => $id,
         ]);
 
@@ -129,6 +132,7 @@ class WorkflowController extends Controller
             new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['deadline_at'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(name: 'type_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+            new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(
                 name: 'lang_pair[]',
                 schema: new OA\Schema(
@@ -154,7 +158,6 @@ class WorkflowController extends Controller
         $params = collect([
             ...$pagination->getPaginationParams(),
             ...$this->buildAdditionalParams($requestParams),
-            'processInstanceBusinessKeyLike' => 'workflow.%',
         ]);
 
         $tasks = WorkflowService::getHistoryTask($params);
@@ -182,7 +185,6 @@ class WorkflowController extends Controller
             ...$this->buildAdditionalParams(collect([
                 'skip_assigned_param' => true,
             ])),
-            'processInstanceBusinessKeyLike' => 'workflow.%',
             'finished' => true,
             'taskId' => $id,
         ]);
@@ -301,7 +303,8 @@ class WorkflowController extends Controller
 
         switch ($taskType) {
             case TaskType::Default:
-                $this->authorizeVendorTaskCompletion($taskData);
+                $vendor = $this->getActiveVendor();
+                $this->authorizeVendorTaskCompletion($vendor, $taskData);
                 break;
             case TaskType::Correcting:
                 $this->authorizeProjectManagerTaskCompletion($taskData);
@@ -311,12 +314,23 @@ class WorkflowController extends Controller
         }
 
         WorkflowService::completeTask($id);
-        // TODO: update status for candidate who completed the task.
 
         /** @var Assignment $assignment */
         if (filled($assignment = $taskData['assignment'])) {
             $assignment->status = AssignmentStatus::Done;
             $assignment->saveOrFail();
+
+            if (isset($vendor) && filled($vendor)) {
+                /** @var Candidate $candidate */
+                $candidate = $assignment->candidates()->where('vendor_id', $vendor->id)
+                    ->first();
+
+                if (filled($candidate)) {
+                    $candidate->status = CandidateStatus::Done;
+                    $candidate->saveOrFail();
+                }
+            }
+
             TrackSubProjectStatus::dispatch($assignment->subProject);
         } elseif (filled($project = $this->getTaskProject($taskData))) {
             TrackProjectStatus::dispatch($project);
@@ -463,6 +477,13 @@ class WorkflowController extends Controller
             'sorting' => $sortingParams->toArray(),
         ]);
 
+        if ($projectId = $requestParams->get('project_id')) {
+            $project = Project::withGlobalScope('policy', ProjectPolicy::scope())->findOrFail($projectId);
+            $params->put('processInstanceBusinessKey', $project->workflow()->getBusinessKey());
+        } else {
+            $params->put('processInstanceBusinessKeyLike', ProjectWorkflowProcessInstance::BUSINESS_KEY_PREFIX . '%');
+        }
+
         $assignedToMe = $requestParams->get('assigned_to_me', true);
         if (!$requestParams->get('skip_assigned_param') && filled($assignedToMe)) {
             if ($assignedToMe) {
@@ -530,9 +551,8 @@ class WorkflowController extends Controller
     /**
      * @throws AuthorizationException
      */
-    private function authorizeVendorTaskCompletion(array $taskData): void
+    private function authorizeVendorTaskCompletion(?Vendor $vendor, array $taskData): void
     {
-        Gate::denyIf(empty($institutionUserId = Auth::user()->institutionUserId), 'Unauthorized');
         $taskType = data_get($taskData, 'variables.task_type');
         if ($taskType !== TaskType::Default->value) {
             throw new BadMethodCallException('Trying to authorize vendor task completion with wrong task type');
@@ -540,12 +560,19 @@ class WorkflowController extends Controller
 
         Gate::denyIf(empty($assignee = data_get($taskData, 'task.assignee')), 'Task can be completed only by assigned user');
 
-        $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+        Gate::denyIf(empty($vendor), 'Active user is not a vendor');
+        Gate::denyIf($assignee !== $vendor->id, 'You are not assigned to the task');
+    }
+
+    private function getActiveVendor(): ?Vendor
+    {
+        if (empty($institutionUserId = Auth::user()->institutionUserId)) {
+            return null;
+        }
+
+        return Vendor::withGlobalScope('policy', VendorPolicy::scope())
             ->where('institution_user_id', $institutionUserId)
             ->first();
-
-        Gate::denyIf(empty($activeVendor), 'Active user is not a vendor');
-        Gate::denyIf($assignee !== $activeVendor->id, 'You are not assigned to the task');
     }
 
     /**

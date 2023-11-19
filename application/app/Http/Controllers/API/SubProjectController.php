@@ -102,9 +102,9 @@ class SubProjectController extends Controller
             $query = $query->where('project_id', $param);
         }
 
-        //        if ($param = $params->get('status')) {
-        //            $query = $query->whereIn('status', $param);
-        //        }
+        if ($param = $params->get('status')) {
+            $query = $query->whereIn('status', $param);
+        }
 
         if ($param = $params->get('type_classifier_value_id')) {
             $query = $query->whereRelation(

@@ -15,17 +15,18 @@ class JobDefinitionSeeder extends Seeder
      */
     public function run(): void
     {
-        $skillsMap = Skill::all(['id', 'name'])->keyBy('name');
+        $skillsMap = Skill::all(['id', 'name'])->keyBy(fn($data) => $this->normalizeSkillName($data['name']));
+
         ProjectTypeConfig::query()->each(function (ProjectTypeConfig $projectTypeConfig) use ($skillsMap) {
             $jobsDefinitions = self::getData()[$projectTypeConfig->typeClassifierValue->value] ?? [];
             foreach ($jobsDefinitions as $idx => $jobDefinitionAttributes) {
                 $jobDefinitionAttributes['sequence'] = $idx;
 
                 if (isset($jobDefinitionAttributes['skill'])) {
-                    if ($skillsMap->has($jobDefinitionAttributes['skill'])) {
-                        $jobDefinitionAttributes['skill_id'] = $skillsMap->get($jobDefinitionAttributes['skill'])->id;
-                    } else {
-                        continue;
+                    $normalizedSkillName = $this->normalizeSkillName($jobDefinitionAttributes['skill']);
+
+                    if ($skillsMap->has($normalizedSkillName)) {
+                        $jobDefinitionAttributes['skill_id'] = $skillsMap->get($normalizedSkillName)->id;
                     }
 
                     unset($jobDefinitionAttributes['skill']);
@@ -142,7 +143,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_key' => JobKey::JOB_TRANSLATION,
                     'skill' => 'Tõlkimine+Toimetamine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
+                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
@@ -155,7 +156,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_key' => JobKey::JOB_TRANSLATION,
                     'skill' => 'Tõlkimine+toimetamine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
+                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
             ],
             'CAT_TRANSLATION_EDITING_REVIEW' => [
@@ -309,5 +310,10 @@ class JobDefinitionSeeder extends Seeder
                 ],
             ]
         ];
+    }
+
+    private function normalizeSkillName(string $name): string
+    {
+        return preg_replace('/\s+/', '',  mb_strtolower($name));
     }
 }
