@@ -57,6 +57,7 @@ class WorkflowController extends Controller
             new OA\QueryParameter(name: 'type_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'assigned_to_me', schema: new OA\Schema(type: 'boolean', default: true)),
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+            new OA\QueryParameter(name: 'task_type', schema: new OA\Schema(type: 'string', format: 'enum', enum: TaskType::class)),
             new OA\QueryParameter(
                 name: 'lang_pair[]',
                 schema: new OA\Schema(
@@ -211,9 +212,10 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function acceptTask(string $id): TaskResource
+    public function acceptTask(Request $request): TaskResource
     {
-        $taskData = $this->getTaskDataOrFail($id);
+        $taskId = $request->route('id');
+        $taskData = $this->getTaskDataOrFail($taskId);
 
         if (data_get($taskData, 'task.assignee')) {
             abort(Response::HTTP_BAD_REQUEST, 'The task already has assignee');
@@ -235,24 +237,26 @@ class WorkflowController extends Controller
             abort(Response::HTTP_BAD_REQUEST, 'The active user is not a vendor');
         }
 
-        $candidatesVendorIds = collect(WorkflowService::getIdentityLinks($id, 'candidate'))
+        $candidatesVendorIds = collect(WorkflowService::getIdentityLinks($taskId, 'candidate'))
             ->pluck('userId');
 
         if (!$candidatesVendorIds->contains($activeVendor->id)) {
             abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
         }
 
-        WorkflowService::setAssignee($id, $activeVendor->id);
         /** @var Assignment $assignment */
-        if (filled($assignment = $taskData['assignment'])) {
-            DB::transaction(function () use ($assignment, $activeVendor) {
-                $assignment->assigned_vendor_id = $activeVendor->id;
-                $assignment->saveOrFail();
-            });
-
-            TrackSubProjectStatus::dispatch($assignment->subProject);
+        if (empty($assignment = $taskData['assignment'])) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Missed assignment for the vendor task');
         }
 
+        DB::transaction(function () use ($taskId, $assignment, $activeVendor) {
+            $assignment->assigned_vendor_id = $activeVendor->id;
+            $assignment->saveOrFail();
+
+            WorkflowService::setAssignee($taskId, $activeVendor->id);
+        });
+
+        TrackSubProjectStatus::dispatch($assignment->subProject);
         return TaskResource::make($taskData);
     }
 
@@ -298,7 +302,7 @@ class WorkflowController extends Controller
      */
     private function completeDefaultTask(array $taskData): TaskResource
     {
-        $id = data_get($taskData, 'task.id');
+        $taskId = data_get($taskData, 'task.id');
         $taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type'));
 
         switch ($taskType) {
@@ -307,33 +311,40 @@ class WorkflowController extends Controller
                 $this->authorizeVendorTaskCompletion($vendor, $taskData);
                 break;
             case TaskType::Correcting:
+                $vendor = null;
                 $this->authorizeProjectManagerTaskCompletion($taskData);
                 break;
             default:
                 throw new InvalidArgumentException('Task with incorrect type passed');
         }
 
-        WorkflowService::completeTask($id);
-
         /** @var Assignment $assignment */
         if (filled($assignment = $taskData['assignment'])) {
-            $assignment->status = AssignmentStatus::Done;
-            $assignment->saveOrFail();
+            DB::transaction(function () use ($taskId, $assignment, $vendor) {
+                $assignment->status = AssignmentStatus::Done;
+                $assignment->saveOrFail();
 
-            if (isset($vendor) && filled($vendor)) {
-                /** @var Candidate $candidate */
-                $candidate = $assignment->candidates()->where('vendor_id', $vendor->id)
-                    ->first();
+                if (isset($vendor) && filled($vendor)) {
+                    /** @var Candidate $candidate */
+                    $candidate = $assignment->candidates()->where('vendor_id', $vendor->id)
+                        ->first();
 
-                if (filled($candidate)) {
-                    $candidate->status = CandidateStatus::Done;
-                    $candidate->saveOrFail();
+                    if (filled($candidate)) {
+                        $candidate->status = CandidateStatus::Done;
+                        $candidate->saveOrFail();
+                    }
                 }
-            }
+
+                WorkflowService::completeTask($taskId);
+            });
+
 
             TrackSubProjectStatus::dispatch($assignment->subProject);
         } elseif (filled($project = $this->getTaskProject($taskData))) {
+            WorkflowService::completeTask($taskId);
             TrackProjectStatus::dispatch($project);
+        } else {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task metadata is missing');
         }
 
         return TaskResource::make($taskData);
@@ -365,15 +376,16 @@ class WorkflowController extends Controller
         }
 
         $this->authorizeProjectManagerTaskCompletion($taskData);
-        WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
 
-        DB::transaction(function () use ($assignment, $validated) {
+        DB::transaction(function () use ($assignment, $validated, $taskData) {
             $assignment->status = AssignmentStatus::Done;
             $assignment->saveOrFail();
 
             $assignment->subProject->moveFinalFilesToProjectFinalFiles(
                 $validated['final_file_id']
             );
+
+            WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
         });
 
         TrackSubProjectStatus::dispatch($assignment->subProject);
@@ -450,6 +462,14 @@ class WorkflowController extends Controller
             $processVariablesFilter->push([
                 'name' => 'type_classifier_value_id',
                 'value' => $typeClassifierValueId,
+                'operator' => 'eq',
+            ]);
+        }
+
+        if ($param = $requestParams->get('task_type')) {
+            $processVariablesFilter->push([
+                'name' => 'task_type',
+                'value' => $param,
                 'operator' => 'eq',
             ]);
         }
