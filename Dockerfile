@@ -44,13 +44,19 @@ RUN echo 'post_max_size = 512M' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'upload_max_filesize = 256M' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'memory_limit = 512M' >> /usr/local/etc/php/conf.d/my-php.ini
 
+RUN ln -s /dev/stdout /var/log/nginx/access.log && \
+    ln -s /dev/stderr /var/log/nginx/error.log
+
 RUN <<EOF cat > /etc/nginx/http.d/default.conf
 server {
     listen 80;
     index index.php index.html;
+    root /var/www/html;
+
     error_log  /var/log/nginx/error.log;
     access_log /var/log/nginx/access.log;
-    root /var/www/html;
+    client_max_body_size 100M;
+
     location ~ \.php\$ {
         try_files \$uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)\$;
