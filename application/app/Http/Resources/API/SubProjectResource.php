@@ -86,6 +86,7 @@ class SubProjectResource extends JsonResource
             'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
             'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
             'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
+            'active_job_definition' => JobDefinitionResource::make($this->whenLoaded('activeJobDefinition')),
             'mt_enabled' => $this->cat()->hasMtEnabled(),
         ];
     }

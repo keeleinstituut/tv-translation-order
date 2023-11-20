@@ -12,22 +12,28 @@
     <bpmn:endEvent id="Event_0jkhxm0" name="Project is ready (Accepted)">
       <bpmn:incoming>Flow_1o79ups</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:userTask id="Activity_0c0q5m7" name="Tõlketellimuse vastuvõtmine" camunda:assignee="${client_institution_user_id}">
+    <bpmn:userTask id="Activity_0c0q5m7" name="Tõlketellimuse vastuvõtmine" camunda:assignee="${client_institution_user_id}" camunda:dueDate="${deadline_at}">
       <bpmn:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="task_type">CLIENT_REVIEW</camunda:inputParameter>
           <camunda:inputParameter name="project_id">${project_id}</camunda:inputParameter>
+          <camunda:inputParameter name="institution_id">${institution_id}</camunda:inputParameter>
+          <camunda:inputParameter name="type_classifier_value_id">${type_classifier_value_id}</camunda:inputParameter>
+          <camunda:inputParameter name="deadline_at">${deadline_at}</camunda:inputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1kngzj7</bpmn:incoming>
       <bpmn:incoming>Flow_12s1bgr</bpmn:incoming>
       <bpmn:outgoing>Flow_1x5sfin</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:userTask id="Activity_050m3i5" name="Tõlketellimuse parandamine" camunda:assignee="${manager_institution_user_id}">
+    <bpmn:userTask id="Activity_050m3i5" name="Tõlketellimuse parandamine" camunda:assignee="${manager_institution_user_id}" camunda:dueDate="${deadline_at}">
       <bpmn:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="task_type">CORRECTING</camunda:inputParameter>
           <camunda:inputParameter name="project_id">${project_id}</camunda:inputParameter>
+          <camunda:inputParameter name="institution_id">${institution_id}</camunda:inputParameter>
+          <camunda:inputParameter name="type_classifier_value_id">${type_classifier_value_id}</camunda:inputParameter>
+          <camunda:inputParameter name="deadline_at">${deadline_at}</camunda:inputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1aee6fu</bpmn:incoming>
@@ -39,6 +45,7 @@
       <bpmn:extensionElements>
         <camunda:in businessKey="#{execution.processBusinessKey}" />
         <camunda:in source="subProject" target="subProject" />
+        <camunda:in sourceExpression="${subProject.sub_project_id}" target="sub_project_id" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1hvr8l9</bpmn:incoming>
       <bpmn:outgoing>Flow_1kngzj7</bpmn:outgoing>

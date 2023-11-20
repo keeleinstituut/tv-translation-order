@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $assigned_vendor_id
  * @property string|null $ext_id
  * @property AssignmentStatus $status
- * @property string|null $deadline_at
+ * @property Carbon|null $deadline_at
  * @property string|null $comments
  * @property string|null $assignee_comments
  * @property string|null $feature
@@ -65,7 +65,8 @@ class Assignment extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'status' => AssignmentStatus::class
+        'status' => AssignmentStatus::class,
+        'deadline_at' => 'datetime'
     ];
 
     public function subProject(): BelongsTo

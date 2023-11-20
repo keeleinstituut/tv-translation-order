@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\API;
 
+use App\Models\Project;
+use App\Policies\ProjectPolicy;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +13,7 @@ class WorkflowTaskListRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
+     * @return array<string, ValidationRule|array|string>
      */
     public function rules(): array
     {
@@ -23,6 +26,14 @@ class WorkflowTaskListRequest extends FormRequest
             'sort_by' => Rule::in(['deadline_at']),
             'sort_order' => Rule::in(['asc', 'desc']),
             'assigned_to_me' => 'sometimes|boolean',
+            'project_id' => ['sometimes', 'uuid', function ($attribute, $value, $fail) {
+                $exists = Project::withGlobalScope('policy', ProjectPolicy::scope())
+                    ->where('id', $value)->exists();
+
+                if (! $exists) {
+                    $fail('The project with such ID does not exist.');
+                }
+            },]
         ];
     }
 }

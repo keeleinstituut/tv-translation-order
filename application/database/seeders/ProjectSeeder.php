@@ -34,7 +34,7 @@ class ProjectSeeder extends Seeder
     public function run(): void
     {
         $client = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
-        $projectTypes = ClassifierValue::where('value', 'CAT_TRANSLATION_EDITING_REVIEW')->get();
+        $projectTypes = ClassifierValue::where('type', ClassifierValueType::ProjectType)->get();
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
 
         $projects = Project::factory()
@@ -59,7 +59,7 @@ class ProjectSeeder extends Seeder
             $project->subProjects->each(function (SubProject $subProject) {
                 $subProject->assignments->each($this->setAssigneeOrCandidates(...));
             });
-            $project->workflow()->startWorkflowProcessInstance();
+            $project->workflow()->start();
         });
     }
 

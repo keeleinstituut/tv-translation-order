@@ -4,9 +4,13 @@ namespace App\Observers;
 
 use App\Enums\ProjectStatus;
 use App\Enums\SubProjectStatus;
+use App\Jobs\Workflows\UpdateProjectClientInsideWorkflow;
+use App\Jobs\Workflows\UpdateProjectDeadlineInsideWorkflow;
+use App\Jobs\Workflows\UpdateProjectManagerInsideWorkflow;
 use App\Models\Project;
 use App\Models\Sequence;
 use App\Models\SubProject;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -46,22 +50,6 @@ class ProjectObserver
      */
     public function updating(Project $project): void
     {
-//        if ($project->isDirty('manager_institution_user_id')) {
-//            $project->workflow()->isStarted() && $project->workflow()
-//                ->updateProcessInstanceVariable(
-//                    'manager_institution_user_id',
-//                    $project->manager_institution_user_id
-//                );
-//        }
-
-//        if ($project->isDirty('client_institution_user_id')) {
-//            $project->workflow()->isStarted() && $project->workflow()
-//                ->updateProcessInstanceVariable(
-//                    'client_institution_user_id',
-//                    $project->client_institution_user_id
-//                );
-//        }
-
         $newProjectGotManager = $project->status === ProjectStatus::New &&
             $project->isDirty('manager_institution_user_id') &&
             is_null($project->getOriginal('manager_institution_user_id'));
@@ -87,10 +75,32 @@ class ProjectObserver
 
     /**
      * Handle the Project "updated" event.
+     * @throws RequestException
+     * @throws Throwable
      */
     public function updated(Project $project): void
     {
-        //
+        if ($project->wasChanged('manager_institution_user_id')) {
+            UpdateProjectManagerInsideWorkflow::dispatch($project);
+        }
+
+        if ($project->wasChanged('client_institution_user_id')) {
+            UpdateProjectClientInsideWorkflow::dispatch($project);
+        }
+
+        if ($project->wasChanged('deadline_at') && filled($project->deadline_at)) {
+            $project->subProjects->each(function (SubProject $subProject) use ($project) {
+                if (empty($subProject->deadline_at)) {
+                    $subProject->deadline_at = $project->deadline_at;
+                    $subProject->saveOrFail();
+                } elseif ($subProject->deadline_at > $project->deadline_at && !$subProject->workflow()->isStarted()) {
+                    $subProject->deadline_at = $project->deadline_at;
+                    $subProject->saveOrFail();
+                }
+            });
+
+            UpdateProjectDeadlineInsideWorkflow::dispatchSync($project);
+        }
     }
 
     /**

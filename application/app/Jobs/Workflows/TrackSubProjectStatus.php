@@ -1,17 +1,15 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Workflows;
 
 use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
-use App\Models\Assignment;
-use App\Models\Candidate;
 use App\Models\JobDefinition;
 use App\Models\SubProject;
+use App\Services\Workflows\Tasks\TasksSearchResult;
 use DB;
 use DomainException;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -48,11 +46,12 @@ class TrackSubProjectStatus implements ShouldQueue
             return;
         }
 
-        $jobDefinition = $this->getWorkflowActiveJobDefinition();
+        $tasksSearchResult = $this->subProject->workflow()->getTasksSearchResult();
+        $jobDefinition = $this->getWorkflowActiveJobDefinition($tasksSearchResult);
 
-        /** Empty job definition means that there are no tasks that have relation with assignments */
-        DB::transaction(function () use ($jobDefinition) {
-            if (empty($jobDefinition) && $this->subProject->workflow_started) {
+        DB::transaction(function () use ($jobDefinition, $tasksSearchResult) {
+            /** Empty job definition means that there are no tasks that have relation with assignments */
+            if (empty($jobDefinition) && $this->subProject->workflow()->isStarted()) {
                 $this->subProject->status = SubProjectStatus::Completed;
                 $this->subProject->active_job_definition_id = null;
                 $this->subProject->saveOrFail();
@@ -112,21 +111,16 @@ class TrackSubProjectStatus implements ShouldQueue
 
 
     /**
+     * @param TasksSearchResult $searchResult
      * @return JobDefinition|null
      */
-    private function getWorkflowActiveJobDefinition(): ?JobDefinition
+    private function getWorkflowActiveJobDefinition(TasksSearchResult $searchResult): ?JobDefinition
     {
-        $searchResults = $this->subProject->project->workflow()->getTasksSearchResult([
-            'processVariables' => [
-                [
-                    'name' => 'sub_project_id',
-                    'value' => $this->subProject->id,
-                    'operator' => 'eq'
-                ]
-            ]
-        ]);
+        if ($searchResult->getCount() === 0) {
+            return null;
+        }
 
-        $assignments = $searchResults->getTasks()->pluck('assignment')->filter();
+        $assignments = $searchResult->getTasks()->pluck('assignment')->filter();
         if (empty($assignments)) {
             return null;
         }

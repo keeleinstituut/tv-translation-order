@@ -3,10 +3,10 @@
 namespace App\Observers;
 
 use App\Enums\AssignmentStatus;
-use App\Enums\SubProjectStatus;
 use App\Jobs\NotifyAssignmentCandidates;
 use App\Models\Assignment;
 use App\Models\SubProject;
+use Throwable;
 
 class SubProjectObserver
 {
@@ -32,15 +32,11 @@ class SubProjectObserver
 
     /**
      * Handle the SubProject "updated" event.
+     * @throws Throwable
      */
     public function updated(SubProject $subProject): void
     {
         if ($subProject->wasChanged('active_job_definition_id')) {
-            $subProject->assignments()
-                ->where('job_definition_id', $subProject->active_job_definition_id)
-                ->whereNull('assigned_vendor_id')
-                ->each(fn(Assignment $assignment) => NotifyAssignmentCandidates::dispatch(...));
-
             $prevActiveJobDefinitionId = $subProject->getOriginal('active_job_definition_id');
             if (filled($prevActiveJobDefinitionId)) {
                 $subProject->assignments()->where('job_definition_id', $prevActiveJobDefinitionId)
@@ -55,8 +51,22 @@ class SubProjectObserver
                     ->each(function (Assignment $assignment) {
                         $assignment->status = AssignmentStatus::InProgress;
                         $assignment->saveOrFail();
+
+                        NotifyAssignmentCandidates::dispatch($assignment);
                     });
             }
+        }
+
+        if ($subProject->wasChanged('deadline_at') && filled($subProject->deadline_at)) {
+            $subProject->assignments->each(function (Assignment $assignment) use ($subProject) {
+                if (empty($assignment->deadline_at)) {
+                    $assignment->deadline_at = $subProject->deadline_at;
+                    $assignment->saveOrFail();
+                } elseif ($assignment->deadline_at > $subProject->deadline_at) {
+                    $assignment->deadline_at = $subProject->deadline_at;
+                    $assignment->saveOrFail();
+                }
+            });
         }
     }
 

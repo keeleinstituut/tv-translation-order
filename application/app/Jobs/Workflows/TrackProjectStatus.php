@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Jobs;
+namespace App\Jobs\Workflows;
 
 use App\Enums\ProjectStatus;
 use App\Enums\TaskType;

@@ -9,6 +9,8 @@ use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\SubProjectPriceCalculator;
+use App\Services\Workflows\ProjectWorkflowProcessInstance;
+use App\Services\Workflows\SubProjectWorkflowProcessInstance;
 use ArrayObject;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
@@ -40,6 +42,7 @@ use Throwable;
  * @property string|null $file_collection
  * @property string|null $file_collection_final
  * @property boolean $workflow_started
+ * @property string|null $workflow_instance_ref
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
  * @property string|null $active_job_definition_id
@@ -52,6 +55,7 @@ use Throwable;
  * @property-read Collection<int, Assignment> $assignments
  * @property-read int|null $assignments_count
  * @property-read ClassifierValue|null $destinationLanguageClassifierValue
+ * @property-read JobDefinition|null $activeJobDefinition
  * @property-read Project|null $project
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
  * @property-read Collection<int, Media> $sourceFiles
@@ -94,6 +98,7 @@ class SubProject extends Model
         'price' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
+        'deadline_at' => 'datetime'
     ];
 
     public function project(): BelongsTo
@@ -117,6 +122,11 @@ class SubProject extends Model
     public function destinationLanguageClassifierValue(): BelongsTo
     {
         return $this->belongsTo(ClassifierValue::class, 'destination_language_classifier_value_id');
+    }
+
+    public function activeJobDefinition(): BelongsTo
+    {
+        return  $this->belongsTo(JobDefinition::class, 'active_job_definition_id');
     }
 
     public function sourceFiles(): HasManyDeep
@@ -176,12 +186,8 @@ class SubProject extends Model
         $jobDefinitions->each(function (JobDefinition $jobDefinition) {
             $assignment = new Assignment();
             $assignment->sub_project_id = $this->id;
+            $assignment->deadline_at = $this->deadline_at;
             $assignment->job_definition_id = $jobDefinition->id;
-
-            if ($jobDefinition->job_key === JobKey::JOB_OVERVIEW && filled($this->project->manager_institution_user_id)) {
-                $assignment->assigned_vendor_id = $this->project->manager_institution_user_id;
-            }
-
             $assignment->saveOrFail();
         });
     }
@@ -216,6 +222,11 @@ class SubProject extends Model
     public function getPriceCalculator(): PriceCalculator
     {
         return new SubProjectPriceCalculator($this);
+    }
+
+    public function workflow(): SubProjectWorkflowProcessInstance
+    {
+        return new SubProjectWorkflowProcessInstance($this);
     }
 
     /**

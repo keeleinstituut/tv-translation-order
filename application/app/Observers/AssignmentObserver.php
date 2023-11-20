@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\CandidateStatus;
+use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\Volume;
@@ -34,12 +35,20 @@ class AssignmentObserver
     public function updated(Assignment $assignment): void
     {
         $this->updateVolumesAssigneeFields($assignment);
+        if ($assignment->wasChanged('deadline_at')) {
+            UpdateAssignmentDeadlineInsideWorkflow::dispatch($assignment);
+        }
+    }
+
+    public function deleting(Assignment $assignment): void
+    {
     }
 
     /**
+     * Handle the Assignment "deleted" event.
      * @throws Throwable
      */
-    public function deleting(Assignment $assignment): void
+    public function deleted(Assignment $assignment): void
     {
         $assignments = $assignment->getSameJobDefinitionAssignmentsQuery()
             ->orderBy('created_at')
@@ -49,13 +58,6 @@ class AssignmentObserver
             $this->setExternalId($assignment, $idx);
             $assignment->saveOrFail();
         });
-    }
-
-    /**
-     * Handle the Assignment "deleted" event.
-     */
-    public function deleted(Assignment $assignment): void
-    {
     }
 
     /**
@@ -102,17 +104,14 @@ class AssignmentObserver
                 $candidate->saveOrFail();
             }
 
-            $subProject = $assignment->subProject;
-            if (empty($subProject)) {
+            if (empty($subProject = $assignment->subProject)) {
                 return;
             }
 
             $subProject->price = $subProject->getPriceCalculator()->getPrice();
             $subProject->saveOrFail();
 
-            $project = $subProject->project;
-
-            if (empty($project)) {
+            if (empty($project = $subProject->project)) {
                 return;
             }
 
@@ -125,7 +124,7 @@ class AssignmentObserver
     {
         $idx = $assignment->jobDefinition?->sequence ?: 0;
         $sequence = is_null($sequence) ? $assignment->getSameJobDefinitionAssignmentsQuery()
-                ->count(): $sequence;
+            ->count() : $sequence;
         $assignment->ext_id = collect([$assignment->subProject->ext_id, '/', ++$idx, '.', ++$sequence])
             ->implode('');
     }

@@ -5,6 +5,7 @@ namespace App\Http\Requests\API;
 use App\Models\Candidate;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Exception;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
@@ -46,7 +47,7 @@ class AssignmentAddCandidatesRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     try {
                         Uuid::fromString($value);
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         return;
                     }
 
