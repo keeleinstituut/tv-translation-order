@@ -31,6 +31,7 @@ use Illuminate\Container\Container;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
@@ -104,7 +105,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function getTask(string $id): AnonymousResourceCollection
+    public function getTask(string $id): JsonResource
     {
         $params = collect([
             ...$this->buildAdditionalParams(collect([
@@ -113,14 +114,14 @@ class WorkflowController extends Controller
             'taskId' => $id,
         ]);
 
-        $tasks = WorkflowService::getTask($params);
+        $tasks = WorkflowService::getTasks($params);
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
         $data = $this->mapWithExtraInfo($data);
 
-        return TaskResource::collection($data);
+        return TaskResource::make($data->first());
     }
 
     #[OA\Get(
@@ -157,7 +158,7 @@ class WorkflowController extends Controller
 
         $params = collect([
             ...$pagination->getPaginationParams(),
-            ...$this->buildAdditionalParams($requestParams),
+            ...$this->buildAdditionalParams($requestParams, true),
         ]);
 
         $tasks = WorkflowService::getHistoryTask($params);
@@ -179,12 +180,12 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function getHistoryTask(string $id): AnonymousResourceCollection
+    public function getHistoryTask(string $id): JsonResource
     {
         $params = collect([
             ...$this->buildAdditionalParams(collect([
                 'skip_assigned_param' => true,
-            ])),
+            ]), true),
             'finished' => true,
             'taskId' => $id,
         ]);
@@ -196,7 +197,7 @@ class WorkflowController extends Controller
         $data = $this->mapWithVariables($tasks, $variableInstances);
         $data = $this->mapWithExtraInfo($data);
 
-        return TaskResource::collection($data);
+        return TaskResource::make($data->first());
     }
 
     /**
@@ -426,7 +427,7 @@ class WorkflowController extends Controller
         return $this->mapWithExtraInfo($data)[0];
     }
 
-    private function buildAdditionalParams(Collection $requestParams): Collection
+    private function buildAdditionalParams(Collection $requestParams, $forHistoricTasks = false): Collection
     {
         $processVariablesFilter = collect();
         $sortingParams = collect();
@@ -492,7 +493,8 @@ class WorkflowController extends Controller
                     ->first();
                 $params['assigned'] = true;
                 // Use 'empty' as fallback since leaving fallback as null will be treated as all assignees
-                $params['assignee'] = $vendor?->id || '--empty--';
+                $assigneeKey = $forHistoricTasks ? 'taskAssignee' : 'assignee';
+                $params[$assigneeKey] = $vendor?->id ?? '--empty--';
             } else {
                 $params['unassigned'] = true;
             }
