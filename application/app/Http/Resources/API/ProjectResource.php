@@ -98,6 +98,7 @@ class ProjectResource extends JsonResource
             'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
             'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
             'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
+            'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
             'workflow_started' => $this->workflow()->isStarted()
