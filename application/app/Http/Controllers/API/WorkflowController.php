@@ -581,7 +581,7 @@ class WorkflowController extends Controller
         Gate::denyIf(empty($assignee = data_get($taskData, 'task.assignee')), 'Task can be completed only by assigned user');
 
         Gate::denyIf(empty($vendor), 'Active user is not a vendor');
-        Gate::denyIf($assignee !== $vendor->id, 'You are not assigned to the task');
+        Gate::denyIf($assignee !== $vendor->institution_user_id, 'You are not assigned to the task');
     }
 
     private function getActiveVendor(): ?Vendor

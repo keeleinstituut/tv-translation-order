@@ -5,6 +5,7 @@ namespace App\Services\Workflows;
 use App\Enums\JobKey;
 use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Services\Workflows\Tasks\TasksSearchResult;
@@ -163,8 +164,10 @@ readonly class SubProjectWorkflowProcessInstance
                         return [
                             'sub_project_id' => $this->subProject->id,
                             'institution_id' => $this->project->institution_id,
-                            'assignee' => $assignment->assigned_vendor_id,
-                            'candidateUsers' => $assignment->candidates->pluck('vendor_id')->toArray(),
+                            'assignee' => $assignment->assignee?->institution_user_id,
+                            'candidateUsers' => $assignment->candidates->map(function (Candidate $candidate) {
+                                return $candidate->vendor?->institution_user_id;
+                            })->filter()->values()->toArray(),
                             'assignment_id' => $assignment->id,
                             'source_language_classifier_value_id' => $this->subProject->source_language_classifier_value_id,
                             'destination_language_classifier_value_id' => $this->subProject->destination_language_classifier_value_id,
