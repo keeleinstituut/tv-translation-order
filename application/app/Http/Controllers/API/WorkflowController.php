@@ -245,7 +245,7 @@ class WorkflowController extends Controller
         $candidatesVendorIds = collect(WorkflowService::getIdentityLinks($taskId, 'candidate'))
             ->pluck('userId');
 
-        if (!$candidatesVendorIds->contains($activeVendor->id)) {
+        if (!$candidatesVendorIds->contains($activeVendor->institution_user_id)) {
             abort(Response::HTTP_BAD_REQUEST, 'The vendor is not a candidate for the task');
         }
 
