@@ -626,6 +626,7 @@ class WorkflowController extends Controller
                 'subProject.project.typeClassifierValue',
                 'subProject.sourceLanguageClassifierValue',
                 'subProject.destinationLanguageClassifierValue',
+                'subProject.sourceFiles',
             ])->get();
 
         return collect($tasks)->map(function ($task) use ($assignments) {
