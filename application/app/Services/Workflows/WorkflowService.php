@@ -225,6 +225,14 @@ class WorkflowService
         return $response->throw()->json();
     }
 
+    public static function getHistoryVariableInstance($params = [])
+    {
+        $response = static::client()->get('/history/variable-instance', $params);
+
+        return $response->throw()->json();
+    }
+
+
     private static function client(): PendingRequest
     {
         $baseUrl = getenv('CAMUNDA_API_URL');

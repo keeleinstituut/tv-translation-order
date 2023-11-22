@@ -170,7 +170,7 @@ class WorkflowController extends Controller
         $tasks = WorkflowService::getHistoryTask($params);
         $count = WorkflowService::getHistoryTaskCount($params)['count'];
 
-        $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
+        $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
         $data = $this->mapWithExtraInfo($data);
@@ -198,7 +198,7 @@ class WorkflowController extends Controller
 
         $tasks = WorkflowService::getHistoryTask($params);
 
-        $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
+        $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
         $data = $this->mapWithExtraInfo($data);
@@ -589,12 +589,17 @@ class WorkflowController extends Controller
         return $params;
     }
 
-    private function fetchVariableInstancesForTasks(array $tasks)
+    private function fetchVariableInstancesForTasks(array $tasks, $history = false)
     {
         $executionIds = collect($tasks)->pluck('executionId')->implode(',');
-        return WorkflowService::getVariableInstance([
+        $params = [
             'executionIdIn' => $executionIds,
-        ]);
+        ];
+        if ($history) {
+            return WorkflowService::getHistoryVariableInstance($params);
+        } else {
+            return WorkflowService::getVariableInstance($params);
+        }
     }
 
     private function mapWithVariables($tasks, $variableInstances): Collection
