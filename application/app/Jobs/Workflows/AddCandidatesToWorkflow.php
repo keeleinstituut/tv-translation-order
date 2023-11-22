@@ -23,7 +23,7 @@ class AddCandidatesToWorkflow implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(private readonly Assignment $assignment, private readonly array $candidatesIds)
+    public function __construct(private readonly Assignment $assignment, private readonly array $candidatesInstitutionUserIds)
     {
     }
 
@@ -44,10 +44,10 @@ class AddCandidatesToWorkflow implements ShouldQueue
             return;
         }
 
-        foreach ($this->candidatesIds as $candidateId) {
+        foreach ($this->candidatesInstitutionUserIds as $candidateInstitutionUserId) {
             WorkflowService::addIdentityLink(
                 data_get($taskData, 'task.id'),
-                $candidateId,
+                $candidateInstitutionUserId,
                 'candidate'
             );
         }

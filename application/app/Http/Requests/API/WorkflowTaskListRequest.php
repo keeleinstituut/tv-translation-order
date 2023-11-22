@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests\API;
 
+use App\Enums\TaskType;
 use App\Models\Project;
 use App\Policies\ProjectPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class WorkflowTaskListRequest extends FormRequest
 {
@@ -33,7 +35,8 @@ class WorkflowTaskListRequest extends FormRequest
                 if (! $exists) {
                     $fail('The project with such ID does not exist.');
                 }
-            },]
+            }],
+            'task_type' => ['sometimes', new Enum(TaskType::class)]
         ];
     }
 }
