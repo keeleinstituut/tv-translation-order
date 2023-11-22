@@ -629,6 +629,8 @@ class WorkflowController extends Controller
                 'volumes',
                 'subProject',
                 'subProject.project',
+                'subProject.project.clientInstitutionUser',
+                'subProject.project.managerInstitutionUser',
                 'subProject.project.typeClassifierValue',
                 'subProject.sourceLanguageClassifierValue',
                 'subProject.destinationLanguageClassifierValue',
