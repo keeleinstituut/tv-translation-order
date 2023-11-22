@@ -579,7 +579,7 @@ class WorkflowController extends Controller
                 $params['assigned'] = true;
                 // Use 'empty' as fallback since leaving fallback as null will be treated as all assignees
                 $assigneeKey = $forHistoricTasks ? 'taskAssignee' : 'assignee';
-                $params[$assigneeKey] = $vendor?->id ?? '--empty--';
+                $params[$assigneeKey] = $vendor?->institution_user_id ?? '--empty--';
             } else {
                 $params['unassigned'] = true;
             }
