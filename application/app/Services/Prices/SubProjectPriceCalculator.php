@@ -18,7 +18,7 @@ readonly class SubProjectPriceCalculator implements PriceCalculator
                 ->getPrice();
         });
 
-        if ($prices->search(null) === false) {
+        if ($prices->search(null, true) === false) {
             return $prices->sum();
         }
 

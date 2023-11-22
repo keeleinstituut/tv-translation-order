@@ -27,7 +27,7 @@ readonly class CandidatePriceCalculator implements PriceCalculator
                 ->getPrice();
         });
 
-        if ($prices->search(null) === false) {
+        if ($prices->search(null, true) === false) {
             return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }
 

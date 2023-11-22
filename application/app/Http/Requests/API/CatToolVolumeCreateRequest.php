@@ -44,7 +44,7 @@ class CatToolVolumeCreateRequest extends FormRequest
     public function rules(): array
     {
         $percentageRule = 'sometimes|decimal:0,2|between:0,100.00';
-        $unitQualityRule = ['sometimes', 'integer', 'min:0'];
+        $unitQualityRule = ['sometimes', 'decimal:0,3', 'min:0.001'];
 
         return [
             'assignment_id' => [
@@ -59,7 +59,7 @@ class CatToolVolumeCreateRequest extends FormRequest
                     }
                 },
             ],
-            'unit_fee' => 'decimal:0,2|between:0,99999999.99',
+            'unit_fee' => 'decimal:0,3|between:0,9999.99',
             'cat_tool_job_id' => [
                 'required',
                 'uuid',
@@ -104,11 +104,11 @@ class CatToolVolumeCreateRequest extends FormRequest
                     ->where('cat_tool_job_id', $this->validated('cat_tool_job_id'))
                     ->exists();
 
-                $validator->errors()->addIf(
-                    ! $isJobBelongsToAssignment,
-                    'cat_tool_job_id',
-                    'XLIFF file doesn\'t belong to the selected assignment. Please link it to the assignment first to set up the volume.'
-                );
+//                $validator->errors()->addIf(
+//                    ! $isJobBelongsToAssignment,
+//                    'cat_tool_job_id',
+//                    'XLIFF file doesn\'t belong to the selected assignment. Please link it to the assignment first to set up the volume.'
+//                );
             },
         ];
     }

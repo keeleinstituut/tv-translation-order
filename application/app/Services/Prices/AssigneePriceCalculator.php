@@ -28,7 +28,7 @@ readonly class AssigneePriceCalculator implements PriceCalculator
             return $volume->getPriceCalculator()->getPrice();
         });
 
-        if ($prices->search(null) === false) {
+        if ($prices->search(null, true) === false) {
             $priceList = $this->getPriceList();
             return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }

@@ -6,23 +6,23 @@ use JsonSerializable;
 
 readonly class VolumeAnalysis implements JsonSerializable
 {
-    public int $total;
+    public float $total;
 
-    public int $tm_101;
+    public float $tm_101;
 
-    public int $repetitions;
+    public float $repetitions;
 
-    public int $tm_100;
+    public float $tm_100;
 
-    public int $tm_95_99;
+    public float $tm_95_99;
 
-    public int $tm_85_94;
+    public float $tm_85_94;
 
-    public int $tm_75_84;
+    public float $tm_75_84;
 
-    public int $tm_50_74;
+    public float $tm_50_74;
 
-    public int $tm_0_49;
+    public float $tm_0_49;
 
     /**
      * @var string[]
