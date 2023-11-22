@@ -294,6 +294,21 @@ class ProjectController extends Controller
                 $project->workflow()->restart();
             }
 
+            $project->load([
+                'managerInstitutionUser',
+                'clientInstitutionUser',
+                'typeClassifierValue.projectTypeConfig',
+                'translationDomainClassifierValue',
+                'subProjects',
+                'subProjects.sourceLanguageClassifierValue',
+                'subProjects.destinationLanguageClassifierValue',
+                'subProjects.activeJobDefinition',
+                'sourceFiles',
+                'finalFiles',
+                'helpFiles',
+                'tags',
+            ]);
+
             return new ProjectResource($project);
         });
     }
