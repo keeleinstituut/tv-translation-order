@@ -32,6 +32,7 @@ class TaskResource extends JsonResource
     {
         return [
             'id' => data_get($this, 'task.id'),
+            'assignee_institution_user_id' => data_get($this, 'task.assignee'),
             'task_type' => data_get($this, 'variables.task_type'),
             'project_id' => data_get($this, 'variables.project_id'),
             'assignment' => AssignmentResource::make(data_get($this, 'assignment')),
