@@ -230,6 +230,7 @@ class ProjectController extends Controller
             'sourceFiles',
             'finalFiles',
             'helpFiles',
+            'reviewFiles',
             'tags',
         ])->findOrFail($id);
 

@@ -108,6 +108,8 @@ class Project extends Model implements HasMedia
 
     public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
+    public const REVIEW_FILES_COLLECTION_PREFIX = 'review';
+
     public const HELP_FILE_TYPES = [
         'STYLE_GUIDE',
         'TERM_BASE',
@@ -162,6 +164,11 @@ class Project extends Model implements HasMedia
     public function finalFiles()
     {
         return $this->media()->where('collection_name', self::FINAL_FILES_COLLECTION);
+    }
+
+    public function reviewFiles()
+    {
+        return $this->media()->where('collection_name', 'like', self::REVIEW_FILES_COLLECTION_PREFIX . '%');
     }
 
     public function managerInstitutionUser(): BelongsTo

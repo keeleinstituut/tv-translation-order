@@ -17,8 +17,11 @@ use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\Media;
 use App\Models\Project;
+use App\Models\ProjectReviewRejection;
+use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Policies\ProjectPolicy;
+use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
@@ -38,6 +41,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
@@ -267,16 +271,44 @@ class WorkflowController extends Controller
      */
     #[OA\Post(
         path: '/workflow/tasks/{id}/complete',
-        description: 'Note: `accepted` param is required in case if task has type `CLIENT_REVIEW` or `REVIEW`. The `final_file_id` param is required in case if task has type `REVIEW`',
+        description: 'Note: Request body Schema contains list of possible request bodies with description in what case they should be sent.',
         summary: 'Complete the task',
         requestBody: new OA\RequestBody(
             required: false,
-            content: new OA\JsonContent(
-                required: [],
-                properties: [
-                    new OA\Property(property: 'accepted', type: 'boolean'),
-                    new OA\Property(property: 'final_file_id', type: 'array', items: new OA\Items(type: 'integer')),
-                ]
+            content: new OA\MediaType(
+                mediaType: 'multipart/form-data',
+                schema: new OA\Schema(
+                    oneOf: [
+                        new OA\Schema(
+                            description: 'task_type === `CLIENT_REVIEW` && accepted === true',
+                            properties: [
+                                new OA\Property(property: 'accepted', type: 'boolean'),
+                                new OA\Property(property: 'final_file_id', type: 'array', items: new OA\Items(type: 'integer')),
+                            ],
+                            type: 'object'
+                        ),
+                        new OA\Schema(
+                            description: 'task_type === `CLIENT_REVIEW` && accepted === false',
+                            properties: [
+                                new OA\Property(property: 'accepted', type: 'boolean'),
+                                new OA\Property(property: 'sub_project_id', type: 'array', items: new OA\Items(type: 'string', format: 'uuid')),
+                                new OA\Property(property: 'description', type: 'string'),
+                                new OA\Property(property: 'review_file', type: 'array', items: new OA\Items(type: 'string', format: 'binary'), nullable: true),
+                            ],
+                            type: 'object'
+                        ),
+                        new OA\Schema(
+                            description: 'task_type === `DEFAULT` || task_type === `CORRECTING`',
+                            properties: []
+                        ),
+                        new OA\Schema(
+                            description: 'task_type === `REVIEW`',
+                            properties: [
+                                new OA\Property(property: 'accepted', type: 'boolean')
+                            ],
+                            type: 'object'
+                        ),
+                    ]),
             )
         ),
         tags: ['Workflow'],
@@ -287,12 +319,12 @@ class WorkflowController extends Controller
     public function completeTask(Request $request): TaskResource
     {
         $taskData = $this->getTaskDataOrFail($request->route('id'));
-        $taskType = data_get($taskData, 'variables.task_type', TaskType::Default->value);
+        $taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type'));
 
         return match ($taskType) {
-            TaskType::Default->value, TaskType::Correcting->value => $this->completeDefaultTask($taskData),
-            TaskType::Review->value => $this->completeReviewTask($request, $taskData),
-            TaskType::ClientReview->value => $this->completeProjectReviewTask($request, $taskData),
+            TaskType::Default, TaskType::Correcting => $this->completeDefaultTask($taskData),
+            TaskType::Review => $this->completeReviewTask($request, $taskData),
+            TaskType::ClientReview => $this->completeProjectReviewTask($request, $taskData),
             default => throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unexpected task type')
         };
     }
@@ -400,10 +432,6 @@ class WorkflowController extends Controller
      */
     private function completeProjectReviewTask(Request $request, array $taskData): TaskResource
     {
-        $validated = $request->validate([
-            'accepted' => ['required', 'boolean'],
-        ]);
-
         if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::ClientReview->value) {
             abort(Response::HTTP_BAD_REQUEST, 'The task type is not client review');
         }
@@ -414,7 +442,44 @@ class WorkflowController extends Controller
 
         $this->authorize('review', $project);
 
-        WorkflowService::completeProjectReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
+        $validated = collect($request->validate([
+            'accepted' => ['required', 'boolean'],
+            'sub_project_id' => ['required_if:accepted,0', 'array', 'min:1'],
+            'sub_project_id.*' => ['uuid', function ($attribute, $value, $fail) use ($project) {
+                $exists = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+                    ->where('project_id', $project->id)
+                    ->where('id', $value)
+                    ->exists();
+
+                if (! $exists) {
+                    $fail('Subproject with such ID does not exist');
+                }
+
+            }],
+            'description' => ['required_if:accepted,0', 'string'],
+            'review_file' => ['sometimes', 'array'],
+            'review_file.*' => ['file']
+        ]));
+
+        DB::transaction(function () use ($project, $taskData, $validated) {
+            if (!$isAccepted = $validated->get('accepted')) {
+                $projectReviewRejection = new ProjectReviewRejection();
+                $projectReviewRejection->fill([
+                    'sub_project_ids' => $validated->get('sub_project_id'),
+                    'institution_user_id' => Auth::user()->institutionUserId,
+                    'project_id' => $project->id,
+                    'description' => $validated->get('description')
+                ])->saveOrFail();
+
+                collect($validated->get('review_file', []))
+                    ->each(function (UploadedFile $file) use ($project, $projectReviewRejection) {
+                        $project->addMedia($file)->toMediaCollection($projectReviewRejection->file_collection);
+                    });
+            }
+
+            WorkflowService::completeProjectReviewTask(data_get($taskData, 'task.id'), $isAccepted);
+        });
+
 
         TrackProjectStatus::dispatch($project);
 
