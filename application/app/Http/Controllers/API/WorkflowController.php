@@ -620,6 +620,7 @@ class WorkflowController extends Controller
         $assignments = Assignment::getModel()
             ->whereIn('id', $assignmentIds)
             ->with([
+                'volumes',
                 'subProject',
                 'subProject.project',
                 'subProject.project.typeClassifierValue',
