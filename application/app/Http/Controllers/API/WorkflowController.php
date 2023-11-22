@@ -258,7 +258,7 @@ class WorkflowController extends Controller
             $assignment->assigned_vendor_id = $activeVendor->id;
             $assignment->saveOrFail();
 
-            WorkflowService::setAssignee($taskId, $activeVendor->id);
+            WorkflowService::setAssignee($taskId, $activeVendor->institution_user_id);
         });
 
         TrackSubProjectStatus::dispatch($assignment->subProject);
