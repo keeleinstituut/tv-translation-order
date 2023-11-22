@@ -99,16 +99,16 @@ class CatToolVolumeCreateRequest extends FormRequest
                     return;
                 }
 
-                $isJobBelongsToAssignment = AssignmentCatToolJob::query()
-                    ->where('assignment_id', $this->validated('assignment_id'))
-                    ->where('cat_tool_job_id', $this->validated('cat_tool_job_id'))
-                    ->exists();
+                $assignment = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
+                    ->find($this->validated('assignment_id'));
+                $catToolJob =  CatToolJob::withGlobalScope('policy', CatToolJobPolicy::scope())
+                    ->find($this->validated('cat_tool_job_id'));
 
-//                $validator->errors()->addIf(
-//                    ! $isJobBelongsToAssignment,
-//                    'cat_tool_job_id',
-//                    'XLIFF file doesn\'t belong to the selected assignment. Please link it to the assignment first to set up the volume.'
-//                );
+                $validator->errors()->addIf(
+                    $assignment?->sub_project_id !== $catToolJob?->sub_project_id,
+                    'cat_tool_job_id',
+                    'XLIFF file belongs to another sub-project.'
+                );
             },
         ];
     }

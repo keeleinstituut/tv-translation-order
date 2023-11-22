@@ -241,17 +241,25 @@ class AssignmentController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Review task can be done only by the assigned project manager');
             }
 
-            $candidates = collect($params->get('data'))
-                ->unique(fn ($data) => $data['vendor_id'])
+            /** @var Collection $newCandidates */
+            $newCandidates = collect($params->get('data'))
+                ->unique(fn($data) => $data['vendor_id'])
                 ->map(Candidate::make(...));
 
-            $assignment->candidates()->saveMany($candidates);
+            $assignment->candidates()->saveMany($newCandidates);
 
             $assignment->load('candidates.vendor.institutionUser');
 
-            NotifyAssignmentCandidates::dispatch($assignment);
+            $newCandidatesVendorIds = $newCandidates->pluck('vendor_id');
+            $newCandidatesInstitutionUserIds = $assignment->candidates->filter(function (Candidate $candidate) use ($newCandidatesVendorIds) {
+                return $newCandidatesVendorIds->contains($candidate->vendor_id);
+            })->map(function (Candidate $candidate) {
+                return $candidate->vendor?->institution_user_id;
+            })->filter()->values();
 
-            AddCandidatesToWorkflow::dispatch($assignment, $candidates->pluck('vendor_id')->toArray());
+            if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
+                AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
+            }
 
             return AssignmentResource::make($assignment);
         });
@@ -279,15 +287,22 @@ class AssignmentController extends Controller
             $this->authorize('update', $assignment);
 
             $vendorIds = collect($params->get('data'))->pluck('vendor_id');
-
+            $deletedCandidatesInstitutionUserIds = collect();
             $assignment->candidates()
                 ->whereIn('vendor_id', $vendorIds)
-                ->each(fn(Candidate $candidate) => $candidate->delete());
+                ->each(function (Candidate $candidate) use ($deletedCandidatesInstitutionUserIds) {
+                    if (filled($candidate->vendor?->institution_user_id)) {
+                        $deletedCandidatesInstitutionUserIds->push($candidate->vendor?->institution_user_id);
+                    }
+
+                    $candidate->delete();
+                });
+
+            if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
+                DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
+            }
 
             $assignment->load('candidates.vendor.institutionUser');
-
-            DeleteCandidatesFromWorkflow::dispatch($assignment, $vendorIds->toArray());
-
             return AssignmentResource::make($assignment);
         });
     }

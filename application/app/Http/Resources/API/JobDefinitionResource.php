@@ -22,6 +22,8 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'job_key', type: 'string', enum: JobKey::class),
+        new OA\Property(property: 'job_name', type: 'string', nullable: true),
+        new OA\Property(property: 'job_short_name', type: 'string', nullable: true),
         new OA\Property(property: 'skill_id', type: 'string', format: 'uuid', nullable: true),
         new OA\Property(property: 'multi_assignments_enabled', type: 'boolean'),
         new OA\Property(property: 'linking_with_cat_tool_jobs_enabled', type: 'boolean'),
@@ -42,6 +44,8 @@ class JobDefinitionResource extends JsonResource
             ...$this->only(
                 'id',
                 'job_key',
+                'job_name',
+                'job_short_name',
                 'skill_id',
                 'multi_assignments_enabled',
                 'linking_with_cat_tool_jobs_enabled'

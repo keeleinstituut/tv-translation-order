@@ -230,6 +230,7 @@ class ProjectController extends Controller
             'sourceFiles',
             'finalFiles',
             'helpFiles',
+            'reviewFiles',
             'tags',
         ])->findOrFail($id);
 
@@ -293,6 +294,21 @@ class ProjectController extends Controller
             if ($project->workflow()->isStarted() && ($createdCount || $deletedCount)) {
                 $project->workflow()->restart();
             }
+
+            $project->load([
+                'managerInstitutionUser',
+                'clientInstitutionUser',
+                'typeClassifierValue.projectTypeConfig',
+                'translationDomainClassifierValue',
+                'subProjects',
+                'subProjects.sourceLanguageClassifierValue',
+                'subProjects.destinationLanguageClassifierValue',
+                'subProjects.activeJobDefinition',
+                'sourceFiles',
+                'finalFiles',
+                'helpFiles',
+                'tags',
+            ]);
 
             return new ProjectResource($project);
         });
