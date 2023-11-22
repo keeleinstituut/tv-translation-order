@@ -164,6 +164,7 @@ class WorkflowController extends Controller
         $params = collect([
             ...$pagination->getPaginationParams(),
             ...$this->buildAdditionalParams($requestParams, true),
+            'finished' => true,
         ]);
 
         $tasks = WorkflowService::getHistoryTask($params);
