@@ -6,11 +6,13 @@ use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\SetProjectFinalFilesRequest;
 use App\Http\Requests\API\SubProjectListRequest;
 use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Resources\API\SubProjectResource;
 use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
+use App\Models\Media;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use DB;
@@ -219,6 +221,27 @@ class SubProjectController extends Controller
 
         $subProject->workflow()->start();
         return SubProjectResource::make($subProject);
+    }
+
+
+    /**
+     * @throws AuthorizationException
+     * @throws Throwable
+     */
+    public function setProjectFinalFiles(SetProjectFinalFilesRequest $request): void
+    {
+        /** @var SubProject $subProject */
+        $subProject = self::getBaseQuery()->findOrFail($request->route('id'));
+        $this->authorize('filesManagement');
+
+        DB::transaction(function () use ($subProject, $request) {
+            $subProject->syncFinalFilesWithProject(
+                $request->validated('final_file_id')
+            );
+
+            $subProject->load('finalFiles');
+            return SubProjectResource::make($subProject);
+        });
     }
 
     private static function getBaseQuery(): Builder

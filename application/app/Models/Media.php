@@ -6,8 +6,10 @@ use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
+use Throwable;
 
 /**
  * App\Models\Media
@@ -61,4 +63,30 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
  */
 class Media extends BaseMedia
 {
+
+    /**
+     * @throws Throwable
+     */
+    public function moveToProjectFinalFile(SubProject $subProject): void
+    {
+        // To prevent coping of the custom properties we will forget them.
+        if ($this->hasCustomProperty('copy_media_id')) {
+            $this->forgetCustomProperty('copy_media_id');
+        }
+
+        if ($this->hasCustomProperty('is_project_final_file')) {
+            $this->forgetCustomProperty('is_project_final_file');
+        }
+
+        /** @var Media $projectFinalFile */
+        $projectFinalFile = $this->copy($subProject->project, Project::FINAL_FILES_COLLECTION);
+
+        $projectFinalFile->setCustomProperty('source_media_id', $this->id);
+        $projectFinalFile->setCustomProperty('sub_project_id', $subProject->id);
+        $projectFinalFile->saveOrFail();
+
+        $this->setCustomProperty('copy_media_id', $projectFinalFile->id);
+        $this->setCustomProperty('is_project_final_file', true);
+        $this->saveOrFail();
+    }
 }

@@ -126,7 +126,7 @@ class SubProject extends Model
 
     public function activeJobDefinition(): BelongsTo
     {
-        return  $this->belongsTo(JobDefinition::class, 'active_job_definition_id');
+        return $this->belongsTo(JobDefinition::class, 'active_job_definition_id');
     }
 
     public function sourceFiles(): HasManyDeep
@@ -199,7 +199,7 @@ class SubProject extends Model
         }
 
 
-        $files = $this->finalFiles->filter(fn (Media $media) => in_array($media->id, $finalFilesIds))
+        $files = $this->finalFiles->filter(fn(Media $media) => in_array($media->id, $finalFilesIds))
             ->values();
 
         $wrongFilesPassed = $files->count() !== count($finalFilesIds);
@@ -210,8 +210,51 @@ class SubProject extends Model
 
         $project = $this->project;
         $files->each(function (Media $media) use ($project) {
-            $media->copy($project, Project::FINAL_FILES_COLLECTION);
+            /** @var Media $projectMedia */
+            $projectMedia = $media->copy($project, Project::FINAL_FILES_COLLECTION);
+            $projectMedia->setCustomProperty('source_media_id', $media->id);
+            $projectMedia->save();
+
+            $media->setCustomProperty('copy_media_id', $projectMedia->id)
+                ->setCustomProperty('project_source_file', true)
+                ->setCustomProperty('sub_project_id', $this->id);
+
+            $media->save();
         });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function syncFinalFilesWithProject($subProjectFinalFileIds): void
+    {
+        $subProjectFinalFileIds = collect($subProjectFinalFileIds);
+        $projectFinalFiles = $this->project->getMedia(
+            Project::FINAL_FILES_COLLECTION,
+            ['sub_project_id' => $this->id]
+        );
+
+        $actualSubProjectFinalFileIds = $projectFinalFiles->map(
+            fn(Media $media) => $media->getCustomProperty('source_media_id')
+        );
+
+        $toCreate = $subProjectFinalFileIds->diff($actualSubProjectFinalFileIds);
+        $toDelete = $actualSubProjectFinalFileIds->diff($subProjectFinalFileIds);
+
+        if ($toCreate->isNotEmpty()) {
+            $this->finalFiles->filter(fn (Media $media) => $toCreate->contains($media->id))
+                ->each(function (Media $media) {
+                    $media->moveToProjectFinalFile($this);
+                });
+        }
+
+        if ($toDelete->isNotEmpty()) {
+            $projectFinalFiles->filter(
+                fn (Media $media) => $toDelete->contains($media->getCustomProperty('source_media_id'))
+            )->each(function (Media $media) {
+                $media->delete();
+            });
+        }
     }
 
     public function cat(): CatToolService
