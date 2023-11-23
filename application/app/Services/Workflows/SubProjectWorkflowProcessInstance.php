@@ -55,7 +55,7 @@ readonly class SubProjectWorkflowProcessInstance
             $this->subProject->workflow_started = true;
             $this->subProject->saveOrFail();
 
-            TrackSubProjectStatus::dispatch($this->subProject);
+            TrackSubProjectStatus::dispatchSync($this->subProject);
         } catch (RequestException $e) {
             throw new RuntimeException("Starting of the sub-project workflow failed", $e->response->status(), $e);
         }

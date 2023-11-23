@@ -420,7 +420,8 @@ class AssignmentController extends Controller
                 $assignment->saveOrFail();
             });
 
-            TrackSubProjectStatus::dispatch($assignment->subProject);
+            TrackSubProjectStatus::dispatchSync($assignment->subProject);
+            $assignment->load('subProject');
 
             return AssignmentResource::make($assignment);
         });

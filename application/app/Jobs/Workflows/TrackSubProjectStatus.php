@@ -56,7 +56,7 @@ class TrackSubProjectStatus implements ShouldQueue
                 $this->subProject->active_job_definition_id = null;
                 $this->subProject->saveOrFail();
 
-                TrackProjectStatus::dispatch($this->subProject->project);
+                TrackProjectStatus::dispatchSync($this->subProject->project);
                 return;
             }
 
@@ -156,7 +156,7 @@ class TrackSubProjectStatus implements ShouldQueue
 
     private function hasAssigneeForAllAssignments(JobDefinition $jobDefinition): bool
     {
-        return $this->subProject->assignments()
+        return !$this->subProject->assignments()
             ->where('job_definition_id', $jobDefinition->id)
             ->whereNull('assigned_vendor_id')
             ->exists();
