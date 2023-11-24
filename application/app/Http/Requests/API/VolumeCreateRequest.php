@@ -23,8 +23,8 @@ use OpenApi\Attributes as OA;
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
             new OA\Property(property: 'unit_type', type: 'string', enum: VolumeUnits::class),
-            new OA\Property(property: 'unit_quantity', type: 'number', minimum: 0),
-            new OA\Property(property: 'unit_fee', type: 'number', format: 'double', minimum: 0),
+            new OA\Property(property: 'unit_quantity', type: 'number', format: 'double'),
+            new OA\Property(property: 'unit_fee', type: 'number', format: 'double'),
         ]
     )
 )]
@@ -51,8 +51,8 @@ class VolumeCreateRequest extends FormRequest
                 },
             ],
             'unit_type' => ['required', new Enum(VolumeUnits::class)],
-            'unit_quantity' => ['required', 'integer', 'min:1'],
-            'unit_fee' => 'decimal:0,2|between:0,99999999.99',
+            'unit_quantity' => ['required', 'decimal:0,3', 'min:0.001'],
+            'unit_fee' => 'decimal:0,3|between:0,9999.99',
         ];
     }
 }

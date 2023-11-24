@@ -14,7 +14,7 @@ readonly class ProjectPriceCalculator implements PriceCalculator
     {
         $prices = $this->project->subProjects()->pluck('price');
 
-        if ($prices->search(null) === false) {
+        if ($prices->search(null, true) === false) {
             return $prices->sum();
         }
 

@@ -8,8 +8,7 @@ class VolumeObserver
 {
     public function creating(Volume $volume): void
     {
-        $assignee = $volume->assignment->assignee;
-        if (filled($assignee)) {
+        if (filled($assignee = $volume->assignment->assignee)) {
             if (empty($volume->unit_fee)) {
                 $volume->unit_fee = $assignee->getPriceList(
                     $volume->assignment->subProject->source_language_classifier_value_id,
