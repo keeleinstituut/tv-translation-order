@@ -3,6 +3,7 @@
 namespace App\Jobs\Workflows;
 
 use App\Enums\ProjectStatus;
+use App\Enums\SubProjectStatus;
 use App\Enums\TaskType;
 use App\Models\Project;
 use App\Services\Workflows\Tasks\TasksSearchResult;
@@ -45,8 +46,10 @@ class TrackProjectStatus implements ShouldQueue
 
         $searchResults = $this->project->workflow()->getTasksSearchResult();
         if ($searchResults->getCount() === 0) {
-            $this->project->status = ProjectStatus::Accepted;
-            $this->project->saveOrFail();
+            if ($this->allSubProjectsCompleted()) {
+                $this->project->status = ProjectStatus::Accepted;
+                $this->project->saveOrFail();
+            }
             return;
         }
 
@@ -83,4 +86,10 @@ class TrackProjectStatus implements ShouldQueue
             ->contains(TaskType::Correcting->value);
     }
 
+    private function allSubProjectsCompleted(): bool
+    {
+        return !$this->project->subProjects()
+            ->whereNot('status', SubProjectStatus::Completed)
+            ->exists();
+    }
 }
