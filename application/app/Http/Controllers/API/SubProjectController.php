@@ -218,6 +218,7 @@ class SubProjectController extends Controller
         }
 
         $subProject->workflow()->start();
+        $subProject->refresh();
         return SubProjectResource::make($subProject);
     }
 

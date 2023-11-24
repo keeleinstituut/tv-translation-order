@@ -262,7 +262,9 @@ class WorkflowController extends Controller
             WorkflowService::setAssignee($taskId, $activeVendor->institution_user_id);
         });
 
-        TrackSubProjectStatus::dispatch($assignment->subProject);
+        TrackSubProjectStatus::dispatchSync($assignment->subProject);
+        $assignment->load('subProject');
+
         return TaskResource::make($taskData);
     }
 
@@ -373,10 +375,11 @@ class WorkflowController extends Controller
             });
 
 
-            TrackSubProjectStatus::dispatch($assignment->subProject);
+            TrackSubProjectStatus::dispatchSync($assignment->subProject);
+            $assignment->load('subProject');
         } elseif (filled($project = $this->getTaskProject($taskData))) {
             WorkflowService::completeTask($taskId);
-            TrackProjectStatus::dispatch($project);
+            TrackProjectStatus::dispatchSync($project);
         } else {
             abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task metadata is missing');
         }
@@ -422,7 +425,8 @@ class WorkflowController extends Controller
             WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
         });
 
-        TrackSubProjectStatus::dispatch($assignment->subProject);
+        TrackSubProjectStatus::dispatchSync($assignment->subProject);
+        $assignment->load('subProject');
 
         return TaskResource::make($taskData);
     }
@@ -482,7 +486,7 @@ class WorkflowController extends Controller
         });
 
 
-        TrackProjectStatus::dispatch($project);
+        TrackProjectStatus::dispatchSync($project);
 
         return TaskResource::make($taskData);
     }
