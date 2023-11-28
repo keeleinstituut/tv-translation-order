@@ -185,7 +185,7 @@ class AssignmentController extends Controller
             $assignment->fill($request->validated());
             $assignment->saveOrFail();
 
-            return AssignmentResource::make($assignment->refresh());
+            return AssignmentResource::make($assignment);
         });
     }
 
@@ -421,7 +421,7 @@ class AssignmentController extends Controller
             });
 
             TrackSubProjectStatus::dispatchSync($assignment->subProject);
-            $assignment->load('subProject');
+            $assignment->load('subProject.activeJobDefinition');
 
             return AssignmentResource::make($assignment);
         });
@@ -429,21 +429,13 @@ class AssignmentController extends Controller
 
     private function retrieveTaskBasedOnAssignmentOrFail(Assignment $assignment): array
     {
-        $searchResults = (new WorkflowTasksDataProvider())->search([
-            'processVariables' => [
-                [
-                    'name' => 'assignment_id',
-                    'value' => $assignment->id,
-                    'operator' => 'eq',
-                ]
-            ]
-        ]);
+        $taskData = $assignment->subProject?->workflow()->getTaskDataBasedOnAssignment($assignment);
 
-        if ($searchResults->getCount() === 0) {
+        if (empty($taskData)) {
             abort(Response::HTTP_NOT_FOUND, 'Assignment has no task to complete');
         }
 
-        return $searchResults->getTasks()->get(0);
+        return $taskData;
     }
 
     private static function getSubProjectOrFail(string $id): SubProject
