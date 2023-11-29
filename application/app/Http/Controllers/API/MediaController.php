@@ -10,6 +10,7 @@ use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\SubProject;
+use Auth;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -58,8 +59,33 @@ class MediaController extends Controller
                 $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
                 $this->authorize($ability, $entity);
 
-                return $collectionOwnerEntity->addMedia($content)
+                if (data_get($file, 'collection') === Project::HELP_FILES_COLLECTION) {
+                    $customProperties = [
+                        'type' => data_get($file, 'help_file_type'),
+                        'institution_user_id' => Auth::user()->institutionUserId
+                    ];
+                } else {
+                    $customProperties = [
+                        'assignment_id' => data_get($file, 'assignment_id'),
+                        'institution_user_id' => Auth::user()->institutionUserId
+                    ];
+                }
+
+                /** @var Media $newMedia */
+                $newMedia = $collectionOwnerEntity->addMedia($content)
+                    ->withCustomProperties($customProperties)
                     ->toMediaCollection($collectionName);
+
+                /** Moving new project source file to all subprojects */
+                if (data_get($file, 'collection') === Project::SOURCE_FILES_COLLECTION && $entity instanceof Project) {
+                    $entity->subProjects->each(function (SubProject $subProject) use ($newMedia, $entity) {
+                        $subProjectSourceFile = $newMedia->copy($entity, $subProject->file_collection);
+                        $newMedia->copies()->save($subProjectSourceFile);
+                    });
+                }
+
+                $newMedia->load('assignment.jobDefinition');
+                return $newMedia;
             });
 
             return MediaResource::collection($data);
@@ -171,9 +197,8 @@ class MediaController extends Controller
     private function determineAuthorizationAbility($entity, $collectionName): ?string
     {
         return match ([$entity::class, $collectionName]) {
-            [Project::class, 'source'] => 'editSourceFiles',
+            [Project::class, 'source'], [SubProject::class, 'source'] => 'editSourceFiles',
             [Project::class, 'help'] => 'editHelpFiles',
-            [SubProject::class, 'source'] => 'editSourceFiles',
             [SubProject::class, 'final'] => 'editFinalFiles',
             default => null,
         };

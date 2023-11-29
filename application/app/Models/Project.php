@@ -234,7 +234,9 @@ class Project extends Model implements HasMedia
             $subProject->saveOrFail();
 
             $this->getMedia('source')->each(function ($sourceFile) use ($subProject) {
-                $sourceFile->copy($this, $subProject->file_collection);
+                /** @var Media $sourceFile */
+                $copiedFile = $sourceFile->copy($this, $subProject->file_collection);
+                $sourceFile->copies()->save($copiedFile);
             });
 
             $subProject->initAssignments();

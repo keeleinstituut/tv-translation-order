@@ -124,7 +124,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data);
+        $data = $this->mapWithExtraInfo($data, ['subProject.finalFiles.assignment.jobDefinition']);
 
         return TaskResource::make($data->first());
     }
@@ -201,7 +201,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data);
+        $data = $this->mapWithExtraInfo($data, ['subProject.finalFiles.assignment.jobDefinition']);
 
         return TaskResource::make($data->first());
     }
@@ -415,10 +415,7 @@ class WorkflowController extends Controller
             $assignment->status = AssignmentStatus::Done;
             $assignment->saveOrFail();
 
-            $assignment->subProject->moveFinalFilesToProjectFinalFiles(
-                $validated['final_file_id']
-            );
-
+            $assignment->subProject->syncFinalFilesWithProject($validated['final_file_id']);
             WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
         });
 
@@ -620,22 +617,24 @@ class WorkflowController extends Controller
         });
     }
 
-    private function mapWithExtraInfo($tasks): Collection
+    private function mapWithExtraInfo($tasks, array $assignmentAdditionalRelations = []): Collection
     {
+        $relations = collect([
+            'volumes',
+            'subProject',
+            'subProject.project',
+            'subProject.project.clientInstitutionUser',
+            'subProject.project.managerInstitutionUser',
+            'subProject.project.typeClassifierValue',
+            'subProject.sourceLanguageClassifierValue',
+            'subProject.destinationLanguageClassifierValue',
+            'subProject.sourceFiles',
+        ])->merge($assignmentAdditionalRelations)->unique();
+
         $assignmentIds = collect($tasks)->map(fn($task) => data_get($task, 'variables.assignment_id'));
-        $assignments = Assignment::getModel()
+        $assignments = Assignment::query()
             ->whereIn('id', $assignmentIds)
-            ->with([
-                'volumes',
-                'subProject',
-                'subProject.project',
-                'subProject.project.clientInstitutionUser',
-                'subProject.project.managerInstitutionUser',
-                'subProject.project.typeClassifierValue',
-                'subProject.sourceLanguageClassifierValue',
-                'subProject.destinationLanguageClassifierValue',
-                'subProject.sourceFiles',
-            ])->get();
+            ->with($relations->toArray())->get();
 
         return collect($tasks)->map(function ($task) use ($assignments) {
             return [

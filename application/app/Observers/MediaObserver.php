@@ -23,14 +23,12 @@ class MediaObserver
     }
 
     /**
-     * Handle the Media "deleted" event.
+     * Handle the Media "deleting" event.
      */
-    public function deleted(Media $media): void
+    public function deleting(Media $media): void
     {
-        if ($media->hasCustomProperty('copy_media_id')) {
-            if (filled($copiedMedia = Media::find($media->getCustomProperty('copy_media_id')))) {
-                $copiedMedia->delete();
-            }
+        if ($media->copies->isNotEmpty()) {
+            $media->copies->each(fn (Media $media) => $media->delete());
         }
     }
 }

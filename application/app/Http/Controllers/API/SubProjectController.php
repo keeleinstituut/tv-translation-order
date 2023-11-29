@@ -153,7 +153,8 @@ class SubProjectController extends Controller
             'sourceLanguageClassifierValue',
             'destinationLanguageClassifierValue',
             'sourceFiles',
-            'finalFiles',
+            'finalFiles.assignment.jobDefinition',
+            'finalFiles.copies',
             'project.typeClassifierValue.projectTypeConfig.jobDefinitions',
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',
@@ -228,18 +229,27 @@ class SubProjectController extends Controller
      * @throws AuthorizationException
      * @throws Throwable
      */
-    public function setProjectFinalFiles(SetProjectFinalFilesRequest $request): void
+    #[OA\Post(
+        path: '/subprojects/{id}/set-project-final-files',
+        summary: 'Set project final files based on subproject final files',
+        tags: ['Sub-projects'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: SubProjectResource::class, description: 'Sub-project resource', response: Response::HTTP_OK)]
+    public function setProjectFinalFiles(SetProjectFinalFilesRequest $request): SubProjectResource
     {
         /** @var SubProject $subProject */
         $subProject = self::getBaseQuery()->findOrFail($request->route('id'));
-        $this->authorize('filesManagement');
+        $this->authorize('markFilesAsProjectFinalFiles', $subProject);
 
-        DB::transaction(function () use ($subProject, $request) {
+        return DB::transaction(function () use ($subProject, $request) {
             $subProject->syncFinalFilesWithProject(
                 $request->validated('final_file_id')
             );
-
-            $subProject->load('finalFiles');
+            $subProject->load([
+                'finalFiles.copies',
+                'finalFiles.assignment',
+            ]);
             return SubProjectResource::make($subProject);
         });
     }

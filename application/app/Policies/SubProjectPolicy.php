@@ -94,6 +94,11 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilege($subProject);
     }
 
+    public function markFilesAsProjectFinalFiles(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilege($subProject);
+    }
+
     private function hasManageProjectPrivilege(SubProject $subProject): bool
     {
         if (! $this->isInSameInstitutionAsCurrentUser($subProject)) {
