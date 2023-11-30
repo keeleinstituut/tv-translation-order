@@ -231,7 +231,7 @@ class ProjectController extends Controller
             'finalFiles',
             'helpFiles',
             'reviewFiles',
-            'tags',
+            'tags'
         ])->findOrFail($id);
 
         $this->authorize('view', $project);
