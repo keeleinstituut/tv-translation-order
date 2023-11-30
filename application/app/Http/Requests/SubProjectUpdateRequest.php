@@ -8,13 +8,15 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Response;
 
 #[OA\RequestBody(
     request: self::class,
     required: true,
     content: new OA\JsonContent(
+        required: [],
         properties: [
-            new OA\Property(property: 'comments', type: 'string', nullable: true),
+            new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z'),
             new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z'),
         ]
     )
@@ -31,7 +33,8 @@ class SubProjectUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'deadline_at' => ['required', 'date_format:' . self::DATETIME_FORMAT, 'after:now'],
+            'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT, 'after:now'],
+            'event_start_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT, 'after:now'],
         ];
     }
 
@@ -47,11 +50,18 @@ class SubProjectUpdateRequest extends FormRequest
                     ->find($this->route('id'));
 
                 if (empty($subProject)) {
-                    return;
+                    abort(Response::HTTP_NOT_FOUND, 'Sub-project not found');
                 }
 
-                if ($this->validated('deadline_at') > $subProject->project->deadline_at->format(self::DATETIME_FORMAT)) {
+                $projectDeadline = $subProject->project->deadline_at?->format(self::DATETIME_FORMAT);
+                if (filled($this->validated('deadline_at')) && filled($projectDeadline) && $this->validated('deadline_at') > $projectDeadline) {
                     $validator->errors()->add('deadline_at', 'Sub-project deadline should be less or equal to the project deadline');
+                }
+
+                $deadline = $this->validated('deadline_at', $subProject->deadline_at?->format(self::DATETIME_FORMAT));
+                $eventStart = $this->validated('event_start_at',  $subProject->event_start_at?->format(self::DATETIME_FORMAT));
+                if (filled($deadline) && filled($eventStart) && $eventStart > $deadline) {
+                    $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
                 }
             }
         ];

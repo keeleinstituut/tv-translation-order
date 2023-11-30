@@ -25,7 +25,7 @@ class ProjectObserver
             $project->ext_id = collect([
                 $project->institution->short_name,
                 Carbon::now()->format('Y-m'),
-                $project->typeClassifierValue->meta['code'] ?? '',
+                data_get($project->typeClassifierValue->meta, 'code', ''),
                 $project->institution->institutionProjectSequence->incrementCurrentValue(),
             ])->implode('-');
         }
@@ -101,8 +101,8 @@ class ProjectObserver
         if ($project->wasChanged('event_start_at')) {
             $project->subProjects->each(function (SubProject $subProject) use ($project) {
                 $subProject->event_start_at = $project->event_start_at;
-                if (filled($subProject->event_start_at) && filled($subProject->deadline_at) && $subProject->deadline_at < $project->event_start_at) {
-                    $subProject->deadline_at = null;
+                if (filled($project->event_start_at) && filled($subProject->deadline_at) && $subProject->deadline_at < $project->event_start_at) {
+                    $subProject->event_start_at = null;
                 }
 
                 $subProject->saveOrFail();
