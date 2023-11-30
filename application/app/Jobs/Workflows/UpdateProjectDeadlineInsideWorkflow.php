@@ -31,6 +31,7 @@ class UpdateProjectDeadlineInsideWorkflow implements ShouldQueue
 
     /**
      * Execute the job.
+     * @throws RequestException
      */
     public function handle(): void
     {

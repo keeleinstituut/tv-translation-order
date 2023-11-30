@@ -202,6 +202,7 @@ class Project extends Model implements HasMedia
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->deadline_at = $this->deadline_at;
+            $subProject->event_start_at = $this->event_start_at;
             return $subProject;
         };
 

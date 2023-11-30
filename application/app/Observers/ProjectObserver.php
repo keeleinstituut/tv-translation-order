@@ -90,16 +90,23 @@ class ProjectObserver
 
         if ($project->wasChanged('deadline_at') && filled($project->deadline_at)) {
             $project->subProjects->each(function (SubProject $subProject) use ($project) {
-                if (empty($subProject->deadline_at)) {
-                    $subProject->deadline_at = $project->deadline_at;
-                    $subProject->saveOrFail();
-                } elseif ($subProject->deadline_at > $project->deadline_at && !$subProject->workflow()->isStarted()) {
+                if (empty($subProject->deadline_at) || $subProject->deadline_at > $project->deadline_at) {
                     $subProject->deadline_at = $project->deadline_at;
                     $subProject->saveOrFail();
                 }
             });
-
             UpdateProjectDeadlineInsideWorkflow::dispatchSync($project);
+        }
+
+        if ($project->wasChanged('event_start_at')) {
+            $project->subProjects->each(function (SubProject $subProject) use ($project) {
+                $subProject->event_start_at = $project->event_start_at;
+                if (filled($subProject->event_start_at) && filled($subProject->deadline_at) && $subProject->deadline_at < $project->event_start_at) {
+                    $subProject->deadline_at = null;
+                }
+
+                $subProject->saveOrFail();
+            });
         }
     }
 
