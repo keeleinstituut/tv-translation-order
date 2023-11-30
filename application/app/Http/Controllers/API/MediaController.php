@@ -6,13 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\MediaCreateRequest;
 use App\Http\Requests\API\MediaDeleteRequest;
 use App\Http\Requests\API\MediaDownloadRequest;
+use App\Http\Requests\MediaUpdateRequest;
 use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\SubProject;
 use Auth;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use App\Http\OpenApiHelpers as OAH;
@@ -90,6 +90,44 @@ class MediaController extends Controller
 
             return MediaResource::collection($data);
         });
+    }
+
+    /**
+     * @throws AuthorizationException
+     * @throws Throwable
+     */
+    #[OA\Put(
+        path: '/media/{id}',
+        summary: 'Update the media.Currently can be used only for updating of the help files types.',
+        requestBody: new OAH\RequestBody(MediaUpdateRequest::class),
+        tags: ['Media'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: MediaResource::class, description: 'Updated Media', response: Response::HTTP_OK)]
+    public function update(MediaUpdateRequest $request): MediaResource
+    {
+        return DB::transaction(function () use ($request) {
+            $media = Media::findOrFail($request->route('id'));
+
+            if ($media->collection_name !== Project::HELP_FILES_COLLECTION) {
+                abort(Response::HTTP_BAD_REQUEST, 'Only help files can be updated');
+            }
+
+            [$entity, ,] = $this->determineEntityAndCollectionName(
+                $media->model_type,
+                $media->model_id,
+                $media->collection_name
+            );
+
+            $ability = $this->determineAuthorizationAbility($entity, $media->collection_name);
+            $this->authorize($ability, $entity);
+
+            $media->setCustomProperty('type', $request->validated('help_file_type'));
+            $media->saveOrFail();
+
+            return MediaResource::make($media);
+        });
+
     }
 
     /**
@@ -171,8 +209,8 @@ class MediaController extends Controller
     private function determineEntityAndCollectionName(string $referenceObjectType, string $referenceObjectId, $collection): ?array
     {
         $entityClass = match ($referenceObjectType) {
-            'project' => Project::class,
-            'subproject' => SubProject::class,
+            'project', Project::class => Project::class,
+            'subproject', SubProject::class => SubProject::class,
             default => null,
         };
 
@@ -185,11 +223,11 @@ class MediaController extends Controller
             return null;
         }
 
-        return match ([$referenceObjectType, $collection]) {
-            ['project', 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
-            ['project', 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
-            ['subproject', 'source'] => [$entity, $entity->project, $entity->file_collection],
-            ['subproject', 'final'] => [$entity, $entity->project, $entity->file_collection_final],
+        return match ([$entityClass, $collection]) {
+            [Project::class, 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
+            [Project::class, 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
+            [SubProject::class, 'source'] => [$entity, $entity->project, $entity->file_collection],
+            [SubProject::class, 'final'] => [$entity, $entity->project, $entity->file_collection_final],
             default => null,
         };
     }

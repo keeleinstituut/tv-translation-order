@@ -132,11 +132,11 @@ Route::prefix('/workflow')
 
 Route::prefix('/media')
     ->controller(API\MediaController::class)
-    ->whereUuid('id')
     ->group(function () {
         Route::post('/bulk', 'bulkStore');
         Route::delete('/bulk', 'bulkDestroy');
         Route::get('/download', 'download');
+        Route::put('/{id}', 'update');
     });
 
 // ??
