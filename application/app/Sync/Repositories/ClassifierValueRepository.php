@@ -20,7 +20,7 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
         $obj->name = $resource['name'];
         $obj->value = $resource['value'];
         $obj->type = $resource['type'];
-        $obj->meta = is_array($resource['meta']) ? json_encode($resource['meta']) : $resource['meta'];
+        $obj->meta = $resource['meta'] ?? [];
         $obj->deleted_at = $resource['deleted_at'];
         $obj->synced_at = Carbon::now();
 
