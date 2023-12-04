@@ -82,18 +82,6 @@ class AssignmentObserver
     private function updateVolumesAssigneeFields(Assignment $assignment): void
     {
         if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
-            if (filled($assignment->volumes)) {
-                Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
-                    $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
-                    $volume->unit_fee = $assignment->assignee->getPriceList(
-                        $assignment->subProject->source_language_classifier_value_id,
-                        $assignment->subProject->destination_language_classifier_value_id,
-                        $assignment->jobDefinition?->skill_id
-                    )?->getUnitFee($volume->unit_type);
-                    $volume->save();
-                }));
-            }
-
             /** @var Candidate $candidate */
             $candidate = $assignment->candidates()
                 ->where('vendor_id', $assignment->assigned_vendor_id)
@@ -104,19 +92,30 @@ class AssignmentObserver
                 $candidate->saveOrFail();
             }
 
-            if (empty($subProject = $assignment->subProject)) {
-                return;
+            if (filled($assignment->volumes)) {
+                Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
+                    $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
+                    $volume->unit_fee = $assignment->assignee->getPriceList(
+                        $assignment->subProject->source_language_classifier_value_id,
+                        $assignment->subProject->destination_language_classifier_value_id,
+                        $assignment->jobDefinition?->skill_id
+                    )?->getUnitFee($volume->unit_type);
+                    $volume->save();
+                }));
+
+                $assignment->price = $assignment->getPriceCalculator()->getPrice();
+                $assignment->saveOrFail();
+
+                if (filled($subProject = $assignment->subProject)) {
+                    $subProject->price = $subProject->getPriceCalculator()->getPrice();
+                    $subProject->saveOrFail();
+                }
+
+                if (filled($project = $subProject?->project)) {
+                    $project->price = $project->getPriceCalculator()->getPrice();
+                    $project->saveOrFail();
+                }
             }
-
-            $subProject->price = $subProject->getPriceCalculator()->getPrice();
-            $subProject->saveOrFail();
-
-            if (empty($project = $subProject->project)) {
-                return;
-            }
-
-            $project->price = $project->getPriceCalculator()->getPrice();
-            $project->saveOrFail();
         }
     }
 

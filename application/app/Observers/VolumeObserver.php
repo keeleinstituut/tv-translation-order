@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Volume;
+use Throwable;
 
 class VolumeObserver
 {
@@ -26,6 +27,7 @@ class VolumeObserver
 
     /**
      * Handle the Volume "created" event.
+     * @throws Throwable
      */
     public function created(Volume $volume): void
     {
@@ -34,6 +36,7 @@ class VolumeObserver
 
     /**
      * Handle the Volume "updated" event.
+     * @throws Throwable
      */
     public function updated(Volume $volume): void
     {
@@ -42,6 +45,7 @@ class VolumeObserver
 
     /**
      * Handle the Volume "deleted" event.
+     * @throws Throwable
      */
     public function deleted(Volume $volume): void
     {
@@ -50,20 +54,31 @@ class VolumeObserver
 
     /**
      * Handle the Volume "restored" event.
+     * @throws Throwable
      */
     public function restored(Volume $volume): void
     {
         $this->updateCachedPrices($volume);
     }
 
+    /**
+     * @throws Throwable
+     */
     private function updateCachedPrices(Volume $volume): void
     {
-        $subProject = $volume->assignment->subProject;
-        $subProject->price = $subProject->getPriceCalculator()->getPrice();
-        $subProject->save();
+        if (filled($assignment = $volume->assignment)) {
+            $assignment->price = $assignment->getPriceCalculator()->getPrice();
+            $assignment->saveOrFail();
 
-        $project = $subProject->project;
-        $project->price = $project->getPriceCalculator()->getPrice();
-        $project->save();
+            if (filled($subProject = $assignment->subProject)) {
+                $subProject->price = $subProject->getPriceCalculator()->getPrice();
+                $subProject->saveOrFail();
+            }
+
+            if (filled($project = $subProject?->project)) {
+                $project->price = $project->getPriceCalculator()->getPrice();
+                $project->saveOrFail();
+            }
+        }
     }
 }
