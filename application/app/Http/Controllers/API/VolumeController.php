@@ -10,6 +10,7 @@ use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Requests\API\VolumeUpdateRequest;
 use App\Http\Resources\API\VolumeResource;
 use App\Models\Volume;
+use App\Observers\VolumeObserver;
 use App\Policies\VolumePolicy;
 use DB;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,7 +40,7 @@ class VolumeController extends Controller
             $volume = (new Volume)->fill($request->validated());
             $volume->saveOrFail();
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
     }
 
@@ -64,7 +65,7 @@ class VolumeController extends Controller
             $volume->unit_type = $volume->catToolJob?->volume_unit_type;
             $volume->saveOrFail();
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
     }
 
@@ -87,10 +88,9 @@ class VolumeController extends Controller
                 ->fill($request->validated());
 
             $this->authorize('update', $volume);
-
             $volume->saveOrFail();
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
     }
 
@@ -112,13 +112,30 @@ class VolumeController extends Controller
             $volume = self::getBaseQuery()->findOrFail($request->route('id'))
                 ->fill($request->validated());
             $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
-
             $this->authorize('update', $volume);
-
             $volume->saveOrFail();
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
+    }
+
+    /**
+     * After changing/creating of the volume the prices will be changed,
+     * so we will include all related resources into response.
+     *
+     * @see VolumeObserver
+     *
+     * @param Volume $volume
+     * @return VolumeResource
+     */
+    private function getEnrichedVolumeResource(Volume $volume): VolumeResource
+    {
+        $volume->load([
+            'assignment.subProject',
+            'assignment.candidates'
+        ]);
+
+        return VolumeResource::make($volume);
     }
 
     /**
