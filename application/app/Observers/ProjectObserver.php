@@ -62,14 +62,21 @@ class ProjectObserver
             });
         }
 
-        $projectWasCancelled = $project->status === ProjectStatus::Cancelled &&
-            $project->isDirty('status');
+        if ($project->isDirty('status')) {
+            if ($project->status === ProjectStatus::Cancelled) {
+                $project->cancelled_at = Carbon::now();
 
-        if ($projectWasCancelled) {
-            $project->subProjects->each(function (SubProject $subProject) {
-                $subProject->status = SubProjectStatus::Cancelled;
-                $subProject->saveOrFail();
-            });
+                $project->subProjects->each(function (SubProject $subProject) {
+                    $subProject->status = SubProjectStatus::Cancelled;
+                    $subProject->saveOrFail();
+                });
+            } elseif ($project->status === ProjectStatus::Accepted) {
+                $project->accepted_at = Carbon::now();
+            } elseif ($project->status === ProjectStatus::Corrected) {
+                $project->corrected_at = Carbon::now();
+            } elseif ($project->status === ProjectStatus::Rejected) {
+                $project->rejected_at = Carbon::now();
+            }
         }
     }
 

@@ -69,6 +69,7 @@ Route::prefix('/subprojects')
         Route::get('/{id}', 'show');
         Route::post('/{id}/start-workflow', 'startWorkflow');
         Route::put('/{id}', 'update');
+        Route::post('/{id}/set-project-final-files', 'setProjectFinalFiles');
     });
 
 Route::prefix('/cat-tool')
@@ -132,11 +133,11 @@ Route::prefix('/workflow')
 
 Route::prefix('/media')
     ->controller(API\MediaController::class)
-    ->whereUuid('id')
     ->group(function () {
         Route::post('/bulk', 'bulkStore');
         Route::delete('/bulk', 'bulkDestroy');
         Route::get('/download', 'download');
+        Route::put('/{id}', 'update');
     });
 
 // ??
