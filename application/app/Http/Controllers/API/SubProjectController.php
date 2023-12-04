@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\SetProjectFinalFilesRequest;
 use App\Http\Requests\API\SubProjectListRequest;
-use App\Http\Requests\API\VolumeCreateRequest;
+use App\Http\Requests\SubProjectUpdateRequest;
 use App\Http\Resources\API\SubProjectResource;
 use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
@@ -18,7 +18,6 @@ use App\Policies\SubProjectPolicy;
 use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
@@ -171,11 +170,28 @@ class SubProjectController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * @throws Throwable
      */
-    public function update(Request $request, string $id)
+    #[OA\Put(
+        path: '/subprojects/{id}',
+        summary: 'Update subproject',
+        requestBody: new OAH\RequestBody(SubProjectUpdateRequest::class),
+        tags: ['Sub-projects'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: SubProjectResource::class, description: 'Sub-project resource', response: Response::HTTP_OK)]
+    public function update(SubProjectUpdateRequest $request): SubProjectResource
     {
-        //
+        return DB::transaction(function () use ($request) {
+            /** @var SubProject $subProject */
+            $subProject = self::getBaseQuery()->findOrFail($request->route('id'));
+
+            $this->authorize('update', $subProject);
+
+            $subProject->fill($request->validated())->saveOrFail();
+
+            return SubProjectResource::make($subProject->refresh());
+        });
     }
 
     /**

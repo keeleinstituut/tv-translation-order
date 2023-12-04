@@ -68,6 +68,7 @@ Route::prefix('/subprojects')
         Route::get('/', 'index');
         Route::get('/{id}', 'show');
         Route::post('/{id}/start-workflow', 'startWorkflow');
+        Route::put('/{id}', 'update');
         Route::post('/{id}/set-project-final-files', 'setProjectFinalFiles');
     });
 

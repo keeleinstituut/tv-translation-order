@@ -57,7 +57,7 @@ class SubProjectPolicy
      */
     public function update(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return true;
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
     /**

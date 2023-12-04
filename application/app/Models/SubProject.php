@@ -49,6 +49,7 @@ use Throwable;
  * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $event_start_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
  * @property-read int|null $assignments_count
@@ -96,7 +97,8 @@ class SubProject extends Model
         'price' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
-        'deadline_at' => 'datetime'
+        'deadline_at' => 'datetime',
+        'event_start_at' => 'datetime',
     ];
 
     public function project(): BelongsTo
