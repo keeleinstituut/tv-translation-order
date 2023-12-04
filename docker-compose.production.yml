@@ -65,3 +65,4 @@ services:
       - CAMUNDA_API_URL=http://host.docker.internal:8090/engine-rest
       - CLASSIFIER_SERVICE_BASE_URL=http://host.docker.internal:8003/api
       - AUTHORIZATION_SERVICE_BASE_URL=http://host.docker.internal:8002/api
+      - TRANSLATION_MEMORY_SERVICE_BASE_URL=http://host.docker.internal:5000/api/v1

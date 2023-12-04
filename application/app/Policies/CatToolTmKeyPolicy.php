@@ -2,8 +2,10 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
+use Auth;
 use Illuminate\Support\Facades\Gate;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -31,7 +33,7 @@ class CatToolTmKeyPolicy
      */
     public function create(JwtPayloadUser $user): bool
     {
-        return false;
+        return Auth::hasPrivilege(PrivilegeKey::CreateTranslationMemory->value);
     }
 
     /**
