@@ -194,6 +194,8 @@ class VendorController extends Controller
         $vendor = $this->getBaseQuery()->findOrFail($request->route('id'));
         $this->authorize('view', $vendor);
 
+        $vendor->load('institutionUser.institutionDiscount', 'tags');
+
         return new VendorResource($vendor);
     }
 

@@ -113,8 +113,9 @@ class ProjectCreateRequest extends FormRequest
                 'nullable',
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
                 'bail',
-                Rule::prohibitedIf(fn () => ! $this->isProjectTypeSupportingEventStartDate()),
-                Rule::requiredIf(fn () => $this->isProjectTypeSupportingEventStartDate()),
+                Rule::prohibitedIf(fn () => ! ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
+                Rule::requiredIf(fn () => ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
+                'after:now'
             ],
             'manager_institution_user_id' => [
                 'nullable',
@@ -130,7 +131,7 @@ class ProjectCreateRequest extends FormRequest
             ],
             'reference_number' => ['nullable', 'string'],
             'comments' => ['nullable', 'string'],
-            'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z'], // only UTC (zero offset)
+            'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z', 'after:now'], // only UTC (zero offset)
             'translation_domain_classifier_value_id' => [
                 'required',
                 'uuid',
@@ -157,15 +158,6 @@ class ProjectCreateRequest extends FormRequest
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::Language),
             ],
         ];
-    }
-
-    private function isProjectTypeSupportingEventStartDate(): bool
-    {
-        return ClassifierValue::find($this->get('type_classifier_value_id'))
-            ?->projectTypeConfig()
-            ?->where('is_start_date_supported', true)
-            ?->exists() ?? false;
-
     }
 
     /**
@@ -230,6 +222,12 @@ class ProjectCreateRequest extends FormRequest
                 $validated = $validator->validated();
                 if (count(Arr::get($validated, 'help_files', [])) !== count(Arr::get($validated, 'help_file_types', []))) {
                     $validator->errors()->add('help_file_types', 'The amount of \'help_file_types\' must be equal to the amount of \'help_files\'');
+                }
+
+                if (filled($deadline = data_get($validated, 'deadline_at')) && filled($eventStart = data_get($validated, 'event_start_at'))) {
+                    if ($deadline < $eventStart) {
+                        $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
+                    }
                 }
             },
         ];

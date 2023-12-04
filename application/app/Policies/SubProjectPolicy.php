@@ -57,7 +57,7 @@ class SubProjectPolicy
      */
     public function update(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return true;
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
     /**
@@ -90,6 +90,11 @@ class SubProjectPolicy
     }
 
     public function startWorkflow(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilege($subProject);
+    }
+
+    public function markFilesAsProjectFinalFiles(JwtPayloadUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($subProject);
     }

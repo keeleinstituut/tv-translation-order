@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CatToolMergeRequest;
@@ -81,6 +82,11 @@ class CatToolController extends Controller
     public function split(CatToolSplitRequest $request): AnonymousResourceCollection
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
+
+        if (!in_array($subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+            abort(Response::HTTP_BAD_REQUEST, 'Not possible to split XLIFF file(s) for subproject that is in progress');
+        }
+
         $this->authorize('manageCatTool', $subProject);
 
         try {
@@ -107,6 +113,10 @@ class CatToolController extends Controller
     {
         $subProject = $this->getSubProject($request->validated('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
+
+        if (!in_array($subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+            abort(Response::HTTP_BAD_REQUEST, 'Not possible to merge XLIFF files for subproject that is in progress');
+        }
 
         $jobs = $subProject->cat()->merge();
 

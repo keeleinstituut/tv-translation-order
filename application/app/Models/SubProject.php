@@ -24,9 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use InvalidArgumentException;
 use RuntimeException;
-use Spatie\MediaLibrary\InteractsWithMedia;
 use Staudenmeir\EloquentHasManyDeep\Eloquent\CompositeKey;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
@@ -51,6 +49,7 @@ use Throwable;
  * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $event_start_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
  * @property-read int|null $assignments_count
@@ -98,7 +97,8 @@ class SubProject extends Model
         'price' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
-        'deadline_at' => 'datetime'
+        'deadline_at' => 'datetime',
+        'event_start_at' => 'datetime',
     ];
 
     public function project(): BelongsTo
@@ -126,7 +126,7 @@ class SubProject extends Model
 
     public function activeJobDefinition(): BelongsTo
     {
-        return  $this->belongsTo(JobDefinition::class, 'active_job_definition_id');
+        return $this->belongsTo(JobDefinition::class, 'active_job_definition_id');
     }
 
     public function sourceFiles(): HasManyDeep
@@ -192,26 +192,35 @@ class SubProject extends Model
         });
     }
 
-    public function moveFinalFilesToProjectFinalFiles($finalFilesIds): void
+    /**
+     * @throws Throwable
+     */
+    public function syncFinalFilesWithProject($subProjectFinalFileIds): void
     {
-        if (empty($finalFilesIds)) {
-            throw new InvalidArgumentException('No final files specified');
+        $subProjectFinalFileIds = collect($subProjectFinalFileIds);
+        $subProjectProjectFinalFileIds = $this->finalFiles->filter(function (Media $media) {
+            return $media->copies->contains(fn (Media $copiedMedia) => $copiedMedia->isProjectFinalFile());
+        })->values()->pluck('id');
+
+
+        $toCreate = $subProjectFinalFileIds->diff($subProjectProjectFinalFileIds);
+        $toDelete = $subProjectProjectFinalFileIds->diff($subProjectFinalFileIds);
+
+        if ($toCreate->isNotEmpty()) {
+            $this->finalFiles->filter(fn(Media $media) => $toCreate->contains($media->id))
+                ->each(function (Media $sourceFile) {
+                    $copiedFile = $sourceFile->copy($this->project, Project::FINAL_FILES_COLLECTION);
+                    $sourceFile->copies()->save($copiedFile);
+                });
         }
 
-
-        $files = $this->finalFiles->filter(fn (Media $media) => in_array($media->id, $finalFilesIds))
-            ->values();
-
-        $wrongFilesPassed = $files->count() !== count($finalFilesIds);
-
-        if ($wrongFilesPassed) {
-            throw new InvalidArgumentException('Files IDs are incorrect');
+        if ($toDelete->isNotEmpty()) {
+            $this->project->getMedia(Project::FINAL_FILES_COLLECTION, function (Media $media) use ($toDelete) {
+                return $media->sources->pluck('id')->intersect($toDelete)->isNotEmpty();
+            })->each(function (Media $media) {
+                $media->delete();
+            });
         }
-
-        $project = $this->project;
-        $files->each(function (Media $media) use ($project) {
-            $media->copy($project, Project::FINAL_FILES_COLLECTION);
-        });
     }
 
     public function cat(): CatToolService

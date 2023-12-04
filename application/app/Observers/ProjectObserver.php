@@ -25,7 +25,7 @@ class ProjectObserver
             $project->ext_id = collect([
                 $project->institution->short_name,
                 Carbon::now()->format('Y-m'),
-                $project->typeClassifierValue->meta['code'] ?? '',
+                data_get($project->typeClassifierValue->meta, 'code', ''),
                 $project->institution->institutionProjectSequence->incrementCurrentValue(),
             ])->implode('-');
         }
@@ -62,14 +62,21 @@ class ProjectObserver
             });
         }
 
-        $projectWasCancelled = $project->status === ProjectStatus::Cancelled &&
-            $project->isDirty('status');
+        if ($project->isDirty('status')) {
+            if ($project->status === ProjectStatus::Cancelled) {
+                $project->cancelled_at = Carbon::now();
 
-        if ($projectWasCancelled) {
-            $project->subProjects->each(function (SubProject $subProject) {
-                $subProject->status = SubProjectStatus::Cancelled;
-                $subProject->saveOrFail();
-            });
+                $project->subProjects->each(function (SubProject $subProject) {
+                    $subProject->status = SubProjectStatus::Cancelled;
+                    $subProject->saveOrFail();
+                });
+            } elseif ($project->status === ProjectStatus::Accepted) {
+                $project->accepted_at = Carbon::now();
+            } elseif ($project->status === ProjectStatus::Corrected) {
+                $project->corrected_at = Carbon::now();
+            } elseif ($project->status === ProjectStatus::Rejected) {
+                $project->rejected_at = Carbon::now();
+            }
         }
     }
 
@@ -90,16 +97,23 @@ class ProjectObserver
 
         if ($project->wasChanged('deadline_at') && filled($project->deadline_at)) {
             $project->subProjects->each(function (SubProject $subProject) use ($project) {
-                if (empty($subProject->deadline_at)) {
-                    $subProject->deadline_at = $project->deadline_at;
-                    $subProject->saveOrFail();
-                } elseif ($subProject->deadline_at > $project->deadline_at && !$subProject->workflow()->isStarted()) {
+                if (empty($subProject->deadline_at) || $subProject->deadline_at > $project->deadline_at) {
                     $subProject->deadline_at = $project->deadline_at;
                     $subProject->saveOrFail();
                 }
             });
-
             UpdateProjectDeadlineInsideWorkflow::dispatchSync($project);
+        }
+
+        if ($project->wasChanged('event_start_at')) {
+            $project->subProjects->each(function (SubProject $subProject) use ($project) {
+                $subProject->event_start_at = $project->event_start_at;
+                if (filled($project->event_start_at) && filled($subProject->deadline_at) && $subProject->deadline_at < $project->event_start_at) {
+                    $subProject->event_start_at = null;
+                }
+
+                $subProject->saveOrFail();
+            });
         }
     }
 

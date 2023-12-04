@@ -39,6 +39,10 @@ use Throwable;
  * @property string|null $workflow_instance_ref
  * @property float|null $price
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $cancelled_at
+ * @property Carbon|null $accepted_at
+ * @property Carbon|null $corrected_at
+ * @property Carbon|null $rejected_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
@@ -121,6 +125,10 @@ class Project extends Model implements HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'corrected_at' => 'datetime',
+        'accepted_at' => 'datetime',
         'price' => 'float',
         'status' => ProjectStatus::class,
     ];
@@ -186,6 +194,11 @@ class Project extends Model implements HasMedia
         return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
     }
 
+    public function reviewRejections(): HasMany
+    {
+        return $this->hasMany(ProjectReviewRejection::class);
+    }
+
     public function workflow(): ProjectWorkflowProcessInstance
     {
         return new ProjectWorkflowProcessInstance($this);
@@ -202,6 +215,7 @@ class Project extends Model implements HasMedia
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->deadline_at = $this->deadline_at;
+            $subProject->event_start_at = $this->event_start_at;
             return $subProject;
         };
 
@@ -234,7 +248,9 @@ class Project extends Model implements HasMedia
             $subProject->saveOrFail();
 
             $this->getMedia('source')->each(function ($sourceFile) use ($subProject) {
-                $sourceFile->copy($this, $subProject->file_collection);
+                /** @var Media $sourceFile */
+                $copiedFile = $sourceFile->copy($this, $subProject->file_collection);
+                $sourceFile->copies()->save($copiedFile);
             });
 
             $subProject->initAssignments();

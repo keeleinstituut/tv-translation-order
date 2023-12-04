@@ -231,7 +231,7 @@ class ProjectController extends Controller
             'finalFiles',
             'helpFiles',
             'reviewFiles',
-            'tags',
+            'tags'
         ])->findOrFail($id);
 
         $this->authorize('view', $project);
@@ -264,6 +264,7 @@ class ProjectController extends Controller
                 'reference_number',
                 'comments',
                 'deadline_at',
+                'event_start_at'
             ])->filter()->toArray(), $project->fill(...));
 
             $project->save();
