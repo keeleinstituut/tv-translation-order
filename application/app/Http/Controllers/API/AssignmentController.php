@@ -416,10 +416,10 @@ class AssignmentController extends Controller
 
                 WorkflowService::completeReviewTask($taskId, $validated['accepted']);
                 try {
-                    $validated['accepted'] && $assignment->subProject
-                        ->moveFinalFilesToProjectFinalFiles(
-                            $validated['final_file_id']
-                        );
+                    $validated['accepted'] && $assignment->subProject->syncFinalFilesWithProject(
+                        $validated['final_file_id']
+                    );
+
                 } catch (InvalidArgumentException $e) {
                     abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
                 }

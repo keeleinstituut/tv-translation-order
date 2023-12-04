@@ -6,11 +6,13 @@ use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\SetProjectFinalFilesRequest;
 use App\Http\Requests\API\SubProjectListRequest;
 use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Resources\API\SubProjectResource;
 use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
+use App\Models\Media;
 use App\Models\SubProject;
 use App\Policies\SubProjectPolicy;
 use DB;
@@ -151,7 +153,8 @@ class SubProjectController extends Controller
             'sourceLanguageClassifierValue',
             'destinationLanguageClassifierValue',
             'sourceFiles',
-            'finalFiles',
+            'finalFiles.assignment.jobDefinition',
+            'finalFiles.copies',
             'project.typeClassifierValue.projectTypeConfig.jobDefinitions',
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',
@@ -220,6 +223,36 @@ class SubProjectController extends Controller
         $subProject->workflow()->start();
         $subProject->refresh();
         return SubProjectResource::make($subProject);
+    }
+
+
+    /**
+     * @throws AuthorizationException
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/subprojects/{id}/set-project-final-files',
+        summary: 'Set project final files based on subproject final files',
+        tags: ['Sub-projects'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: SubProjectResource::class, description: 'Sub-project resource', response: Response::HTTP_OK)]
+    public function setProjectFinalFiles(SetProjectFinalFilesRequest $request): SubProjectResource
+    {
+        /** @var SubProject $subProject */
+        $subProject = self::getBaseQuery()->findOrFail($request->route('id'));
+        $this->authorize('markFilesAsProjectFinalFiles', $subProject);
+
+        return DB::transaction(function () use ($subProject, $request) {
+            $subProject->syncFinalFilesWithProject(
+                $request->validated('final_file_id')
+            );
+            $subProject->load([
+                'finalFiles.copies',
+                'finalFiles.assignment',
+            ]);
+            return SubProjectResource::make($subProject);
+        });
     }
 
     private static function getBaseQuery(): Builder
