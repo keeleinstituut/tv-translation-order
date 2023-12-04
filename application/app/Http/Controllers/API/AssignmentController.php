@@ -161,6 +161,14 @@ class AssignmentController extends Controller
             $assignment->saveOrFail();
             $assignment->refresh();
 
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
+                'jobDefinition'
+            ]);
+
             return AssignmentResource::make($assignment);
         });
     }
@@ -184,6 +192,14 @@ class AssignmentController extends Controller
 
             $assignment->fill($request->validated());
             $assignment->saveOrFail();
+
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
+                'jobDefinition'
+            ]);
 
             return AssignmentResource::make($assignment);
         });
