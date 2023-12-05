@@ -33,7 +33,7 @@ class CatToolTmKeyPolicy
      */
     public function create(JwtPayloadUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::CreateTranslationMemory->value);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**
