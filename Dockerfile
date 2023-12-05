@@ -164,6 +164,9 @@ php artisan optimize
 echo "Running migrations"
 php artisan migrate --force
 
+echo "Setup AMQP queues"
+php artisan amqp:setup
+
 echo "Generating OpenAPI document"
 php artisan l5-swagger:generate
 
