@@ -30,7 +30,8 @@ class TvTranslationMemoryApiClient
             'institution_id',
             'name',
             'type',
-            'lang_pair'
+            'lang_pair',
+            'tv_domain'
         ]))->throw()->json();
     }
 

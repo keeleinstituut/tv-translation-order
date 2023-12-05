@@ -197,6 +197,7 @@ class CatToolTmKeyController extends Controller
                     'name' => $subProject->ext_id,
                     'type' => TranslationMemoryType::Private->value,
                     'institution_id' => Auth::user()->institutionId,
+                    'tv_domain' => $subProject->project->translation_domain_classifier_value_id,
                     'lang_pair' => TvTranslationMemoryApiClient::getLanguagePair(
                         $subProject->sourceLanguageClassifierValue,
                         $subProject->destinationLanguageClassifierValue
