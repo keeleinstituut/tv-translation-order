@@ -199,7 +199,14 @@ class ProjectController extends Controller
             $project->refresh();
             $project->workflow()->start();
 
-            $project->load('media', 'managerInstitutionUser', 'clientInstitutionUser', 'typeClassifierValue', 'translationDomainClassifierValue', 'subProjects');
+            $project->load([
+                'media',
+                'managerInstitutionUser',
+                'clientInstitutionUser',
+                'typeClassifierValue',
+                'translationDomainClassifierValue',
+                'subProjects.assignments'
+            ]);
             return new ProjectResource($project);
         });
     }
