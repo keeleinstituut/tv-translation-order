@@ -50,12 +50,10 @@ class AssignmentPolicy
      */
     public function updateAssigneeComment(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        if (empty($assignment->assigned_vendor_id) || empty($user->institutionUserId)) {
-            return false;
-        }
-
-        return Vendor::where('institution_user_id', $user->institutionUserId)
-            ->where('id', $assignment->assigned_vendor_id)->exists();
+        return $this->isInSameInstitutionAsCurrentUser($assignment) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isAssigned($assignment)
+            );
     }
 
     /**
