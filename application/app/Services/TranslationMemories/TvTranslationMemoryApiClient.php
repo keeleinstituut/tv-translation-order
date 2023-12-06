@@ -35,6 +35,27 @@ class TvTranslationMemoryApiClient
         ]))->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
+    public function getTags(string $institutionId, array $tagIds)
+    {
+        $queryParams = collect($tagIds)->map(fn(string $id, int $idx) => "id=$id");
+        $queryParams->add("institution_id=$institutionId");
+        return $this->getBaseRequest()->get('/tags', $queryParams->join('&'))
+            ->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public function getTagsStats(string $institutionId)
+    {
+        return $this->getBaseRequest()->get('/tm/stats', [
+            'institution_id' => $institutionId
+        ])->throw()->json();
+    }
+
     private function getBaseRequest(): PendingRequest
     {
         return Http::withHeaders([

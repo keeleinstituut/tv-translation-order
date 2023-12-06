@@ -6,6 +6,8 @@ use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Models\Vendor;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -84,9 +86,9 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilege($subProject);
     }
 
-    public function editFinalFiles(JwtPayloadUser $user, SubProject $subProject): bool
+    public function editFinalFiles(JwtPayloadUser $user, SubProject $subProject, ?string $assignmentId = null): bool
     {
-        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject, $assignmentId);
     }
 
     public function startWorkflow(JwtPayloadUser $user, SubProject $subProject): bool
@@ -111,14 +113,28 @@ class SubProjectPolicy
         return false;
     }
 
-    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject): bool
+    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject, ?string $assignmentId = null): bool
     {
         if ($this->hasManageProjectPrivilege($subProject)) {
             return true;
         }
 
-        return Assignment::where('assigned_vendor_id', Auth::user()->institutionUserId)
-            ->where('sub_project_id', $subProject->id)->exists();
+        if (empty(Auth::user()->institutionUserId)) {
+            return false;
+        }
+
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->first();
+
+        if (empty($vendor)) {
+            return false;
+        }
+
+        return Assignment::where('assigned_vendor_id', $vendor->id)
+            ->where('sub_project_id', $subProject->id)
+            ->when(filled($assignmentId), fn (Builder $query) => $query->where('id', $assignmentId))
+            ->exists();
     }
 
     private function isInSameInstitutionAsCurrentUser(SubProject $subProject): bool
