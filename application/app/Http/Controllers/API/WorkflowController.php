@@ -23,6 +23,7 @@ use App\Models\Vendor;
 use App\Policies\ProjectPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
+use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
 use Auth;
@@ -48,6 +49,11 @@ use Throwable;
 
 class WorkflowController extends Controller
 {
+
+    public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient)
+    {
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -124,9 +130,19 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data, ['subProject.finalFiles.assignment.jobDefinition']);
+        $data = $this->mapWithExtraInfo($data, [
+            'volumes',
+            'subProject.project.clientInstitutionUser',
+            'subProject.project.managerInstitutionUser',
+            'subProject.sourceFiles',
+            'subProject.finalFiles.assignment.jobDefinition',
+            'subProject.catToolTmKeys',
+            'catToolJobs'
+        ]);
 
-        return TaskResource::make($data->first());
+        $task = $data->first();
+        $task = $this->mapWithTmKeysInfo($task);
+        return TaskResource::make($task);
     }
 
     #[OA\Get(
@@ -201,9 +217,19 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data, ['subProject.finalFiles.assignment.jobDefinition']);
+        $data = $this->mapWithExtraInfo($data, [
+            'volumes',
+            'subProject.project.clientInstitutionUser',
+            'subProject.project.managerInstitutionUser',
+            'subProject.sourceFiles',
+            'subProject.finalFiles.assignment.jobDefinition',
+            'subProject.catToolTmKeys',
+            'catToolJobs'
+        ]);
 
-        return TaskResource::make($data->first());
+        $task = $data->first();
+        $task = $this->mapWithTmKeysInfo($task);
+        return TaskResource::make($task);
     }
 
     /**
@@ -624,15 +650,9 @@ class WorkflowController extends Controller
     private function mapWithExtraInfo($tasks, array $assignmentAdditionalRelations = []): Collection
     {
         $relations = collect([
-            'volumes',
-            'subProject',
-            'subProject.project',
-            'subProject.project.clientInstitutionUser',
-            'subProject.project.managerInstitutionUser',
             'subProject.project.typeClassifierValue',
             'subProject.sourceLanguageClassifierValue',
-            'subProject.destinationLanguageClassifierValue',
-            'subProject.sourceFiles',
+            'subProject.destinationLanguageClassifierValue'
         ])->merge($assignmentAdditionalRelations)->unique();
 
         $assignmentIds = collect($tasks)->map(fn($task) => data_get($task, 'variables.assignment_id'));
@@ -648,6 +668,35 @@ class WorkflowController extends Controller
         });
     }
 
+    private function mapWithTmKeysInfo(?array $task): ?array
+    {
+        $assignment = data_get($task, 'assignment');
+        if (! $assignment instanceof Assignment) {
+            return $task;
+        }
+
+        if (empty($institutionId = Auth::user()->institution_id)) {
+            abort(Response::HTTP_UNAUTHORIZED, 'institution is not defined for active user');
+        }
+
+        if (empty($tmKeyIds = $assignment->subProject->catToolTmKeys()->pluck('key')->toArray())) {
+            return $task;
+        }
+
+        try {
+            $tmKeysMeta = $this->tmServiceApiClient->getTags($institutionId, $tmKeyIds);
+            $tmKeysStats = $this->tmServiceApiClient->getTagsStats($institutionId);
+        } catch (RequestException) {
+            return $task;
+        }
+
+        return [
+            ...$task,
+            'tm_keys_meta' => $tmKeysMeta ?? [],
+            'tm_keys_stats' => $tmKeysStats ?? []
+        ];
+    }
+
     /**
      * @throws AuthorizationException
      */
@@ -659,7 +708,6 @@ class WorkflowController extends Controller
         }
 
         Gate::denyIf(empty($assignee = data_get($taskData, 'task.assignee')), 'Task can be completed only by assigned user');
-
         Gate::denyIf(empty($vendor), 'Active user is not a vendor');
         Gate::denyIf($assignee !== $vendor->institution_user_id, 'You are not assigned to the task');
     }

@@ -57,7 +57,7 @@ class MediaController extends Controller
                 }
 
                 $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
-                $this->authorize($ability, $entity);
+                $this->authorize($ability, [$entity, data_get($file, 'assignment_id')]);
 
                 if (data_get($file, 'collection') === Project::HELP_FILES_COLLECTION) {
                     $customProperties = [
@@ -155,15 +155,14 @@ class MediaController extends Controller
                 }
 
                 $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
-
-                $this->authorize($ability, $entity);
-
                 $media = Media::getModel()
                     ->where('model_id', $collectionOwnerEntity->id)
                     ->where('model_type', $collectionOwnerEntity::class)
                     ->where('collection_name', $collectionName)
                     ->where('id', $file['id'])
                     ->first() ?? abort(404);
+
+                $this->authorize($ability, [$entity, $media->getCustomProperty('assignment_id')]);
 
                 $media->delete();
                 return $media;
