@@ -252,7 +252,6 @@ class VendorController extends Controller
 
         return DB::transaction(function () use ($params) {
             $ids = collect($params->get('id'));
-
             $data = $this->getBaseQuery()
                 ->whereIn('id', $ids)
                 ->with('prices')

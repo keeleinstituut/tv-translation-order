@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Candidate;
 use App\Models\Vendor;
 
 class VendorObserver
@@ -28,6 +29,7 @@ class VendorObserver
     public function deleted(Vendor $vendor): void
     {
         $vendor->prices->each(fn ($price) => $price->delete());
+        $vendor->candidates->each(fn (Candidate $candidate) => $candidate->delete());
     }
 
     /**

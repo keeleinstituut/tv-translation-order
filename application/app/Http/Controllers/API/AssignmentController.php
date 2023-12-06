@@ -311,7 +311,7 @@ class AssignmentController extends Controller
                         $deletedCandidatesInstitutionUserIds->push($candidate->vendor?->institution_user_id);
                     }
 
-                    $candidate->delete();
+                    $candidate->deleteQuietly();
                 });
 
             if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
