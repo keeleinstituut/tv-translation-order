@@ -35,8 +35,8 @@ class VolumeUpdateRequest extends FormRequest
     {
         return [
             'unit_type' => ['required', new Enum(VolumeUnits::class)],
-            'unit_quantity' => ['required', 'integer', 'min:1'],
-            'unit_fee' => 'decimal:0,2|between:0,99999999.99',
+            'unit_quantity' => ['required', 'decimal:0,3', 'min:0.001'],
+            'unit_fee' => 'decimal:0,3|between:0,9999.99',
         ];
     }
 }
