@@ -68,24 +68,22 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
-        // TODO: enable validation when FE part will be done
+        if (empty($this->subProject->catToolTmKeys)) {
+            throw new InvalidArgumentException('Project should have at least one TM key');
+        }
 
-        //        if (empty($this->subProject->catToolTmKeys)) {
-        //            throw new InvalidArgumentException('Project should have at least one TM key');
-        //        }
-        //
-        //        if ($this->subProject->catToolTmKeys->count() > 10) {
-        //            throw new InvalidArgumentException('Project should have not more than 10 TM keys');
-        //        }
-        //
-        //        $writableTmsCount = $this->subProject->catToolTmKeys->where('is_writable', true)->count();
-        //        if ($writableTmsCount > 2) {
-        //            throw new InvalidArgumentException('Not more than two translation memories can be writable');
-        //        }
-        //
-        //        if ($writableTmsCount === 0) {
-        //            throw new InvalidArgumentException('At least one TM should be writable');
-        //        }
+        if ($this->subProject->catToolTmKeys->count() > 10) {
+            throw new InvalidArgumentException('Project should have not more than 10 TM keys');
+        }
+
+        $writableTmsCount = $this->subProject->catToolTmKeys->where('is_writable', true)->count();
+        if ($writableTmsCount > 2) {
+            throw new InvalidArgumentException('Not more than two translation memories can be writable');
+        }
+
+        if ($writableTmsCount === 0) {
+            throw new InvalidArgumentException('At least one TM should be writable');
+        }
 
         try {
             $params = [

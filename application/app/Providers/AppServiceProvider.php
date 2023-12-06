@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Sync\ApiClients\TvAuthorizationApiClient;
 use App\Sync\ApiClients\TvClassifierApiClient;
 use Illuminate\Foundation\Application;
@@ -23,6 +24,12 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(TvClassifierApiClient::class, function (Application $app) {
             return new TvClassifierApiClient(
+                $app->make(ServiceAccountJwtRetrieverInterface::class)
+            );
+        });
+
+        $this->app->bind(TvTranslationMemoryApiClient::class, function (Application $app) {
+            return new TvTranslationMemoryApiClient(
                 $app->make(ServiceAccountJwtRetrieverInterface::class)
             );
         });
