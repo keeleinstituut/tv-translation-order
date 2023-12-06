@@ -675,7 +675,7 @@ class WorkflowController extends Controller
             return $task;
         }
 
-        if (empty($institutionId = Auth::user()->institution_id)) {
+        if (empty($institutionId = Auth::user()->institutionId)) {
             abort(Response::HTTP_UNAUTHORIZED, 'institution is not defined for active user');
         }
 
