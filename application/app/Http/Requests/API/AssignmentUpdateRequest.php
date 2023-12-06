@@ -32,7 +32,7 @@ class AssignmentUpdateRequest extends FormRequest
     {
         return [
             'comments' => ['nullable', 'string'],
-            'deadline_at' => ['required', 'date_format:' . self::DATETIME_FORMAT, 'after:now'],
+            'deadline_at' => ['required', 'date_format:' . self::DATETIME_FORMAT],
         ];
     }
 

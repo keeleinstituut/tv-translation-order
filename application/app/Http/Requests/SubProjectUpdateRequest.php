@@ -33,8 +33,8 @@ class SubProjectUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT, 'after:now'],
-            'event_start_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT, 'after:now'],
+            'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
+            'event_start_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
         ];
     }
 

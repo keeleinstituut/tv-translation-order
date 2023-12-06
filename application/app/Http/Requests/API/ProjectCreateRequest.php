@@ -115,7 +115,6 @@ class ProjectCreateRequest extends FormRequest
                 'bail',
                 Rule::prohibitedIf(fn () => ! ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
                 Rule::requiredIf(fn () => ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
-                'after:now'
             ],
             'manager_institution_user_id' => [
                 'nullable',
@@ -131,7 +130,7 @@ class ProjectCreateRequest extends FormRequest
             ],
             'reference_number' => ['nullable', 'string'],
             'comments' => ['nullable', 'string'],
-            'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z', 'after:now'], // only UTC (zero offset)
+            'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z'], // only UTC (zero offset)
             'translation_domain_classifier_value_id' => [
                 'required',
                 'uuid',
