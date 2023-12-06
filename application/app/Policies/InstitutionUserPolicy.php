@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\InstitutionUser;
 use BadMethodCallException;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,7 @@ class InstitutionUserPolicy
      */
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
     }
 
     /**
@@ -63,6 +64,14 @@ class InstitutionUserPolicy
     public function forceDelete(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
+    }
+
+    public function viewActiveTasks(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    {
+        if (Auth::hasPrivilege(PrivilegeKey::ViewVendorTask->value)) {
+            return filled($institutionUser->vendor);
+        }
+        return false;
     }
 
     // Should serve as an query enhancement to Eloquent queries
