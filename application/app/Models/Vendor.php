@@ -127,7 +127,7 @@ class Vendor extends Model
             'discount_percentage_0_49',
         ];
 
-        if (filled($institutionDiscount = $this->institutionUser->institutionDiscount)) {
+        if (filled($institutionDiscount = $this->institutionUser?->institutionDiscount)) {
             return new VolumeAnalysisDiscount(
                 collect($institutionDiscount->only($discountAttributes))->merge(
                     collect($this->only($discountAttributes))->filter()
