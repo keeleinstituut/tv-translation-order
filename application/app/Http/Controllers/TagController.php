@@ -136,11 +136,14 @@ class TagController extends Controller
     private function updateTag(string $id, string $name): Tag
     {
         $tag = Tag::findOrFail($id);
-        $this->authorize('update', $tag);
-        $tag->name = $name;
-        $tag->saveOrFail();
+        if ($tag->name !== $name) {
+            $this->authorize('update', $tag);
+            $tag->name = $name;
+            $tag->saveOrFail();
+            $tag->refresh();
+        }
 
-        return $tag->refresh();
+        return $tag;
     }
 
     private function deleteNotProcessedTags(Collection $tags, TagType $tagsType)
