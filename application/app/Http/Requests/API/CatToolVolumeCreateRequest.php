@@ -44,7 +44,7 @@ class CatToolVolumeCreateRequest extends FormRequest
     public function rules(): array
     {
         $percentageRule = 'sometimes|decimal:0,2|between:0,100.00';
-        $unitQualityRule = ['sometimes', 'decimal:0,3', 'min:0.001'];
+        $unitQualityRule = ['sometimes', 'decimal:0,3', 'min:0'];
 
         return [
             'assignment_id' => [
