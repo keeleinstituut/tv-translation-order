@@ -79,6 +79,12 @@ class ProjectPolicy
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
+    public function downloadMedia(JwtPayloadUser $user, Project $project): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($project) &&
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+    }
+
     public function cancel(JwtPayloadUser $user, Project $project): bool
     {
         $currentInstitutionUserId = Auth::user()?->institutionUserId;
