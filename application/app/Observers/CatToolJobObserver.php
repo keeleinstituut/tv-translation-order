@@ -14,7 +14,7 @@ class CatToolJobObserver
     public function created(CatToolJob $catToolJob): void
     {
         $processedJobKeys = collect();
-        $catToolJob->subProject?->assignments?->each(function (Assignment $assignment) use ($catToolJob, $processedJobKeys) {
+        $catToolJob->subProject?->assignments()->orderBy('created_at')->each(function (Assignment $assignment) use ($catToolJob, $processedJobKeys) {
             if (filled($assignment->jobDefinition) && $assignment->jobDefinition->linking_with_cat_tool_jobs_enabled && !$processedJobKeys->contains($assignment->jobDefinition->job_key)) {
                 $processedJobKeys->add($assignment->jobDefinition->job_key);
                 $assignment->catToolJobs()->attach($catToolJob);
