@@ -13,6 +13,11 @@ class CatToolJobObserver
      */
     public function created(CatToolJob $catToolJob): void
     {
+        $catToolJob->subProject?->assignments?->each(function (Assignment $assignment) use ($catToolJob) {
+            if ($assignment->jobDefinition?->linking_with_cat_tool_jobs_enabled) {
+                $assignment->catToolJobs()->attach($catToolJob);
+            }
+        });
     }
 
     /**
