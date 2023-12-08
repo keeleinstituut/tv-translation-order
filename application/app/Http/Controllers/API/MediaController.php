@@ -192,7 +192,7 @@ class MediaController extends Controller
 
         [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($params['reference_object_type'], $params['reference_object_id'], $params['collection']);
 
-        $this->authorize('view', $entity);
+        $this->authorize('downloadMedia', $entity);
 
         $media = Media::getModel()
             ->where('model_id', $collectionOwnerEntity->id)

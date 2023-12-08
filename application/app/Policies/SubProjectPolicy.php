@@ -81,6 +81,11 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
+    public function downloadMedia(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+    }
+
     public function editSourceFiles(JwtPayloadUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($subProject);
