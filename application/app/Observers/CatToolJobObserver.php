@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Assignment;
 use App\Models\CatToolJob;
 use App\Models\Volume;
+use Throwable;
 
 class CatToolJobObserver
 {
@@ -17,6 +18,7 @@ class CatToolJobObserver
 
     /**
      * Handle the CatToolJob "updated" event.
+     * @throws Throwable
      */
     public function updated(CatToolJob $catToolJob): void
     {
@@ -30,15 +32,20 @@ class CatToolJobObserver
                     $volume->custom_volume_analysis = null;
                     $volume->save();
                 }));
+
+                $assignment->price = $assignment->getPriceCalculator()->getPrice();
+                $assignment->saveOrFail();
             });
 
-            $subProject = $catToolJob->subProject;
-            $subProject->price = $subProject->getPriceCalculator()->getPrice();
-            $subProject->save();
+            if (filled($subProject = $catToolJob->subProject)) {
+                $subProject->price = $subProject->getPriceCalculator()->getPrice();
+                $subProject->saveOrFail();
+            }
 
-            $project = $subProject->project;
-            $project->price = $project->getPriceCalculator()->getPrice();
-            $project->save();
+            if (filled($project = $subProject?->project)) {
+                $project->price = $project->getPriceCalculator()->getPrice();
+                $project->saveOrFail();
+            }
         }
     }
 
