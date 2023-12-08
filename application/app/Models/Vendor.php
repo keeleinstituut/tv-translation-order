@@ -35,6 +35,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read InstitutionUser|null $institutionUser
  * @property-read Collection<int, Price> $prices
+ * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $prices_count
  * @property-read Collection<int, Tag> $tags
  * @property-read int|null $tags_count
@@ -106,6 +107,12 @@ class Vendor extends Model
     {
         return $this->hasMany(Price::class);
     }
+
+    public function candidates()
+    {
+        return $this->hasMany(Candidate::class);
+    }
+
 
     public function tags()
     {
