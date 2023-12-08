@@ -14,12 +14,14 @@ use App\Http\Resources\TaskResource;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
+use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
 use App\Models\Vendor;
+use App\Policies\InstitutionUserPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
@@ -69,6 +71,7 @@ class WorkflowController extends Controller
             new OA\QueryParameter(name: 'assigned_to_me', schema: new OA\Schema(type: 'boolean', default: true)),
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'task_type', schema: new OA\Schema(type: 'string', format: 'enum', enum: TaskType::class)),
+            new OA\QueryParameter(name: 'institution_user_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(
                 name: 'lang_pair[]',
                 schema: new OA\Schema(
@@ -598,16 +601,27 @@ class WorkflowController extends Controller
             $params->put('processInstanceBusinessKeyLike', ProjectWorkflowProcessInstance::BUSINESS_KEY_PREFIX . '%');
         }
 
-        $assignedToMe = $requestParams->get('assigned_to_me', true);
-        if (!$requestParams->get('skip_assigned_param') && filled($assignedToMe)) {
-            if ($assignedToMe) {
-                $vendor = Vendor::getModel()
-                    ->where('institution_user_id', Auth::user()->institutionUserId)
-                    ->first();
+        $assigned = $requestParams->get('assigned_to_me', true);
+        $currentUserId = Auth::user()->institutionUserId;
+        $institutionUserId = $requestParams->get('institution_user_id', $currentUserId);
+        $isOtherInstitutionUser = $institutionUserId != $currentUserId;
+        $institutionUser = InstitutionUser::withGlobalScope('policy', InstitutionUserPolicy::scope())->find($institutionUserId);
+
+        if ($isOtherInstitutionUser) {
+            $assigned = true;
+            $this->authorize('viewActiveTasks', $institutionUser);
+        }
+
+        if (!$assigned) {
+            $institutionUserId = null;
+        }
+
+        if (!$requestParams->get('skip_assigned_param')) {
+            if ($assigned) {
                 $params['assigned'] = true;
                 // Use 'empty' as fallback since leaving fallback as null will be treated as all assignees
                 $assigneeKey = $forHistoricTasks ? 'taskAssignee' : 'assignee';
-                $params[$assigneeKey] = $vendor?->institution_user_id ?? '--empty--';
+                $params[$assigneeKey] = $institutionUser->id ?? '--empty--';
             } else {
                 $params['unassigned'] = true;
             }
@@ -660,12 +674,16 @@ class WorkflowController extends Controller
             ->whereIn('id', $assignmentIds)
             ->with($relations->toArray())->get();
 
-        return collect($tasks)->map(function ($task) use ($assignments) {
-            return [
-                ...$task,
-                'assignment' => $assignments->firstWhere('id', data_get($task, 'variables.assignment_id'))
-            ];
-        });
+        return collect($tasks)->reduce(function ($acc, $task) use ($assignments) {
+            $assignment = $assignments->firstWhere('id', data_get($task, 'variables.assignment_id'));
+            if ($assignment) {
+                $acc->push([
+                    ...$task,
+                    'assignment' => $assignment,
+                ]);
+            }
+            return $acc;
+        }, collect());
     }
 
     private function mapWithTmKeysInfo(?array $task): ?array

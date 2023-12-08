@@ -3,7 +3,9 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\TaskType;
+use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
+use App\Policies\InstitutionUserPolicy;
 use App\Policies\ProjectPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -34,6 +36,14 @@ class WorkflowTaskListRequest extends FormRequest
 
                 if (! $exists) {
                     $fail('The project with such ID does not exist.');
+                }
+            }],
+            'institution_user_id' => ['sometimes', 'uuid', function ($attribute, $value, $fail) {
+                $exists = InstitutionUser::withGlobalScope('policy', InstitutionUserPolicy::scope())
+                    ->where('id', $value)->exists();
+
+                if (! $exists) {
+                    $fail('The institution user with such ID does not exist.');
                 }
             }],
             'task_type' => ['sometimes', new Enum(TaskType::class)]
