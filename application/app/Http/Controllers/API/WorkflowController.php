@@ -142,6 +142,7 @@ class WorkflowController extends Controller
 
         $task = $data->first();
         $task = $this->mapWithTmKeysInfo($task);
+
         return TaskResource::make($task);
     }
 
@@ -406,6 +407,7 @@ class WorkflowController extends Controller
         } elseif (filled($project = $this->getTaskProject($taskData))) {
             WorkflowService::completeTask($taskId);
             TrackProjectStatus::dispatchSync($project);
+            $taskData = $this->mapWithExtraProjectInfo($taskData);
         } else {
             abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task metadata is missing');
         }
@@ -460,7 +462,7 @@ class WorkflowController extends Controller
      */
     private function completeProjectReviewTask(Request $request, array $taskData): TaskResource
     {
-        if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::ClientReview->value) {
+        if (data_get($taskData, 'variables.task_type') !== TaskType::ClientReview->value) {
             abort(Response::HTTP_BAD_REQUEST, 'The task type is not client review');
         }
 
@@ -479,7 +481,7 @@ class WorkflowController extends Controller
                     ->where('id', $value)
                     ->exists();
 
-                if (! $exists) {
+                if (!$exists) {
                     $fail('Subproject with such ID does not exist');
                 }
 
@@ -510,6 +512,7 @@ class WorkflowController extends Controller
 
 
         TrackProjectStatus::dispatchSync($project);
+        $this->mapWithExtraProjectInfo($taskData);
 
         return TaskResource::make($taskData);
     }
@@ -668,10 +671,28 @@ class WorkflowController extends Controller
         });
     }
 
+    /**
+     * The function is needed for providing updated info about the project to the FE.
+     * will be used for CLIENT_REVIEW, CORRECTING task completion.
+     * @param $taskData
+     * @return array
+     */
+    private function mapWithExtraProjectInfo($taskData): array
+    {
+        return [
+            ...$taskData,
+            'project' => $this->getTaskProject($taskData, [
+                'finalFiles',
+                'reviewFiles',
+                'helpFiles'
+            ])
+        ];
+    }
+
     private function mapWithTmKeysInfo(?array $task): ?array
     {
         $assignment = data_get($task, 'assignment');
-        if (! $assignment instanceof Assignment) {
+        if (!$assignment instanceof Assignment) {
             return $task;
         }
 
@@ -737,13 +758,18 @@ class WorkflowController extends Controller
         Gate::denyIf(Auth::user()->institutionId !== data_get($taskData, 'variables.institution_id'));
     }
 
-    private function getTaskProject(array $taskData): ?Project
+    private function getTaskProject(array $taskData, array $relations = []): ?Project
     {
         if (empty($projectId = data_get($taskData, 'variables.project_id'))) {
             return null;
         }
+        $query = Project::withGlobalScope('policy', ProjectPolicy::scope());
 
-        return Project::withGlobalScope('policy', ProjectPolicy::scope())->find($projectId);
+        if (filled($relations)) {
+            $query->with($relations);
+        }
+
+        return $query->find($projectId);
     }
 }
 
