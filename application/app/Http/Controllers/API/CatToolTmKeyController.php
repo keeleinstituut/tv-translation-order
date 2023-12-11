@@ -9,6 +9,7 @@ use App\Http\Requests\API\CatToolTmKeysSyncRequest;
 use App\Http\Requests\API\CatToolTmKeyToggleIsWritableRequest;
 use App\Http\Requests\API\TmKeySubProjectListRequest;
 use App\Http\Resources\API\CatToolTmKeyResource;
+use App\Http\Resources\API\CreatedCatToolTmKeyResource;
 use App\Http\Resources\API\SubProjectResource;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
@@ -179,8 +180,8 @@ class CatToolTmKeyController extends Controller
         tags: ['TM keys'],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized, new OAH\InvalidTmKeys]
     )]
-    #[OAH\ResourceResponse(dataRef: CatToolTmKeyResource::class, description: 'Created TM key', response: Response::HTTP_CREATED)]
-    public function create(Request $request): CatToolTmKeyResource
+    #[OAH\ResourceResponse(dataRef: CreatedCatToolTmKeyResource::class, description: 'Created TM key', response: Response::HTTP_CREATED)]
+    public function create(Request $request): CreatedCatToolTmKeyResource
     {
         $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
             ->findOrFail($request->route('sub_project_id'));
@@ -216,7 +217,10 @@ class CatToolTmKeyController extends Controller
                     ])
                 );
 
-                return CatToolTmKeyResource::make($tmKey->refresh());
+                return CreatedCatToolTmKeyResource::make([
+                    'key' => $tmKey->refresh(),
+                    'meta' => $tmKeyData
+                ]);
             } catch (InvalidArgumentException $e) {
                 abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
             } catch (RequestException $e) {
