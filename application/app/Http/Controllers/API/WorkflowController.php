@@ -677,16 +677,16 @@ class WorkflowController extends Controller
             ->whereIn('id', $assignmentIds)
             ->with($relations->toArray())->get();
 
-        return collect($tasks)->reduce(function ($acc, $task) use ($assignments) {
-            $assignment = $assignments->firstWhere('id', data_get($task, 'variables.assignment_id'));
-            if ($assignment) {
-                $acc->push([
+        return collect($tasks)->map(function ($task) use ($assignments) {
+            if (filled($assignmentId = data_get($task, 'variables.assignment_id'))) {
+                return [
                     ...$task,
-                    'assignment' => $assignment,
-                ]);
+                    'assignment' => $assignments->firstWhere('id', $assignmentId)
+                ];
             }
-            return $acc;
-        }, collect());
+
+            return $task;
+        });
     }
 
     /**
