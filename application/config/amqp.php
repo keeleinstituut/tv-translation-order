@@ -22,6 +22,21 @@ return [
         'vhost' => env('AMQP_VHOST', '/'),
     ],
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | AMQP publisher properties (remove if not needed)
+    |--------------------------------------------------------------------------
+    */
+    'publisher' => [
+        'exchanges' => [
+            [
+                'exchange' => env('EMAIL_NOTIFICATION_EXCHANGE'),
+                'type' => 'topic',
+            ],
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | AMQP consumer properties (remove if not needed)
@@ -59,5 +74,14 @@ return [
                 'institution-user.deleted' => InstitutionUserDeleted::class,
             ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications AMQP properties (remove if not needed)
+    |--------------------------------------------------------------------------
+    */
+    'notifications' => [
+        'email_notification_exchange' => env('EMAIL_NOTIFICATION_EXCHANGE'),
     ],
 ];

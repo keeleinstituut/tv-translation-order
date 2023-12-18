@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c216e2456c71895779de45362eb9c146",
+    "content-hash": "e036892e57ead666c4c67323d418a616",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1423,20 +1423,21 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-amqp",
-            "version": "0.0.29",
+            "version": "0.0.55",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-amqp.git",
-                "reference": "045a015fb06fbc6a2f843906512dc65401ce813e"
+                "reference": "c48ca4487f3c40449b4fd5b39fffcc8ab6c8e6e1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/045a015fb06fbc6a2f843906512dc65401ce813e",
-                "reference": "045a015fb06fbc6a2f843906512dc65401ce813e",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/c48ca4487f3c40449b4fd5b39fffcc8ab6c8e6e1",
+                "reference": "c48ca4487f3c40449b4fd5b39fffcc8ab6c8e6e1",
                 "shasum": ""
             },
             "require": {
                 "illuminate/support": "^10.0",
+                "keeleinstituut/tv-common-laravel-security": "0.0.19",
                 "php": "^8.2",
                 "php-amqplib/php-amqplib": "^3.5"
             },
@@ -1457,12 +1458,18 @@
             },
             "autoload": {
                 "psr-4": {
-                    "SyncTools\\": "src/",
+                    "SyncTools\\": "src/SyncTools",
+                    "AuditLogClient\\": "src/AuditLogClient",
+                    "NotificationClient\\": "src/NotificationClient",
                     "SyncTools\\Database\\Helpers\\": "database/helpers/"
                 }
             },
             "autoload-dev": {
                 "psr-4": {
+                    "SyncTools\\": "src/SyncTools",
+                    "AuditLogClient\\": "src/AuditLogClient",
+                    "NotificationClient\\": "src/NotificationClient",
+                    "SyncTools\\Database\\Helpers\\": "database/helpers/",
                     "SyncTools\\Tests\\": "tests/"
                 }
             },
@@ -1478,23 +1485,23 @@
                 "rabbitmq"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.29",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.55",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-amqp/issues"
             },
-            "time": "2023-10-19T07:39:37+00:00"
+            "time": "2023-12-18T10:13:50+00:00"
         },
         {
             "name": "keeleinstituut/tv-common-laravel-security",
-            "version": "0.0.16",
+            "version": "0.0.19",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-security.git",
-                "reference": "fe597d2d095f433029c843e4cf026260e3b04566"
+                "reference": "1b611430a3dcc38840347f586084eee2682f15b1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/fe597d2d095f433029c843e4cf026260e3b04566",
-                "reference": "fe597d2d095f433029c843e4cf026260e3b04566",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/1b611430a3dcc38840347f586084eee2682f15b1",
+                "reference": "1b611430a3dcc38840347f586084eee2682f15b1",
                 "shasum": ""
             },
             "require": {
@@ -1539,10 +1546,10 @@
                 "laravel"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.16",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.19",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-security/issues"
             },
-            "time": "2023-10-09T14:04:09+00:00"
+            "time": "2023-11-14T10:34:54+00:00"
         },
         {
             "name": "laravel/framework",
@@ -10583,5 +10590,5 @@
         "php": "^8.2"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.3.0"
 }

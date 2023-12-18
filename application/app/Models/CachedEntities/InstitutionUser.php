@@ -94,6 +94,14 @@ class InstitutionUser extends Model
         return $this->institution['id'] ?? null;
     }
 
+    public function getUserFullName(): string
+    {
+        return implode(' ', [
+            data_get($this->user, 'forename'),
+            data_get($this->user, 'surname')
+        ]);
+    }
+
     public function isArchived(): bool
     {
         return filled($this->archived_at);
