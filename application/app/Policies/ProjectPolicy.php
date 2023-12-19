@@ -103,6 +103,11 @@ class ProjectPolicy
         return $currentInstitutionUserId === $project->client_institution_user_id;
     }
 
+    public function export(JwtPayloadUser $user)
+    {
+        return Auth::hasPrivilege(PrivilegeKey::ExportInstitutionGeneralReport->value);
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

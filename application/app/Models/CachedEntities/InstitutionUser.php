@@ -94,6 +94,19 @@ class InstitutionUser extends Model
         return $this->institution['id'] ?? null;
     }
 
+    public function getUserFullName(): ?string
+    {
+        return implode(' ', [
+            data_get($this->user, 'forename'),
+            data_get($this->user, 'surname')
+        ]);
+    }
+
+    public function getDepartmentName(): ?string
+    {
+        return data_get($this->department, 'name');
+    }
+
     public function isArchived(): bool
     {
         return filled($this->archived_at);
@@ -102,19 +115,19 @@ class InstitutionUser extends Model
     public function isDeactivated(): bool
     {
         return filled($this->deactivation_date)
-            && ! Date::parse($this->deactivation_date, 'Europe/Tallinn')->isFuture();
+            && !Date::parse($this->deactivation_date, 'Europe/Tallinn')->isFuture();
     }
 
     public function hasPrivileges(PrivilegeKey ...$expectedPrivileges): bool
     {
         /** @var Collection<PrivilegeKey> $actualPrivileges */
         $actualPrivileges = collect($this->roles)
-            ->filter(fn (array $role) => empty($role['deleted_at']))
-            ->flatMap(fn (array $role) => $role['privileges'])
-            ->map(fn (array $privilege) => $privilege['key'])
+            ->filter(fn(array $role) => empty($role['deleted_at']))
+            ->flatMap(fn(array $role) => $role['privileges'])
+            ->map(fn(array $privilege) => $privilege['key'])
             ->map(PrivilegeKey::from(...));
 
         return collect($expectedPrivileges)
-            ->every(fn (PrivilegeKey $expectedPrivilege) => $actualPrivileges->contains($expectedPrivilege));
+            ->every(fn(PrivilegeKey $expectedPrivilege) => $actualPrivileges->contains($expectedPrivilege));
     }
 }

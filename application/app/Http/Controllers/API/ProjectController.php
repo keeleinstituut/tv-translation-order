@@ -3,27 +3,38 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\ProjectStatus;
+use App\Enums\VolumeUnits;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Requests\API\ProjectListRequest;
+use App\Http\Requests\API\ProjectsExportRequest;
 use App\Http\Requests\API\ProjectUpdateRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\CatToolTmKey;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Models\Tag;
+use App\Models\Vendor;
+use App\Models\Volume;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use League\Csv\ByteSequence;
+use League\Csv\CannotInsertRecord;
+use League\Csv\Exception;
+use League\Csv\InvalidArgument;
+use League\Csv\Writer;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ProjectController extends Controller
@@ -41,7 +52,7 @@ class ProjectController extends Controller
         parameters: [
             new OA\QueryParameter(name: 'page', schema: new OA\Schema(type: 'integer', default: 1)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'integer', default: 10)),
-            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['cost', 'deadline_at', 'created_at'])),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['price', 'deadline_at', 'created_at'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(name: 'ext_id', schema: new OA\Schema(type: 'string')),
             new OA\QueryParameter(name: 'only_show_personal_projects', schema: new OA\Schema(type: 'boolean', default: true)),
@@ -357,6 +368,145 @@ class ProjectController extends Controller
 
             return ProjectResource::make($project->refresh());
         });
+    }
+
+    /**
+     * @throws InvalidArgument
+     * @throws AuthorizationException
+     * @throws CannotInsertRecord
+     * @throws Exception
+     */
+    #[OA\Get(
+        path: '/projects/export-csv',
+        tags: ['Projects'],
+        parameters: [
+            new OA\QueryParameter(
+                name: 'status[]',
+                description: 'Filter the result set to projects which have any of the specified statuses.',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(type: 'string', enum: ProjectStatus::class)
+                )
+            ),
+            new OA\QueryParameter(
+                name: 'date_from',
+                description: 'Filter the result set to projects which were created after specified date',
+                schema: new OA\Schema(type: 'string', format: 'date', example: '2023-12-31')
+            ),
+            new OA\QueryParameter(
+                name: 'date_to',
+                description: 'Filter the result set to projects which were created before specified date',
+                schema: new OA\Schema(type: 'string', format: 'date', example: '2023-12-31')
+            ),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OA\Response(
+        response: Response::HTTP_OK,
+        description: 'CSV file of projects based on the passed filter params',
+        content: new OA\MediaType(
+            mediaType: 'text/csv',
+            schema: new OA\Schema(type: 'string')
+        )
+    )]
+    public function exportCsv(ProjectsExportRequest $request): StreamedResponse
+    {
+        $this->authorize('export', Project::class);
+
+        $csvDocument = Writer::createFromString()->setDelimiter(';')
+            ->setOutputBOM(ByteSequence::BOM_UTF8);
+
+        $csvDocument->insertOne([
+            'Tellimuse number',
+            'Viitenumber',
+            'Tellimuse tüüp',
+            'Lähtekeel',
+            'Sihtkeeled',
+            'Tõlkekorraldaja',
+            'Teostajad',
+            'Staatus',
+            'Tellija',
+            'Valdkond',
+            'Loodud',
+            'Lepingupartnerite ärinimed',
+            'Teostamisele kulunud aeg (minutid)',
+            'Lehekülgede arv',
+            'Tähemärkide arv',
+            'Sõnade arv',
+            'Maksumus',
+            'Algusaeg',
+            'Lõppaeg',
+            'Täitmise kuupäev',
+            'Täitmise kuu',
+            'Tellija üksus',
+            'Tellimuse sildid',
+            'Kirjuta tõlkemälud (ID)',
+            'Loe tõlkemälud (ID)'
+        ]);
+
+        Project::withGlobalScope('policy', ProjectPolicy::scope())->with([
+            'typeClassifierValue',
+            'managerInstitutionUser',
+            'clientInstitutionUser',
+            'translationDomainClassifierValue',
+            'tags',
+            'sourceLanguageClassifierValue',
+            'destinationLanguageClassifierValues',
+            'assignees.institutionUser',
+            'catToolTmKeys',
+            'volumes'
+        ])->when(
+            $request->validated('status'),
+            fn(Builder $query, $statuses) => $query->whereIn('status', $statuses)
+        )->when(
+            $request->validated('date_from'),
+            fn(Builder $query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate)
+        )->when(
+            $request->validated('date_to'),
+            fn(Builder $query, $toDate) => $query->whereDate('created_at', '<=', $toDate)
+        )->lazy()->each(function (Project $project) use ($csvDocument) {
+            $dateTimeFormat = 'd/m/Y H:i';
+            $multiValueSeparator = ', ';
+            $projectAssignees = collect($project->assignees?->unique());
+            $projectCatToolTmKeys = collect($project->catToolTmKeys?->unique());
+
+            $csvDocument->insertOne([
+                $project->ext_id,
+                $project->id,
+                data_get($project->typeClassifierValue?->meta, 'code'),
+                $project->sourceLanguageClassifierValue?->value,
+                $project->destinationLanguageClassifierValues?->pluck('value')->implode($multiValueSeparator),
+                $project->managerInstitutionUser?->getUserFullName(),
+                $projectAssignees->map(fn(Vendor $assignee) => $assignee->institutionUser?->getUserFullName())
+                    ->implode($multiValueSeparator),
+                $project->status?->value,
+                $project->clientInstitutionUser?->getUserFullName(),
+                $project->translationDomainClassifierValue?->name,
+                $project->created_at?->format($dateTimeFormat),
+                $projectAssignees->pluck('company_name')->implode($multiValueSeparator),
+                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Minutes)->pluck('unit_quantity')->sum(),
+                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Pages)->pluck('unit_quantity')->sum(),
+                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
+                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
+                $project->price,
+                $project->event_start_at?->format($dateTimeFormat),
+                $project->deadline_at?->format($dateTimeFormat),
+                $project->submitted_to_client_review_at?->format($dateTimeFormat),
+                $project->submitted_to_client_review_at?->locale('et_EE')->format('Y F'),
+                $project->clientInstitutionUser?->getDepartmentName(),
+                $project->tags?->pluck('name')->implode($multiValueSeparator),
+                $projectCatToolTmKeys->filter(fn(CatToolTmKey $tmKey) => $tmKey->is_writable)->pluck('key')->implode($multiValueSeparator),
+                $projectCatToolTmKeys->filter(fn(CatToolTmKey $tmKey) => !$tmKey->created_as_empty)->pluck('key')->implode($multiValueSeparator),
+            ]);
+        });
+
+        // TODO: add auditlogs
+
+        return response()->streamDownload(
+            $csvDocument->output(...),
+            'projects.csv',
+            ['Content-Type' => 'text/csv']
+        );
     }
 
     /**

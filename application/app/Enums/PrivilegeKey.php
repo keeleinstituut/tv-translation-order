@@ -48,6 +48,7 @@ enum PrivilegeKey: string
     case ViewTranslationMemory = 'VIEW_TM';
     case ViewAuditLog = 'VIEW_AUDIT_LOG';
     case ExportAuditLog = 'EXPORT_AUDIT_LOG';
+    case ExportInstitutionGeneralReport = 'EXPORT_INSTITUTION_GENERAL_REPORT';
 
     public static function values(): array
     {

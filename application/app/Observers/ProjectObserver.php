@@ -76,6 +76,8 @@ class ProjectObserver
                 $project->corrected_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::Rejected) {
                 $project->rejected_at = Carbon::now();
+            } elseif ($project->status === ProjectStatus::SubmittedToClient) {
+                $project->submitted_to_client_review_at = Carbon::now();
             }
         }
     }
