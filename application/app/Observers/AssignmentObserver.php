@@ -103,8 +103,9 @@ class AssignmentObserver
                     $volume->save();
                 }));
 
+                // https://github.com/laravel/framework/issues/27138
                 $assignment->price = $assignment->getPriceCalculator()->getPrice();
-                $assignment->saveOrFail();
+                $assignment->saveQuietly();
 
                 if (filled($subProject = $assignment->subProject)) {
                     $subProject->price = $subProject->getPriceCalculator()->getPrice();
