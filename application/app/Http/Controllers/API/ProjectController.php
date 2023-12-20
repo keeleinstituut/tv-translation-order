@@ -472,7 +472,7 @@ class ProjectController extends Controller
 
             $csvDocument->insertOne([
                 $project->ext_id,
-                $project->id,
+                $project->reference_number,
                 data_get($project->typeClassifierValue?->meta, 'code'),
                 $project->sourceLanguageClassifierValue?->value,
                 $project->destinationLanguageClassifierValues?->pluck('value')->implode($multiValueSeparator),
