@@ -69,6 +69,7 @@ class WorkflowController extends Controller
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(name: 'type_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'assigned_to_me', schema: new OA\Schema(type: 'boolean', default: true)),
+            new OA\QueryParameter(name: 'is_candidate', description: 'Returns tasks where active user/passed institution_user_id is a candidate. Note: use it together with `assigned_to_me` = 0', schema: new OA\Schema(type: 'boolean')),
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'task_type', schema: new OA\Schema(type: 'string', format: 'enum', enum: TaskType::class)),
             new OA\QueryParameter(name: 'institution_user_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
@@ -615,10 +616,6 @@ class WorkflowController extends Controller
             $this->authorize('viewActiveTasks', $institutionUser);
         }
 
-        if (!$assigned) {
-            $institutionUserId = null;
-        }
-
         if (!$requestParams->get('skip_assigned_param')) {
             if ($assigned) {
                 $params['assigned'] = true;
@@ -628,6 +625,10 @@ class WorkflowController extends Controller
             } else {
                 $params['unassigned'] = true;
             }
+        }
+
+        if ($requestParams->get('is_candidate', false)) {
+            $params['candidateUser'] = $institutionUserId ?: '--empty--';
         }
 
         return $params;
