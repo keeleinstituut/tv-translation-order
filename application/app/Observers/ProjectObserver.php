@@ -7,6 +7,7 @@ use App\Enums\SubProjectStatus;
 use App\Jobs\Workflows\UpdateProjectClientInsideWorkflow;
 use App\Jobs\Workflows\UpdateProjectDeadlineInsideWorkflow;
 use App\Jobs\Workflows\UpdateProjectManagerInsideWorkflow;
+use App\Models\Assignment;
 use App\Models\Project;
 use App\Models\Sequence;
 use App\Models\SubProject;
@@ -106,13 +107,13 @@ class ProjectObserver
         }
 
         if ($project->wasChanged('event_start_at')) {
-            $project->subProjects->each(function (SubProject $subProject) use ($project) {
-                $subProject->event_start_at = $project->event_start_at;
-                if (filled($project->event_start_at) && filled($subProject->deadline_at) && $subProject->deadline_at < $project->event_start_at) {
-                    $subProject->event_start_at = null;
+            $project->assignments->each(function (Assignment $assignment) use ($project) {
+                $assignment->event_start_at = $project->event_start_at;
+                if (filled($project->event_start_at) && filled($assignment->deadline_at) && $assignment->deadline_at < $project->event_start_at) {
+                    $assignment->event_start_at = null;
                 }
 
-                $subProject->saveOrFail();
+                $assignment->saveOrFail();
             });
         }
     }

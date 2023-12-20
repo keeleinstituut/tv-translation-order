@@ -16,7 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
     content: new OA\JsonContent(
         required: [],
         properties: [
-            new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z'),
             new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z'),
         ]
     )
@@ -34,7 +33,6 @@ class SubProjectUpdateRequest extends FormRequest
     {
         return [
             'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
-            'event_start_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
         ];
     }
 
@@ -56,12 +54,6 @@ class SubProjectUpdateRequest extends FormRequest
                 $projectDeadline = $subProject->project->deadline_at?->format(self::DATETIME_FORMAT);
                 if (filled($this->validated('deadline_at')) && filled($projectDeadline) && $this->validated('deadline_at') > $projectDeadline) {
                     $validator->errors()->add('deadline_at', 'Sub-project deadline should be less or equal to the project deadline');
-                }
-
-                $deadline = $this->validated('deadline_at', $subProject->deadline_at?->format(self::DATETIME_FORMAT));
-                $eventStart = $this->validated('event_start_at',  $subProject->event_start_at?->format(self::DATETIME_FORMAT));
-                if (filled($deadline) && filled($eventStart) && $eventStart > $deadline) {
-                    $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
                 }
             }
         ];
