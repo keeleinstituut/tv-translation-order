@@ -39,6 +39,7 @@ use Throwable;
  * @property string|null $workflow_instance_ref
  * @property float|null $price
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $deadline_notification_sent_at
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $accepted_at
  * @property Carbon|null $corrected_at
@@ -50,6 +51,8 @@ use Throwable;
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
  * @property string|null $translation_domain_classifier_value_id
+ * @property string|null $cancellation_comment
+ * @property string|null $cancellation_reason
  * @property ProjectStatus $status
  * @property-read Institution|null $institution
  * @property-read MediaCollection<int, Media> $media
@@ -125,6 +128,7 @@ class Project extends Model implements HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'deadline_notification_sent_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'rejected_at' => 'datetime',
         'corrected_at' => 'datetime',

@@ -5,12 +5,21 @@ namespace App\Observers;
 use App\Enums\CandidateStatus;
 use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
 use App\Models\Assignment;
+use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\Volume;
+use NotificationClient\DataTransferObjects\EmailNotificationMessage;
+use NotificationClient\Enums\NotificationType;
+use NotificationClient\Services\NotificationPublisher;
 use Throwable;
 
 class AssignmentObserver
 {
+    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    {
+
+    }
+
     /**
      * Handle the Assignment "creating" event.
      */
@@ -37,6 +46,16 @@ class AssignmentObserver
         $this->updateVolumesAssigneeFields($assignment);
         if ($assignment->wasChanged('deadline_at')) {
             UpdateAssignmentDeadlineInsideWorkflow::dispatch($assignment);
+        }
+
+        if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
+            if (filled($manager = $assignment->subProject?->project?->managerInstitutionUser)) {
+                $this->publishTaskAcceptedEmailNotification($assignment, $manager);
+            }
+
+            if (filled($vendorInstitutionUser = $assignment->assignee?->institutionUser)) {
+                $this->publishTaskAcceptedEmailNotification($assignment, $vendorInstitutionUser);
+            }
         }
     }
 
@@ -126,5 +145,22 @@ class AssignmentObserver
             ->count() : $sequence;
         $assignment->ext_id = collect([$assignment->subProject->ext_id, '/', ++$idx, '.', ++$sequence])
             ->implode('');
+    }
+
+    private function publishTaskAcceptedEmailNotification(Assignment $assignment, InstitutionUser $receiver): void
+    {
+        if (filled($receiver->email)) {
+            $this->notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
+                'notification_type' => NotificationType::TaskAccepted,
+                'receiver_email' => $receiver->email,
+                'receiver_name' => $receiver->getUserFullName(),
+                'variables' => [
+                    'assignment' => $assignment->only('ext_id'),
+                    'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                    'vendor' => $assignment->assignee?->only(['company_name']),
+                    'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
+                ]
+            ]));
+        }
     }
 }
