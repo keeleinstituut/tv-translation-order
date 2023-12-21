@@ -33,7 +33,7 @@ class InstitutionUserController extends Controller
     {
         $params = collect($request->validated());
 
-        $this->authorize('viewAny', InstitutionUser::class);
+        $this->authorize('viewAny', [InstitutionUser::class, $params->get('project_role')]);
 
         $query = $this->getBaseQuery();
 

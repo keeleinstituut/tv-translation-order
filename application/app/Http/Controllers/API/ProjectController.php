@@ -260,6 +260,10 @@ class ProjectController extends Controller
         $project = $this->getBaseQuery()->find($id) ?? abort(404);
         $this->authorize('update', $project);
 
+        if (filled($client = $request->validated('client_institution_user_id')) && $project->client_institution_user_id !== $client) {
+            $this->authorize('changeClient', $project);
+        }
+
         return DB::transaction(function () use ($project, $params) {
             // Collect certain keys from input params, filter null values
             // and fill model with result from filter
