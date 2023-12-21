@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API;
 
+use App\Http\Requests\Helpers\MaxLengthValue;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
@@ -25,7 +26,7 @@ class AssignmentUpdateAssigneeCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'assignee_comments' => ['required', 'string'],
+            'assignee_comments' => ['required', 'string', 'max:'. MaxLengthValue::TEXT],
         ];
     }
 }

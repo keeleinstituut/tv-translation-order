@@ -4,6 +4,7 @@ namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\TagType;
+use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
@@ -67,7 +68,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 $this->userCanBeSelectedAsClientRule(),
             ],
             'reference_number' => ['nullable', 'string'],
-            'comments' => 'sometimes|nullable|string',
+            'comments' => ['sometimes', 'nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
             'event_start_at' => [
                 'sometimes',
