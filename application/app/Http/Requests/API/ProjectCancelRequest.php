@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Http\Requests\Helpers\MaxLengthValue;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
@@ -12,12 +11,14 @@ use OpenApi\Attributes as OA;
     required: true,
     content: new OA\JsonContent(
         properties: [
-            new OA\Property(property: 'assignee_comments', type: 'string'),
+            new OA\Property(property: 'cancellation_reason', type: 'string'),
+            new OA\Property(property: 'cancellation_comment', type: 'string', nullable: true),
         ]
     )
 )]
-class AssignmentUpdateAssigneeCommentRequest extends FormRequest
+class ProjectCancelRequest extends FormRequest
 {
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -26,7 +27,8 @@ class AssignmentUpdateAssigneeCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'assignee_comments' => ['required', 'string', 'max:'. MaxLengthValue::TEXT],
+            'cancellation_reason' => ['required', 'string'],
+            'cancellation_comment' => ['nullable', 'string'],
         ];
     }
 }

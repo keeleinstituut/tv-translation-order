@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\TagType;
+use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Rules\TagNameRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -45,7 +46,7 @@ class StoreTagsRequest extends FormRequest
         return [
             'tags' => ['required', 'array', 'min:1'],
             'tags.*.type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
-            'tags.*.name' => ['required', 'string'],
+            'tags.*.name' => ['required', 'string', 'max:'. TagNameRule::MAX_LENGTH],
             'tags.*' => [
                 'required',
                 'array',

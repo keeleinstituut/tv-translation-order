@@ -6,6 +6,7 @@ use App\Enums\ProjectStatus;
 use App\Enums\VolumeUnits;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\ProjectCancelRequest;
 use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Requests\API\ProjectListRequest;
 use App\Http\Requests\API\ProjectsExportRequest;
@@ -340,18 +341,19 @@ class ProjectController extends Controller
     #[OA\Post(
         path: '/projects/{id}/cancel',
         description: 'Only projects with status `NEW` or `REGISTERED` can be cancelled. The project can be cancelled by the client or PM',
+        requestBody: new OAH\RequestBody(ProjectCancelRequest::class),
         tags: ['Projects'],
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Project with given UUID')]
-    public function cancel(string $id): ProjectResource
+    public function cancel(ProjectCancelRequest $request): ProjectResource
     {
-        return DB::transaction(function () use ($id) {
+        return DB::transaction(function () use ($request) {
             /** @var Project $project */
             $project = self::getBaseQuery()
                 ->with(['subProjects'])
-                ->findOrFail($id);
+                ->findOrFail($request->route('id'));
 
             $this->authorize('cancel', $project);
 
@@ -359,12 +361,13 @@ class ProjectController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Only projects with status `NEW` or `REGISTERED` can be cancelled.');
             }
 
-            if ($project->workflow()->isStarted()) {
-                $project->workflow()->cancel();
-            }
-
             $project->status = ProjectStatus::Cancelled;
+            $project->fill($request->validated());
             $project->saveOrFail();
+
+            if ($project->workflow()->isStarted()) {
+                $project->workflow()->cancel($request->validated('cancellation_reason'));
+            }
 
             return ProjectResource::make($project->refresh());
         });

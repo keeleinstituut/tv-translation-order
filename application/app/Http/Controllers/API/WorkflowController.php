@@ -6,11 +6,13 @@ use App\Enums\AssignmentStatus;
 use App\Enums\CandidateStatus;
 use App\Enums\PrivilegeKey;
 use App\Enums\TaskType;
+use App\Helpers\SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
+use App\Jobs\NotifyAssignmentCandidatesAboutReviewRejection;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
@@ -43,6 +45,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use NotificationClient\Services\NotificationPublisher;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,7 +55,7 @@ use Throwable;
 class WorkflowController extends Controller
 {
 
-    public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient)
+    public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient, private readonly NotificationPublisher $notificationPublisher)
     {
     }
 
@@ -69,6 +72,7 @@ class WorkflowController extends Controller
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(name: 'type_classifier_value_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'assigned_to_me', schema: new OA\Schema(type: 'boolean', default: true)),
+            new OA\QueryParameter(name: 'is_candidate', description: 'Returns tasks where active user/passed institution_user_id is a candidate. Note: use it together with `assigned_to_me` = 0', schema: new OA\Schema(type: 'boolean')),
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'task_type', schema: new OA\Schema(type: 'string', format: 'enum', enum: TaskType::class)),
             new OA\QueryParameter(name: 'institution_user_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
@@ -355,7 +359,8 @@ class WorkflowController extends Controller
         $taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type'));
 
         return match ($taskType) {
-            TaskType::Default, TaskType::Correcting => $this->completeDefaultTask($taskData),
+            TaskType::Default => $this->completeDefaultTask($taskData),
+            TaskType::Correcting => $this->completeCorrectingTask($taskData),
             TaskType::Review => $this->completeReviewTask($request, $taskData),
             TaskType::ClientReview => $this->completeProjectReviewTask($request, $taskData),
             default => throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unexpected task type')
@@ -370,52 +375,73 @@ class WorkflowController extends Controller
     {
         $taskId = data_get($taskData, 'task.id');
         $taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type'));
-
-        switch ($taskType) {
-            case TaskType::Default:
-                $vendor = $this->getActiveVendor();
-                $this->authorizeVendorTaskCompletion($vendor, $taskData);
-                break;
-            case TaskType::Correcting:
-                $vendor = null;
-                $this->authorizeProjectManagerTaskCompletion($taskData);
-                break;
-            default:
-                throw new InvalidArgumentException('Task with incorrect type passed');
+        if ($taskType !== TaskType::Default) {
+            throw new InvalidArgumentException('Task with incorrect type passed');
         }
 
+        $vendor = $this->getActiveVendor();
+        $this->authorizeVendorTaskCompletion($vendor, $taskData);
+
         /** @var Assignment $assignment */
-        if (filled($assignment = $taskData['assignment'])) {
-            DB::transaction(function () use ($taskId, $assignment, $vendor) {
-                $assignment->status = AssignmentStatus::Done;
-                $assignment->saveOrFail();
-
-                if (isset($vendor) && filled($vendor)) {
-                    /** @var Candidate $candidate */
-                    $candidate = $assignment->candidates()->where('vendor_id', $vendor->id)
-                        ->first();
-
-                    if (filled($candidate)) {
-                        $candidate->status = CandidateStatus::Done;
-                        $candidate->saveOrFail();
-                    }
-                }
-
-                WorkflowService::completeTask($taskId);
-            });
-
-
-            TrackSubProjectStatus::dispatchSync($assignment->subProject);
-            $assignment->load('subProject');
-        } elseif (filled($project = $this->getTaskProject($taskData))) {
-            WorkflowService::completeTask($taskId);
-            TrackProjectStatus::dispatchSync($project);
-            $taskData = $this->mapWithExtraProjectInfo($taskData);
-        } else {
+        if (empty($assignment = $taskData['assignment'])) {
             abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task metadata is missing');
         }
 
+        DB::transaction(function () use ($taskId, $assignment, $vendor) {
+            $assignment->status = AssignmentStatus::Done;
+            $assignment->saveOrFail();
+
+            if (filled($vendor)) {
+                /** @var Candidate $candidate */
+                $candidate = $assignment->candidates()->where('vendor_id', $vendor->id)
+                    ->first();
+
+                if (filled($candidate)) {
+                    $candidate->status = CandidateStatus::Done;
+                    $candidate->saveOrFail();
+                }
+            }
+
+            WorkflowService::completeTask($taskId);
+            $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
+            if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
+                $this->notificationPublisher->publishEmailNotification($message);
+            }
+
+            $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
+            if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
+                $this->notificationPublisher->publishEmailNotification($message);
+            }
+        });
+
+        TrackSubProjectStatus::dispatchSync($assignment->subProject);
+        $assignment->load('subProject');
+
         return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws RequestException
+     * @throws Throwable
+     */
+    private function completeCorrectingTask(array $taskData): TaskResource
+    {
+        $taskId = data_get($taskData, 'task.id');
+        $taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type'));
+        if ($taskType !== TaskType::Correcting) {
+            throw new InvalidArgumentException('Task with incorrect type passed');
+        }
+
+        $this->authorizeProjectManagerTaskCompletion($taskData);
+
+        if (empty($project = $this->getTaskProject($taskData))) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task metadata is missing');
+        }
+
+        WorkflowService::completeTask($taskId);
+        TrackProjectStatus::dispatchSync($project);
+
+        return TaskResource::make($this->mapWithExtraProjectInfo($taskData));
     }
 
     /**
@@ -454,6 +480,11 @@ class WorkflowController extends Controller
         });
 
         TrackSubProjectStatus::dispatchSync($assignment->subProject);
+
+        if (!$validated['accepted']) {
+            NotifyAssignmentCandidatesAboutReviewRejection::dispatch($assignment->subProject);
+        }
+
         $assignment->load('subProject');
 
         return TaskResource::make($taskData);
@@ -615,10 +646,6 @@ class WorkflowController extends Controller
             $this->authorize('viewActiveTasks', $institutionUser);
         }
 
-        if (!$assigned) {
-            $institutionUserId = null;
-        }
-
         if (!$requestParams->get('skip_assigned_param')) {
             if ($assigned) {
                 $params['assigned'] = true;
@@ -628,6 +655,10 @@ class WorkflowController extends Controller
             } else {
                 $params['unassigned'] = true;
             }
+        }
+
+        if ($requestParams->get('is_candidate', false)) {
+            $params['candidateUser'] = $institutionUserId ?: '--empty--';
         }
 
         return $params;

@@ -3,13 +3,24 @@
 namespace App\Observers;
 
 use App\Enums\AssignmentStatus;
-use App\Jobs\NotifyAssignmentCandidates;
+use App\Enums\JobKey;
+use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Models\Assignment;
+use App\Models\CachedEntities\InstitutionUser;
+use App\Models\Project;
 use App\Models\SubProject;
+use NotificationClient\DataTransferObjects\EmailNotificationMessage;
+use NotificationClient\Enums\NotificationType;
+use NotificationClient\Services\NotificationPublisher;
 use Throwable;
 
 class SubProjectObserver
 {
+    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    {
+    }
+
+
     /**
      * Handle the SubProject "creating" event.
      */
@@ -52,8 +63,12 @@ class SubProjectObserver
                         $assignment->status = AssignmentStatus::InProgress;
                         $assignment->saveOrFail();
 
-                        NotifyAssignmentCandidates::dispatch($assignment);
+                        NotifyAssignmentCandidatesAboutNewTask::dispatch($assignment);
                     });
+
+                if ($subProject->activeJobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                    $this->publishSubProjectSentToPmEmailNotification($subProject);
+                }
             }
         }
 
@@ -92,5 +107,24 @@ class SubProjectObserver
     public function forceDeleted(SubProject $subProject): void
     {
         //
+    }
+
+    private function publishSubProjectSentToPmEmailNotification(SubProject $subProject): void
+    {
+        $manager = $subProject->project->managerInstitutionUser;
+        if (filled($manager?->email)) {
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::SubProjectSentToPm,
+                    'receiver_email' => $manager->email,
+                    'receiver_name' => $manager->getUserFullName(),
+                    'variables' => [
+                        'sub_project' => $subProject->only([
+                            'ext_id'
+                        ]),
+                    ]
+                ])
+            );
+        }
     }
 }

@@ -43,6 +43,7 @@ use Throwable;
  * @property string|null $workflow_instance_ref
  * @property float|null $price
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $deadline_notification_sent_at
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $accepted_at
  * @property Carbon|null $corrected_at
@@ -55,6 +56,8 @@ use Throwable;
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
  * @property string|null $translation_domain_classifier_value_id
+ * @property string|null $cancellation_comment
+ * @property string|null $cancellation_reason
  * @property ProjectStatus $status
  * @property-read Institution|null $institution
  * @property-read MediaCollection<int, Media> $media
@@ -113,6 +116,7 @@ class Project extends Model implements HasMedia
     use InteractsWithMedia;
     use HasRelationships;
     use SoftDeletes;
+    use HasRelationships;
 
     protected $table = 'projects';
 
@@ -137,6 +141,7 @@ class Project extends Model implements HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'deadline_notification_sent_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'rejected_at' => 'datetime',
         'corrected_at' => 'datetime',
@@ -276,7 +281,6 @@ class Project extends Model implements HasMedia
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->deadline_at = $this->deadline_at;
-            $subProject->event_start_at = $this->event_start_at;
             return $subProject;
         };
 

@@ -47,8 +47,7 @@ class TrackSubProjectStatus implements ShouldQueue
         }
 
         $tasksSearchResult = $this->subProject->workflow()->getTasksSearchResult();
-        $jobDefinition = $this->getWorkflowActiveJobDefinition($tasksSearchResult);
-
+        $jobDefinition = $tasksSearchResult->getActiveJobDefinition();
         DB::transaction(function () use ($jobDefinition, $tasksSearchResult) {
             /** Empty job definition means that there are no tasks that have relation with assignments */
             if (empty($jobDefinition) && $this->subProject->workflow()->isStarted()) {
@@ -107,30 +106,6 @@ class TrackSubProjectStatus implements ShouldQueue
                 $this->subProject->saveOrFail();
             }
         });
-    }
-
-
-    /**
-     * @param TasksSearchResult $searchResult
-     * @return JobDefinition|null
-     */
-    private function getWorkflowActiveJobDefinition(TasksSearchResult $searchResult): ?JobDefinition
-    {
-        if ($searchResult->getCount() === 0) {
-            return null;
-        }
-
-        $assignments = $searchResult->getTasks()->pluck('assignment')->filter();
-        if (empty($assignments)) {
-            return null;
-        }
-
-        $jobDefinitionsIds = $assignments->pluck('job_definition_id')->unique();
-        if ($jobDefinitionsIds->count() > 1) {
-            throw new DomainException('Current state of the workflow contains multiple job definitions');
-        }
-
-        return JobDefinition::query()->find($jobDefinitionsIds->get(0));
     }
 
     private function hasAssignmentWithoutCandidates(JobDefinition $jobDefinition): bool

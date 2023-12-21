@@ -3,6 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Models\Price;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
@@ -28,21 +29,22 @@ class PriceUpdateRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
+     * @return array<string, ValidationRule|array|string>
      */
     public function rules(): array
     {
+        $feeRule =  'sometimes|decimal:0,3|between:0,99999999.99';
         return [
             'id' => [
                 'required',
                 Rule::exists(Price::class, 'id'),
             ],
-            'character_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
-            'word_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
-            'page_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
-            'minute_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
-            'hour_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
-            'minimal_fee' => 'sometimes|decimal:0,2|between:0,99999999.99',
+            'character_fee' => $feeRule,
+            'word_fee' => $feeRule,
+            'page_fee' => $feeRule,
+            'minute_fee' => $feeRule,
+            'hour_fee' => $feeRule,
+            'minimal_fee' => $feeRule,
         ];
     }
 }
