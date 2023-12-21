@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
 use App\Enums\TaskType;
+use App\Helpers\SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\AssignmentAddCandidatesRequest;
@@ -15,7 +16,7 @@ use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
-use App\Jobs\NotifyAssignmentCandidates;
+use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -36,12 +37,17 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use NotificationClient\Services\NotificationPublisher;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class AssignmentController extends Controller
 {
+    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    {
+    }
+
     /**
      * @throws AuthorizationException
      */
@@ -429,6 +435,15 @@ class AssignmentController extends Controller
                 }
 
                 WorkflowService::completeTask($taskId);
+                $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
+                if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
+                    $this->notificationPublisher->publishEmailNotification($message);
+                }
+
+                $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
+                if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
+                    $this->notificationPublisher->publishEmailNotification($message);
+                }
             }
 
             DB::transaction(function () use ($assignment) {

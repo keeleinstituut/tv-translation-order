@@ -27,6 +27,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string $file_collection
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Project|null $project
  *
  * @method static Builder|ProjectReviewRejection newModelQuery()
  * @method static Builder|ProjectReviewRejection newQuery()
