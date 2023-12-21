@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection;
+use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
+use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
 
 /**
@@ -68,6 +70,7 @@ use Throwable;
  * @property-read ClassifierValue|null $translationDomainClassifierValue
  * @property-read InstitutionUser|null $clientInstitutionUser
  * @property-read InstitutionUser|null $managerInstitutionUser
+ * @property-read Collection<int, Assignment> $assignments
  *
  * @method static ProjectFactory factory($count = null, $state = [])
  * @method static Builder|Project newModelQuery()
@@ -104,6 +107,7 @@ class Project extends Model implements HasMedia
     use HasUuids;
     use InteractsWithMedia;
     use SoftDeletes;
+    use HasRelationships;
 
     protected $table = 'projects';
 
@@ -163,6 +167,14 @@ class Project extends Model implements HasMedia
         return $this->hasMany(SubProject::class);
     }
 
+    public function assignments(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->assignments(),
+        );
+    }
+
     public function sourceFiles()
     {
         return $this->media()->where('collection_name', self::SOURCE_FILES_COLLECTION);
@@ -219,7 +231,6 @@ class Project extends Model implements HasMedia
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->deadline_at = $this->deadline_at;
-            $subProject->event_start_at = $this->event_start_at;
             return $subProject;
         };
 
