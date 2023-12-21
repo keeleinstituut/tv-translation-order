@@ -30,6 +30,7 @@ class WorkflowTaskListRequest extends FormRequest
             'sort_by' => Rule::in(['deadline_at']),
             'sort_order' => Rule::in(['asc', 'desc']),
             'assigned_to_me' => 'sometimes|boolean',
+            'is_candidate' => 'sometimes|boolean',
             'project_id' => ['sometimes', 'uuid', function ($attribute, $value, $fail) {
                 $exists = Project::withGlobalScope('policy', ProjectPolicy::scope())
                     ->where('id', $value)->exists();
