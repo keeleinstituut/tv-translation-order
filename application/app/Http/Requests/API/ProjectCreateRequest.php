@@ -4,6 +4,7 @@ namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
@@ -129,7 +130,7 @@ class ProjectCreateRequest extends FormRequest
                 $this->userCanBeSelectedAsClientRule(),
             ],
             'reference_number' => ['nullable', 'string'],
-            'comments' => ['nullable', 'string'],
+            'comments' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z'], // only UTC (zero offset)
             'translation_domain_classifier_value_id' => [
                 'required',

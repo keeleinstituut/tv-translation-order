@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\API;
 
+use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\Assignment;
 use App\Policies\AssignmentPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -31,7 +32,7 @@ class AssignmentUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'comments' => ['nullable', 'string'],
+            'comments' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => ['required', 'date_format:' . self::DATETIME_FORMAT],
         ];
     }
