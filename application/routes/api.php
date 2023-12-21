@@ -60,6 +60,7 @@ Route::prefix('/projects')
         Route::get('/{id}', [API\ProjectController::class, 'show']);
         Route::put('/{id}', [API\ProjectController::class, 'update']);
         Route::post('/{id}/cancel', [API\ProjectController::class, 'cancel']);
+        Route::get('/export-csv', [API\ProjectController::class, 'exportCsv']);
     });
 
 Route::prefix('/subprojects')
