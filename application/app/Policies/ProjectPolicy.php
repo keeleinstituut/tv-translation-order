@@ -14,10 +14,9 @@ class ProjectPolicy
      */
     public function viewAny(JwtPayloadUser $user, bool $onlyPersonalProjectsRequested): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value)
-            || $onlyPersonalProjectsRequested
-            && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
-
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
+            ($onlyPersonalProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value));
     }
 
     /**
