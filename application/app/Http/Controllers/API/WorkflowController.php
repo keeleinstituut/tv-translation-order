@@ -96,7 +96,8 @@ class WorkflowController extends Controller
     public function getTasks(WorkflowTaskListRequest $request): AnonymousResourceCollection
     {
         $requestParams = collect($request->validated());
-        $pagination = new PaginationBuilder();
+        $perPage = intval($request->get('per_page'));
+        $pagination = new PaginationBuilder($perPage);
 
         $params = collect([
             ...$pagination->getPaginationParams(),
@@ -183,7 +184,8 @@ class WorkflowController extends Controller
     public function getHistoryTasks(WorkflowHistoryTaskListRequest $request): AnonymousResourceCollection
     {
         $requestParams = collect($request->validated());
-        $pagination = new PaginationBuilder();
+        $perPage = intval($request->get('per_page'));
+        $pagination = new PaginationBuilder($perPage);
 
         $params = collect([
             ...$pagination->getPaginationParams(),
@@ -827,9 +829,9 @@ class PaginationBuilder
     private int $perPage;
     private string $pageName;
 
-    function __construct()
+    function __construct(?int $perPage = null)
     {
-        $this->perPage = 15;
+        $this->perPage = $perPage ?: 15;
         $this->pageName = 'page';
     }
 
