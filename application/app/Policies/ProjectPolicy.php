@@ -67,6 +67,15 @@ class ProjectPolicy
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function changeClient(JwtPayloadUser $user, Project $project): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($project) &&
+            Auth::hasPrivilege(PrivilegeKey::ChangeClient->value);
+    }
+
     public function editSourceFiles(JwtPayloadUser $user, Project $project): bool
     {
         return $this->isInSameInstitutionAsCurrentUser($project) &&

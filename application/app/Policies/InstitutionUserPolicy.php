@@ -13,8 +13,20 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(JwtPayloadUser $jwtPayloadUser, ?string $projectRole = null): bool
     {
+        if ($projectRole === 'manager') {
+            return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
+                Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        }
+
+        if ($projectRole === 'client') {
+            return Auth::hasPrivilege(PrivilegeKey::ChangeClient->value) ||
+                Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        }
+
+
         return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
     }
 
