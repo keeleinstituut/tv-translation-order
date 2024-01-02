@@ -99,14 +99,10 @@ class WorkflowController extends Controller
         $perPage = intval($request->get('per_page'));
         $pagination = new PaginationBuilder($perPage);
 
-        $params = collect([
-            ...$pagination->getPaginationParams(),
-            ...$this->buildAdditionalParams($requestParams),
-        ]);
+        $bodyParams = collect($this->buildAdditionalParams($requestParams));
 
-
-        $tasks = WorkflowService::getTasks($params);
-        $count = WorkflowService::getTasksCount($params)['count'];
+        $tasks = WorkflowService::getTasks($bodyParams, $pagination->getPaginationParams());
+        $count = WorkflowService::getTasksCount($bodyParams)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
@@ -187,14 +183,13 @@ class WorkflowController extends Controller
         $perPage = intval($request->get('per_page'));
         $pagination = new PaginationBuilder($perPage);
 
-        $params = collect([
-            ...$pagination->getPaginationParams(),
+        $bodyParams = collect([
             ...$this->buildAdditionalParams($requestParams, true),
             'finished' => true,
         ]);
 
-        $tasks = WorkflowService::getHistoryTask($params);
-        $count = WorkflowService::getHistoryTaskCount($params)['count'];
+        $tasks = WorkflowService::getHistoryTask($bodyParams, $pagination->getPaginationParams());
+        $count = WorkflowService::getHistoryTaskCount($bodyParams)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
