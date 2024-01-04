@@ -18,12 +18,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection;
+use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
+use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
 
 /**
@@ -39,17 +43,21 @@ use Throwable;
  * @property string|null $workflow_instance_ref
  * @property float|null $price
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $deadline_notification_sent_at
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $accepted_at
  * @property Carbon|null $corrected_at
  * @property Carbon|null $rejected_at
  * @property Carbon|null $created_at
+ * @property Carbon|null $submitted_to_client_review_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
  * @property Carbon|null $deleted_at
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
  * @property string|null $translation_domain_classifier_value_id
+ * @property string|null $cancellation_comment
+ * @property string|null $cancellation_reason
  * @property ProjectStatus $status
  * @property-read Institution|null $institution
  * @property-read MediaCollection<int, Media> $media
@@ -63,6 +71,12 @@ use Throwable;
  * @property-read int|null $tags_count
  * @property-read ClassifierValue|null $typeClassifierValue
  * @property-read ClassifierValue|null $translationDomainClassifierValue
+ * @property-read ClassifierValue|null $sourceLanguageClassifierValue
+ * @property-read Collection<int, ClassifierValue> $destinationLanguageClassifierValues
+ * @property-read Collection<int, Vendor> $assignees
+ * @property-read Collection<int, Assignment> $assignments
+ * @property-read Collection<int, Volume> $volumes
+ * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  * @property-read InstitutionUser|null $clientInstitutionUser
  * @property-read InstitutionUser|null $managerInstitutionUser
  *
@@ -100,7 +114,9 @@ class Project extends Model implements HasMedia
     use HasFactory;
     use HasUuids;
     use InteractsWithMedia;
+    use HasRelationships;
     use SoftDeletes;
+    use HasRelationships;
 
     protected $table = 'projects';
 
@@ -125,10 +141,12 @@ class Project extends Model implements HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'deadline_notification_sent_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'rejected_at' => 'datetime',
         'corrected_at' => 'datetime',
         'accepted_at' => 'datetime',
+        'submitted_to_client_review_at' => 'datetime',
         'price' => 'float',
         'status' => ProjectStatus::class,
     ];
@@ -157,6 +175,54 @@ class Project extends Model implements HasMedia
     public function subProjects(): HasMany
     {
         return $this->hasMany(SubProject::class);
+    }
+
+    public function sourceLanguageClassifierValue(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->subProjects()->one(),
+            (new SubProject())->sourceLanguageClassifierValue()
+        );
+    }
+
+    public function destinationLanguageClassifierValues(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->destinationLanguageClassifierValue()
+        );
+    }
+
+    public function assignments(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->assignments(),
+        );
+    }
+
+    public function volumes(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->volumes(),
+        );
+    }
+
+    public function assignees(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->assignee()
+        );
+    }
+
+    public function catToolTmKeys(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->catToolTmKeys()
+        );
     }
 
     public function sourceFiles()
@@ -215,7 +281,6 @@ class Project extends Model implements HasMedia
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->deadline_at = $this->deadline_at;
-            $subProject->event_start_at = $this->event_start_at;
             return $subProject;
         };
 

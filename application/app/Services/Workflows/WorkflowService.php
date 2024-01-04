@@ -99,9 +99,9 @@ class WorkflowService
         ])->throw()->json();
     }
 
-    public static function getTasks($params = [])
+    public static function getTasks($params = [], $queryParams = [])
     {
-        $response = static::client()->post('/task', $params);
+        $response = static::client()->post('/task?' . http_build_query($queryParams), $params);
 
         return $response->throw()->json();
     }
@@ -194,16 +194,15 @@ class WorkflowService
         ])->throw()->json();
     }
 
-    public static function getHistoryTask($params = [])
+    public static function getHistoryTask($params = [], $queryParams = [])
     {
-        $response = static::client()->get('/history/task', $params);
-
+        $response = static::client()->post('/history/task?' . http_build_query($queryParams), $params);
         return $response->throw()->json();
     }
 
     public static function getHistoryTaskCount($params = [])
     {
-        $response = static::client()->get('/history/task/count', $params);
+        $response = static::client()->post('/history/task/count', $params);
 
         return $response->throw()->json();
     }

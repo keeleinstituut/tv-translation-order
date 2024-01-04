@@ -18,9 +18,9 @@ class SubProjectPolicy
      */
     public function viewAny(JwtPayloadUser $user, bool $onlyPersonalSubProjectsRequested): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value)
-            || $onlyPersonalSubProjectsRequested
-            && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
+            ($onlyPersonalSubProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value));
     }
 
     /**
@@ -30,7 +30,8 @@ class SubProjectPolicy
      */
     public function viewAnyByTmKey(JwtPayloadUser $user)
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value);
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
     }
 
     /**

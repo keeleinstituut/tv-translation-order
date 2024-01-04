@@ -14,10 +14,9 @@ class ProjectPolicy
      */
     public function viewAny(JwtPayloadUser $user, bool $onlyPersonalProjectsRequested): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value)
-            || $onlyPersonalProjectsRequested
-            && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
-
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
+            ($onlyPersonalProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value));
     }
 
     /**
@@ -67,6 +66,15 @@ class ProjectPolicy
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function changeClient(JwtPayloadUser $user, Project $project): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($project) &&
+            Auth::hasPrivilege(PrivilegeKey::ChangeClient->value);
+    }
+
     public function editSourceFiles(JwtPayloadUser $user, Project $project): bool
     {
         return $this->isInSameInstitutionAsCurrentUser($project) &&
@@ -101,6 +109,11 @@ class ProjectPolicy
     {
         $currentInstitutionUserId = Auth::user()?->institutionUserId;
         return $currentInstitutionUserId === $project->client_institution_user_id;
+    }
+
+    public function export(JwtPayloadUser $user)
+    {
+        return Auth::hasPrivilege(PrivilegeKey::ExportInstitutionGeneralReport->value);
     }
 
     /**

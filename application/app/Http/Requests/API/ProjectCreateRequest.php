@@ -4,11 +4,13 @@ namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Rules\ModelBelongsToInstitutionRule;
+use App\Rules\ScannedRule;
 use App\Rules\TranslationSourceFileValidator;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -129,7 +131,7 @@ class ProjectCreateRequest extends FormRequest
                 $this->userCanBeSelectedAsClientRule(),
             ],
             'reference_number' => ['nullable', 'string'],
-            'comments' => ['nullable', 'string'],
+            'comments' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z'], // only UTC (zero offset)
             'translation_domain_classifier_value_id' => [
                 'required',
@@ -138,9 +140,9 @@ class ProjectCreateRequest extends FormRequest
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::TranslationDomain),
             ],
             'source_files' => ['array', 'min:1'],
-            'source_files.*' => [TranslationSourceFileValidator::createRule()],
+            'source_files.*' => [TranslationSourceFileValidator::createRule(), new ScannedRule()],
             'help_files' => ['required_with:help_file_types', 'array'],
-            'help_files.*' => ['file'],
+            'help_files.*' => ['file', new ScannedRule()],
             'help_file_types' => ['required_with:help_files', 'array'],
             'help_file_types.*' => [Rule::in(Project::HELP_FILE_TYPES)],
             'source_language_classifier_value_id' => [

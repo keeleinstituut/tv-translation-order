@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\TagType;
+use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\Tag;
 use App\Rules\TagNameRule;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -47,7 +48,7 @@ class UpdateTagsRequest extends FormRequest
         return [
             'type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
             'tags' => ['present', 'array', 'max:10000'],
-            'tags.*.name' => ['required', 'string'],
+            'tags.*.name' => ['required', 'string', 'max:'. TagNameRule::MAX_LENGTH],
             'tags.*.id' => ['sometimes', 'nullable', 'uuid',
                 Rule::exists(Tag::class, 'id')->where(function (Builder $query) {
                     $query->where('type', $this->input('type'))
