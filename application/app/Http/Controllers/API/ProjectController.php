@@ -102,8 +102,8 @@ class ProjectController extends Controller
         $params = collect($request->validated());
 
         $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', false), FILTER_VALIDATE_BOOLEAN);
-
-        $this->authorize('viewAny', [Project::class, $showOnlyPersonalProjects]);
+        $showOnlyUnclaimedProjects  = $params->get('statuses', []) === [ProjectStatus::New->value];
+        $this->authorize('viewAny', [Project::class, $showOnlyPersonalProjects, $showOnlyUnclaimedProjects]);
 
         $query = self::getBaseQuery()
             ->with([
@@ -132,7 +132,7 @@ class ProjectController extends Controller
             });
         }
 
-        if ($param = $params->get('language_directions')) {
+        if ($params->get('language_directions')) {
             $query = $query->hasAnyOfLanguageDirections($request->getLanguagesZippedByDirections());
         }
 

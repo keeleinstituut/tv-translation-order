@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Enums\ProjectStatus;
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
@@ -12,10 +13,11 @@ class ProjectPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $user, bool $onlyPersonalProjectsRequested): bool
+    public function viewAny(JwtPayloadUser $user, bool $onlyPersonalProjectsRequested, bool $onlyUnclaimedProjectsRequested): bool
     {
         return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
             Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
+            ($onlyUnclaimedProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewInstitutionUnclaimedProjectDetail->value)) ||
             ($onlyPersonalProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value));
     }
 
@@ -30,13 +32,20 @@ class ProjectPolicy
             return false;
         }
 
-        if ($project->client_institution_user_id === $currentInstitutionUserId
-            || $project->manager_institution_user_id === $currentInstitutionUserId) {
-            return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value) ||
-                Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
+        if (Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value)) {
+            return true;
         }
 
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
+        if ($project->status === ProjectStatus::New && Auth::hasPrivilege(PrivilegeKey::ViewInstitutionUnclaimedProjectDetail->value)) {
+            return true;
+        }
+
+        if ($project->client_institution_user_id === $currentInstitutionUserId
+            || $project->manager_institution_user_id === $currentInstitutionUserId) {
+            return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+        }
+
+        return false;
     }
 
     /**

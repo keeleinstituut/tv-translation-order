@@ -38,6 +38,7 @@ enum PrivilegeKey: string
     case ViewPersonalProject = 'VIEW_PERSONAL_PROJECT';
     case ViewInstitutionProjectList = 'VIEW_INSTITUTION_PROJECT_LIST';
     case ViewInstitutionProjectDetail = 'VIEW_INSTITUTION_PROJECT_DETAIL';
+    case ViewInstitutionUnclaimedProjectDetail = 'VIEW_INSTITUTION_UNCLAIMED_PROJECT_DETAIL';
     case ChangeClient = 'CHANGE_CLIENT';
     case ImportTranslationMemory = 'IMPORT_TM';
     case CreateTranslationMemory = 'CREATE_TM';
