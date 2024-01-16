@@ -89,26 +89,21 @@ class ProjectPolicy
 
     public function downloadMedia(JwtPayloadUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        if (! $this->isInSameInstitutionAsCurrentUser($project)) {
+            return false;
+        }
+
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) || $this->currentUserIsClient($project);
     }
 
     public function cancel(JwtPayloadUser $user, Project $project): bool
     {
-        $currentInstitutionUserId = Auth::user()?->institutionUserId;
-
-        if (empty($currentInstitutionUserId)) {
-            return false;
-        }
-
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            $project->client_institution_user_id === $currentInstitutionUserId;
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) || $this->currentUserIsClient($project);
     }
 
     public function review(JwtPayloadUser $user, Project $project): bool
     {
-        $currentInstitutionUserId = Auth::user()?->institutionUserId;
-        return $currentInstitutionUserId === $project->client_institution_user_id;
+        return $this->currentUserIsClient($project);
     }
 
     public function export(JwtPayloadUser $user)
@@ -144,6 +139,15 @@ class ProjectPolicy
     {
         return filled($currentInstitutionId = Auth::user()?->institutionId)
             && $currentInstitutionId === $project->institution_id;
+    }
+
+    private function currentUserIsClient(Project $project): bool
+    {
+        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        return $project->client_institution_user_id === $institutionUserId;
     }
 
     // Should serve as an query enhancement to Eloquent queries
