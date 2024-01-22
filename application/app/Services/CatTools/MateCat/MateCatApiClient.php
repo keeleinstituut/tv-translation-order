@@ -47,6 +47,7 @@ readonly class MateCatApiClient
             'project_name' => $params->get('name'),
             'source_lang' => $params->get('source_lang'),
             'target_lang' => $params->get('target_lang'),
+            'metadata' => json_encode($params->get('metadata', [])),
             'private_tm_key' => implode(',', $params->get('tm_keys')),
         ])->throw()->json();
     }
