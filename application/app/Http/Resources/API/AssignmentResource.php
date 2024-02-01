@@ -3,6 +3,7 @@
 namespace App\Http\Resources\API;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\JobKey;
 use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -41,6 +42,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'assignee', ref: VendorResource::class),
         new OA\Property(property: 'job_definition', ref: JobDefinitionResource::class),
         new OA\Property(property: 'candidates', type: 'array', items: new OA\Items(ref: VendorResource::class)),
+        new OA\Property(property: 'manager_candidates', type: 'array', items: new OA\Items(ref: ProjectManagerCandidateResource::class)),
         new OA\Property(property: 'volumes', type: 'array', items: new OA\Items(ref: VolumeResource::class)),
         new OA\Property(property: 'jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class)),
     ],
@@ -75,6 +77,12 @@ class AssignmentResource extends JsonResource
             'volumes' => VolumeResource::collection($this->whenLoaded('volumes')),
             'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
             'subProject' => SubProjectResource::make($this->whenLoaded('subProject')),
+            // Done in this way as we're expecting that in the future multiple PMs can be candidates for review tasks.
+            'manager_candidates' => [
+                ProjectManagerCandidateResource::make(
+                    $this->when($this->jobDefinition->job_key === JobKey::JOB_OVERVIEW, $this)
+                )
+            ],
         ];
     }
 }
