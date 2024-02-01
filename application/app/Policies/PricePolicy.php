@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\Price;
 use BadMethodCallException;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,8 @@ class PricePolicy
      */
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Auth::hasPrivilege('VIEW_VENDOR_DB') || Auth::hasPrivilege('VIEW_GENERAL_PRICELIST');
+        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewGeneralPricelist->value);
     }
 
     /**
@@ -30,9 +32,7 @@ class PricePolicy
      */
     public function create(JwtPayloadUser $jwtPayloadUser, Price $price): bool
     {
-        return $price
-            && $price->vendor->institutionUser->institution['id'] == Auth::user()->institutionId
-            && Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($price);
     }
 
     /**
@@ -40,9 +40,7 @@ class PricePolicy
      */
     public function update(JwtPayloadUser $jwtPayloadUser, Price $price): bool
     {
-        return $price
-            && $price->vendor->institutionUser->institution['id'] == Auth::user()->institutionId
-            && Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($price);
     }
 
     /**
@@ -50,11 +48,15 @@ class PricePolicy
      */
     public function delete(JwtPayloadUser $jwtPayloadUser, Price $price): bool
     {
-        return $price
-            && $price->vendor->institutionUser->institution['id'] == Auth::user()->institutionId
-            && Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($price);
     }
 
+    private function isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege(Price $price): bool
+    {
+        return $price
+            && $price->vendor->institutionUser->institution['id'] == Auth::user()->institutionId
+            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+    }
     /**
      * Determine whether the user can restore the model.
      */
