@@ -107,7 +107,8 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data);
+        $data = $this->mapWithAssignmentExtraInfo($data);
+        $data = $this->mapWithProjectExtraInfo($data);
 
         return TaskResource::collection($pagination->toPaginator($data, $count));
     }
@@ -133,8 +134,8 @@ class WorkflowController extends Controller
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
 
-        $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data, [
+        $tasks = $this->mapWithVariables($tasks, $variableInstances);
+        $tasks = $this->mapWithAssignmentExtraInfo($tasks, [
             'volumes',
             'subProject.project.clientInstitutionUser',
             'subProject.project.managerInstitutionUser',
@@ -143,8 +144,9 @@ class WorkflowController extends Controller
             'subProject.catToolTmKeys',
             'catToolJobs'
         ]);
+        $tasks = $this->mapWithProjectExtraInfo($tasks);
 
-        $task = $data->first();
+        $task = $tasks->first();
         $task = $this->mapWithTmKeysInfo($task);
 
         return TaskResource::make($task);
@@ -194,7 +196,8 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data);
+        $data = $this->mapWithAssignmentExtraInfo($data);
+        $data = $this->mapWithProjectExtraInfo($data);
 
         return TaskResource::collection($pagination->toPaginator($data, $count));
     }
@@ -222,7 +225,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
 
         $data = $this->mapWithVariables($tasks, $variableInstances);
-        $data = $this->mapWithExtraInfo($data, [
+        $data = $this->mapWithAssignmentExtraInfo($data, [
             'volumes',
             'subProject.project.clientInstitutionUser',
             'subProject.project.managerInstitutionUser',
@@ -231,6 +234,7 @@ class WorkflowController extends Controller
             'subProject.catToolTmKeys',
             'catToolJobs'
         ]);
+        $data = $this->mapWithProjectExtraInfo($data);
 
         $task = $data->first();
         $task = $this->mapWithTmKeysInfo($task);
@@ -438,7 +442,13 @@ class WorkflowController extends Controller
         WorkflowService::completeTask($taskId);
         TrackProjectStatus::dispatchSync($project);
 
-        return TaskResource::make($this->mapWithExtraProjectInfo($taskData));
+        return TaskResource::make(
+            $this->mapWithProjectExtraInfo([$taskData], [
+                'finalFiles',
+                'reviewFiles',
+                'helpFiles'
+            ])->first()
+        );
     }
 
     /**
@@ -543,8 +553,12 @@ class WorkflowController extends Controller
 
 
         TrackProjectStatus::dispatchSync($project);
-        $this->mapWithExtraProjectInfo($taskData);
 
+        $taskData = $this->mapWithProjectExtraInfo([$taskData], [
+            'finalFiles',
+            'reviewFiles',
+            'helpFiles'
+        ])->first();
         return TaskResource::make($taskData);
     }
 
@@ -559,11 +573,11 @@ class WorkflowController extends Controller
 
         $variableInstances = $this->fetchVariableInstancesForTasks([$task]);
         $data = $this->mapWithVariables([$task], $variableInstances);
-        if (empty($this->mapWithExtraInfo($data)[0])) {
+        if (empty($this->mapWithAssignmentExtraInfo($data)[0])) {
             abort(Response::HTTP_NOT_FOUND, 'Task data not found');
         }
 
-        return $this->mapWithExtraInfo($data)[0];
+        return $this->mapWithAssignmentExtraInfo($data)[0];
     }
 
     private function buildAdditionalParams(Collection $requestParams, $forHistoricTasks = false): Collection
@@ -692,7 +706,7 @@ class WorkflowController extends Controller
         });
     }
 
-    private function mapWithExtraInfo($tasks, array $assignmentAdditionalRelations = []): Collection
+    private function mapWithAssignmentExtraInfo($tasks, array $assignmentAdditionalRelations = []): Collection
     {
         $relations = collect([
             'subProject.project.typeClassifierValue',
@@ -718,21 +732,39 @@ class WorkflowController extends Controller
     }
 
     /**
-     * The function is needed for providing updated info about the project to the FE.
-     * will be used for CLIENT_REVIEW, CORRECTING task completion.
-     * @param $taskData
-     * @return array
+     * The function is needed to add extra project info for the `CORRECTING` and `CLIENT_REVIEW` tasks.
+     *
+     * @param $tasks
+     * @param array $projectAdditionalRelations
+     * @return Collection
      */
-    private function mapWithExtraProjectInfo($taskData): array
+    private function mapWithProjectExtraInfo($tasks, array $projectAdditionalRelations = []): Collection
     {
-        return [
-            ...$taskData,
-            'project' => $this->getTaskProject($taskData, [
-                'finalFiles',
-                'reviewFiles',
-                'helpFiles'
-            ])
-        ];
+        $relations = collect([
+            'typeClassifierValue',
+            'subProjects.destinationLanguageClassifierValue',
+            'subProjects.sourceLanguageClassifierValue'
+        ])->merge($projectAdditionalRelations)->unique();
+
+        $projectIds = collect($tasks)->map(fn($task) => data_get($task, 'variables.project_id'));
+        $projects = Project::query()->whereIn('id', $projectIds)
+            ->with($relations->toArray())
+            ->get();
+
+        return collect($tasks)->map(function ($task) use ($projects) {
+            if (empty($taskType = TaskType::tryFrom(data_get($task, 'variables.task_type')))) {
+                return $task;
+            }
+
+            if (filled($projectId = data_get($task, 'variables.project_id')) && ($taskType === TaskType::Correcting || $taskType === TaskType::ClientReview)) {
+                return [
+                    ...$task,
+                    'project' => $projects->firstWhere('id', $projectId)
+                ];
+            }
+
+            return $task;
+        });
     }
 
     private function mapWithTmKeysInfo(?array $task): ?array
