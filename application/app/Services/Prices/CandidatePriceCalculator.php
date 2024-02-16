@@ -15,7 +15,7 @@ readonly class CandidatePriceCalculator implements PriceCalculator
 
     public function getPrice(): ?float
     {
-        if (empty($this->assignment->volumes)) {
+        if (! filled($this->assignment->volumes)) {
             return null;
         }
 

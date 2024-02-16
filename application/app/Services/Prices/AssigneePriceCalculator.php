@@ -20,7 +20,7 @@ readonly class AssigneePriceCalculator implements PriceCalculator
             return 0;
         }
 
-        if (empty($this->assignment->volumes)) {
+        if (! filled($this->assignment->volumes)) {
             return null;
         }
 
