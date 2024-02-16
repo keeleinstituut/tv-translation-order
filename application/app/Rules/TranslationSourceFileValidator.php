@@ -24,6 +24,9 @@ class TranslationSourceFileValidator
         'html',
         'xml',
         'csv',
+        'zip',
+        'asice',
+        'cdoc',
     ];
 
     private static function validateFileNameSuffix(string $attribute, mixed $value, Closure $fail): void
