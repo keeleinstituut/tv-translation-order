@@ -74,7 +74,8 @@ class SubProjectResource extends JsonResource
                 'status',
                 'workflow_started',
             ]),
-            'features' => $this->project->typeClassifierValue->projectTypeConfig->features,
+            // 'features' logic was changed and currently not in use.
+            'features' => [], //$this->project->typeClassifierValue->projectTypeConfig->features,
             'project' => new ProjectResource($this->whenLoaded('project')),
             'source_language_classifier_value_id' => $this->source_language_classifier_value_id,
             'source_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('sourceLanguageClassifierValue')),
