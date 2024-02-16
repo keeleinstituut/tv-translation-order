@@ -115,8 +115,20 @@ class PriceController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
+        $minCreatedAt = $query->min('prices.created_at');
+        $maxUpdatedAt = $query->max('prices.updated_at');
+
         $data = $query->paginate($params->get('per_page', 10));
-        return PriceResource::collection($data);
+        $resource = PriceResource::collection($data);
+
+        $resource->additional([
+            'aggregation' => [
+                'min_created_at' => $minCreatedAt,
+                'max_updated_at' => $maxUpdatedAt,
+            ],
+        ]);
+
+        return $resource;
     }
 
     /**
