@@ -93,6 +93,9 @@ readonly class MateCat implements CatToolService
                 'tm_keys' => collect($this->subProject->catToolTmKeys)
                     ->map(ExternalTmKeyComposer::compose(...))
                     ->toArray(),
+                'metadata' => [
+                    'tv_domain' => $this->subProject->project?->translationDomainClassifierValue?->value
+                ]
             ];
 
             if (! $this->storage->hasMTEnabled()) {
