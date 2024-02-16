@@ -84,7 +84,7 @@ class SubProjectPolicy
 
     public function downloadMedia(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject) || $this->currentUserIsClient($subProject);
     }
 
     public function editSourceFiles(JwtPayloadUser $user, SubProject $subProject): bool
@@ -125,7 +125,7 @@ class SubProjectPolicy
             return true;
         }
 
-        if (empty(Auth::user()->institutionUserId)) {
+        if (empty(Auth::user()?->institutionUserId)) {
             return false;
         }
 
@@ -143,6 +143,16 @@ class SubProjectPolicy
             ->exists();
     }
 
+
+    private function currentUserIsClient(SubProject $subProject): bool
+    {
+        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        return $subProject->project->client_institution_user_id === $institutionUserId;
+    }
+
     private function isInSameInstitutionAsCurrentUser(SubProject $subProject): bool
     {
         if (empty(Auth::user()?->institutionUserId)) {
@@ -151,7 +161,7 @@ class SubProjectPolicy
 
         return filled($currentInstitutionId = Auth::user()?->institutionId)
             && $currentInstitutionId === $subProject->project->institution_id &&
-            filled($currentInstitutionId = Auth::user()?->institutionUserId);
+            filled(Auth::user()?->institutionUserId);
     }
 
     // Should serve as an query enhancement to Eloquent queries
