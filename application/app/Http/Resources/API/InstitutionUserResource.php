@@ -2,10 +2,14 @@
 
 namespace App\Http\Resources\API;
 
+use App\Models\CachedEntities\InstitutionUser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
+/**
+ * @mixin InstitutionUser
+ */
 #[OA\Schema(
     title: 'Institution User',
     required: ['id', 'email', 'phone', 'user', 'institution', 'department', 'roles'],
@@ -17,6 +21,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'institution', type: 'object'),
         new OA\Property(property: 'department', type: 'object'),
         new OA\Property(property: 'roles', type: 'object'),
+        new OA\Property(property: 'vacations', type: 'object'),
         new OA\Property(property: 'vendor', ref: VendorResource::class, type: 'object'),
     ],
     type: 'object'
@@ -38,6 +43,7 @@ class InstitutionUserResource extends JsonResource
             'institution' => $this->institution,
             'department' => $this->department,
             'roles' => collect($this->roles)->map(fn ($role) => collect($role)->only('id', 'name')),
+            'vacations' => $this->vacations,
             'vendor' => VendorResource::make($this->whenLoaded('vendor')),
         ];
     }
