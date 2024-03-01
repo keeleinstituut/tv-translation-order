@@ -201,13 +201,13 @@ class ProjectCreateRequest extends FormRequest
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {
-                if ($institutionUser->hasPrivileges(PrivilegeKey::ReceiveAndManageProject)
+                if ($institutionUser->hasPrivileges(PrivilegeKey::ReceiveProject)
                     || $institutionUser->id === Auth::user()?->institutionUserId
                     && Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
                     return [];
                 }
 
-                return ['The user referenced by :attribute must either (a) have the RECEIVE_AND_MANAGE_PROJECT privilege or (b) be current acting user with privilege MANAGE_PROJECT.'];
+                return ['The user referenced by :attribute must either (a) have the RECEIVE_PROJECT privilege or (b) be current acting user with privilege MANAGE_PROJECT.'];
             }
         );
     }
