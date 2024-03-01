@@ -13,9 +13,9 @@ use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
 use Throwable;
 
-class AssignmentObserver
+readonly class AssignmentObserver
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    public function __construct(private NotificationPublisher $notificationPublisher)
     {
 
     }
@@ -26,6 +26,8 @@ class AssignmentObserver
     public function creating(Assignment $assignment): void
     {
         $this->setExternalId($assignment);
+        $assignment->deadline_at = $assignment->subProject?->deadline_at;
+        $assignment->event_start_at = $assignment->subProject?->project?->event_start_at;
     }
 
     /**
