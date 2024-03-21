@@ -19,12 +19,14 @@ class TrackMateCatProjectProgress implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    const REQUEUE_DELAY_SECONDS = 600; // 10 minutes.
+    const REQUEUE_DELAY_SECONDS = 60 * 10; // 10 minutes.
 
     /**
      * The number of times the job may be attempted.
      */
     public int $tries = 0;
+
+    public $backoff = self::REQUEUE_DELAY_SECONDS;
 
     public function __construct(private readonly SubProject $subProject)
     {
