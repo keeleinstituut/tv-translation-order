@@ -148,7 +148,8 @@ class ProjectObserver
             if ($project->status === ProjectStatus::Cancelled) {
                 filled($project->managerInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser);
                 filled($project->clientInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->clientInstitutionUser);
-            } elseif ($project->status === ProjectStatus::SubmittedToClient) {
+                $this->publishProjectCancelledEmailNotificationForVendors($project);
+            } elseif ($project->status === ProjectStatus::SubmittedToClient || $project->status === ProjectStatus::Corrected) {
                 $this->publishProjectSubmittedToClientEmailNotification($project);
                 $this->publishProjectIsReadyForReviewEmailNotification($project);
             } elseif ($project->status === ProjectStatus::Accepted) {
@@ -250,6 +251,25 @@ class ProjectObserver
                 ])
             );
         }
+    }
+
+    private function publishProjectCancelledEmailNotificationForVendors(Project $project): void
+    {
+        $project->assignments->each(function (Assignment $assignment) {
+            if (filled($receiver = $assignment->assignee?->institutionUser) && filled($receiver->email)) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::TaskCancelled,
+                        'receiver_email' => $receiver->email,
+                        'receiver_name' => $receiver->getUserFullName(),
+                        'variables' => [
+                            'assignment' => $assignment->only('ext_id'),
+                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                        ]
+                    ])
+                );
+            }
+        });
     }
 
     private function publishProjectAcceptedEmailNotification(Project $project, InstitutionUser $receiver): void
