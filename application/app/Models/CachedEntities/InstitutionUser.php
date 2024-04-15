@@ -33,6 +33,7 @@ use SyncTools\Traits\IsCachedEntity;
  * @property ArrayObject|null $institution
  * @property ArrayObject|null $department
  * @property ArrayObject|null $roles
+ * @property ArrayObject|null $vacations
  * @property Carbon|null $deleted_at
  * @property Carbon|null $synced_at
  * @property-read Vendor|null $vendor
@@ -74,6 +75,7 @@ class InstitutionUser extends Model
         'institution' => AsArrayObject::class,
         'department' => AsArrayObject::class,
         'roles' => AsArrayObject::class,
+        'vacations' => AsArrayObject::class,
         'deactivation_date' => 'datetime',
         'archived_at' => 'datetime',
         'synced_at' => 'datetime',
