@@ -43,7 +43,7 @@ class InstitutionUserController extends Controller
 
         if ($projectRole = $params->get('project_role')) {
             $map = collect([
-                'manager' => PrivilegeKey::ReceiveAndManageProject,
+                'manager' => PrivilegeKey::ReceiveProject,
                 'client' => PrivilegeKey::CreateProject,
             ]);
 

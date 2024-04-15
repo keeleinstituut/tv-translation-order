@@ -69,7 +69,7 @@ class ProjectControllerStoreTest extends TestCase
                     ...static::createExampleValidPayload(),
                     'manager_institution_user_id' => InstitutionUser::factory()
                         ->state(['institution' => $actingUser->institution])
-                        ->createWithPrivileges(PrivilegeKey::ReceiveAndManageProject)
+                        ->createWithPrivileges(PrivilegeKey::ReceiveProject)
                         ->id,
                 ],
                 function () {
@@ -154,7 +154,6 @@ class ProjectControllerStoreTest extends TestCase
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
-
         $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
 
         $payload = collect($createValidPayload($actingUser));
@@ -253,14 +252,14 @@ class ProjectControllerStoreTest extends TestCase
             'manager_institution_user_id from another institution' => [fn () => [
                 ...static::createExampleValidPayload(),
                 'manager_institution_user_id' => InstitutionUser::factory()
-                    ->createWithPrivileges(PrivilegeKey::ReceiveAndManageProject)
+                    ->createWithPrivileges(PrivilegeKey::ReceiveProject)
                     ->id,
             ]],
             'manager_institution_user_id without RECEIVE_PROEJCT privilege' => [fn (InstitutionUser $actingUser) => [
                 ...static::createExampleValidPayload(),
                 'manager_institution_user_id' => InstitutionUser::factory()
                     ->state(['institution' => $actingUser->institution])
-                    ->createWithAllPrivilegesExcept(PrivilegeKey::ReceiveAndManageProject)
+                    ->createWithAllPrivilegesExcept(PrivilegeKey::ReceiveProject)
                     ->id,
             ]],
             'client_institution_user_id from another institution' => [fn () => [
@@ -431,7 +430,7 @@ class ProjectControllerStoreTest extends TestCase
         [$sourceLanguage, $destinationLanguage] = $languages;
 
         return [
-            'type_classifier_value_id' => ClassifierValue::where(['type' => ClassifierValueType::ProjectType, 'value' => 'T'])
+            'type_classifier_value_id' => ClassifierValue::where(['type' => ClassifierValueType::ProjectType])
                 ->firstOrFail()
                 ->id,
             'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
