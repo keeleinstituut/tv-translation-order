@@ -20,6 +20,8 @@
           <camunda:inputParameter name="institution_id">${institution_id}</camunda:inputParameter>
           <camunda:inputParameter name="type_classifier_value_id">${type_classifier_value_id}</camunda:inputParameter>
           <camunda:inputParameter name="deadline_at">${deadline_at}</camunda:inputParameter>
+          <camunda:inputParameter name="source_language_classifier_value_id">${source_language_classifier_value_id}</camunda:inputParameter>
+          <camunda:inputParameter name="destination_language_classifier_value_id">${destination_language_classifier_value_id}</camunda:inputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1kngzj7</bpmn:incoming>
@@ -34,6 +36,8 @@
           <camunda:inputParameter name="institution_id">${institution_id}</camunda:inputParameter>
           <camunda:inputParameter name="type_classifier_value_id">${type_classifier_value_id}</camunda:inputParameter>
           <camunda:inputParameter name="deadline_at">${deadline_at}</camunda:inputParameter>
+          <camunda:inputParameter name="source_language_classifier_value_id">${source_language_classifier_value_id}</camunda:inputParameter>
+          <camunda:inputParameter name="destination_language_classifier_value_id">${destination_language_classifier_value_id}</camunda:inputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1aee6fu</bpmn:incoming>

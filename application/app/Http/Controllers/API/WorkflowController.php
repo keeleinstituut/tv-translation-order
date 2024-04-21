@@ -594,8 +594,8 @@ class WorkflowController extends Controller
             ]);
             $processVariablesFilter->push([
                 'name' => 'destination_language_classifier_value_id',
-                'value' => $langPair['dst'],
-                'operator' => 'eq',
+                'value' => "%{$langPair['dst']}%",
+                'operator' => 'like',
             ]);
         }
 
