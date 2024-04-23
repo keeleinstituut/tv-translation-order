@@ -15,6 +15,10 @@ RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
                                 sockets \
                                 exif
 
+RUN echo 'post_max_size = 512M' >> /usr/local/etc/php/php.ini && \
+    echo 'upload_max_filesize = 256M' >> /usr/local/etc/php/php.ini && \
+    echo 'memory_limit = 512M' >> /usr/local/etc/php/php.ini
+
 RUN mkdir $APP_ROOT
 WORKDIR $APP_ROOT
 
