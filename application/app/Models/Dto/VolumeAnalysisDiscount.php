@@ -24,14 +24,19 @@ class VolumeAnalysisDiscount implements JsonSerializable
 
     public function __construct(array $params)
     {
-        $this->discount_percentage_101 = data_get($params, 'discount_percentage_101', 0);
-        $this->discount_percentage_repetitions = data_get($params, 'discount_percentage_repetitions', 0);
-        $this->discount_percentage_100 = data_get($params, 'discount_percentage_100', 0);
-        $this->discount_percentage_95_99 = data_get($params, 'discount_percentage_95_99', 0);
-        $this->discount_percentage_85_94 = data_get($params, 'discount_percentage_85_94', 0);
-        $this->discount_percentage_75_84 = data_get($params, 'discount_percentage_75_84', 0);
-        $this->discount_percentage_50_74 = data_get($params, 'discount_percentage_50_74', 0);
-        $this->discount_percentage_0_49 = data_get($params, 'discount_percentage_0_49', 0);
+        $this->discount_percentage_101 = $this->getValueOrZero($params, 'discount_percentage_101');
+        $this->discount_percentage_repetitions = $this->getValueOrZero($params, 'discount_percentage_repetitions');
+        $this->discount_percentage_100 = $this->getValueOrZero($params, 'discount_percentage_100');
+        $this->discount_percentage_95_99 = $this->getValueOrZero($params, 'discount_percentage_95_99');
+        $this->discount_percentage_85_94 = $this->getValueOrZero($params, 'discount_percentage_85_94');
+        $this->discount_percentage_75_84 = $this->getValueOrZero($params, 'discount_percentage_75_84');
+        $this->discount_percentage_50_74 = $this->getValueOrZero($params, 'discount_percentage_50_74');
+        $this->discount_percentage_0_49 = $this->getValueOrZero($params, 'discount_percentage_0_49');
+    }
+
+    private function getValueOrZero(array $params, string $key)
+    {
+        return data_get($params, $key, 0) ?: 0;
     }
 
     public function jsonSerialize(): array
