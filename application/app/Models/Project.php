@@ -76,6 +76,7 @@ use Throwable;
  * @property-read Collection<int, Vendor> $assignees
  * @property-read Collection<int, Assignment> $assignments
  * @property-read Collection<int, Volume> $volumes
+ * @property-read Collection<int, Candidate> $candidates
  * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  * @property-read InstitutionUser|null $clientInstitutionUser
  * @property-read InstitutionUser|null $managerInstitutionUser
@@ -198,6 +199,14 @@ class Project extends Model implements HasMedia
         return $this->hasManyDeepFromRelations(
             $this->subProjects(),
             (new SubProject())->assignments(),
+        );
+    }
+
+    public function candidates(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->candidates(),
         );
     }
 
