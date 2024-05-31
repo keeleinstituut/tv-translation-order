@@ -321,7 +321,7 @@ class Project extends Model implements HasMedia
         collect($toCreate)->each(function (SubProject $subProject) {
             $subProject->saveOrFail();
 
-            $this->getMedia('source')->each(function ($sourceFile) use ($subProject) {
+            $this->getMedia(Project::SOURCE_FILES_COLLECTION)->each(function ($sourceFile) use ($subProject) {
                 /** @var Media $sourceFile */
                 $copiedFile = $sourceFile->copy($this, $subProject->file_collection);
                 $sourceFile->copies()->save($copiedFile);

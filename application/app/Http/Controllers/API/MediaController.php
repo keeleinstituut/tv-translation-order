@@ -10,6 +10,7 @@ use App\Http\Requests\MediaUpdateRequest;
 use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Project;
+use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
 use Auth;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -177,11 +178,12 @@ class MediaController extends Controller
      */
     #[OA\Get(
         path: '/media/download',
+        description: 'The next pairs of query parameters are available (reference_object_type, collection): ("project", "source"), ("project", "help"), ("subproject", "source"), ("subproject", "final"), ("review", "review"). For downloading review files pass reference_object_id as ID of the review',
         tags: ['Media'],
         parameters: [
-            new OA\QueryParameter(name: 'collection', schema: new OA\Schema(type: 'string')),
+            new OA\QueryParameter(name: 'collection', schema: new OA\Schema(type: 'string', enum: ['source', 'help', 'review', 'final'])),
             new OA\QueryParameter(name: 'reference_object_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
-            new OA\QueryParameter(name: 'reference_object_type', schema: new OA\Schema(type: 'string')),
+            new OA\QueryParameter(name: 'reference_object_type', schema: new OA\Schema(type: 'string', enum: ['project', 'subproject', 'review'])),
             new OA\QueryParameter(name: 'id', schema: new OA\Schema(type: 'integer')),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -210,6 +212,7 @@ class MediaController extends Controller
         $entityClass = match ($referenceObjectType) {
             'project', Project::class => Project::class,
             'subproject', SubProject::class => SubProject::class,
+            'review', ProjectReviewRejection::class => ProjectReviewRejection::class,
             default => null,
         };
 
@@ -217,7 +220,7 @@ class MediaController extends Controller
             return null;
         }
 
-        /** @var Project|SubProject|null $entity */
+        /** @var Project|SubProject|ProjectReviewRejection|null $entity */
         if (empty($entity = $entityClass::find($referenceObjectId))) {
             return null;
         }
@@ -225,7 +228,7 @@ class MediaController extends Controller
         return match ([$entityClass, $collection]) {
             [Project::class, 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
             [Project::class, 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
-            [SubProject::class, 'source'] => [$entity, $entity->project, $entity->file_collection],
+            [ProjectReviewRejection::class, 'review'], [SubProject::class, 'source'] => [$entity, $entity->project, $entity->file_collection],
             [SubProject::class, 'final'] => [$entity, $entity->project, $entity->file_collection_final],
             default => null,
         };
