@@ -446,6 +446,7 @@ class WorkflowController extends Controller
             $this->mapWithProjectExtraInfo([$taskData], [
                 'finalFiles',
                 'reviewFiles',
+                'reviewRejections.files',
                 'helpFiles'
             ])->first()
         );
@@ -557,6 +558,7 @@ class WorkflowController extends Controller
         $taskData = $this->mapWithProjectExtraInfo([$taskData], [
             'finalFiles',
             'reviewFiles',
+            'reviewRejections.files',
             'helpFiles'
         ])->first();
         return TaskResource::make($taskData);
