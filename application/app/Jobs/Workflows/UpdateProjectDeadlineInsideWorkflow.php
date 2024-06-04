@@ -49,9 +49,13 @@ class UpdateProjectDeadlineInsideWorkflow implements ShouldQueue
         }
 
         foreach ($searchResult->getTasks() as $taskData) {
-            WorkflowService::updateTask(data_get($taskData, 'task.id'), [
-                'due' => $this->project->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
-            ]);
+            WorkflowService::updateTask(
+                data_get($taskData, 'task.id'),
+                array_merge(
+                    data_get($taskData, 'task'), [
+                    'due' => $this->project->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
+                ])
+            );
         }
     }
 }
