@@ -452,7 +452,12 @@ class AssignmentController extends Controller
             });
 
             TrackSubProjectStatus::dispatchSync($assignment->subProject);
+
             $assignment->load('subProject.activeJobDefinition');
+
+            if ($assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                $assignment->load('subProject.project');
+            }
 
             return AssignmentResource::make($assignment);
         });
