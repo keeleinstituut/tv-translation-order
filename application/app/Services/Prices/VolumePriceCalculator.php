@@ -2,6 +2,7 @@
 
 namespace App\Services\Prices;
 
+use App\Enums\VolumeUnits;
 use App\Models\Dto\VolumeAnalysisDiscount;
 use App\Models\Volume;
 
@@ -21,7 +22,7 @@ class VolumePriceCalculator implements PriceCalculator
             return null;
         }
 
-        if (filled($this->volume->getVolumeAnalysis())) {
+        if ($this->volume->unit_type === VolumeUnits::Words && filled($this->volume->getVolumeAnalysis())) {
             return $this->getDiscountedPrice();
         }
 
