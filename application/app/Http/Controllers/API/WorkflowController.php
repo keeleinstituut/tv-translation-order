@@ -483,7 +483,10 @@ class WorkflowController extends Controller
             $assignment->status = AssignmentStatus::Done;
             $assignment->saveOrFail();
 
-            $assignment->subProject->syncFinalFilesWithProject($validated['final_file_id']);
+            if ($validated['accepted']) {
+                $assignment->subProject->syncFinalFilesWithProject($validated['final_file_id']);
+            }
+
             WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
         });
 
