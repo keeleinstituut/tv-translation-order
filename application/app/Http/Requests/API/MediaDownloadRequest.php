@@ -19,9 +19,9 @@ class MediaDownloadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'collection' => ['required', 'string', Rule::in([Project::SOURCE_FILES_COLLECTION, Project::FINAL_FILES_COLLECTION, Project::HELP_FILES_COLLECTION])],
+            'collection' => ['required', 'string', Rule::in([Project::SOURCE_FILES_COLLECTION, Project::FINAL_FILES_COLLECTION, Project::HELP_FILES_COLLECTION, Project::REVIEW_FILES_COLLECTION_PREFIX])],
             'reference_object_id' => 'required|uuid',
-            'reference_object_type' => ['required', 'string', Rule::in(['project', 'subproject'])],
+            'reference_object_type' => ['required', 'string', Rule::in(['project', 'subproject', 'review'])],
             'id' => [
                 'required',
                 'integer',
