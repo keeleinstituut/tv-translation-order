@@ -134,24 +134,13 @@ class Vendor extends Model
             'discount_percentage_0_49',
         ];
 
-        if (filled($institutionDiscount = $this->institutionUser?->institutionDiscount)) {
-            return new VolumeAnalysisDiscount(
-                collect($institutionDiscount->only($discountAttributes))->merge(
-                    collect($this->only($discountAttributes))->filter()
-                )->toArray()
-            );
+        $hasNoDiscounts = collect($this->only($discountAttributes))->filter()->isEmpty();
+
+        if ($hasNoDiscounts && filled($institutionDiscount = $this->institutionUser?->institutionDiscount)) {
+            return new VolumeAnalysisDiscount($institutionDiscount->only($discountAttributes));
         }
 
-        return new VolumeAnalysisDiscount($this->only([
-            'discount_percentage_101',
-            'discount_percentage_repetitions',
-            'discount_percentage_100',
-            'discount_percentage_95_99',
-            'discount_percentage_85_94',
-            'discount_percentage_75_84',
-            'discount_percentage_50_74',
-            'discount_percentage_0_49',
-        ]));
+        return new VolumeAnalysisDiscount($this->only($discountAttributes));
     }
 
     public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, ?string $skillId = null): ?Price
