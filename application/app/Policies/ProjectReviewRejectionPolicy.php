@@ -17,27 +17,13 @@ class ProjectReviewRejectionPolicy
             return false;
         }
 
-        if (! $this->isInSameInstitutionAsCurrentUser($project)) {
+        if (! ProjectPolicy::isInSameInstitutionAsCurrentUser($project)) {
             return false;
         }
 
         return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
             Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
-            $this->currentUserIsClient($project);
-    }
-
-    public static function isInSameInstitutionAsCurrentUser(Project $project): bool
-    {
-        return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && $currentInstitutionId === $project->institution_id;
-    }
-
-    private function currentUserIsClient(Project $project): bool
-    {
-        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
-            return false;
-        }
-
-        return $project->client_institution_user_id === $institutionUserId;
+            ProjectPolicy::isClient($project) ||
+            ProjectPolicy::isAssignmentCandidate($project);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -102,17 +103,19 @@ class ProjectPolicy
             return false;
         }
 
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) || $this->currentUserIsClient($project);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+            $this->isClient($project) ||
+            $this->isAssignmentCandidate($project);
     }
 
     public function cancel(JwtPayloadUser $user, Project $project): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) || $this->currentUserIsClient($project);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) || $this->isClient($project);
     }
 
     public function review(JwtPayloadUser $user, Project $project): bool
     {
-        return $this->currentUserIsClient($project);
+        return $this->isClient($project);
     }
 
     public function export(JwtPayloadUser $user)
@@ -150,13 +153,26 @@ class ProjectPolicy
             && $currentInstitutionId === $project->institution_id;
     }
 
-    private function currentUserIsClient(Project $project): bool
+    public static function isClient(Project $project): bool
     {
         if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
             return false;
         }
 
         return $project->client_institution_user_id === $institutionUserId;
+    }
+
+    public static function isAssignmentCandidate(Project $project): bool
+    {
+        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        if (empty($vendor = Vendor::query()->where('institution_user_id', $institutionUserId)->first())) {
+            return false;
+        }
+
+        return $project->candidates()->where('vendor_id', $vendor->id)->exists();
     }
 
     // Should serve as an query enhancement to Eloquent queries
