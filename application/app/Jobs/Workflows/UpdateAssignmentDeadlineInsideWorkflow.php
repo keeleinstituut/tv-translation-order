@@ -46,8 +46,12 @@ class UpdateAssignmentDeadlineInsideWorkflow implements ShouldQueue
             return;
         }
 
-        WorkflowService::updateTask(data_get($taskData, 'task.id'), [
-            'due' => $this->assignment->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
-        ]);
+        WorkflowService::updateTask(
+            data_get($taskData, 'task.id'),
+            array_merge(
+                data_get($taskData, 'task'), [
+                'due' => $this->assignment->deadline_at?->format(WorkflowService::DATETIME_FORMAT)
+            ])
+        );
     }
 }

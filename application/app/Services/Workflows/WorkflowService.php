@@ -176,6 +176,9 @@ class WorkflowService
      * @param array $params
      * @return array|mixed
      * @throws RequestException
+     *
+     * NOTE: it behaves like POST update (updates whole resource instead of partial update).
+     * It will override all not passed task attributes.
      */
     public static function updateTask($taskId, array $params): mixed
     {
