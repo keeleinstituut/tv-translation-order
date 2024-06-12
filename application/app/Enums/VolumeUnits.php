@@ -9,6 +9,7 @@ enum VolumeUnits: string
     case Pages = 'PAGES';
     case Minutes = 'MINUTES';
     case Hours = 'HOURS';
+    case MinimalFee = 'MIN_FEE';
 
     public static function values(): array
     {

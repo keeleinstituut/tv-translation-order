@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\CandidateStatus;
+use App\Enums\VolumeUnits;
 use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
@@ -114,30 +115,43 @@ readonly class AssignmentObserver
             }
 
             if (filled($assignment->volumes)) {
-                Volume::withoutEvents(fn() => $assignment->volumes->map(function (Volume $volume) use ($assignment) {
-                    $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
-                    $volume->unit_fee = $assignment->assignee->getPriceList(
-                        $assignment->subProject->source_language_classifier_value_id,
-                        $assignment->subProject->destination_language_classifier_value_id,
-                        $assignment->jobDefinition?->skill_id
-                    )?->getUnitFee($volume->unit_type);
-                    $volume->save();
-                }));
+                $assignment->load('assignee');
 
-                // https://github.com/laravel/framework/issues/27138
-                $assignment->price = $assignment->getPriceCalculator()->getPrice();
-                $assignment->saveQuietly();
+                Volume::withoutEvents(fn() => $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type !== VolumeUnits::MinimalFee)
+                    ->map(function (Volume $volume) use ($assignment) {
+                        $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
+                        $volume->unit_fee = $assignment->assignee->getPriceList(
+                            $assignment->subProject->source_language_classifier_value_id,
+                            $assignment->subProject->destination_language_classifier_value_id,
+                            $assignment->jobDefinition?->skill_id
+                        )?->getUnitFee($volume->unit_type);
 
-                if (filled($subProject = $assignment->subProject)) {
-                    $subProject->price = $subProject->getPriceCalculator()->getPrice();
-                    $subProject->saveOrFail();
-                }
+                        $volume->save();
+                    }));
 
-                if (filled($project = $subProject?->project)) {
-                    $project->price = $project->getPriceCalculator()->getPrice();
-                    $project->saveOrFail();
-                }
+                $this->updateCachedPrices($assignment);
             }
+        // The case of un-assignment
+        } elseif ($assignment->wasChanged('assigned_vendor_id') && filled($assignment->volumes)) {
+            $assignment->load('assignee');
+            $this->updateCachedPrices($assignment);
+        }
+    }
+
+    private function updateCachedPrices(Assignment $assignment): void
+    {
+        // https://github.com/laravel/framework/issues/27138
+        $assignment->price = $assignment->getPriceCalculator()->getPrice();
+        $assignment->saveQuietly();
+
+        if (filled($subProject = $assignment->subProject)) {
+            $subProject->price = $subProject->getPriceCalculator()->getPrice();
+            $subProject->saveOrFail();
+        }
+
+        if (filled($project = $subProject?->project)) {
+            $project->price = $project->getPriceCalculator()->getPrice();
+            $project->saveOrFail();
         }
     }
 

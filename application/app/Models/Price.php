@@ -120,7 +120,8 @@ class Price extends Model
             VolumeUnits::Words => $this->word_fee,
             VolumeUnits::Pages => $this->page_fee,
             VolumeUnits::Minutes => $this->minute_fee,
-            VolumeUnits::Hours => $this->hour_fee
+            VolumeUnits::Hours => $this->hour_fee,
+            VolumeUnits::MinimalFee => $this->minimal_fee
         };
     }
 }

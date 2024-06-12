@@ -7,28 +7,40 @@ use App\Models\Price;
 use App\Models\Vendor;
 use App\Models\Volume;
 
-readonly class CandidatePriceCalculator implements PriceCalculator
+class CandidatePriceCalculator extends BaseAssignmentPriceCalculator
 {
-    public function __construct(private Assignment $assignment, private Vendor $candidate)
+    public function __construct(Assignment $assignment, private readonly Vendor $candidate)
     {
+        parent::__construct($assignment);
     }
 
     public function getPrice(): ?float
     {
-        if (! filled($this->assignment->volumes)) {
+        if ($this->hasNoVolume()) {
             return null;
         }
 
         $priceList = $this->getPriceList();
-        $prices = $this->assignment->volumes->map(function (Volume $volume) use ($priceList) {
+        if ($this->hasOnlyMinFeeUnitVolumes()) {
+            $volumes = $this->getVolumes();
+        } else {
+            $volumes = $this->getVolumesWithoutMinFeeUnit();
+        }
+
+        $discount = $this->candidate->getVolumeAnalysisDiscount();
+        $prices = $volumes->map(function (Volume $volume) use ($priceList, $discount) {
             return $volume->getPriceCalculator()
                 ->setUnitFee($priceList?->getUnitFee($volume->unit_type))
-                ->setDiscount($this->candidate->getVolumeAnalysisDiscount())
+                ->setDiscount($discount)
                 ->getPrice();
         });
 
+        if ($prices->isEmpty()) {
+            return null;
+        }
+
         if ($prices->search(null, true) === false) {
-            return max($prices->sum(), $priceList?->minimal_fee ?: 0);
+            return $prices->sum();
         }
 
         return null;
