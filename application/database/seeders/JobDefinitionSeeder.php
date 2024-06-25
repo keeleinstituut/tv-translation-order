@@ -168,7 +168,7 @@ class JobDefinitionSeeder extends Seeder
                 [
                     'job_key' => JobKey::JOB_TRANSLATION,
                     'job_name' => 'Tõlkimine sisemises CAT tööriistas koos toimetamisega',
-                    'job_short_name' => 'Toimetatud tõlge',
+                    'job_short_name' => 'Toimetatud tõlge(CAT)',
                     'skill' => 'Tõlkimine+Toimetamine',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => true,
@@ -185,7 +185,7 @@ class JobDefinitionSeeder extends Seeder
                 [
                     'job_key' => JobKey::JOB_TRANSLATION,
                     'job_name' => 'Tõlkimine sisemises CAT tööriistas koos toimetamisega',
-                    'job_short_name' => 'Toimetatud tõlge',
+                    'job_short_name' => 'Toimetatud tõlge(CAT)',
                     'skill' => 'Tõlkimine+toimetamine',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => true,
