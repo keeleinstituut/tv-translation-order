@@ -531,7 +531,7 @@ class WorkflowController extends Controller
                 }
 
             }],
-            'description' => ['required_if:accepted,0', 'string'],
+            'description' => ['required_if:accepted,0', 'string', 'max:500'],
             'review_file' => ['sometimes', 'array'],
             'review_file.*' => ['file']
         ]));
