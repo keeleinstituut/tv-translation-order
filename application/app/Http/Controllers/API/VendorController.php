@@ -162,7 +162,7 @@ class VendorController extends Controller
                 'discount_percentage_75_84',
                 'discount_percentage_50_74',
                 'discount_percentage_0_49',
-            ])->filter()->toArray(), $vendor->fill(...));
+            ])->filter(fn($value) => ! is_null($value))->toArray(), $vendor->fill(...));
 
             $vendor->save();
 
