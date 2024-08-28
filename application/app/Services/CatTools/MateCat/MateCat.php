@@ -296,6 +296,10 @@ readonly class MateCat implements CatToolService
             $this->storage->getProjectPassword()
         );
 
+        if (! isset($response['status'])) {
+            throw new UnexpectedResponseFormatException('Unexpected project creation status response format');
+        }
+
         $this->storage->storeProjectCreationStatus($response);
 
         if ($response['status'] === 200) {
@@ -319,6 +323,10 @@ readonly class MateCat implements CatToolService
             );
         } catch (RequestException $e) {
             throw new CatToolRetrievingException('Retrieving of CAT analysis status failed.', previous: $e);
+        }
+
+        if (! isset($response['status'])) {
+            throw new UnexpectedResponseFormatException('Unexpected project creation status response format');
         }
 
         $this->storage->storeAnalyzingResults($response);
