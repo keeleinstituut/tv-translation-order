@@ -26,6 +26,14 @@ class TrackMateCatProjectProgress implements ShouldQueue
      */
     public int $tries = 0;
 
+    /**
+     * The maximum number of unhandled exceptions to allow before failing.
+     *
+     * @var int
+     */
+    public int $maxExceptions = 3;
+
+
     public $backoff = self::REQUEUE_DELAY_SECONDS;
 
     public function __construct(private readonly SubProject $subProject)
