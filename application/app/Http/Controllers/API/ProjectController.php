@@ -13,6 +13,7 @@ use App\Http\Requests\API\ProjectsExportRequest;
 use App\Http\Requests\API\ProjectUpdateRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
+use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CatToolTmKey;
 use App\Models\Project;
@@ -429,7 +430,7 @@ class ProjectController extends Controller
             ->setOutputBOM(ByteSequence::BOM_UTF8);
 
         $csvDocument->insertOne([
-            'Tellimuse number',
+            'Ülesande ID',
             'Viitenumber',
             'Tellimuse tüüp',
             'Lähtekeel',
@@ -441,7 +442,9 @@ class ProjectController extends Controller
             'Valdkond',
             'Loodud',
             'Lepingupartnerite ärinimed',
+            'Miinimum',
             'Teostamisele kulunud aeg (minutid)',
+            'Teostamisele kulunud aeg (tunnid)',
             'Lehekülgede arv',
             'Tähemärkide arv',
             'Sõnade arv',
@@ -452,8 +455,6 @@ class ProjectController extends Controller
             'Täitmise kuu',
             'Tellija üksus',
             'Tellimuse sildid',
-            'Kirjuta tõlkemälud (ID)',
-            'Loe tõlkemälud (ID)'
         ]);
 
         Project::withGlobalScope('policy', ProjectPolicy::scope())->with([
@@ -477,39 +478,36 @@ class ProjectController extends Controller
             $request->validated('date_to'),
             fn(Builder $query, $toDate) => $query->whereDate('created_at', '<=', $toDate)
         )->lazy()->each(function (Project $project) use ($csvDocument) {
-            $dateTimeFormat = 'd/m/Y H:i';
-            $multiValueSeparator = ', ';
-            $projectAssignees = collect($project->assignees?->unique());
-            $projectCatToolTmKeys = collect($project->catToolTmKeys?->unique());
-
-            $csvDocument->insertOne([
-                $project->ext_id,
-                $project->reference_number,
-                data_get($project->typeClassifierValue?->meta, 'code'),
-                $project->sourceLanguageClassifierValue?->value,
-                $project->destinationLanguageClassifierValues?->pluck('value')->implode($multiValueSeparator),
-                $project->managerInstitutionUser?->getUserFullName(),
-                $projectAssignees->map(fn(Vendor $assignee) => $assignee->institutionUser?->getUserFullName())
-                    ->implode($multiValueSeparator),
-                $project->status?->value,
-                $project->clientInstitutionUser?->getUserFullName(),
-                $project->translationDomainClassifierValue?->name,
-                $project->created_at?->format($dateTimeFormat),
-                $projectAssignees->pluck('company_name')->implode($multiValueSeparator),
-                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Minutes)->pluck('unit_quantity')->sum(),
-                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Pages)->pluck('unit_quantity')->sum(),
-                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
-                $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
-                $project->price,
-                $project->event_start_at?->format($dateTimeFormat),
-                $project->deadline_at?->format($dateTimeFormat),
-                $project->submitted_to_client_review_at?->format($dateTimeFormat),
-                $project->submitted_to_client_review_at?->locale('et_EE')->format('Y F'),
-                $project->clientInstitutionUser?->getDepartmentName(),
-                $project->tags?->pluck('name')->implode($multiValueSeparator),
-                $projectCatToolTmKeys->filter(fn(CatToolTmKey $tmKey) => $tmKey->is_writable)->pluck('key')->implode($multiValueSeparator),
-                $projectCatToolTmKeys->filter(fn(CatToolTmKey $tmKey) => !$tmKey->created_as_empty)->pluck('key')->implode($multiValueSeparator),
-            ]);
+            $project->assignments->each(function (Assignment $assignment) use ($csvDocument, $project) {
+                $subProject = $assignment->subProject;
+                $csvDocument->insertOne([
+                    $assignment->ext_id,
+                    $project->reference_number,
+                    data_get($project->typeClassifierValue?->meta, 'code'),
+                    $subProject?->sourceLanguageClassifierValue?->value,
+                    $subProject?->destinationLanguageClassifierValue?->value,
+                    $project->managerInstitutionUser?->getUserFullName(),
+                    $assignment->assignee?->institutionUser?->getUserFullName(),
+                    $subProject?->status?->value,
+                    $project->clientInstitutionUser?->getUserFullName(),
+                    $project->translationDomainClassifierValue?->name,
+                    $project->created_at?->format('d/m/Y H:i'),
+                    $assignment->assignee?->company_name,
+                    $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::MinimalFee)->pluck('unit_quantity')->sum(),
+                    $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Minutes)->pluck('unit_quantity')->sum(),
+                    $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Hours)->pluck('unit_quantity')->sum(),
+                    $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Pages)->pluck('unit_quantity')->sum(),
+                    $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
+                    $project->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
+                    $project->price,
+                    $project->event_start_at?->format('d/m/Y H:i'),
+                    $project->deadline_at?->format('d/m/Y H:i'),
+                    $project->submitted_to_client_review_at?->format('d/m/Y H:i'),
+                    $project->submitted_to_client_review_at?->locale('et_EE')->format('Y F'),
+                    $project->clientInstitutionUser?->getDepartmentName(),
+                    $project->tags?->pluck('name')->implode(', '),
+                ]);
+            });
         });
 
         // TODO: add auditlogs
