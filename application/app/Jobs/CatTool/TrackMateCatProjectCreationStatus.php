@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 
 class TrackMateCatProjectCreationStatus implements ShouldQueue
 {
@@ -18,7 +19,13 @@ class TrackMateCatProjectCreationStatus implements ShouldQueue
 
     const SECONDS_BETWEEN_TRY = 5;
 
-    const REQUEUE_DELAY = 10;
+    const REQUEUE_DELAY = 60;
+
+    /**
+     * The number of times the job may be attempted is not limited
+     */
+    public int $tries = 0;
+
 
     public function __construct(private readonly SubProject $subProject)
     {
@@ -39,5 +46,10 @@ class TrackMateCatProjectCreationStatus implements ShouldQueue
         }
 
         $this->release(self::REQUEUE_DELAY);
+    }
+
+    public function retryUntil(): Carbon
+    {
+        return now()->addMinutes(60); // 1 hour
     }
 }

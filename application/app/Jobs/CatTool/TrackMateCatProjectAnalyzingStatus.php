@@ -19,7 +19,12 @@ class TrackMateCatProjectAnalyzingStatus implements ShouldQueue
 
     const SECONDS_BETWEEN_TRY = 5;
 
-    const REQUEUE_DELAY_SECONDS = 10;
+    const REQUEUE_DELAY_SECONDS = 60;
+
+    /**
+     * The number of times the job may be attempted is not limited
+     */
+    public int $tries = 0;
 
     public function __construct(private readonly SubProject $subProject)
     {
@@ -38,11 +43,8 @@ class TrackMateCatProjectAnalyzingStatus implements ShouldQueue
         $this->release(self::REQUEUE_DELAY_SECONDS);
     }
 
-    /**
-     * Determine the time at which the job should time out.
-     */
     public function retryUntil(): Carbon
     {
-        return now()->addMinutes(10);
+        return now()->addMinutes(60); // 1 hour
     }
 }
