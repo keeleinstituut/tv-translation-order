@@ -26,7 +26,7 @@ class TrackMateCatProjectProgress implements ShouldQueue
      */
     public int $tries = 0;
 
-    public $backoff = self::REQUEUE_DELAY_SECONDS;
+//    public $backoff = self::REQUEUE_DELAY_SECONDS;
 
     public function __construct(private readonly SubProject $subProject)
     {
