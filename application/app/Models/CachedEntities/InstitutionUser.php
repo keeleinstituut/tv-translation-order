@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Enums\PrivilegeKey;
+use App\Helpers\DateUtil;
 use App\Models\InstitutionDiscount;
 use App\Models\Vendor;
 use ArrayObject;
@@ -117,7 +118,7 @@ class InstitutionUser extends Model
     public function isDeactivated(): bool
     {
         return filled($this->deactivation_date)
-            && !Date::parse($this->deactivation_date, 'Europe/Tallinn')->isFuture();
+            && !Date::parse($this->deactivation_date, DateUtil::TIMEZONE)->isFuture();
     }
 
     public function hasPrivileges(PrivilegeKey ...$expectedPrivileges): bool
