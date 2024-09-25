@@ -24,19 +24,27 @@ class VolumeAnalysisDiscount implements JsonSerializable
 
     public function __construct(array $params)
     {
-        $this->discount_percentage_101 = $this->getValueOrZero($params, 'discount_percentage_101');
-        $this->discount_percentage_repetitions = $this->getValueOrZero($params, 'discount_percentage_repetitions');
-        $this->discount_percentage_100 = $this->getValueOrZero($params, 'discount_percentage_100');
-        $this->discount_percentage_95_99 = $this->getValueOrZero($params, 'discount_percentage_95_99');
-        $this->discount_percentage_85_94 = $this->getValueOrZero($params, 'discount_percentage_85_94');
-        $this->discount_percentage_75_84 = $this->getValueOrZero($params, 'discount_percentage_75_84');
-        $this->discount_percentage_50_74 = $this->getValueOrZero($params, 'discount_percentage_50_74');
-        $this->discount_percentage_0_49 = $this->getValueOrZero($params, 'discount_percentage_0_49');
+        $this->discount_percentage_101 = $this->getValueOrNoDiscount($params, 'discount_percentage_101');
+        $this->discount_percentage_repetitions = $this->getValueOrNoDiscount($params, 'discount_percentage_repetitions');
+        $this->discount_percentage_100 = $this->getValueOrNoDiscount($params, 'discount_percentage_100');
+        $this->discount_percentage_95_99 = $this->getValueOrNoDiscount($params, 'discount_percentage_95_99');
+        $this->discount_percentage_85_94 = $this->getValueOrNoDiscount($params, 'discount_percentage_85_94');
+        $this->discount_percentage_75_84 = $this->getValueOrNoDiscount($params, 'discount_percentage_75_84');
+        $this->discount_percentage_50_74 = $this->getValueOrNoDiscount($params, 'discount_percentage_50_74');
+        $this->discount_percentage_0_49 = $this->getValueOrNoDiscount($params, 'discount_percentage_0_49');
     }
 
-    private function getValueOrZero(array $params, string $key)
+    /**
+     * The business requirement was changed, so previously it was discount,
+     * but now we're considering it as a percent from the full price that should be paid.
+     *
+     * @param array $params
+     * @param string $key
+     * @return array|mixed
+     */
+    private function getValueOrNoDiscount(array $params, string $key)
     {
-        return data_get($params, $key, 0) ?: 0;
+        return data_get($params, $key, 100);
     }
 
     public function jsonSerialize(): array
