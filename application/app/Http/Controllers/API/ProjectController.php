@@ -499,7 +499,7 @@ class ProjectController extends Controller
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Pages)->pluck('unit_quantity')->sum(),
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
-                    $assignment->price,
+                    is_null($assignment->price) ? '' : "$assignment->price €",
                     $assignment->event_start_at?->format('d/m/Y H:i') ?: $project->event_start_at?->format('d/m/Y H:i'),
                     $assignment->deadline_at?->format('d/m/Y H:i') ?: $project->deadline_at?->format('d/m/Y H:i'),
                     $project->submitted_to_client_review_at?->format('d/m/Y H:i'),
