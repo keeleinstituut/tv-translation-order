@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Enums\ProjectStatus;
 use App\Enums\VolumeUnits;
+use App\Helpers\DateUtil;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCancelRequest;
@@ -15,16 +16,14 @@ use App\Http\Resources\API\ProjectResource;
 use App\Http\Resources\API\ProjectSummaryResource;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
-use App\Models\CatToolTmKey;
 use App\Models\Project;
 use App\Models\SubProject;
-use App\Models\Tag;
-use App\Models\Vendor;
 use App\Models\Volume;
 use App\Policies\ProjectPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -491,7 +490,7 @@ class ProjectController extends Controller
                     $subProject?->status?->value,
                     $project->clientInstitutionUser?->getUserFullName(),
                     $project->translationDomainClassifierValue?->name,
-                    $project->created_at?->format('d/m/Y H:i'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->created_at, 'd/m/Y H:i'),
                     $assignment->assignee?->company_name,
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::MinimalFee)->pluck('unit_quantity')->sum(),
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Minutes)->pluck('unit_quantity')->sum(),
@@ -500,10 +499,10 @@ class ProjectController extends Controller
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
                     $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
                     is_null($assignment->price) ? '' : "$assignment->price €",
-                    $assignment->event_start_at?->format('d/m/Y H:i') ?: $project->event_start_at?->format('d/m/Y H:i'),
-                    $assignment->deadline_at?->format('d/m/Y H:i') ?: $project->deadline_at?->format('d/m/Y H:i'),
-                    $project->submitted_to_client_review_at?->format('d/m/Y H:i'),
-                    $project->submitted_to_client_review_at?->locale('et_EE')->format('Y F'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->event_start_at ?: $project->event_start_at, 'd/m/Y H:i'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->deadline_at ?: $project->deadline_at, 'd/m/Y H:i'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->completed_at,'d/m/Y H:i'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->completed_at)?->locale('et_EE')->format('Y F'),
                     $project->clientInstitutionUser?->getDepartmentName(),
                     $project->tags?->pluck('name')->implode(', '),
                 ]);
@@ -517,6 +516,19 @@ class ProjectController extends Controller
             'projects.csv',
             ['Content-Type' => 'text/csv']
         );
+    }
+
+    private function getDateTimeWithTimezoneOrNull(Carbon $datetime = null, string $format = null): Carbon|string|null
+    {
+        if (empty($datetime)) {
+            return null;
+        }
+
+        if (empty($format)) {
+            return $datetime->timezone(DateUtil::TIMEZONE);
+        }
+
+        return $datetime->timezone(DateUtil::TIMEZONE)->format($format);
     }
 
     /**
