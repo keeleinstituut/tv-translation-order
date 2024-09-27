@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\AssignmentStatus;
 use App\Enums\CandidateStatus;
 use App\Enums\VolumeUnits;
 use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
@@ -9,6 +10,7 @@ use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\Volume;
+use Illuminate\Support\Carbon;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -29,6 +31,10 @@ readonly class AssignmentObserver
         $this->setExternalId($assignment);
         $assignment->deadline_at = $assignment->subProject?->deadline_at;
         $assignment->event_start_at = $assignment->subProject?->project?->event_start_at;
+
+        if ($assignment->status === AssignmentStatus::Done) {
+            $assignment->completed_at = Carbon::now();
+        }
     }
 
     /**
@@ -38,6 +44,13 @@ readonly class AssignmentObserver
     public function created(Assignment $assignment): void
     {
         $this->updateVolumesAssigneeFields($assignment);
+    }
+
+    public function updating(Assignment $assignment): void
+    {
+        if ($assignment->isDirty('status') && $assignment->status === AssignmentStatus::Done) {
+            $assignment->completed_at = Carbon::now();
+        }
     }
 
     /**
@@ -131,7 +144,7 @@ readonly class AssignmentObserver
 
                 $this->updateCachedPrices($assignment);
             }
-        // The case of un-assignment
+            // The case of un-assignment
         } elseif ($assignment->wasChanged('assigned_vendor_id') && filled($assignment->volumes)) {
             $assignment->load('assignee');
             $this->updateCachedPrices($assignment);

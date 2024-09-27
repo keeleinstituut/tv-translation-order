@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
+ * @property Carbon|null $completed_at
  * @property-read Vendor|null $assignee
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
@@ -70,6 +71,7 @@ class Assignment extends Model
         'status' => AssignmentStatus::class,
         'deadline_at' => 'datetime',
         'event_start_at' => 'datetime',
+        'completed_at' => 'datetime',
         'price' => 'float',
     ];
 
