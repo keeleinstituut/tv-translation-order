@@ -10,6 +10,7 @@ use App\Http\Requests\API\PriceBulkUpdateRequest;
 use App\Http\Requests\API\PriceCreateRequest;
 use App\Http\Requests\API\PriceListRequest;
 use App\Http\Resources\API\PriceResource;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Price;
 use App\Models\Vendor;
 use App\Policies\PricePolicy;
@@ -34,7 +35,7 @@ class PriceController extends Controller
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'skill_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
-            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at'])),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee', 'created_at', 'lang_pair'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
             new OA\QueryParameter(
                 name: 'lang_pair[]',
@@ -103,11 +104,33 @@ class PriceController extends Controller
             });
         }
 
-        $data = $query
-            ->orderBy($params->get('sort_by', 'created_at'), $params->get('sort_order', 'desc'))
-            ->paginate($params->get('per_page', 10));
+        $sortBy = $params->get('sort_by', 'created_at');
+        $sortOrder = $params->get('sort_order', 'desc');
 
-        return PriceResource::collection($data);
+        if ($sortBy == 'lang_pair') {
+            $query->join(app(ClassifierValue::class)->getTable() . ' as srccv', 'src_lang_classifier_value_id', '=', 'srccv.id')
+                ->join(app(ClassifierValue::class)->getTable() . ' as dstcv', 'dst_lang_classifier_value_id', '=', 'dstcv.id')
+                ->select('prices.*')
+                ->orderBy('srccv.value', $sortOrder)
+                ->orderBy('dstcv.value', $sortOrder);
+        } else {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
+        $minCreatedAt = $query->min('prices.created_at');
+        $maxUpdatedAt = $query->max('prices.updated_at');
+
+        $data = $query->paginate($params->get('per_page', 10));
+        $resource = PriceResource::collection($data);
+
+        $resource->additional([
+            'aggregation' => [
+                'min_created_at' => $minCreatedAt,
+                'max_updated_at' => $maxUpdatedAt,
+            ],
+        ]);
+
+        return $resource;
     }
 
     /**

@@ -3,26 +3,31 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\MediaCreateRequest;
 use App\Http\Requests\API\MediaDeleteRequest;
 use App\Http\Requests\API\MediaDownloadRequest;
+use App\Http\Requests\MediaUpdateRequest;
 use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Project;
+use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
+use Auth;
+use Illuminate\Auth\Access\AuthorizationException;
 use AuditLogClient\Models\AuditLoggable;
 use AuditLogClient\Services\AuditLogMessageBuilder;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
+use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class MediaController extends Controller
 {
     /**
      * Store a newly created resource in storage.
+     * @throws Throwable
      */
     #[OA\Post(
         path: '/media/bulk',
@@ -59,14 +64,40 @@ class MediaController extends Controller
                     return $filesData->map(function ($file) {
                         $content = $file['content'];
                         [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                        if (empty($entity)) {
+                            abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+                        }
+
                         $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
+                        $this->authorize($ability, [$entity, data_get($file, 'assignment_id')]);
 
-                        $this->authorize($ability, $entity);
+                        if (data_get($file, 'collection') === Project::HELP_FILES_COLLECTION) {
+                            $customProperties = [
+                                'type' => data_get($file, 'help_file_type'),
+                                'institution_user_id' => Auth::user()->institutionUserId
+                            ];
+                        } else {
+                            $customProperties = [
+                                'assignment_id' => data_get($file, 'assignment_id'),
+                                'institution_user_id' => Auth::user()->institutionUserId
+                            ];
+                        }
 
-                        $media = $collectionOwnerEntity->addMedia($content)
+                        /** @var Media $newMedia */
+                        $newMedia = $collectionOwnerEntity->addMedia($content)
+                            ->withCustomProperties($customProperties)
                             ->toMediaCollection($collectionName);
 
-                        return $media;
+                        /** Moving new project source file to all subprojects */
+                        if (data_get($file, 'collection') === Project::SOURCE_FILES_COLLECTION && $entity instanceof Project) {
+                            $entity->subProjects->each(function (SubProject $subProject) use ($newMedia, $entity) {
+                                $subProjectSourceFile = $newMedia->copy($entity, $subProject->file_collection);
+                                $newMedia->copies()->save($subProjectSourceFile);
+                            });
+                        }
+
+                        $newMedia->load('assignment.jobDefinition');
+                        return $newMedia;
                     });
                 }
             );
@@ -76,7 +107,46 @@ class MediaController extends Controller
     }
 
     /**
+     * @throws AuthorizationException
+     * @throws Throwable
+     */
+    #[OA\Put(
+        path: '/media/{id}',
+        summary: 'Update the media.Currently can be used only for updating of the help files types.',
+        requestBody: new OAH\RequestBody(MediaUpdateRequest::class),
+        tags: ['Media'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: MediaResource::class, description: 'Updated Media', response: Response::HTTP_OK)]
+    public function update(MediaUpdateRequest $request): MediaResource
+    {
+        return DB::transaction(function () use ($request) {
+            $media = Media::findOrFail($request->route('id'));
+
+            if ($media->collection_name !== Project::HELP_FILES_COLLECTION) {
+                abort(Response::HTTP_BAD_REQUEST, 'Only help files can be updated');
+            }
+
+            [$entity, ,] = $this->determineEntityAndCollectionName(
+                $media->model_type,
+                $media->model_id,
+                $media->collection_name
+            );
+
+            $ability = $this->determineAuthorizationAbility($entity, $media->collection_name);
+            $this->authorize($ability, $entity);
+
+            $media->setCustomProperty('type', $request->validated('help_file_type'));
+            $media->saveOrFail();
+
+            return MediaResource::make($media);
+        });
+
+    }
+
+    /**
      * Remove the specified resource from storage.
+     * @throws Throwable
      */
     #[OA\Delete(
         path: '/media/bulk',
@@ -102,10 +172,11 @@ class MediaController extends Controller
                 function () use ($filesData) {
                     return $filesData->map(function ($file) {
                         [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                        if (empty($entity)) {
+                            abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+                        }
+
                         $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
-
-                        $this->authorize($ability, $entity);
-
                         $media = Media::getModel()
                             ->where('model_id', $collectionOwnerEntity->id)
                             ->where('model_type', $collectionOwnerEntity::class)
@@ -113,8 +184,9 @@ class MediaController extends Controller
                             ->where('id', $file['id'])
                             ->first() ?? abort(404);
 
-                        $media->delete();
+                        $this->authorize($ability, [$entity, $media->getCustomProperty('assignment_id')]);
 
+                        $media->delete();
                         return $media;
                     });
                 }
@@ -126,16 +198,15 @@ class MediaController extends Controller
 
     /**
      * @throws AuthorizationException
-     * @throws \Throwable
-     * @throws ValidationException
      */
     #[OA\Get(
         path: '/media/download',
+        description: 'The next pairs of query parameters are available (reference_object_type, collection): ("project", "source"), ("project", "help"), ("subproject", "source"), ("subproject", "final"), ("review", "review"). For downloading review files pass reference_object_id as ID of the review',
         tags: ['Media'],
         parameters: [
-            new OA\QueryParameter(name: 'collection', schema: new OA\Schema(type: 'string')),
+            new OA\QueryParameter(name: 'collection', schema: new OA\Schema(type: 'string', enum: ['source', 'help', 'review', 'final'])),
             new OA\QueryParameter(name: 'reference_object_id', schema: new OA\Schema(type: 'string', format: 'uuid')),
-            new OA\QueryParameter(name: 'reference_object_type', schema: new OA\Schema(type: 'string')),
+            new OA\QueryParameter(name: 'reference_object_type', schema: new OA\Schema(type: 'string', enum: ['project', 'subproject', 'review'])),
             new OA\QueryParameter(name: 'id', schema: new OA\Schema(type: 'integer')),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -144,10 +215,9 @@ class MediaController extends Controller
     {
         $params = collect($request->validated());
 
-        /** @var Project $collectionOwnerEntity */
         [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($params['reference_object_type'], $params['reference_object_id'], $params['collection']);
 
-        $this->authorize('view', $entity);
+        $this->authorize('downloadMedia', $entity);
 
         $media = Media::getModel()
             ->where('model_id', $collectionOwnerEntity->id)
@@ -168,29 +238,38 @@ class MediaController extends Controller
         return $media->toResponse($request);
     }
 
-    private function determineEntityAndCollectionName(string $referenceObjectType, string $referenceObjectId, $collection)
+    private function determineEntityAndCollectionName(string $referenceObjectType, string $referenceObjectId, $collection): ?array
     {
         $entityClass = match ($referenceObjectType) {
-            'project' => Project::class,
-            'subproject' => SubProject::class,
+            'project', Project::class => Project::class,
+            'subproject', SubProject::class => SubProject::class,
+            'review', ProjectReviewRejection::class => ProjectReviewRejection::class,
             default => null,
         };
 
-        $entity = $entityClass::find($referenceObjectId);
+        if (empty($entityClass)) {
+            return null;
+        }
 
-        return match ([$referenceObjectType, $collection]) {
-            ['project', 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
-            ['subproject', 'source'] => [$entity, $entity->project, $entity->file_collection],
-            ['subproject', 'final'] => [$entity, $entity->project, $entity->file_collection_final],
+        /** @var Project|SubProject|ProjectReviewRejection|null $entity */
+        if (empty($entity = $entityClass::find($referenceObjectId))) {
+            return null;
+        }
+
+        return match ([$entityClass, $collection]) {
+            [Project::class, 'source'] => [$entity, $entity, Project::SOURCE_FILES_COLLECTION],
+            [Project::class, 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
+            [ProjectReviewRejection::class, 'review'], [SubProject::class, 'source'] => [$entity, $entity->project, $entity->file_collection],
+            [SubProject::class, 'final'] => [$entity, $entity->project, $entity->file_collection_final],
             default => null,
         };
     }
 
-    private function determineAuthorizationAbility($entity, $collectionName)
+    private function determineAuthorizationAbility($entity, $collectionName): ?string
     {
         return match ([$entity::class, $collectionName]) {
-            [Project::class, 'source'] => 'editSourceFiles',
-            [SubProject::class, 'source'] => 'editSourceFiles',
+            [Project::class, 'source'], [SubProject::class, 'source'] => 'editSourceFiles',
+            [Project::class, 'help'] => 'editHelpFiles',
             [SubProject::class, 'final'] => 'editFinalFiles',
             default => null,
         };

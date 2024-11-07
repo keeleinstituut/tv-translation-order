@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\InstitutionUser;
 use BadMethodCallException;
 use Illuminate\Support\Facades\Auth;
@@ -12,9 +13,21 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(JwtPayloadUser $jwtPayloadUser, ?string $projectRole = null): bool
     {
-        return Auth::hasPrivilege('EDIT_VENDOR_DB');
+        if ($projectRole === 'manager') {
+            return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
+                Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        }
+
+        if ($projectRole === 'client') {
+            return Auth::hasPrivilege(PrivilegeKey::ChangeClient->value) ||
+                Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        }
+
+
+        return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
     }
 
     /**
@@ -63,6 +76,14 @@ class InstitutionUserPolicy
     public function forceDelete(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
+    }
+
+    public function viewActiveTasks(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    {
+        if (Auth::hasPrivilege(PrivilegeKey::ViewVendorTask->value)) {
+            return filled($institutionUser->vendor);
+        }
+        return false;
     }
 
     // Should serve as an query enhancement to Eloquent queries

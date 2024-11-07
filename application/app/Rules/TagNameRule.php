@@ -12,7 +12,7 @@ class TagNameRule implements ValidationRule
 {
     private const REGEX = '/^[\p{L}0-9][\p{L}\-0-9\s]+/u';
 
-    private const MAX_LENGTH = 50;
+    public const MAX_LENGTH = 50;
 
     public function __construct(private readonly string $institutionId, private readonly ?string $tagType = null)
     {

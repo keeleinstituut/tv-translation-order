@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Enums\PrivilegeKey;
+use App\Helpers\DateUtil;
 use App\Models\InstitutionDiscount;
 use App\Models\Vendor;
 use ArrayObject;
@@ -33,6 +34,7 @@ use SyncTools\Traits\IsCachedEntity;
  * @property ArrayObject|null $institution
  * @property ArrayObject|null $department
  * @property ArrayObject|null $roles
+ * @property ArrayObject|null $vacations
  * @property Carbon|null $deleted_at
  * @property Carbon|null $synced_at
  * @property-read Vendor|null $vendor
@@ -61,7 +63,7 @@ use SyncTools\Traits\IsCachedEntity;
  */
 class InstitutionUser extends Model
 {
-    use HasCachedEntityFactory, HasUuids, IsCachedEntity, SoftDeletes;
+    use IsCachedEntity, HasCachedEntityFactory, HasUuids, SoftDeletes;
 
     protected $table = 'cached_institution_users';
 
@@ -74,6 +76,7 @@ class InstitutionUser extends Model
         'institution' => AsArrayObject::class,
         'department' => AsArrayObject::class,
         'roles' => AsArrayObject::class,
+        'vacations' => AsArrayObject::class,
         'deactivation_date' => 'datetime',
         'archived_at' => 'datetime',
         'synced_at' => 'datetime',
@@ -94,6 +97,19 @@ class InstitutionUser extends Model
         return $this->institution['id'] ?? null;
     }
 
+    public function getUserFullName(): ?string
+    {
+        return implode(' ', [
+            data_get($this->user, 'forename'),
+            data_get($this->user, 'surname')
+        ]);
+    }
+
+    public function getDepartmentName(): ?string
+    {
+        return data_get($this->department, 'name');
+    }
+
     public function isArchived(): bool
     {
         return filled($this->archived_at);
@@ -102,19 +118,19 @@ class InstitutionUser extends Model
     public function isDeactivated(): bool
     {
         return filled($this->deactivation_date)
-            && ! Date::parse($this->deactivation_date, 'Europe/Tallinn')->isFuture();
+            && !Date::parse($this->deactivation_date, DateUtil::TIMEZONE)->isFuture();
     }
 
     public function hasPrivileges(PrivilegeKey ...$expectedPrivileges): bool
     {
         /** @var Collection<PrivilegeKey> $actualPrivileges */
         $actualPrivileges = collect($this->roles)
-            ->filter(fn (array $role) => empty($role['deleted_at']))
-            ->flatMap(fn (array $role) => $role['privileges'])
-            ->map(fn (array|string $privilege) => is_array($privilege) ? $privilege['key'] : $privilege)
+            ->filter(fn(array $role) => empty($role['deleted_at']))
+            ->flatMap(fn(array $role) => $role['privileges'])
+            ->map(fn(array $privilege) => $privilege['key'])
             ->map(PrivilegeKey::from(...));
 
         return collect($expectedPrivileges)
-            ->every(fn (PrivilegeKey $expectedPrivilege) => $actualPrivileges->contains($expectedPrivilege));
+            ->every(fn(PrivilegeKey $expectedPrivilege) => $actualPrivileges->contains($expectedPrivilege));
     }
 }

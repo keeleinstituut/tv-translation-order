@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
+use App\Enums\TaskType;
+use App\Helpers\SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\AssignmentAddCandidatesRequest;
@@ -13,23 +16,38 @@ use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
+use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Jobs\Workflows\AddCandidatesToWorkflow;
+use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
+use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
+use App\Models\Media;
 use App\Models\SubProject;
 use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
+use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
+use App\Services\Workflows\WorkflowService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+use NotificationClient\Services\NotificationPublisher;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class AssignmentController extends Controller
 {
+    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    {
+    }
+
     /**
      * @throws AuthorizationException
      */
@@ -57,7 +75,7 @@ class AssignmentController extends Controller
             $request->route('sub_project_id')
         )->when(
             $request->validated('job_key'),
-            fn (Builder $query, string $feature) => $query->whereRelation(
+            fn(Builder $query, string $feature) => $query->whereRelation(
                 'jobDefinition',
                 'job_key',
                 $request->validated('job_key')
@@ -94,7 +112,7 @@ class AssignmentController extends Controller
 
             $this->auditLogPublisher->publishModifyObjectsAfterAction(
                 $assignmentsIndexedById,
-                function () use ($affectedAssignmentIds, $assignmentsIndexedById, $request): void {
+                function () use ($affectedAssignmentIds, $assignmentsIndexedById, $request) {
                     if (filled($request->validated('linking'))) {
                         collect($request->validated('linking'))->mapToGroups(function (array $item) {
                             return [$item['assignment_id'] => $item['cat_tool_job_id']];
@@ -110,16 +128,17 @@ class AssignmentController extends Controller
                             ->where('job_definition_id', $request->getJobDefinition()->id)
                             ->when(
                                 filled($request->getAssignments()->keys()),
-                                fn (Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
+                                fn(Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
                                     'id',
                                     $request->getAssignments()->keys()
                                 )
                             );
                     })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
                         $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
-                        $assignmentCatToolJob->deleteOrFail();
+                        $assignmentCatToolJob->delete();
                     });
-                });
+                }
+            );
 
             return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
         });
@@ -139,6 +158,10 @@ class AssignmentController extends Controller
     public function store(AssignmentCreateRequest $request): AssignmentResource
     {
         return DB::transaction(function () use ($request) {
+            if ($request->getSubProject()->workflow()->isStarted()) {
+                abort(Response::HTTP_BAD_REQUEST, 'Adding of assignments not allowed for sub-projects with already started workflow');
+            }
+
             $assignment = new Assignment();
 
             $attributes = $request->validated();
@@ -150,6 +173,14 @@ class AssignmentController extends Controller
             $assignment->saveOrFail();
             $this->auditLogPublisher->publishCreateObject($assignment);
             $assignment->refresh();
+
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
+                'jobDefinition'
+            ]);
 
             return AssignmentResource::make($assignment);
         });
@@ -174,13 +205,23 @@ class AssignmentController extends Controller
 
             $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $assignment,
-                function () use ($request, $assignment): void {
-                    $assignment->fill($request->validated());
+                function () use ($request, $assignment) {
                     $this->authorize('update', $assignment);
+
+                    $assignment->fill($request->validated());
                     $assignment->saveOrFail();
                     $assignment->refresh();
                 }
             );
+
+
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
+                'jobDefinition'
+            ]);
 
             return AssignmentResource::make($assignment);
         });
@@ -205,9 +246,10 @@ class AssignmentController extends Controller
 
             $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $assignment,
-                function () use ($request, $assignment): void {
-                    $assignment->fill($request->validated());
+                function () use ($request, $assignment) {
                     $this->authorize('updateAssigneeComment', $assignment);
+
+                    $assignment->fill($request->validated());
                     $assignment->saveOrFail();
                 }
             );
@@ -231,22 +273,44 @@ class AssignmentController extends Controller
     {
         $assignmentId = $request->route('id');
         $params = collect($request->validated());
-
         return DB::transaction(function () use ($assignmentId, $params) {
             /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
             $this->authorize('update', $assignment);
 
+
+            if ($assignment->status === AssignmentStatus::Done) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to add candidates for the assignment that is done');
+            }
+
+            if ($assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                abort(Response::HTTP_BAD_REQUEST, 'Review task can be done only by the assigned project manager');
+            }
+
             $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $assignment,
-                function () use ($params, $assignment): void {
-                    $candidates = collect($params->get('data'))->map(Candidate::make(...));
+                function () use ($params, $assignment) {
+                    /** @var Collection $newCandidates */
+                    $newCandidates = collect($params->get('data'))
+                        ->unique(fn($data) => $data['vendor_id'])
+                        ->map(Candidate::make(...));
 
-                    $assignment->candidates()->saveMany($candidates);
+                    $assignment->candidates()->saveMany($newCandidates);
+
+                    $assignment->load('candidates.vendor.institutionUser');
+
+                    $newCandidatesVendorIds = $newCandidates->pluck('vendor_id');
+                    $newCandidatesInstitutionUserIds = $assignment->candidates->filter(function (Candidate $candidate) use ($newCandidatesVendorIds) {
+                        return $newCandidatesVendorIds->contains($candidate->vendor_id);
+                    })->map(function (Candidate $candidate) {
+                        return $candidate->vendor?->institution_user_id;
+                    })->filter()->values();
+
+                    if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
+                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
+                    }
                 }
             );
-
-            $assignment->load('candidates.vendor.institutionUser');
 
             return AssignmentResource::make($assignment);
         });
@@ -274,48 +338,177 @@ class AssignmentController extends Controller
 
             $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $assignment,
-                function () use ($params, $assignment): void {
+                function () use ($params, $assignment) {
                     $this->authorize('update', $assignment);
 
                     $vendorIds = collect($params->get('data'))->pluck('vendor_id');
-
+                    $deletedCandidatesInstitutionUserIds = collect();
                     $assignment->candidates()
                         ->whereIn('vendor_id', $vendorIds)
-                        ->each(fn (Candidate $candidate) => $candidate->deleteOrFail());
+                        ->each(function (Candidate $candidate) use ($deletedCandidatesInstitutionUserIds) {
+                            if (filled($candidate->vendor?->institution_user_id)) {
+                                $deletedCandidatesInstitutionUserIds->push($candidate->vendor?->institution_user_id);
+                            }
+
+                            $candidate->deleteQuietly();
+                        });
+
+                    if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
+                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
+                    }
                 }
             );
 
             $assignment->load('candidates.vendor.institutionUser');
-
             return AssignmentResource::make($assignment);
         });
     }
 
     /**
      * @throws Throwable
-     * TODO: Implement logic of removing assignment in case if it's an additional assignment, not the main one.
-     * TODO: Implement interaction with Camunda
      */
-    //    #[OA\Delete(
-    //        path: '/assignment/{id}',
-    //        summary: 'Delete assignment',
-    //        tags: ['Assignment management'],
-    //        parameters: [new OAH\UuidPath('id')],
-    //        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    //    )]
-    //    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
+    #[OA\Delete(
+        path: '/assignment/{id}',
+        summary: 'Delete assignment',
+        tags: ['Assignment management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Assignment deleted')]
     public function destroy(string $id): \Illuminate\Http\Response
     {
         DB::transaction(function () use ($id) {
             /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($id);
             $this->authorize('delete', $assignment);
+
+            if ($assignment->subProject->workflow()->isStarted()) {
+                abort(Response::HTTP_BAD_REQUEST, 'Deleting of assignments not allowed for sub-projects with already started workflow');
+            }
+
+            $subProjectHasAssignmentWithTheSameJobDefinition = $assignment
+                ->getSameJobDefinitionAssignmentsQuery()->exists();
+
+            if (!$subProjectHasAssignmentWithTheSameJobDefinition) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the last assignment');
+            }
+
+            if ($assignment->status === AssignmentStatus::InProgress) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the assignment as the sub-project workflow is in progress.');
+            } elseif ($assignment->status === AssignmentStatus::Done) {
+                abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the assignment as the task related to it is done.');
+            }
+
             $assignment->deleteOrFail();
 
             $this->auditLogPublisher->publishRemoveObject($assignment);
         });
 
         return response()->noContent();
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/assignments/{id}/mark-as-completed',
+        description: 'Note: available only for assignments with status `IN_PROGRESS`. For the assignments with job key  `job_overview` the request body is required.',
+        summary: 'Mark assignment as completed',
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                required: [],
+                properties: [
+                    new OA\Property(property: 'accepted', type: 'boolean'),
+                    new OA\Property(property: 'final_file_id', type: 'array', items: new OA\Items(type: 'integer')),
+                ]
+            )
+        ),
+        tags: ['Assignment management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment', response: Response::HTTP_OK)]
+    public function markAsCompleted(Request $request): AssignmentResource
+    {
+        return DB::transaction(function () use ($request) {
+            /** @var Assignment $assignment */
+            $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
+            $this->authorize('markAsCompleted', $assignment);
+
+            $taskData = $this->retrieveTaskBasedOnAssignmentOrFail($assignment);
+
+            if (empty($taskId = data_get($taskData, 'task.id'))) {
+                abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task data has incorrect format');
+            }
+
+            if ($assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Review->value) {
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task has the wrong type that not match with the assignment');
+                }
+
+                $validated = $request->validate([
+                    'accepted' => ['required', 'boolean'],
+                    'final_file_id' => ['required_if:accepted,1', 'array'],
+                    'final_file_id.*' => [
+                        'required',
+                        'integer',
+                        Rule::exists(Media::class, 'id'),
+                    ],
+                ]);
+
+                WorkflowService::completeReviewTask($taskId, $validated['accepted']);
+                try {
+                    $validated['accepted'] && $assignment->subProject->syncFinalFilesWithProject(
+                        $validated['final_file_id']
+                    );
+
+                } catch (InvalidArgumentException $e) {
+                    abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
+                }
+            } else {
+                if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Default->value) {
+                    abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task has the wrong type that not match with the assignment');
+                }
+
+                WorkflowService::completeTask($taskId);
+                $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
+                if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
+                    $this->notificationPublisher->publishEmailNotification($message);
+                }
+
+                $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
+                if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
+                    $this->notificationPublisher->publishEmailNotification($message);
+                }
+            }
+
+            DB::transaction(function () use ($assignment) {
+                $assignment->status = AssignmentStatus::Done;
+                $assignment->saveOrFail();
+            });
+
+            TrackSubProjectStatus::dispatchSync($assignment->subProject);
+
+            $assignment->load('subProject.activeJobDefinition');
+
+            if ($assignment->jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+                $assignment->load('subProject.project');
+            }
+
+            return AssignmentResource::make($assignment);
+        });
+    }
+
+    private function retrieveTaskBasedOnAssignmentOrFail(Assignment $assignment): array
+    {
+        $taskData = $assignment->subProject?->workflow()->getTaskDataBasedOnAssignment($assignment);
+
+        if (empty($taskData)) {
+            abort(Response::HTTP_NOT_FOUND, 'Assignment has no task to complete');
+        }
+
+        return $taskData;
     }
 
     private static function getSubProjectOrFail(string $id): SubProject
@@ -339,7 +532,11 @@ class AssignmentController extends Controller
             ]);
     }
 
-    private static function getAssignmentsByIds(Collection $ids): mixed
+    /**
+     * @param Collection $ids
+     * @return \Illuminate\Database\Eloquent\Collection<int, Assignment>
+     */
+    private static function getAssignmentsByIds(Collection $ids): \Illuminate\Database\Eloquent\Collection
     {
         return self::getBaseQuery()->whereIn('id', $ids)->get();
     }

@@ -59,6 +59,9 @@ class EventServiceProvider extends ServiceProvider
         Models\CatToolJob::observe(Observers\CatToolJobObserver::class);
         Models\CachedEntities\Institution::observe(Observers\InstitutionObserver::class);
         Models\AssignmentCatToolJob::observe(Observers\AssignmentCatToolJobObserver::class);
+        Models\ProjectReviewRejection::observe(Observers\ProjectReviewRejectionObserver::class);
+        Models\Media::observe(Observers\MediaObserver::class);
+        Models\Candidate::observe(Observers\CandidateObserver::class);
     }
 
     /**

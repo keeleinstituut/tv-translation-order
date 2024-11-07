@@ -145,15 +145,13 @@ class VendorController extends Controller
         $id = $request->route('id');
         $params = collect($request->validated());
 
-        /** @var $vendor Vendor */
         $vendor = $this->getBaseQuery()->find($id) ?? abort(404);
         $this->authorize('update', $vendor);
 
         return DB::transaction(function () use ($vendor, $params) {
             $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $vendor,
-                function () use ($vendor, $params): void {
-                    // Collect certain keys from input params, filter null values
+                function () use ($vendor, $params) {
                     // and fill model with result from filter
                     tap(collect($params)->only([
                         'comment',
@@ -166,7 +164,7 @@ class VendorController extends Controller
                         'discount_percentage_75_84',
                         'discount_percentage_50_74',
                         'discount_percentage_0_49',
-                    ])->filter()->toArray(), $vendor->fill(...));
+                    ])->filter(fn($value) => ! is_null($value))->toArray(), $vendor->fill(...));
 
                     $vendor->saveOrFail();
 
@@ -199,6 +197,8 @@ class VendorController extends Controller
     {
         $vendor = $this->getBaseQuery()->findOrFail($request->route('id'));
         $this->authorize('view', $vendor);
+
+        $vendor->load('institutionUser.institutionDiscount', 'tags');
 
         return new VendorResource($vendor);
     }
@@ -257,13 +257,12 @@ class VendorController extends Controller
 
         return DB::transaction(function () use ($params) {
             $ids = collect($params->get('id'));
-
             $data = $this->getBaseQuery()
                 ->whereIn('id', $ids)
                 ->with('prices')
                 ->get();
 
-            $data->each(function (Vendor $vendor) {
+            $data->each(function ($vendor) {
                 $this->authorize('delete', $vendor);
                 $vendor->deleteOrFail();
                 $this->auditLogPublisher->publishRemoveObject($vendor);

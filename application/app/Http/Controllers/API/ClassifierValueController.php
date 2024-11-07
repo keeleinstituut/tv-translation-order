@@ -37,10 +37,14 @@ class ClassifierValueController extends Controller
 
         $this->authorize('viewAny', ClassifierValue::class);
 
-        $query = $this->getBaseQuery()->with('projectTypeConfig.jobDefinitions');
+        $query = $this->getBaseQuery();
 
         if ($type = $params->get('type')) {
             $query->where('type', $type);
+
+            if ($type == ClassifierValueType::ProjectType->value) {
+                $query->with('projectTypeConfig.jobDefinitions');
+            }
         }
 
         return ClassifierValueResource::collection($query

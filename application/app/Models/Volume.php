@@ -26,8 +26,8 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string $assignment_id
  * @property string|null $cat_tool_job_id
  * @property VolumeUnits $unit_type
- * @property string $unit_quantity
- * @property string $unit_fee
+ * @property float $unit_quantity
+ * @property float $unit_fee
  * @property array|null $custom_volume_analysis
  * @property array|null $discounts
  * @property Carbon|null $created_at
@@ -73,7 +73,8 @@ class Volume extends Model
         'unit_type' => VolumeUnits::class,
         'custom_volume_analysis' => AsArrayObject::class,
         'discounts' => AsArrayObject::class,
-        'unit_fee' => 'float',
+        'unit_fee' => 'decimal:3',
+        'unit_quantity' => 'decimal:3',
     ];
 
     public function assignment(): BelongsTo
@@ -99,7 +100,7 @@ class Volume extends Model
 
     public function getDiscount(): VolumeAnalysisDiscount
     {
-        $institutionDiscounts = filled($this->institutionDiscount) ? $this->institutionDiscount->only([
+        $institutionDiscounts = $this->institutionDiscount?->only([
             'discount_percentage_101',
             'discount_percentage_repetitions',
             'discount_percentage_100',
@@ -108,7 +109,7 @@ class Volume extends Model
             'discount_percentage_75_84',
             'discount_percentage_50_74',
             'discount_percentage_0_49',
-        ]) : [];
+        ]) ?: [];
 
         if (filled($this->discounts)) {
             return new VolumeAnalysisDiscount(array_merge($institutionDiscounts, (array) $this->discounts));

@@ -30,8 +30,9 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
 
     public function delete(string $id): void
     {
-        $obj = $this->getBaseModel()->find($id);
-        $obj->delete();
+        if ($obj = $this->getBaseModel()->find($id)) {
+            $obj->delete();
+        }
     }
 
     public function deleteNotSynced(): void

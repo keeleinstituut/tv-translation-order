@@ -13,47 +13,19 @@ use App\Models\Project;
 use App\Models\SubProject;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
-use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Http\Testing\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
-use Tests\Assertions;
 use Tests\AuthHelpers;
-use Tests\CreatesApplication;
+use Tests\TestCase;
 use Throwable;
 
 class ProjectControllerStoreTest extends TestCase
 {
-    use CreatesApplication;
-
-    protected static bool $isDatabaseSeeded = false;
-
-    /**
-     * @throws Throwable
-     */
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Date::setTestNow(Date::now());
-        AuthHelpers::fakeServiceValidationResponse();
-        Storage::fake(config('media-library.disk_name', 'test-disk'));
-        Http::fake([
-            rtrim(env('CAMUNDA_API_URL'), '/').'/*' => Http::response(['hi']),
-        ]);
-
-        if (static::$isDatabaseSeeded) {
-            return;
-        }
-
-        $this->seed(ClassifiersAndProjectTypesSeeder::class);
-        static::$isDatabaseSeeded = true;
-    }
-
     /** @return array<array{
      *     Closure(InstitutionUser): array,
      *     Closure(TestCase, TestResponse, array): void,
@@ -78,12 +50,12 @@ class ProjectControllerStoreTest extends TestCase
                 function () {
                 },
             ],
-            'Project type "ORAL_TRANSLATION"' => [
+            'Project type "Suuline tõlge"' => [
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'type_classifier_value_id' => ClassifierValue::where([
                         'type' => ClassifierValueType::ProjectType,
-                        'value' => 'ORAL_TRANSLATION',
+                        'value' => 'S',
                     ])->firstOrFail()->id,
                     'reference_number' => '4321',
                     'comments' => "Project\n\n4321",
@@ -97,7 +69,7 @@ class ProjectControllerStoreTest extends TestCase
                     ...static::createExampleValidPayload(),
                     'manager_institution_user_id' => InstitutionUser::factory()
                         ->state(['institution' => $actingUser->institution])
-                        ->createWithPrivileges(PrivilegeKey::ReceiveAndManageProject)
+                        ->createWithPrivileges(PrivilegeKey::ReceiveProject)
                         ->id,
                 ],
                 function () {
@@ -136,8 +108,8 @@ class ProjectControllerStoreTest extends TestCase
                 ],
                 function (TestCase $testCase, TestResponse $testResponse) {
                     $project = Project::findOrFail($testResponse->json('data.id'));
-                    $testCase->assertCount(2, $project->sourceFiles);
-                    $project->sourceFiles->each(function (Media $media) use ($testCase) {
+                    $testCase->assertCount(2, $project->getSourceFiles());
+                    $project->getSourceFiles()->each(function (Media $media) use ($testCase) {
                         $testCase->assertEquals(Project::SOURCE_FILES_COLLECTION, $media->collection_name);
                         Storage::disk($media->disk)->assertExists($media->getPathRelativeToRoot());
                     });
@@ -154,12 +126,12 @@ class ProjectControllerStoreTest extends TestCase
                 ],
                 function (TestCase $testCase, TestResponse $testResponse, array $sentPayload) {
                     $project = Project::findOrFail($testResponse->json('data.id'));
-                    $testCase->assertCount(2, $project->helpFiles);
+                    $testCase->assertCount(2, $project->getHelpFiles());
                     collect($sentPayload['help_files'])
                         ->zip($sentPayload['help_file_types'])
                         ->eachSpread(function (File $helpFile, string $helpFileType) use ($testCase, $project) {
                             /** @var Media $media */
-                            $media = $project->helpFiles->firstWhere('file_name', $helpFile->getClientOriginalName());
+                            $media = $project->getHelpFiles()->firstWhere('file_name', $helpFile->getClientOriginalName());
                             $testCase->assertModelExists($media);
                             $testCase->assertEquals(Project::HELP_FILES_COLLECTION, $media->collection_name);
                             $testCase->assertEquals(['type' => $helpFileType], $media->custom_properties);
@@ -180,6 +152,8 @@ class ProjectControllerStoreTest extends TestCase
      */
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload, Closure $performExtraAssertions): void
     {
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
         $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
 
         $payload = collect($createValidPayload($actingUser));
@@ -195,7 +169,7 @@ class ProjectControllerStoreTest extends TestCase
         $project = Project::find($response->json('data.id'));
         $this->assertModelExists($project);
 
-        Assertions::assertArrayHasSubsetIgnoringOrder(
+        $this->assertArrayHasSubsetIgnoringOrder(
             [
                 'reference_number' => $payload->get('reference_number'),
                 'institution_id' => $actingUser->institution['id'],
@@ -216,7 +190,7 @@ class ProjectControllerStoreTest extends TestCase
             $project->jsonSerialize()
         );
 
-        Assertions::assertArrayHasSubsetIgnoringOrder(
+        $this->assertArrayHasSubsetIgnoringOrder(
             [
                 'id' => $project->id,
                 'ext_id' => $project->ext_id,
@@ -278,14 +252,14 @@ class ProjectControllerStoreTest extends TestCase
             'manager_institution_user_id from another institution' => [fn () => [
                 ...static::createExampleValidPayload(),
                 'manager_institution_user_id' => InstitutionUser::factory()
-                    ->createWithPrivileges(PrivilegeKey::ReceiveAndManageProject)
+                    ->createWithPrivileges(PrivilegeKey::ReceiveProject)
                     ->id,
             ]],
             'manager_institution_user_id without RECEIVE_PROEJCT privilege' => [fn (InstitutionUser $actingUser) => [
                 ...static::createExampleValidPayload(),
                 'manager_institution_user_id' => InstitutionUser::factory()
                     ->state(['institution' => $actingUser->institution])
-                    ->createWithAllPrivilegesExcept(PrivilegeKey::ReceiveAndManageProject)
+                    ->createWithAllPrivilegesExcept(PrivilegeKey::ReceiveProject)
                     ->id,
             ]],
             'client_institution_user_id from another institution' => [fn () => [
@@ -353,11 +327,11 @@ class ProjectControllerStoreTest extends TestCase
                     ClassifierValue::where('type', ClassifierValueType::FileType)->firstOrFail()->id,
                 ],
             ]],
-            'Project type "ORAL_TRANSLATION" without event_start_at' => [fn () => [
+            'Project type "Suuline tõlge" without event_start_at' => [fn () => [
                 ...static::createExampleValidPayload(),
                 'type_classifier_value_id' => ClassifierValue::where([
                     'type' => ClassifierValueType::ProjectType,
-                    'value' => 'ORAL_TRANSLATION',
+                    'value' => 'S',
                 ])->firstOrFail()->id,
                 'reference_number' => '4321',
                 'comments' => "Project\n\n4321",
@@ -374,7 +348,9 @@ class ProjectControllerStoreTest extends TestCase
      */
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
-        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
 
         $response = $this
             ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
@@ -426,6 +402,8 @@ class ProjectControllerStoreTest extends TestCase
      */
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
         $actingUser = $createActingUser();
 
         $response = $this
@@ -452,7 +430,7 @@ class ProjectControllerStoreTest extends TestCase
         [$sourceLanguage, $destinationLanguage] = $languages;
 
         return [
-            'type_classifier_value_id' => ClassifierValue::where(['type' => ClassifierValueType::ProjectType, 'value' => 'CAT_TRANSLATION'])
+            'type_classifier_value_id' => ClassifierValue::where(['type' => ClassifierValueType::ProjectType])
                 ->firstOrFail()
                 ->id,
             'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)

@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\JobKey;
+use App\Enums\SubProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\SubProjectPriceCalculator;
+use App\Services\Workflows\ProjectWorkflowProcessInstance;
+use App\Services\Workflows\SubProjectWorkflowProcessInstance;
 use ArrayObject;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Models\AuditLoggable;
@@ -37,17 +41,21 @@ use Throwable;
  * @property string|null $project_id
  * @property string|null $file_collection
  * @property string|null $file_collection_final
- * @property string|null $workflow_ref
+ * @property boolean $workflow_started
+ * @property string|null $workflow_instance_ref
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
+ * @property string|null $active_job_definition_id
  * @property ArrayObject|null $cat_metadata
  * @property float|null $price
+ * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Assignment> $assignments
  * @property-read int|null $assignments_count
  * @property-read ClassifierValue|null $destinationLanguageClassifierValue
+ * @property-read JobDefinition|null $activeJobDefinition
  * @property-read Project|null $project
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
  * @property-read Collection<int, Media> $sourceFiles
@@ -99,6 +107,9 @@ class SubProject extends Model implements AuditLoggable
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
         'price' => 'float',
+        'status' => SubProjectStatus::class,
+        'workflow_started' => 'boolean',
+        'deadline_at' => 'datetime'
     ];
 
     public function project(): BelongsTo
@@ -122,6 +133,11 @@ class SubProject extends Model implements AuditLoggable
     public function destinationLanguageClassifierValue(): BelongsTo
     {
         return $this->belongsTo(ClassifierValue::class, 'destination_language_classifier_value_id');
+    }
+
+    public function activeJobDefinition(): BelongsTo
+    {
+        return $this->belongsTo(JobDefinition::class, 'active_job_definition_id');
     }
 
     public function sourceFiles(): HasManyDeep
@@ -178,12 +194,46 @@ class SubProject extends Model implements AuditLoggable
             throw new RuntimeException('Assignments are not populated. Job definitions not found for project type '.$this->project->typeClassifierValue->value);
         }
 
-        $jobDefinitions->each(function (JobDefinition $jobDefinition) {
+        $projectEventStartAt = $this->project->event_start_at;
+        $jobDefinitions->each(function (JobDefinition $jobDefinition) use ($projectEventStartAt) {
             $assignment = new Assignment();
             $assignment->sub_project_id = $this->id;
             $assignment->job_definition_id = $jobDefinition->id;
+            $assignment->deadline_at = $this->deadline_at;
+            $assignment->event_start_at = $projectEventStartAt;
             $assignment->saveOrFail();
         });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function syncFinalFilesWithProject($subProjectFinalFileIds): void
+    {
+        $subProjectFinalFileIds = collect($subProjectFinalFileIds);
+        $subProjectProjectFinalFileIds = $this->finalFiles->filter(function (Media $media) {
+            return $media->copies->contains(fn (Media $copiedMedia) => $copiedMedia->isProjectFinalFile());
+        })->values()->pluck('id');
+
+
+        $toCreate = $subProjectFinalFileIds->diff($subProjectProjectFinalFileIds);
+        $toDelete = $subProjectProjectFinalFileIds->diff($subProjectFinalFileIds);
+
+        if ($toCreate->isNotEmpty()) {
+            $this->finalFiles->filter(fn(Media $media) => $toCreate->contains($media->id))
+                ->each(function (Media $sourceFile) {
+                    $copiedFile = $sourceFile->copy($this->project, Project::FINAL_FILES_COLLECTION);
+                    $sourceFile->copies()->save($copiedFile);
+                });
+        }
+
+        if ($toDelete->isNotEmpty()) {
+            $this->project->getMedia(Project::FINAL_FILES_COLLECTION, function (Media $media) use ($toDelete) {
+                return $media->sources->pluck('id')->intersect($toDelete)->isNotEmpty();
+            })->each(function (Media $media) {
+                $media->delete();
+            });
+        }
     }
 
     public function cat(): CatToolService
@@ -194,6 +244,11 @@ class SubProject extends Model implements AuditLoggable
     public function getPriceCalculator(): PriceCalculator
     {
         return new SubProjectPriceCalculator($this);
+    }
+
+    public function workflow(): SubProjectWorkflowProcessInstance
+    {
+        return new SubProjectWorkflowProcessInstance($this);
     }
 
     /**

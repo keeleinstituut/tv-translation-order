@@ -48,6 +48,10 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'comments', type: 'string', nullable: true),
         new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'corrected_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'accepted_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'cancelled_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'rejected_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'manager_institution_user', ref: InstitutionUserResource::class, nullable: true),
@@ -85,9 +89,13 @@ class ProjectResource extends JsonResource
                 'workflow_template_id',
                 'workflow_instance_ref',
                 'price',
+                'status',
                 'deadline_at',
                 'event_start_at',
-                'status',
+                'corrected_at',
+                'rejected_at',
+                'accepted_at',
+                'cancelled_at',
                 'created_at',
                 'updated_at',
             ),
@@ -98,8 +106,11 @@ class ProjectResource extends JsonResource
             'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
             'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
             'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
+            'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
+            'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
+            'workflow_started' => $this->workflow()->isStarted()
         ];
     }
 }

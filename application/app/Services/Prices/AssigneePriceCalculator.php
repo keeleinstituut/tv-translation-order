@@ -3,16 +3,13 @@
 namespace App\Services\Prices;
 
 use App\Enums\JobKey;
+use App\Enums\VolumeUnits;
 use App\Models\Assignment;
 use App\Models\Price;
 use App\Models\Volume;
 
-readonly class AssigneePriceCalculator implements PriceCalculator
+class AssigneePriceCalculator extends BaseAssignmentPriceCalculator
 {
-    public function __construct(private Assignment $assignment)
-    {
-    }
-
     public function getPrice(): ?float
     {
         /** Overview tasks will not be payable and will be done by translation/project manager */
@@ -20,18 +17,29 @@ readonly class AssigneePriceCalculator implements PriceCalculator
             return 0;
         }
 
-        if (empty($this->assignment->volumes)) {
+        if ($this->hasNoVolume()) {
             return null;
         }
 
-        $prices = $this->assignment->volumes->map(function (Volume $volume) {
-            return $volume->getPriceCalculator()->getPrice();
-        });
+        if ($this->hasOnlyMinFeeUnitVolumes()) {
+            $unitFee = $this->getPriceList()?->getUnitFee(VolumeUnits::MinimalFee);
+            $prices = $this->getVolumes()->map(function (Volume $volume) use ($unitFee) {
+                return $volume->getPriceCalculator()
+                    ->setUnitFee($unitFee)
+                    ->getPrice();
+            });
+        } else {
+            $prices = $this->getVolumesWithoutMinFeeUnit()->map(function (Volume $volume) {
+                return $volume->getPriceCalculator()->getPrice();
+            });
+        }
 
-        if ($prices->search(null) === false) {
-            $priceList = $this->getPriceList();
+        if ($prices->isEmpty()) {
+            return null;
+        }
 
-            return max($prices->sum(), $priceList?->minimal_fee ?: 0);
+        if ($prices->search(null, true) === false) {
+            return $prices->sum();
         }
 
         return null;

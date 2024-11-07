@@ -61,4 +61,12 @@ class ClassifierValue extends Model
     {
         return $this->hasOne(ProjectTypeConfig::class, 'type_classifier_value_id');
     }
+
+    public static function isProjectTypeSupportingEventStartDate($typeClassifierValueId): bool
+    {
+        return ClassifierValue::find($typeClassifierValueId)
+            ?->projectTypeConfig()
+            ?->where('is_start_date_supported', true)
+            ?->exists() ?? false;
+    }
 }

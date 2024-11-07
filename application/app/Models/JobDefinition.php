@@ -18,7 +18,9 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $project_type_config_id
  * @property JobKey $job_key
- * @property string $skill_id
+ * @property string|null $job_name
+ * @property string|null $job_short_name
+ * @property string|null $skill_id
  * @property bool $multi_assignments_enabled
  * @property bool $linking_with_cat_tool_jobs_enabled
  * @property int $sequence
@@ -57,6 +59,8 @@ class JobDefinition extends Model
     protected $fillable = [
         'project_type_config_id',
         'job_key',
+        'job_name',
+        'job_short_name',
         'multi_assignments_enabled',
         'linking_with_cat_tool_jobs_enabled',
         'sequence',

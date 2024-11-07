@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\CandidateStatus;
 use Database\Factories\CandidateFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -16,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $id
  * @property string|null $assignment_id
  * @property string|null $vendor_id
+ * @property string|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Assignment|null $assignment
@@ -40,12 +43,16 @@ class Candidate extends Model
 
     protected $guarded = [];
 
-    public function vendor()
+    protected $casts = [
+        'status' => CandidateStatus::class
+    ];
+
+    public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
     }
 
-    public function assignment()
+    public function assignment(): BelongsTo
     {
         return $this->belongsTo(Assignment::class);
     }

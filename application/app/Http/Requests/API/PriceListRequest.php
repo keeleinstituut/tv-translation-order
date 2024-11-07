@@ -26,7 +26,7 @@ class PriceListRequest extends FormRequest
             'lang_pair.*.src' => 'required|uuid',
             'lang_pair.*.dst' => 'required|uuid',
             'institution_user_name' => 'sometimes|string',
-            'sort_by' => 'sometimes|in:character_fee,word_fee,page_fee,minute_fee,hour_fee,minimal_fee,created_at',
+            'sort_by' => 'sometimes|in:character_fee,word_fee,page_fee,minute_fee,hour_fee,minimal_fee,created_at,lang_pair',
             'sort_order' => 'sometimes|in:asc,desc',
         ];
     }

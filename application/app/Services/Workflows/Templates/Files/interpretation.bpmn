@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1v0z5e8" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.19.0">
+  <bpmn:process id="interpretation-sub-project" name="Suuline tõlge" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_0958wp8</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="Event_15rz1t4">
+      <bpmn:incoming>Flow_0bixlkg</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Activity_034v2tb" name="Interpretations">
+      <bpmn:incoming>Flow_0zmtogc</bpmn:incoming>
+      <bpmn:outgoing>Flow_0bixlkg</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${subProject.translations}" camunda:elementVariable="subProcess" />
+      <bpmn:startEvent id="Event_1s0jxh5">
+        <bpmn:outgoing>Flow_0v4ok8i</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:userTask id="Activity_1778ljf" name="Suuline tõlge" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="sub_project_id">${subProcess.sub_project_id}</camunda:inputParameter>
+            <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
+            <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
+            <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="type_classifier_value_id">${subProcess.type_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="deadline_at">${subProcess.deadline_at}</camunda:inputParameter>
+            <camunda:inputParameter name="task_type">DEFAULT</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_0v4ok8i</bpmn:incoming>
+        <bpmn:outgoing>Flow_0ei8on8</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:endEvent id="Event_1piilxb">
+        <bpmn:incoming>Flow_0ei8on8</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_0v4ok8i" sourceRef="Event_1s0jxh5" targetRef="Activity_1778ljf" />
+      <bpmn:sequenceFlow id="Flow_0ei8on8" sourceRef="Activity_1778ljf" targetRef="Event_1piilxb" />
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="Flow_0bixlkg" sourceRef="Activity_034v2tb" targetRef="Event_15rz1t4" />
+    <bpmn:intermediateCatchEvent id="Event_1kkz1y1" name="Sub-project workflow started">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="sub_project_id">${subProject.sub_project_id}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0958wp8</bpmn:incoming>
+      <bpmn:outgoing>Flow_0zmtogc</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1933e71" messageRef="Message_343hnr7" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_0958wp8" sourceRef="StartEvent_1" targetRef="Event_1kkz1y1" />
+    <bpmn:sequenceFlow id="Flow_0zmtogc" sourceRef="Event_1kkz1y1" targetRef="Activity_034v2tb" />
+  </bpmn:process>
+  <bpmn:message id="Message_343hnr7" name="SubProjectWorkflowStarted" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="interpretation-sub-project">
+      <bpmndi:BPMNShape id="Event_15rz1t4_di" bpmnElement="Event_15rz1t4">
+        <dc:Bounds x="762" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1kkz1y1_di" bpmnElement="Event_1kkz1y1">
+        <dc:Bounds x="252" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="230" y="205" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_034v2tb_di" bpmnElement="Activity_034v2tb" isExpanded="true">
+        <dc:Bounds x="345" y="80" width="350" height="200" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1s0jxh5_di" bpmnElement="Event_1s0jxh5">
+        <dc:Bounds x="385" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1qqrwsn" bpmnElement="Activity_1778ljf">
+        <dc:Bounds x="470" y="140" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1piilxb_di" bpmnElement="Event_1piilxb">
+        <dc:Bounds x="622" y="162" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0v4ok8i_di" bpmnElement="Flow_0v4ok8i">
+        <di:waypoint x="421" y="180" />
+        <di:waypoint x="470" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ei8on8_di" bpmnElement="Flow_0ei8on8">
+        <di:waypoint x="570" y="180" />
+        <di:waypoint x="622" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0bixlkg_di" bpmnElement="Flow_0bixlkg">
+        <di:waypoint x="695" y="180" />
+        <di:waypoint x="762" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0958wp8_di" bpmnElement="Flow_0958wp8">
+        <di:waypoint x="188" y="180" />
+        <di:waypoint x="252" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0zmtogc_di" bpmnElement="Flow_0zmtogc">
+        <di:waypoint x="288" y="180" />
+        <di:waypoint x="345" y="180" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

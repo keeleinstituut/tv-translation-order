@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.4.0
 
 FROM composer:latest as composer
-FROM php:8.2.1-fpm-alpine3.17 as runtime
+FROM php:8.3.0-fpm-alpine3.19 as runtime
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
@@ -44,13 +44,19 @@ RUN echo 'post_max_size = 512M' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'upload_max_filesize = 256M' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'memory_limit = 512M' >> /usr/local/etc/php/conf.d/my-php.ini
 
+RUN ln -s /dev/stdout /var/log/nginx/access.log && \
+    ln -s /dev/stderr /var/log/nginx/error.log
+
 RUN <<EOF cat > /etc/nginx/http.d/default.conf
 server {
     listen 80;
     index index.php index.html;
+    root /var/www/html;
+
     error_log  /var/log/nginx/error.log;
     access_log /var/log/nginx/access.log;
-    root /var/www/html;
+    client_max_body_size 100M;
+
     location ~ \.php\$ {
         try_files \$uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)\$;
@@ -158,11 +164,17 @@ php artisan optimize
 echo "Running migrations"
 php artisan migrate --force
 
+echo "Setup AMQP queues"
+php artisan amqp:setup
+
 echo "Generating OpenAPI document"
 php artisan l5-swagger:generate
 
 echo "Synchronizing entities from external services"
 php artisan sync:all
+
+echo "Deploying BPMN templates to Camunda"
+php artisan workflow:deploy
 
 echo "Start application processes using supervisord..."
 exec "\$@"

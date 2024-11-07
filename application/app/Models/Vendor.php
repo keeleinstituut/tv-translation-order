@@ -37,6 +37,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read InstitutionUser|null $institutionUser
  * @property-read Collection<int, Price> $prices
+ * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $prices_count
  * @property-read Collection<int, Tag> $tags
  * @property-read int|null $tags_count
@@ -109,6 +110,12 @@ class Vendor extends Model implements AuditLoggable
         return $this->hasMany(Price::class);
     }
 
+    public function candidates()
+    {
+        return $this->hasMany(Candidate::class);
+    }
+
+
     public function tags()
     {
         return $this
@@ -129,24 +136,13 @@ class Vendor extends Model implements AuditLoggable
             'discount_percentage_0_49',
         ];
 
-        if (filled($institutionDiscount = $this->institutionUser->institutionDiscount)) {
-            return new VolumeAnalysisDiscount(
-                collect($institutionDiscount->only($discountAttributes))->merge(
-                    collect($this->only($discountAttributes))->filter()
-                )->toArray()
-            );
+        $hasNoDiscounts = collect($this->only($discountAttributes))->filter()->isEmpty();
+
+        if ($hasNoDiscounts && filled($institutionDiscount = $this->institutionUser?->institutionDiscount)) {
+            return new VolumeAnalysisDiscount($institutionDiscount->only($discountAttributes));
         }
 
-        return new VolumeAnalysisDiscount($this->only([
-            'discount_percentage_101',
-            'discount_percentage_repetitions',
-            'discount_percentage_100',
-            'discount_percentage_95_99',
-            'discount_percentage_85_94',
-            'discount_percentage_75_84',
-            'discount_percentage_50_74',
-            'discount_percentage_0_49',
-        ]));
+        return new VolumeAnalysisDiscount($this->only($discountAttributes));
     }
 
     public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, string $skillId = null): ?Price

@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\Vendor;
 use BadMethodCallException;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,7 @@ class VendorPolicy
      */
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Auth::hasPrivilege('VIEW_VENDOR_DB');
+        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value);
     }
 
     /**
@@ -22,7 +23,7 @@ class VendorPolicy
      */
     public function view(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
     {
-        return Auth::hasPrivilege('VIEW_VENDOR_DB');
+        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value);
     }
 
     /**
@@ -30,9 +31,8 @@ class VendorPolicy
      */
     public function create(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
     {
-        return $vendor
-            && $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
-            && Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
+            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
     }
 
     /**
@@ -40,9 +40,8 @@ class VendorPolicy
      */
     public function update(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
     {
-        return $vendor
-            && $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
-            && Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
+            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
     }
 
     /**
@@ -50,9 +49,8 @@ class VendorPolicy
      */
     public function delete(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
     {
-        return $vendor
-            && $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
-            && Auth::hasPrivilege('EDIT_VENDOR_DB');
+        return $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
+            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
     }
 
     /**

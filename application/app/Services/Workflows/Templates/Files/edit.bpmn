@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1n6ucsw" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.19.0">
+  <bpmn:process id="edit-sub-project" name="Toimetamine" isExecutable="true">
+    <bpmn:extensionElements />
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_079s8lr</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="Event_029tdj4" />
+    <bpmn:subProcess id="Activity_0fgke" name="Revision">
+      <bpmn:incoming>Flow_0kvz5bl</bpmn:incoming>
+      <bpmn:outgoing>Flow_0a4vixx</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics camunda:collection="${subProject.revisions}" camunda:elementVariable="subProcess" />
+      <bpmn:startEvent id="Event_0bu4qkb">
+        <bpmn:outgoing>Flow_08qm9no</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:endEvent id="Event_0zb62mi">
+        <bpmn:incoming>Flow_0h7k7n3</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:userTask id="edit" name="Toimetamine välises süsteemis" camunda:assignee="${subProcess.assignee}" camunda:candidateUsers="${subProcess.candidateUsers}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="sub_project_id">${subProcess.sub_project_id}</camunda:inputParameter>
+            <camunda:inputParameter name="institution_id">${subProcess.institution_id}</camunda:inputParameter>
+            <camunda:inputParameter name="assignment_id">${subProcess.assignment_id}</camunda:inputParameter>
+            <camunda:inputParameter name="source_language_classifier_value_id">${subProcess.source_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="destination_language_classifier_value_id">${subProcess.destination_language_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="type_classifier_value_id">${subProcess.type_classifier_value_id}</camunda:inputParameter>
+            <camunda:inputParameter name="deadline_at">${subProcess.deadline_at}</camunda:inputParameter>
+            <camunda:inputParameter name="task_type">DEFAULT</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_08qm9no</bpmn:incoming>
+        <bpmn:outgoing>Flow_0h7k7n3</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:sequenceFlow id="Flow_08qm9no" sourceRef="Event_0bu4qkb" targetRef="edit" />
+      <bpmn:sequenceFlow id="Flow_0h7k7n3" sourceRef="edit" targetRef="Event_0zb62mi" />
+    </bpmn:subProcess>
+    <bpmn:endEvent id="Event_1pl9t2f">
+      <bpmn:incoming>Flow_0a4vixx</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0a4vixx" sourceRef="Activity_0fgke" targetRef="Event_1pl9t2f" />
+    <bpmn:intermediateCatchEvent id="Event_1kkz1y1" name="Sub-project workflow started">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="sub_project_id">${subProject.sub_project_id}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_079s8lr</bpmn:incoming>
+      <bpmn:outgoing>Flow_0kvz5bl</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1933e71" messageRef="Message_343hnr7" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_079s8lr" sourceRef="StartEvent_1" targetRef="Event_1kkz1y1" />
+    <bpmn:sequenceFlow id="Flow_0kvz5bl" sourceRef="Event_1kkz1y1" targetRef="Activity_0fgke" />
+  </bpmn:process>
+  <bpmn:message id="Message_343hnr7" name="SubProjectWorkflowStarted" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="edit-sub-project">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="212" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_029tdj4_di" bpmnElement="Event_029tdj4">
+        <dc:Bounds x="1652" y="212" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1kkz1y1_di" bpmnElement="Event_1kkz1y1">
+        <dc:Bounds x="252" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="230" y="255" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0hu2fjn" bpmnElement="Activity_0fgke" isExpanded="true">
+        <dc:Bounds x="350" y="79" width="400" height="281" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0ry7dwe" bpmnElement="Event_0bu4qkb">
+        <dc:Bounds x="402" y="211" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0hs0u90" bpmnElement="Event_0zb62mi">
+        <dc:Bounds x="682" y="211" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0e9o1o4" bpmnElement="edit">
+        <dc:Bounds x="510" y="189" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_08qm9no_di" bpmnElement="Flow_08qm9no">
+        <di:waypoint x="438" y="229" />
+        <di:waypoint x="510" y="229" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0h7k7n3_di" bpmnElement="Flow_0h7k7n3">
+        <di:waypoint x="610" y="229" />
+        <di:waypoint x="682" y="229" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_1pl9t2f_di" bpmnElement="Event_1pl9t2f">
+        <dc:Bounds x="912" y="212" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0a4vixx_di" bpmnElement="Flow_0a4vixx">
+        <di:waypoint x="750" y="230" />
+        <di:waypoint x="912" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_079s8lr_di" bpmnElement="Flow_079s8lr">
+        <di:waypoint x="188" y="230" />
+        <di:waypoint x="252" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0kvz5bl_di" bpmnElement="Flow_0kvz5bl">
+        <di:waypoint x="288" y="230" />
+        <di:waypoint x="350" y="230" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -8,9 +8,11 @@ use App\Http\Requests\API\CatToolVolumeCreateRequest;
 use App\Http\Requests\API\CatToolVolumeUpdateRequest;
 use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Requests\API\VolumeUpdateRequest;
+use App\Http\Resources\API\AssignmentResource;
 use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
 use App\Models\Volume;
+use App\Observers\VolumeObserver;
 use App\Policies\VolumePolicy;
 use DB;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,7 +50,7 @@ class VolumeController extends Controller
                 }
             );
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
     }
 
@@ -81,7 +83,7 @@ class VolumeController extends Controller
                 }
             );
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
     }
 
@@ -100,7 +102,6 @@ class VolumeController extends Controller
     public function update(VolumeUpdateRequest $request): VolumeResource
     {
         return DB::transaction(function () use ($request) {
-            /** @var Volume $volume */
             $volume = self::getBaseQuery()->with('assignment')->findOrFail($request->route('id'));
             $affectedAssignment = $volume->assignment;
 
@@ -113,7 +114,7 @@ class VolumeController extends Controller
                 }
             );
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
     }
 
@@ -132,7 +133,6 @@ class VolumeController extends Controller
     public function updateCatToolVolume(CatToolVolumeUpdateRequest $request): VolumeResource
     {
         return DB::transaction(function () use ($request) {
-            /** @var Volume $volume */
             $volume = self::getBaseQuery()->with('assignment')->findOrFail($request->route('id'));
             $affectedAssignment = $volume->assignment;
 
@@ -146,8 +146,27 @@ class VolumeController extends Controller
                 }
             );
 
-            return VolumeResource::make($volume);
+            return $this->getEnrichedVolumeResource($volume);
         });
+    }
+
+    /**
+     * After changing/creating of the volume the prices will be changed,
+     * so we will include all related resources into response.
+     *
+     * @param Volume $volume
+     * @return VolumeResource
+     * @see VolumeObserver
+     *
+     */
+    private function getEnrichedVolumeResource(Volume $volume): VolumeResource
+    {
+        $volume->load([
+            'assignment.subProject',
+            'assignment.candidates'
+        ]);
+
+        return VolumeResource::make($volume);
     }
 
     /**
@@ -160,16 +179,15 @@ class VolumeController extends Controller
         parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Volume deleted')]
-    public function destroy(Request $request): \Illuminate\Http\Response
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Updated assignment resource that contains prices', response: Response::HTTP_OK)]
+    public function destroy(Request $request): AssignmentResource
     {
-        DB::transaction(function () use ($request) {
-            /** @var Volume $volume */
-            $volume = self::getBaseQuery()->with('assignment')->findOrFail($request->route('id'));
-            $affectedAssignment = $volume->assignment;
+        $volume = self::getBaseQuery()->findOrFail($request->route('id'));
+        $assignment = $volume->assignment;
 
+        DB::transaction(function () use ($volume, $assignment) {
             $this->auditLogPublisher->publishModifyObjectAfterAction(
-                $affectedAssignment,
+                $assignment,
                 function () use ($volume): void {
                     $this->authorize('delete', $volume);
                     $volume->deleteOrFail();
@@ -177,7 +195,17 @@ class VolumeController extends Controller
             );
         });
 
-        return response()->noContent();
+        if (filled($assignment)) {
+            // This part is needed to update prices on FE side without doing additional fetching of assignments
+            $assignment->refresh();
+            $assignment->load([
+                'subProject.project',
+                'candidates',
+                'volumes'
+            ]);
+        }
+
+        return AssignmentResource::make($assignment);
     }
 
     private static function getBaseQuery(): Builder|Volume

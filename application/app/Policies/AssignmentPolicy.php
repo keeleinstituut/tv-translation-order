@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
+use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
-use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
@@ -50,36 +50,50 @@ class AssignmentPolicy
      */
     public function updateAssigneeComment(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        if (empty($assignment->assigned_vendor_id) || empty($user->institutionUserId)) {
-            return false;
-        }
-
-        return Vendor::where('institution_user_id', $user->institutionUserId)
-            ->where('id', $assignment->assigned_vendor_id)->exists();
+        return $this->isInSameInstitutionAsCurrentUser($assignment) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isAssigned($assignment)
+            );
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, Project $project): bool
+    public function delete(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return false; // TODO
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, Project $project): bool
+    public function restore(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return false; // TODO
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, Project $project): bool
+    public function forceDelete(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return false; // TODO
+        return false;
+    }
+
+    public function markAsCompleted(JwtPayloadUser $user, Assignment $assignment): bool
+    {
+        return $this->isInSameInstitutionAsCurrentUser($assignment) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isAssigned($assignment)
+            );
+    }
+
+    private function isAssigned(Assignment $assignment): bool
+    {
+        return filled($assignment->assigned_vendor_id) &&
+            filled($currentInstitutionUserId = Auth::user()?->institutionUserId) &&
+            filled($vendor = Vendor::where('institution_user_id', $currentInstitutionUserId)->first()) &&
+            $assignment->assigned_vendor_id === $vendor->id;
     }
 
     public static function isInSameInstitutionAsCurrentUser(Assignment $assignment): bool

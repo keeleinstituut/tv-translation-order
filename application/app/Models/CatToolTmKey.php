@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $sub_project_id
  * @property string $key
  * @property bool $is_writable
+ * @property bool $created_as_empty
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
@@ -45,6 +46,7 @@ class CatToolTmKey extends Model
 
     protected $casts = [
         'is_writable' => 'boolean',
+        'created_as_empty' => 'boolean'
     ];
 
     public function subProject(): BelongsTo

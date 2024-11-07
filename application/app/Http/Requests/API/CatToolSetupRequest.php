@@ -28,6 +28,8 @@ use OpenApi\Attributes as OA;
 )]
 class CatToolSetupRequest extends FormRequest
 {
+    const MAX_FILE_SIZE = 5000000; // 5MB
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -60,11 +62,17 @@ class CatToolSetupRequest extends FormRequest
 
                 $validated = $validator->validated();
                 $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())->find($validated['sub_project_id']);
-                $countIntersections = $subProject->sourceFiles->pluck('id')
-                    ->intersect($validated['source_files_ids'])->count();
+                $sourceFiles = $subProject->sourceFiles->filter(
+                    fn(Media $sourceFile) => in_array($sourceFile->id, $validated['source_files_ids'])
+                );
 
-                if ($countIntersections !== count($validated['source_files_ids'])) {
+                if ($sourceFiles->count() !== count($validated['source_files_ids'])) {
                     $validator->errors()->add('source_files_ids', 'Picked source files don\'t belong to specified sub-project');
+                }
+
+                $sourceFilesSize = $sourceFiles->sum(fn (Media $media) => $media->size ?: 0);
+                if ($sourceFilesSize > self::MAX_FILE_SIZE) {
+                    $validator->errors()->add('source_files_ids', 'Max allowed files size is ' . round(self::MAX_FILE_SIZE / 1000000, 2) . 'MB');
                 }
             },
         ];

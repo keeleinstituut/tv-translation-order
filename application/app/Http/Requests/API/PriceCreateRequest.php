@@ -42,6 +42,7 @@ class PriceCreateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $feeRule = 'required|decimal:0,3|between:0,99999999.99';
         return [
             'vendor_id' => [
                 'required',
@@ -64,12 +65,12 @@ class PriceCreateRequest extends FormRequest
                 'different:src_lang_classifier_value_id',
                 Rule::exists(ClassifierValue::class, 'id')->where('type', 'LANGUAGE'),
             ],
-            'character_fee' => 'required|decimal:0,2|between:0,99999999.99',
-            'word_fee' => 'required|decimal:0,2|between:0,99999999.99',
-            'page_fee' => 'required|decimal:0,2|between:0,99999999.99',
-            'minute_fee' => 'required|decimal:0,2|between:0,99999999.99',
-            'hour_fee' => 'required|decimal:0,2|between:0,99999999.99',
-            'minimal_fee' => 'required|decimal:0,2|between:0,99999999.99',
+            'character_fee' => $feeRule,
+            'word_fee' => $feeRule,
+            'page_fee' => $feeRule,
+            'minute_fee' => $feeRule,
+            'hour_fee' => $feeRule,
+            'minimal_fee' => $feeRule,
         ];
     }
 

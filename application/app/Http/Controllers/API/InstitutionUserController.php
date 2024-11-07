@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\PrivilegeKey;
+use App\Helpers\DateUtil;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\InstitutionUserListRequest;
 use App\Http\Resources\API\InstitutionUserResource;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Policies\InstitutionUserPolicy;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
@@ -33,7 +35,7 @@ class InstitutionUserController extends Controller
     {
         $params = collect($request->validated());
 
-        $this->authorize('viewAny', InstitutionUser::class);
+        $this->authorize('viewAny', [InstitutionUser::class, $params->get('project_role')]);
 
         $query = $this->getBaseQuery();
 
@@ -41,9 +43,15 @@ class InstitutionUserController extends Controller
             $query->where(DB::raw("CONCAT(\"user\"->>'forename', ' ', \"user\"->>'surname')"), 'ILIKE', "%$fullName%");
         }
 
+        $query->whereNull('archived_at')->where(
+            fn($groupedClause) => $groupedClause
+                ->whereNull('deactivation_date')
+                ->orWhereDate('deactivation_date', '>', Date::now(DateUtil::TIMEZONE)->format('Y-m-d'))
+        );
+
         if ($projectRole = $params->get('project_role')) {
             $map = collect([
-                'manager' => PrivilegeKey::ReceiveAndManageProject,
+                'manager' => PrivilegeKey::ReceiveProject,
                 'client' => PrivilegeKey::CreateProject,
             ]);
 

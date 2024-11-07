@@ -83,12 +83,12 @@ class Price extends Model
     ];
 
     protected $casts = [
-        'character_fee' => 'float',
-        'word_fee' => 'float',
-        'page_fee' => 'float',
-        'minute_fee' => 'float',
-        'hour_fee' => 'float',
-        'minimal_fee' => 'float',
+        'character_fee' => 'decimal:3',
+        'word_fee' => 'decimal:3',
+        'page_fee' => 'decimal:3',
+        'minute_fee' => 'decimal:3',
+        'hour_fee' => 'decimal:3',
+        'minimal_fee' => 'decimal:3',
     ];
 
     public function vendor()
@@ -120,7 +120,8 @@ class Price extends Model
             VolumeUnits::Words => $this->word_fee,
             VolumeUnits::Pages => $this->page_fee,
             VolumeUnits::Minutes => $this->minute_fee,
-            VolumeUnits::Hours => $this->hour_fee
+            VolumeUnits::Hours => $this->hour_fee,
+            VolumeUnits::MinimalFee => $this->minimal_fee
         };
     }
 }

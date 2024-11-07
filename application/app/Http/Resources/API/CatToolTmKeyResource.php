@@ -17,12 +17,14 @@ use OpenApi\Attributes as OA;
         'sub_project_id',
         'key',
         'is_writable',
+        'created_as_empty'
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'sub_project_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'key', description: 'In case of NecTM the `key` will be uuid of the tag', type: 'string'),
         new OA\Property(property: 'is_writable', type: 'boolean'),
+        new OA\Property(property: 'created_as_empty', type: 'boolean'),
     ],
     type: 'object'
 )]
@@ -41,6 +43,7 @@ class CatToolTmKeyResource extends JsonResource
                 'sub_project_id',
                 'key',
                 'is_writable',
+                'created_as_empty'
             ),
             'sub_project' => $this->whenLoaded('subProject'),
         ];

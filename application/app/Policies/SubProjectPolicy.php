@@ -6,6 +6,8 @@ use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Models\Vendor;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -16,9 +18,9 @@ class SubProjectPolicy
      */
     public function viewAny(JwtPayloadUser $user, bool $onlyPersonalSubProjectsRequested): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value)
-            || $onlyPersonalSubProjectsRequested
-            && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
+            ($onlyPersonalSubProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value));
     }
 
     /**
@@ -28,7 +30,8 @@ class SubProjectPolicy
      */
     public function viewAnyByTmKey(JwtPayloadUser $user)
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value);
+        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value);
     }
 
     /**
@@ -57,7 +60,7 @@ class SubProjectPolicy
      */
     public function update(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return true;
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
     /**
@@ -79,14 +82,29 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilegeOrAssigned($subProject);
     }
 
+    public function downloadMedia(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject) || $this->currentUserIsClient($subProject);
+    }
+
     public function editSourceFiles(JwtPayloadUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($subProject);
     }
 
-    public function editFinalFiles(JwtPayloadUser $user, SubProject $subProject): bool
+    public function editFinalFiles(JwtPayloadUser $user, SubProject $subProject, ?string $assignmentId = null): bool
     {
-        return $this->hasManageProjectPrivilegeOrAssigned($subProject);
+        return $this->hasManageProjectPrivilegeOrAssigned($subProject, $assignmentId);
+    }
+
+    public function startWorkflow(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilege($subProject);
+    }
+
+    public function markFilesAsProjectFinalFiles(JwtPayloadUser $user, SubProject $subProject): bool
+    {
+        return $this->hasManageProjectPrivilege($subProject);
     }
 
     private function hasManageProjectPrivilege(SubProject $subProject): bool
@@ -102,14 +120,38 @@ class SubProjectPolicy
         return false;
     }
 
-    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject): bool
+    private function hasManageProjectPrivilegeOrAssigned(SubProject $subProject, ?string $assignmentId = null): bool
     {
         if ($this->hasManageProjectPrivilege($subProject)) {
             return true;
         }
 
-        return Assignment::where('assigned_vendor_id', Auth::user()->institutionUserId)
-            ->where('sub_project_id', $subProject->id)->exists();
+        if (empty(Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->first();
+
+        if (empty($vendor)) {
+            return false;
+        }
+
+        return Assignment::where('assigned_vendor_id', $vendor->id)
+            ->where('sub_project_id', $subProject->id)
+            ->when(filled($assignmentId), fn (Builder $query) => $query->where('id', $assignmentId))
+            ->exists();
+    }
+
+
+    private function currentUserIsClient(SubProject $subProject): bool
+    {
+        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        return $subProject->project->client_institution_user_id === $institutionUserId;
     }
 
     private function isInSameInstitutionAsCurrentUser(SubProject $subProject): bool
@@ -120,7 +162,7 @@ class SubProjectPolicy
 
         return filled($currentInstitutionId = Auth::user()?->institutionId)
             && $currentInstitutionId === $subProject->project->institution_id &&
-            filled($currentInstitutionId = Auth::user()?->institutionUserId);
+            filled(Auth::user()?->institutionUserId);
     }
 
     // Should serve as an query enhancement to Eloquent queries

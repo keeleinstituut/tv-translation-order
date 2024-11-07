@@ -13,7 +13,7 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
     {
         $obj = $this->getBaseModel()->withTrashed()->find($resource['id']);
 
-        if (! $obj) {
+        if (!$obj) {
             $obj = $this->getBaseModel();
             $obj->id = $resource['id'];
         }
@@ -50,7 +50,28 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
                 'name',
                 'institution_id',
                 'privileges',
-            ]);
+        ]);
+
+        $vacations = array_merge(
+            $this->getNestedResourceAsJson(
+                $resource, 'vacations.institution_user_vacations', [
+                'id',
+                'start_date',
+                'end_date'
+            ]),
+            $this->getNestedResourceAsJson(
+                $resource, 'vacations.institution_vacations', [
+                'id',
+                'start_date',
+                'end_date'
+            ]),
+        );
+
+        if (filled($vacations)) {
+            usort($vacations, fn($v1, $v2) => $v1['start_date'] <=> $v2['start_date']);
+        }
+
+        $obj->vacations = $vacations;
         $obj->deleted_at = $resource['deleted_at'];
         $obj->synced_at = Carbon::now();
 
@@ -59,8 +80,9 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
 
     public function delete(string $id): void
     {
-        $obj = $this->getBaseModel()->find($id);
-        $obj->delete();
+        if ($obj = $this->getBaseModel()->find($id)) {
+            $obj->delete();
+        }
     }
 
     public function deleteNotSynced(): void
@@ -81,16 +103,16 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
 
     private function getNestedResourceAsJson(array $resource, string $key, array $attributes): array
     {
-        if (empty($resource[$key])) {
+        if (empty($data = data_get($resource, $key))) {
             return [];
         }
 
-        if (Arr::isAssoc($resource[$key])) {
-            return Arr::only($resource[$key], $attributes);
+        if (Arr::isAssoc($data)) {
+            return Arr::only($data, $attributes);
         }
 
-        return collect($resource[$key])->each(
-            fn ($subResource) => Arr::only($subResource, $attributes)
+        return collect($data)->map(
+            fn($subResource) => Arr::only($subResource, $attributes)
         )->toArray();
     }
 }

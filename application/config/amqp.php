@@ -33,6 +33,10 @@ return [
                 'exchange' => env('AUDIT_LOG_EVENTS_EXCHANGE'),
                 'type' => 'topic',
             ],
+            [
+                'exchange' => env('EMAIL_NOTIFICATION_EXCHANGE'),
+                'type' => 'topic',
+            ],
         ],
     ],
 
@@ -83,5 +87,14 @@ return [
     'audit_logs' => [
         'exchange' => env('AUDIT_LOG_EVENTS_EXCHANGE'),
         'trace_id_http_header' => env('AUDIT_LOG_TRACE_ID_HTTP_HEADER'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications AMQP properties (remove if not needed)
+    |--------------------------------------------------------------------------
+    */
+    'notifications' => [
+        'email_notification_exchange' => env('EMAIL_NOTIFICATION_EXCHANGE'),
     ],
 ];

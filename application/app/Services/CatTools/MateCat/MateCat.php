@@ -2,9 +2,9 @@
 
 namespace App\Services\CatTools\MateCat;
 
-use App\Jobs\TrackMateCatProjectAnalyzingStatus;
-use App\Jobs\TrackMateCatProjectCreationStatus;
-use App\Jobs\TrackMateCatProjectProgress;
+use App\Jobs\CatTool\TrackMateCatProjectAnalyzingStatus;
+use App\Jobs\CatTool\TrackMateCatProjectCreationStatus;
+use App\Jobs\CatTool\TrackMateCatProjectProgress;
 use App\Models\CatToolTmKey;
 use App\Models\Media;
 use App\Models\SubProject;
@@ -68,24 +68,22 @@ readonly class MateCat implements CatToolService
             throw new InvalidArgumentException('Incorrect files IDs');
         }
 
-        // TODO: enable validation when FE part will be done
-
-        //        if (empty($this->subProject->catToolTmKeys)) {
-        //            throw new InvalidArgumentException('Project should have at least one TM key');
-        //        }
-        //
-        //        if ($this->subProject->catToolTmKeys->count() > 10) {
-        //            throw new InvalidArgumentException('Project should have not more than 10 TM keys');
-        //        }
-        //
-        //        $writableTmsCount = $this->subProject->catToolTmKeys->where('is_writable', true)->count();
-        //        if ($writableTmsCount > 2) {
-        //            throw new InvalidArgumentException('Not more than two translation memories can be writable');
-        //        }
-        //
-        //        if ($writableTmsCount === 0) {
-        //            throw new InvalidArgumentException('At least one TM should be writable');
-        //        }
+//        if (empty($this->subProject->catToolTmKeys)) {
+//            throw new InvalidArgumentException('Project should have at least one TM key');
+//        }
+//
+//        if ($this->subProject->catToolTmKeys->count() > 10) {
+//            throw new InvalidArgumentException('Project should have not more than 10 TM keys');
+//        }
+//
+//        $writableTmsCount = $this->subProject->catToolTmKeys->where('is_writable', true)->count();
+//        if ($writableTmsCount > 2) {
+//            throw new InvalidArgumentException('Not more than two translation memories can be writable');
+//        }
+//
+//        if ($writableTmsCount === 0) {
+//            throw new InvalidArgumentException('At least one TM should be writable');
+//        }
 
         try {
             $params = [
@@ -95,6 +93,9 @@ readonly class MateCat implements CatToolService
                 'tm_keys' => collect($this->subProject->catToolTmKeys)
                     ->map(ExternalTmKeyComposer::compose(...))
                     ->toArray(),
+                'metadata' => [
+                    'tv_domain' => $this->subProject->project?->translationDomainClassifierValue?->value
+                ]
             ];
 
             if (! $this->storage->hasMTEnabled()) {
@@ -295,6 +296,10 @@ readonly class MateCat implements CatToolService
             $this->storage->getProjectPassword()
         );
 
+        if (! isset($response['status'])) {
+            throw new UnexpectedResponseFormatException('Unexpected project creation status response format');
+        }
+
         $this->storage->storeProjectCreationStatus($response);
 
         if ($response['status'] === 200) {
@@ -318,6 +323,10 @@ readonly class MateCat implements CatToolService
             );
         } catch (RequestException $e) {
             throw new CatToolRetrievingException('Retrieving of CAT analysis status failed.', previous: $e);
+        }
+
+        if (! isset($response['status'])) {
+            throw new UnexpectedResponseFormatException('Unexpected project creation status response format');
         }
 
         $this->storage->storeAnalyzingResults($response);

@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum PrivilegeKey: string
 {
+
     case AddRole = 'ADD_ROLE';
     case ViewRole = 'VIEW_ROLE';
     case EditRole = 'EDIT_ROLE';
@@ -33,10 +34,11 @@ enum PrivilegeKey: string
     case ViewInstitutionPriceRate = 'VIEW_INSTITUTION_PRICE_RATE';
     case CreateProject = 'CREATE_PROJECT';
     case ManageProject = 'MANAGE_PROJECT';
-    case ReceiveAndManageProject = 'RECEIVE_AND_MANAGE_PROJECT';
+    case ReceiveProject = 'RECEIVE_PROJECT';
     case ViewPersonalProject = 'VIEW_PERSONAL_PROJECT';
     case ViewInstitutionProjectList = 'VIEW_INSTITUTION_PROJECT_LIST';
     case ViewInstitutionProjectDetail = 'VIEW_INSTITUTION_PROJECT_DETAIL';
+    case ViewInstitutionUnclaimedProjectDetail = 'VIEW_INSTITUTION_UNCLAIMED_PROJECT_DETAIL';
     case ChangeClient = 'CHANGE_CLIENT';
     case ImportTranslationMemory = 'IMPORT_TM';
     case CreateTranslationMemory = 'CREATE_TM';
@@ -45,6 +47,9 @@ enum PrivilegeKey: string
     case EditTranslationMemory = 'EDIT_TM';
     case DeleteTranslationMemory = 'DELETE_TM';
     case ViewTranslationMemory = 'VIEW_TM';
+    case ViewAuditLog = 'VIEW_AUDIT_LOG';
+    case ExportAuditLog = 'EXPORT_AUDIT_LOG';
+    case ExportInstitutionGeneralReport = 'EXPORT_INSTITUTION_GENERAL_REPORT';
 
     public static function values(): array
     {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AssignmentStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -26,12 +27,16 @@ use Illuminate\Support\Carbon;
  * @property string|null $job_definition_id
  * @property string|null $assigned_vendor_id
  * @property string|null $ext_id
- * @property string|null $deadline_at
+ * @property AssignmentStatus $status
+ * @property float|null $price
+ * @property Carbon|null $deadline_at
  * @property string|null $comments
  * @property string|null $assignee_comments
  * @property string|null $feature
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $event_start_at
+ * @property Carbon|null $completed_at
  * @property-read Vendor|null $assignee
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
@@ -55,19 +60,22 @@ use Illuminate\Support\Carbon;
  * @method static Builder|Assignment whereSubProjectId($value)
  * @method static Builder|Assignment whereUpdatedAt($value)
  *
- * @property-read int|null $cat_tool_jobs_count
- *
- * @method static Builder|Assignment whereExtId($value)
- * @method static Builder|Assignment whereJobDefinitionId($value)
- *
  * @mixin Eloquent
  */
 class Assignment extends Model implements AuditLoggable
 {
-    use HasFactory;
     use HasUuids;
+    use HasFactory;
 
     protected $guarded = [];
+
+    protected $casts = [
+        'status' => AssignmentStatus::class,
+        'deadline_at' => 'datetime',
+        'event_start_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'price' => 'float',
+    ];
 
     public function subProject(): BelongsTo
     {
@@ -129,5 +137,12 @@ class Assignment extends Model implements AuditLoggable
     public function getAuditLogObjectType(): AuditLogEventObjectType
     {
         return AuditLogEventObjectType::Assignment;
+    }
+
+    public function getSameJobDefinitionAssignmentsQuery(): Builder
+    {
+        return Assignment::where('job_definition_id', $this->job_definition_id)
+            ->where('sub_project_id', $this->sub_project_id)
+            ->whereNot('id', $this->id);
     }
 }

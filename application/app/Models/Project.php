@@ -8,7 +8,7 @@ use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\ProjectPriceCalculator;
-use App\Services\WorkflowProcessInstanceService;
+use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\ProjectFactory;
@@ -20,12 +20,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Collections\MediaCollection;
+use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
+use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 use Throwable;
 
 /**
@@ -41,13 +45,21 @@ use Throwable;
  * @property string|null $workflow_instance_ref
  * @property float|null $price
  * @property Carbon|null $deadline_at
+ * @property Carbon|null $deadline_notification_sent_at
+ * @property Carbon|null $cancelled_at
+ * @property Carbon|null $accepted_at
+ * @property Carbon|null $corrected_at
+ * @property Carbon|null $rejected_at
  * @property Carbon|null $created_at
+ * @property Carbon|null $submitted_to_client_review_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
  * @property Carbon|null $deleted_at
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
  * @property string|null $translation_domain_classifier_value_id
+ * @property string|null $cancellation_comment
+ * @property string|null $cancellation_reason
  * @property ProjectStatus $status
  * @property-read Institution|null $institution
  * @property-read MediaCollection<int, Media> $media
@@ -61,6 +73,13 @@ use Throwable;
  * @property-read int|null $tags_count
  * @property-read ClassifierValue|null $typeClassifierValue
  * @property-read ClassifierValue|null $translationDomainClassifierValue
+ * @property-read ClassifierValue|null $sourceLanguageClassifierValue
+ * @property-read Collection<int, ClassifierValue> $destinationLanguageClassifierValues
+ * @property-read Collection<int, Vendor> $assignees
+ * @property-read Collection<int, Assignment> $assignments
+ * @property-read Collection<int, Volume> $volumes
+ * @property-read Collection<int, Candidate> $candidates
+ * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  * @property-read InstitutionUser|null $clientInstitutionUser
  * @property-read InstitutionUser|null $managerInstitutionUser
  *
@@ -90,7 +109,6 @@ use Throwable;
  * @method static Builder|Project withTrashed()
  * @method static Builder|Project withoutTrashed()
  * @method static Builder|Project hasAnyOfLanguageDirections(array[] $languageDirections)
- * @method static \Illuminate\Database\Eloquent\Builder|Project wherePrice($value)
  *
  * @mixin Eloquent
  */
@@ -99,6 +117,7 @@ class Project extends Model implements AuditLoggable, HasMedia
     use HasFactory;
     use HasUuids;
     use InteractsWithMedia;
+    use HasRelationships;
     use SoftDeletes;
 
     protected $table = 'projects';
@@ -111,6 +130,8 @@ class Project extends Model implements AuditLoggable, HasMedia
 
     public const INTERMEDIATE_FILES_COLLECTION_PREFIX = 'intermediate';
 
+    public const REVIEW_FILES_COLLECTION_PREFIX = 'review';
+
     public const HELP_FILE_TYPES = [
         'STYLE_GUIDE',
         'TERM_BASE',
@@ -122,6 +143,12 @@ class Project extends Model implements AuditLoggable, HasMedia
     protected $casts = [
         'event_start_at' => 'datetime',
         'deadline_at' => 'datetime',
+        'deadline_notification_sent_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'corrected_at' => 'datetime',
+        'accepted_at' => 'datetime',
+        'submitted_to_client_review_at' => 'datetime',
         'price' => 'float',
         'status' => ProjectStatus::class,
     ];
@@ -152,6 +179,62 @@ class Project extends Model implements AuditLoggable, HasMedia
         return $this->hasMany(SubProject::class);
     }
 
+    public function sourceLanguageClassifierValue(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->subProjects()->one(),
+            (new SubProject())->sourceLanguageClassifierValue()
+        );
+    }
+
+    public function destinationLanguageClassifierValues(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->destinationLanguageClassifierValue()
+        );
+    }
+
+    public function assignments(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->assignments(),
+        );
+    }
+
+    public function candidates(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->candidates(),
+        );
+    }
+
+    public function volumes(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->volumes(),
+        );
+    }
+
+    public function assignees(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->assignee()
+        );
+    }
+
+    public function catToolTmKeys(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->subProjects(),
+            (new SubProject())->catToolTmKeys()
+        );
+    }
+
     public function sourceFiles()
     {
         return $this->media()->where('collection_name', self::SOURCE_FILES_COLLECTION);
@@ -165,6 +248,11 @@ class Project extends Model implements AuditLoggable, HasMedia
     public function finalFiles()
     {
         return $this->media()->where('collection_name', self::FINAL_FILES_COLLECTION);
+    }
+
+    public function reviewFiles()
+    {
+        return $this->media()->where('collection_name', 'like', self::REVIEW_FILES_COLLECTION_PREFIX . '%');
     }
 
     public function managerInstitutionUser(): BelongsTo
@@ -182,13 +270,18 @@ class Project extends Model implements AuditLoggable, HasMedia
         return $this->morphToMany(Tag::class, 'taggable')->using(Taggable::class);
     }
 
-    public function workflow(): WorkflowProcessInstanceService
+    public function reviewRejections(): HasMany
     {
-        return new WorkflowProcessInstanceService($this);
+        return $this->hasMany(ProjectReviewRejection::class);
+    }
+
+    public function workflow(): ProjectWorkflowProcessInstance
+    {
+        return new ProjectWorkflowProcessInstance($this);
     }
 
     /** @throws Throwable */
-    public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages, $reinitialize = false): void
+    public function initSubProjects(ClassifierValue $sourceLanguage, \Illuminate\Support\Collection $destinationLanguages, $reinitialize = false): array
     {
         $makeSubProject = function ($destinationLanguage) use ($sourceLanguage) {
             $subProject = new SubProject();
@@ -197,6 +290,7 @@ class Project extends Model implements AuditLoggable, HasMedia
             $subProject->file_collection_final = self::FINAL_FILES_COLLECTION."/$sourceLanguage->value/$destinationLanguage->value";
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
+            $subProject->deadline_at = $this->deadline_at;
 
             return $subProject;
         };
@@ -229,12 +323,16 @@ class Project extends Model implements AuditLoggable, HasMedia
         collect($toCreate)->each(function (SubProject $subProject) {
             $subProject->saveOrFail();
 
-            $this->getMedia('source')->each(function ($sourceFile) use ($subProject) {
-                $sourceFile->copy($this, $subProject->file_collection);
+            $this->getMedia(Project::SOURCE_FILES_COLLECTION)->each(function ($sourceFile) use ($subProject) {
+                /** @var Media $sourceFile */
+                $copiedFile = $sourceFile->copy($this, $subProject->file_collection);
+                $sourceFile->copies()->save($copiedFile);
             });
 
             $subProject->initAssignments();
         });
+
+        return [$toCreate->count(), $toDelete->count()];
     }
 
     /**

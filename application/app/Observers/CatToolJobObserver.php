@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Assignment;
 use App\Models\CatToolJob;
 use App\Models\Volume;
+use Throwable;
 
 class CatToolJobObserver
 {
@@ -13,10 +14,18 @@ class CatToolJobObserver
      */
     public function created(CatToolJob $catToolJob): void
     {
+        $processedJobKeys = collect();
+        $catToolJob->subProject?->assignments()->orderBy('created_at')->each(function (Assignment $assignment) use ($catToolJob, $processedJobKeys) {
+            if (filled($assignment->jobDefinition) && $assignment->jobDefinition->linking_with_cat_tool_jobs_enabled && !$processedJobKeys->contains($assignment->jobDefinition->job_key)) {
+                $processedJobKeys->add($assignment->jobDefinition->job_key);
+                $assignment->catToolJobs()->attach($catToolJob);
+            }
+        });
     }
 
     /**
      * Handle the CatToolJob "updated" event.
+     * @throws Throwable
      */
     public function updated(CatToolJob $catToolJob): void
     {
@@ -30,15 +39,20 @@ class CatToolJobObserver
                     $volume->custom_volume_analysis = null;
                     $volume->save();
                 }));
+
+                $assignment->price = $assignment->getPriceCalculator()->getPrice();
+                $assignment->saveOrFail();
             });
 
-            $subProject = $catToolJob->subProject;
-            $subProject->price = $subProject->getPriceCalculator()->getPrice();
-            $subProject->save();
+            if (filled($subProject = $catToolJob->subProject)) {
+                $subProject->price = $subProject->getPriceCalculator()->getPrice();
+                $subProject->saveOrFail();
+            }
 
-            $project = $subProject->project;
-            $project->price = $project->getPriceCalculator()->getPrice();
-            $project->save();
+            if (filled($project = $subProject?->project)) {
+                $project->price = $project->getPriceCalculator()->getPrice();
+                $project->saveOrFail();
+            }
         }
     }
 
