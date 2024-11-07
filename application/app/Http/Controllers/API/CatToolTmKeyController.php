@@ -17,6 +17,7 @@ use App\Policies\CatToolTmKeyPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
+use AuditLogClient\Services\AuditLogPublisher;
 use Auth;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,8 +32,9 @@ use Throwable;
 
 class CatToolTmKeyController extends Controller
 {
-    public function __construct(private readonly TvTranslationMemoryApiClient $apiClient)
+    public function __construct(private readonly TvTranslationMemoryApiClient $apiClient, AuditLogPublisher $auditLogPublisher)
     {
+        parent::__construct($auditLogPublisher);
     }
 
     /**

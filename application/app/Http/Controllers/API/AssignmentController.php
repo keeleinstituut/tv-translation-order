@@ -29,6 +29,7 @@ use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
 use App\Services\Workflows\WorkflowService;
+use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -44,8 +45,9 @@ use Throwable;
 
 class AssignmentController extends Controller
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    public function __construct(private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
     {
+        parent::__construct($auditLogPublisher);
     }
 
     /**

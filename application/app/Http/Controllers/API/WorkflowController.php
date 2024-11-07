@@ -30,6 +30,7 @@ use App\Policies\VendorPolicy;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
+use AuditLogClient\Services\AuditLogPublisher;
 use Auth;
 use BadMethodCallException;
 use DB;
@@ -55,8 +56,9 @@ use Throwable;
 class WorkflowController extends Controller
 {
 
-    public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient, private readonly NotificationPublisher $notificationPublisher)
+    public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient, private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
     {
+        parent::__construct($auditLogPublisher);
     }
 
     /**
