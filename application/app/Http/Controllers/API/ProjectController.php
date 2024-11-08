@@ -20,6 +20,7 @@ use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Volume;
 use App\Policies\ProjectPolicy;
+use AuditLogClient\Services\AuditLogMessageBuilder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -428,7 +429,7 @@ class ProjectController extends Controller
             schema: new OA\Schema(type: 'string')
         )
     )]
-    public function exportCsv(ProjectsExportRequest $request): StreamedResponse
+    public function exportCsv(ProjectsExportRequest $request)
     {
         $this->authorize('export', Project::class);
 
@@ -463,6 +464,8 @@ class ProjectController extends Controller
             'Tellimuse sildid',
         ]);
 
+        $params = collect($request->validated());
+
         Project::withGlobalScope('policy', ProjectPolicy::scope())->with([
             'typeClassifierValue',
             'managerInstitutionUser',
@@ -475,13 +478,13 @@ class ProjectController extends Controller
             'catToolTmKeys',
             'volumes'
         ])->when(
-            $request->validated('status'),
+            $params->get('status'),
             fn(Builder $query, $statuses) => $query->whereIn('status', $statuses)
         )->when(
-            $request->validated('date_from'),
+            $params->get('date_from'),
             fn(Builder $query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate)
         )->when(
-            $request->validated('date_to'),
+            $params->get('date_to'),
             fn(Builder $query, $toDate) => $query->whereDate('created_at', '<=', $toDate)
         )->lazy()->each(function (Project $project) use ($csvDocument) {
             $project->assignments->each(function (Assignment $assignment) use ($csvDocument, $project) {
@@ -517,6 +520,14 @@ class ProjectController extends Controller
         });
 
         // TODO: add auditlogs
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()
+                ->toExportProjectsReportEvent(
+                    $params->get('date_from'),
+                    $params->get('date_to'),
+                    $params->get('status'),
+                )
+        );
 
         return response()->streamDownload(
             $csvDocument->output(...),
