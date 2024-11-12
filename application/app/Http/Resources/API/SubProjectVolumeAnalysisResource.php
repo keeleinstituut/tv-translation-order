@@ -17,7 +17,7 @@ use OpenApi\Attributes as OA;
     required: [
         'cat_jobs',
         'cat_files',
-        'analyzing_status'
+        'analyzing_status',
     ],
     properties: [
         new OA\Property(property: 'analyzing_status', type: 'string', enum: CatToolAnalyzingStatus::class),

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\AssignmentStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\AssignmentFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,7 +62,7 @@ use Illuminate\Support\Carbon;
  *
  * @mixin Eloquent
  */
-class Assignment extends Model
+class Assignment extends Model implements AuditLoggable
 {
     use HasUuids;
     use HasFactory;
@@ -109,6 +111,32 @@ class Assignment extends Model
     public function getPriceCalculator(): PriceCalculator
     {
         return new AssigneePriceCalculator($this);
+    }
+
+    public function getIdentitySubset(): array
+    {
+        return $this->only(['id', 'ext_id']);
+    }
+
+    public function getAuditLogRepresentation(): array
+    {
+        return $this->withoutRelations()
+            ->refresh()
+            ->load([
+                'assignee',
+                'candidates',
+                'subProject',
+                'jobDefinition',
+                'volumes',
+                'volumes.catToolJob',
+                'catToolJobs',
+            ])
+            ->toArray();
+    }
+
+    public function getAuditLogObjectType(): AuditLogEventObjectType
+    {
+        return AuditLogEventObjectType::Assignment;
     }
 
     public function getSameJobDefinitionAssignmentsQuery(): Builder

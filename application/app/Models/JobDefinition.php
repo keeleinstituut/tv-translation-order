@@ -27,7 +27,6 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
- *
  * @property ProjectTypeConfig $projectTypeConfig
  *
  * @method static Builder|JobDefinition newModelQuery()
@@ -41,6 +40,11 @@ use Illuminate\Support\Carbon;
  * @method static Builder|JobDefinition whereCreatedAt($value)
  * @method static Builder|JobDefinition whereDeletedAt($value)
  * @method static Builder|JobDefinition whereUpdatedAt($value)
+ * @method static Builder|JobDefinition onlyTrashed()
+ * @method static Builder|JobDefinition whereLinkingWithCatToolJobsEnabled($value)
+ * @method static Builder|JobDefinition whereSequence($value)
+ * @method static Builder|JobDefinition withTrashed()
+ * @method static Builder|JobDefinition withoutTrashed()
  *
  * @mixin Eloquent
  */
@@ -49,7 +53,7 @@ class JobDefinition extends Model
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $casts = [
-        'job_key' => JobKey::class
+        'job_key' => JobKey::class,
     ];
 
     protected $fillable = [

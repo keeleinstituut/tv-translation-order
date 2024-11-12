@@ -12,6 +12,8 @@ use App\Services\Prices\SubProjectPriceCalculator;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\SubProjectWorkflowProcessInstance;
 use ArrayObject;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\SubProjectFactory;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
@@ -80,13 +82,24 @@ use Throwable;
  * @method static Builder|SubProject whereWorkflowRef($value)
  * @method static Builder|SubProject hasAnyOfLanguageDirections(array[] $languageDirections)
  *
+ * @property Carbon|null $deleted_at
+ * @property-read int|null $cat_tool_jobs_count
+ * @property-read int|null $cat_tool_tm_keys_count
+ *
+ * @method static Builder|SubProject onlyTrashed()
+ * @method static Builder|SubProject whereDeadlineAt($value)
+ * @method static Builder|SubProject whereDeletedAt($value)
+ * @method static Builder|SubProject wherePrice($value)
+ * @method static Builder|SubProject withTrashed()
+ * @method static Builder|SubProject withoutTrashed()
+ *
  * @mixin Eloquent
  */
-class SubProject extends Model
+class SubProject extends Model implements AuditLoggable
 {
     use HasFactory;
-    use HasUuids;
     use HasRelationships;
+    use HasUuids;
     use SoftDeletes;
 
     protected $guarded = [];
@@ -178,7 +191,7 @@ class SubProject extends Model
         $jobDefinitions = $this->project->typeClassifierValue->projectTypeConfig->jobDefinitions;
 
         if (empty($jobDefinitions)) {
-            throw new RuntimeException("Assignments are not populated. Job definitions not found for project type " . $this->project->typeClassifierValue->value);
+            throw new RuntimeException('Assignments are not populated. Job definitions not found for project type '.$this->project->typeClassifierValue->value);
         }
 
         $projectEventStartAt = $this->project->event_start_at;
@@ -241,7 +254,7 @@ class SubProject extends Model
     /**
      * @noinspection PhpUnused
      *
-     * @param array<array{string, string}> $languageDirections
+     * @param  array<array{string, string}>  $languageDirections
      */
     public function scopeHasAnyOfLanguageDirections(Builder $builder, array $languageDirections): void
     {
@@ -254,5 +267,32 @@ class SubProject extends Model
                     ]);
                 });
         });
+    }
+
+    public function getIdentitySubset(): array
+    {
+        return $this->only(['id', 'ext_id']);
+    }
+
+    public function getAuditLogRepresentation(): array
+    {
+        return $this->withoutRelations()
+            ->refresh()
+            ->load([
+                'project',
+                'destinationLanguageClassifierValue',
+                'sourceLanguageClassifierValue',
+                'sourceFiles',
+                'finalFiles',
+                'catToolJobs',
+                'catToolTmKeys',
+                'translationDomainClassifierValue',
+            ])
+            ->toArray();
+    }
+
+    public function getAuditLogObjectType(): AuditLogEventObjectType
+    {
+        return AuditLogEventObjectType::Subproject;
     }
 }

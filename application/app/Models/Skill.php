@@ -29,8 +29,8 @@ use Illuminate\Support\Carbon;
  */
 class Skill extends Model
 {
-    use HasUuids;
     use HasFactory;
+    use HasUuids;
 
     protected $connection = 'pgsql_app';
 

@@ -149,28 +149,32 @@ class VendorController extends Controller
         $this->authorize('update', $vendor);
 
         return DB::transaction(function () use ($vendor, $params) {
-            // Collect certain keys from input params, filter null values
-            // and fill model with result from filter
-            tap(collect($params)->only([
-                'comment',
-                'company_name',
-                'discount_percentage_101',
-                'discount_percentage_repetitions',
-                'discount_percentage_100',
-                'discount_percentage_95_99',
-                'discount_percentage_85_94',
-                'discount_percentage_75_84',
-                'discount_percentage_50_74',
-                'discount_percentage_0_49',
-            ])->filter(fn($value) => ! is_null($value))->toArray(), $vendor->fill(...));
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $vendor,
+                function () use ($vendor, $params) {
+                    // and fill model with result from filter
+                    tap(collect($params)->only([
+                        'comment',
+                        'company_name',
+                        'discount_percentage_101',
+                        'discount_percentage_repetitions',
+                        'discount_percentage_100',
+                        'discount_percentage_95_99',
+                        'discount_percentage_85_94',
+                        'discount_percentage_75_84',
+                        'discount_percentage_50_74',
+                        'discount_percentage_0_49',
+                    ])->filter(fn($value) => ! is_null($value))->toArray(), $vendor->fill(...));
 
-            $vendor->save();
+                    $vendor->saveOrFail();
 
-            $tagsInput = $params->get('tags');
-            if (is_array($tagsInput)) {
-                $vendor->tags()->detach();
-                $vendor->tags()->attach($tagsInput);
-            }
+                    $tagsInput = $params->get('tags');
+                    if (is_array($tagsInput)) {
+                        $vendor->tags()->detach();
+                        $vendor->tags()->attach($tagsInput);
+                    }
+                }
+            );
 
             $vendor->load('institutionUser.institutionDiscount', 'tags');
 
@@ -224,7 +228,8 @@ class VendorController extends Controller
                 $vendor->fill($input);
                 $this->authorize('create', $vendor);
 
-                $vendor->save();
+                $vendor->saveOrFail();
+                $this->auditLogPublisher->publishCreateObject($vendor);
 
                 return $vendor;
             });
@@ -259,7 +264,8 @@ class VendorController extends Controller
 
             $data->each(function ($vendor) {
                 $this->authorize('delete', $vendor);
-                $vendor->delete();
+                $vendor->deleteOrFail();
+                $this->auditLogPublisher->publishRemoveObject($vendor);
             });
 
             return VendorResource::collection($data);

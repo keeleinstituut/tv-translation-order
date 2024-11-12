@@ -17,7 +17,7 @@ use OpenApi\Attributes as OA;
         'id',
         'job_key',
         'multi_assignments_enabled',
-        'linking_with_cat_tool_jobs_enabled'
+        'linking_with_cat_tool_jobs_enabled',
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
@@ -50,7 +50,7 @@ class JobDefinitionResource extends JsonResource
                 'multi_assignments_enabled',
                 'linking_with_cat_tool_jobs_enabled'
             ),
-            'skill' => SkillResource::make($this->whenLoaded('skill'))
+            'skill' => SkillResource::make($this->whenLoaded('skill')),
         ];
     }
 }

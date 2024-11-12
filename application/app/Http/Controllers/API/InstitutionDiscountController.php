@@ -8,6 +8,7 @@ use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\InstitutionDiscountCreateUpdateRequest;
 use App\Http\Resources\API\InstitutionDiscountResource;
 use App\Models\CachedEntities\Institution;
+use App\Models\InstitutionDiscount;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -56,12 +57,23 @@ class InstitutionDiscountController extends Controller
         Gate::allowIf(Auth::hasPrivilege(PrivilegeKey::EditInstitutionPriceRate->value));
 
         $institution = self::getInstitution();
+        /** @var InstitutionDiscount|null $institutionDiscount */
         $institutionDiscount = $institution->institutionDiscount()->firstOrNew();
-        $institutionDiscount->fill([
-            ...$request->validated(),
-            'institution_id' => $institution->id,
-        ]);
-        $institutionDiscount->saveOrFail();
+
+        $saveInstitutionDiscount = function (InstitutionDiscount $institutionDiscount) use ($institution, $request): void {
+            $institutionDiscount->fill([
+                ...$request->validated(),
+                'institution_id' => $institution->id,
+            ]);
+            $institutionDiscount->saveOrFail();
+        };
+
+        if ($institutionDiscount->exists()) {
+            $this->auditLogPublisher->publishModifyObjectAfterAction($institutionDiscount, $saveInstitutionDiscount);
+        } else {
+            $saveInstitutionDiscount($institutionDiscount);
+            $this->auditLogPublisher->publishCreateObject($institutionDiscount);
+        }
 
         return InstitutionDiscountResource::make($institutionDiscount->refresh());
     }

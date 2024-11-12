@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\CachedEntities\Institution;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Models\AuditLoggable;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -41,9 +45,11 @@ use Illuminate\Support\Carbon;
  * @method static Builder|InstitutionDiscount whereInstitutionId($value)
  * @method static Builder|InstitutionDiscount whereUpdatedAt($value)
  *
+ * @property-read Institution|null $institution
+ *
  * @mixin Eloquent
  */
-class InstitutionDiscount extends Model
+class InstitutionDiscount extends Model implements AuditLoggable
 {
     use HasFactory, HasUuids;
 
@@ -59,4 +65,30 @@ class InstitutionDiscount extends Model
         'discount_percentage_50_74' => 'float',
         'discount_percentage_0_49' => 'float',
     ];
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
+    }
+
+    public function getIdentitySubset(): array
+    {
+        return [
+            'id' => $this->id,
+            'institution' => $this->institution->only(['id', 'name']),
+        ];
+    }
+
+    public function getAuditLogRepresentation(): array
+    {
+        return $this->withoutRelations()
+            ->refresh()
+            ->load(['institution'])
+            ->toArray();
+    }
+
+    public function getAuditLogObjectType(): AuditLogEventObjectType
+    {
+        return AuditLogEventObjectType::InstitutionDiscount;
+    }
 }
