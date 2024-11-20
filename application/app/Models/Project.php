@@ -367,7 +367,6 @@ class Project extends Model implements AuditLoggable, HasMedia
     public function getAuditLogRepresentation(): array
     {
         return $this->withoutRelations()
-            ->refresh()
             ->load([
                 'institution',
                 'media',

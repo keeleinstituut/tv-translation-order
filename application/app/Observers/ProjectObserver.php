@@ -12,8 +12,12 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\Sequence;
 use App\Models\SubProject;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Services\AuditLogMessageBuilder;
+use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -21,7 +25,7 @@ use Throwable;
 
 class ProjectObserver
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    public function __construct(private readonly NotificationPublisher $notificationPublisher, private readonly AuditLogPublisher $auditLogPublisher)
     {
     }
 
@@ -99,6 +103,18 @@ class ProjectObserver
             } elseif ($project->status === ProjectStatus::SubmittedToClient) {
                 $project->submitted_to_client_review_at = Carbon::now();
             }
+
+            if (Auth::check()) {
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toModifyObjectEventComputingDiff(
+                            $project->getAuditLogObjectType(),
+                            $project->getIdentitySubset(),
+                            $project->fresh()->getAuditLogRepresentation(),
+                            $project->getAuditLogRepresentation(),
+                        )
+                );
+            }
         }
 
         if ($project->isDirty('deadline_at') && filled($project->deadline_at)) {
@@ -158,6 +174,8 @@ class ProjectObserver
             } elseif ($project->status === ProjectStatus::Registered) {
                 $this->publishProjectRegisteredEmailNotification($project);
             }
+
+
         }
     }
 
