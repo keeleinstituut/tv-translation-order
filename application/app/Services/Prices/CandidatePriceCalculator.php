@@ -34,7 +34,7 @@ class CandidatePriceCalculator extends BaseAssignmentPriceCalculator
         }
 
         if ($prices->search(null, true) === false) {
-            return $prices->sum();
+            return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }
 
         return null;
