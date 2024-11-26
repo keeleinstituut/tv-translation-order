@@ -16,16 +16,6 @@ abstract class BaseAssignmentPriceCalculator implements PriceCalculator
     /**
      * @return Collection<Volume>
      */
-    protected function getVolumesWithoutMinFeeUnit(): Collection
-    {
-        return $this->assignment->volumes->filter(
-            fn(Volume $volume) => $volume->unit_type !== VolumeUnits::MinimalFee
-        );
-    }
-
-    /**
-     * @return Collection<Volume>
-     */
     protected function getVolumes(): Collection
     {
         return $this->assignment->volumes;
