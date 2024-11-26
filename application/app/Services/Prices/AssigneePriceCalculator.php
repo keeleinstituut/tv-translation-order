@@ -21,25 +21,17 @@ class AssigneePriceCalculator extends BaseAssignmentPriceCalculator
             return null;
         }
 
-        if ($this->hasOnlyMinFeeUnitVolumes()) {
-            $unitFee = $this->getPriceList()?->getUnitFee(VolumeUnits::MinimalFee);
-            $prices = $this->getVolumes()->map(function (Volume $volume) use ($unitFee) {
-                return $volume->getPriceCalculator()
-                    ->setUnitFee($unitFee)
-                    ->getPrice();
-            });
-        } else {
-            $prices = $this->getVolumesWithoutMinFeeUnit()->map(function (Volume $volume) {
-                return $volume->getPriceCalculator()->getPrice();
-            });
-        }
+        $prices = $this->assignment->volumes->map(function (Volume $volume) {
+            return $volume->getPriceCalculator()->getPrice();
+        });
 
         if ($prices->isEmpty()) {
             return null;
         }
 
         if ($prices->search(null, true) === false) {
-            return $prices->sum();
+            $priceList = $this->getPriceList();
+            return max($prices->sum(), $priceList?->minimal_fee ?: 0);
         }
 
         return null;

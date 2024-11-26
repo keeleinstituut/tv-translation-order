@@ -21,14 +21,8 @@ class CandidatePriceCalculator extends BaseAssignmentPriceCalculator
         }
 
         $priceList = $this->getPriceList();
-        if ($this->hasOnlyMinFeeUnitVolumes()) {
-            $volumes = $this->getVolumes();
-        } else {
-            $volumes = $this->getVolumesWithoutMinFeeUnit();
-        }
-
         $discount = $this->candidate->getVolumeAnalysisDiscount();
-        $prices = $volumes->map(function (Volume $volume) use ($priceList, $discount) {
+        $prices = $this->getVolumes()->map(function (Volume $volume) use ($priceList, $discount) {
             return $volume->getPriceCalculator()
                 ->setUnitFee($priceList?->getUnitFee($volume->unit_type))
                 ->setDiscount($discount)
