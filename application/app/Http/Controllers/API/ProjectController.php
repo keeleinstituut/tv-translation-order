@@ -386,14 +386,6 @@ class ProjectController extends Controller
                 $project->workflow()->cancel($request->validated('cancellation_reason'));
             }
 
-            $this->auditLogPublisher->publish(
-                AuditLogMessageBuilder::makeUsingJWT()
-                    ->toCancelProjectEvent(
-                        $project->id,
-                        $project->ext_id,
-                    )
-            );
-
             return ProjectResource::make($project->refresh());
         });
     }
