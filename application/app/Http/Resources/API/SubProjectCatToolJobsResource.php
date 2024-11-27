@@ -8,6 +8,7 @@ use App\Services\CatTools\Enums\CatToolSetupStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
+
 /**
  * @mixin SubProject
  */
@@ -16,7 +17,7 @@ use OpenApi\Attributes as OA;
     required: [
         'cat_jobs',
         'setup_status',
-        'analyzing_status'
+        'analyzing_status',
     ],
     properties: [
         new OA\Property(property: 'setup_status', type: 'string', enum: CatToolSetupStatus::class),
@@ -37,7 +38,7 @@ class SubProjectCatToolJobsResource extends JsonResource
         return [
             'setup_status' => $this->cat()->getSetupStatus(),
             'analyzing_status' => $this->cat()->getAnalyzingStatus(),
-            'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs'))
+            'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
         ];
     }
 }

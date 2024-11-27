@@ -43,5 +43,10 @@
         <env name="KEYCLOAK_REALM" value="tolkevarav-dev" />
         <env name="KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID" value="tv-translation-order-service" />
         <env name="KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET" value="oZ5oSfpWIEjEMB3SxBqt37ekmDfgmCan" />
+        <env name="KEYCLOAK_SERVICE_ACCOUNT_SYNC_ROLE" value="sync-user"/>
+
+        <env name="AUDIT_LOG_EVENTS_EXCHANGE" value="audit-log-events-test" />
+        <env name="AUDIT_LOG_EVENTS_QUEUE" value="audit-log-events-test" />
+        <env name="AUDIT_LOG_TRACE_ID_HTTP_HEADER" value="x-request-id" />
     </php>
 </phpunit>

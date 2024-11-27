@@ -6,9 +6,10 @@ use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
 use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Models\Assignment;
-use App\Models\CachedEntities\InstitutionUser;
-use App\Models\Project;
 use App\Models\SubProject;
+use AuditLogClient\Services\AuditLogMessageBuilder;
+use AuditLogClient\Services\AuditLogPublisher;
+use Illuminate\Support\Facades\Auth;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -16,7 +17,7 @@ use Throwable;
 
 class SubProjectObserver
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    public function __construct(private readonly NotificationPublisher $notificationPublisher, private readonly AuditLogPublisher $auditLogPublisher)
     {
     }
 
@@ -39,6 +40,26 @@ class SubProjectObserver
     public function created(SubProject $subProject): void
     {
         //
+    }
+
+    /**
+     * Handle the SubProject "updating" event.
+     */
+    public function updating(SubProject $subProject): void
+    {
+        if ($subProject->isDirty('status')) {
+            if (Auth::check()) {
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toModifyObjectEventComputingDiff(
+                            $subProject->getAuditLogObjectType(),
+                            $subProject->getIdentitySubset(),
+                            $subProject->fresh()->getAuditLogRepresentation(),
+                            $subProject->getAuditLogRepresentation(),
+                        )
+                );
+            }
+        }
     }
 
     /**

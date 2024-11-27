@@ -20,6 +20,7 @@ use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Volume;
 use App\Policies\ProjectPolicy;
+use AuditLogClient\Services\AuditLogMessageBuilder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -211,6 +212,8 @@ class ProjectController extends Controller
             $project->refresh();
             $project->workflow()->start();
 
+            $this->auditLogPublisher->publishCreateObject($project);
+
             $project->load([
                 'media',
                 'managerInstitutionUser',
@@ -282,47 +285,52 @@ class ProjectController extends Controller
         }
 
         return DB::transaction(function () use ($project, $params) {
-            // Collect certain keys from input params, filter null values
-            // and fill model with result from filter
-            tap(collect($params)->only([
-                'type_classifier_value_id',
-                'translation_domain_classifier_value_id',
-                'manager_institution_user_id',
-                'client_institution_user_id',
-                'reference_number',
-                'comments',
-                'deadline_at',
-                'event_start_at'
-            ])->filter()->toArray(), $project->fill(...));
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $project,
+                function () use ($project, $params) {
+                    // Collect certain keys from input params, filter null values
+                    // and fill model with result from filter
+                    tap(collect($params)->only([
+                        'type_classifier_value_id',
+                        'translation_domain_classifier_value_id',
+                        'manager_institution_user_id',
+                        'client_institution_user_id',
+                        'reference_number',
+                        'comments',
+                        'deadline_at',
+                        'event_start_at'
+                    ])->filter()->toArray(), $project->fill(...));
 
-            $project->save();
+                    $project->save();
 
-            $tagsInput = $params->get('tags');
-            if (is_array($tagsInput)) {
-                $project->tags()->detach();
-                $project->tags()->attach($tagsInput);
-            }
+                    $tagsInput = $params->get('tags');
+                    if (is_array($tagsInput)) {
+                        $project->tags()->detach();
+                        $project->tags()->attach($tagsInput);
+                    }
 
-            $sourceLang = $params->get('source_language_classifier_value_id', fn() => $project->subProjects->pluck('source_language_classifier_value_id')->first());
-            $destinationLangs = $params->get('destination_language_classifier_value_ids', fn() => $project->subProjects->pluck('destination_language_classifier_value_id'));
-            $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
-            $projectHasStartedSubProjectWorkflow = $project->subProjects
-                    ->filter(fn(SubProject $subProject) => $subProject->workflow()->isStarted())
-                    ->count() > 0;
+                    $sourceLang = $params->get('source_language_classifier_value_id', fn() => $project->subProjects->pluck('source_language_classifier_value_id')->first());
+                    $destinationLangs = $params->get('destination_language_classifier_value_ids', fn() => $project->subProjects->pluck('destination_language_classifier_value_id'));
+                    $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
+                    $projectHasStartedSubProjectWorkflow = $project->subProjects
+                            ->filter(fn(SubProject $subProject) => $subProject->workflow()->isStarted())
+                            ->count() > 0;
 
-            [$createdCount, $deletedCount] = $project->initSubProjects(
-                ClassifierValue::findOrFail($sourceLang),
-                ClassifierValue::findMany($destinationLangs),
-                $reInitializeSubProjects
+                    [$createdCount, $deletedCount] = $project->initSubProjects(
+                        ClassifierValue::findOrFail($sourceLang),
+                        ClassifierValue::findMany($destinationLangs),
+                        $reInitializeSubProjects
+                    );
+
+                    if ($projectHasStartedSubProjectWorkflow && ($createdCount || $deletedCount)) {
+                        abort(Response::HTTP_BAD_REQUEST, 'Updating of sub-projects not allowed in case at least one sub-project workflow started');
+                    }
+
+                    if ($project->workflow()->isStarted() && ($createdCount || $deletedCount)) {
+                        $project->workflow()->restart();
+                    }
+                }
             );
-
-            if ($projectHasStartedSubProjectWorkflow && ($createdCount || $deletedCount)) {
-                abort(Response::HTTP_BAD_REQUEST, 'Updating of sub-projects not allowed in case at least one sub-project workflow started');
-            }
-
-            if ($project->workflow()->isStarted() && ($createdCount || $deletedCount)) {
-                $project->workflow()->restart();
-            }
 
             $project->load([
                 'managerInstitutionUser',
@@ -421,7 +429,7 @@ class ProjectController extends Controller
             schema: new OA\Schema(type: 'string')
         )
     )]
-    public function exportCsv(ProjectsExportRequest $request): StreamedResponse
+    public function exportCsv(ProjectsExportRequest $request)
     {
         $this->authorize('export', Project::class);
 
@@ -456,6 +464,8 @@ class ProjectController extends Controller
             'Tellimuse sildid',
         ]);
 
+        $params = collect($request->validated());
+
         Project::withGlobalScope('policy', ProjectPolicy::scope())->with([
             'typeClassifierValue',
             'managerInstitutionUser',
@@ -468,13 +478,13 @@ class ProjectController extends Controller
             'catToolTmKeys',
             'volumes'
         ])->when(
-            $request->validated('status'),
+            $params->get('status'),
             fn(Builder $query, $statuses) => $query->whereIn('status', $statuses)
         )->when(
-            $request->validated('date_from'),
+            $params->get('date_from'),
             fn(Builder $query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate)
         )->when(
-            $request->validated('date_to'),
+            $params->get('date_to'),
             fn(Builder $query, $toDate) => $query->whereDate('created_at', '<=', $toDate)
         )->lazy()->each(function (Project $project) use ($csvDocument) {
             $project->assignments->each(function (Assignment $assignment) use ($csvDocument, $project) {
@@ -509,7 +519,14 @@ class ProjectController extends Controller
             });
         });
 
-        // TODO: add auditlogs
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()
+                ->toExportProjectsReportEvent(
+                    $params->get('date_from'),
+                    $params->get('date_to'),
+                    $params->get('status'),
+                )
+        );
 
         return response()->streamDownload(
             $csvDocument->output(...),

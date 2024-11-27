@@ -24,32 +24,32 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
         $obj->deactivation_date = $resource['deactivation_date'];
         $obj->user = $this->getNestedResourceAsJson(
             $resource, 'user', [
-            'id',
-            'personal_identification_code',
-            'forename',
-            'surname',
-        ]);
+                'id',
+                'personal_identification_code',
+                'forename',
+                'surname',
+            ]);
         $obj->institution = $this->getNestedResourceAsJson(
             $resource, 'institution', [
-            'id',
-            'name',
-            'short_name',
-            'phone',
-            'email',
-            'logo_url',
-        ]);
+                'id',
+                'name',
+                'short_name',
+                'phone',
+                'email',
+                'logo_url',
+            ]);
         $obj->department = $this->getNestedResourceAsJson(
             $resource, 'department', [
-            'id',
-            'institution_id',
-            'name',
-        ]);
+                'id',
+                'institution_id',
+                'name',
+            ]);
         $obj->roles = $this->getNestedResourceAsJson(
             $resource, 'roles', [
-            'id',
-            'name',
-            'institution_id',
-            'privileges',
+                'id',
+                'name',
+                'institution_id',
+                'privileges',
         ]);
 
         $vacations = array_merge(

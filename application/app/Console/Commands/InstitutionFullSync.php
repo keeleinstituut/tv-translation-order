@@ -36,6 +36,6 @@ class InstitutionFullSync extends BaseEntityFullSyncCommand
 
     protected function getSingleSyncQueueName(): string
     {
-        return "tv-translation-order.institution";
+        return 'tv-translation-order.institution';
     }
 }

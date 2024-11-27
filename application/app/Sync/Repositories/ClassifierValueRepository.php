@@ -12,7 +12,7 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
     {
         $obj = $this->getBaseModel()->withTrashed()->find($resource['id']);
 
-        if (!$obj) {
+        if (! $obj) {
             $obj = $this->getBaseModel();
             $obj->id = $resource['id'];
         }

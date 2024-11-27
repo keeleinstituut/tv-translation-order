@@ -417,7 +417,7 @@ readonly class MateCat implements CatToolService
                 $isEnabled
             );
         } elseif ($this->getSetupStatus() == CatToolSetupStatus::InProgress) {
-            throw new RuntimeException("Not possible to toggle MT engine during the project setup");
+            throw new RuntimeException('Not possible to toggle MT engine during the project setup');
         }
 
         $this->storage->storeIsMTEnabled($isEnabled);
@@ -490,7 +490,6 @@ readonly class MateCat implements CatToolService
         if (in_array($this->storage->getAnalyzingStatus(), ['BUSY', 'FAST_OK'])) {
             return CatToolAnalyzingStatus::InProgress;
         }
-
 
         return CatToolAnalyzingStatus::Failed;
     }
