@@ -44,7 +44,7 @@ use OpenApi\Attributes as OA;
             description: 'config of PROJECT_TYPE classifier values',
             type: 'object',
             nullable: true
-        )
+        ),
     ],
     type: 'object'
 )]
@@ -65,7 +65,7 @@ class ClassifierValueResource extends JsonResource
                 'name',
                 'meta',
             ),
-            'project_type_config' => ProjectTypeConfigResource::make($this->whenLoaded('projectTypeConfig'))
+            'project_type_config' => ProjectTypeConfigResource::make($this->whenLoaded('projectTypeConfig')),
         ];
     }
 }

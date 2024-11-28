@@ -14,7 +14,10 @@ use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
 use Auth;
 use Illuminate\Auth\Access\AuthorizationException;
+use AuditLogClient\Models\AuditLoggable;
+use AuditLogClient\Services\AuditLogMessageBuilder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,44 +53,54 @@ class MediaController extends Controller
         return DB::transaction(function () use ($params) {
             $filesData = collect($params->get('files'));
 
-            $data = $filesData->map(function ($file) {
-                $content = $file['content'];
-                [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
-                if (empty($entity)) {
-                    abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
-                }
+            $affectedEntities = $filesData
+                ->map(fn ($file) => $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']))
+                ->mapSpread(fn (AuditLoggable $entity) => $entity)
+                ->unique();
 
-                $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
-                $this->authorize($ability, [$entity, data_get($file, 'assignment_id')]);
+            $data = $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedEntities,
+                function () use ($filesData) {
+                    return $filesData->map(function ($file) {
+                        $content = $file['content'];
+                        [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                        if (empty($entity)) {
+                            abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+                        }
 
-                if (data_get($file, 'collection') === Project::HELP_FILES_COLLECTION) {
-                    $customProperties = [
-                        'type' => data_get($file, 'help_file_type'),
-                        'institution_user_id' => Auth::user()->institutionUserId
-                    ];
-                } else {
-                    $customProperties = [
-                        'assignment_id' => data_get($file, 'assignment_id'),
-                        'institution_user_id' => Auth::user()->institutionUserId
-                    ];
-                }
+                        $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
+                        $this->authorize($ability, [$entity, data_get($file, 'assignment_id')]);
 
-                /** @var Media $newMedia */
-                $newMedia = $collectionOwnerEntity->addMedia($content)
-                    ->withCustomProperties($customProperties)
-                    ->toMediaCollection($collectionName);
+                        if (data_get($file, 'collection') === Project::HELP_FILES_COLLECTION) {
+                            $customProperties = [
+                                'type' => data_get($file, 'help_file_type'),
+                                'institution_user_id' => Auth::user()->institutionUserId
+                            ];
+                        } else {
+                            $customProperties = [
+                                'assignment_id' => data_get($file, 'assignment_id'),
+                                'institution_user_id' => Auth::user()->institutionUserId
+                            ];
+                        }
 
-                /** Moving new project source file to all subprojects */
-                if (data_get($file, 'collection') === Project::SOURCE_FILES_COLLECTION && $entity instanceof Project) {
-                    $entity->subProjects->each(function (SubProject $subProject) use ($newMedia, $entity) {
-                        $subProjectSourceFile = $newMedia->copy($entity, $subProject->file_collection);
-                        $newMedia->copies()->save($subProjectSourceFile);
+                        /** @var Media $newMedia */
+                        $newMedia = $collectionOwnerEntity->addMedia($content)
+                            ->withCustomProperties($customProperties)
+                            ->toMediaCollection($collectionName);
+
+                        /** Moving new project source file to all subprojects */
+                        if (data_get($file, 'collection') === Project::SOURCE_FILES_COLLECTION && $entity instanceof Project) {
+                            $entity->subProjects->each(function (SubProject $subProject) use ($newMedia, $entity) {
+                                $subProjectSourceFile = $newMedia->copy($entity, $subProject->file_collection);
+                                $newMedia->copies()->save($subProjectSourceFile);
+                            });
+                        }
+
+                        $newMedia->load('assignment.jobDefinition');
+                        return $newMedia;
                     });
                 }
-
-                $newMedia->load('assignment.jobDefinition');
-                return $newMedia;
-            });
+            );
 
             return MediaResource::collection($data);
         });
@@ -149,25 +162,35 @@ class MediaController extends Controller
         return DB::transaction(function () use ($params) {
             $filesData = collect($params->get('files'));
 
-            $data = $filesData->map(function ($file) {
-                [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
-                if (empty($entity)) {
-                    abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+            $affectedEntities = $filesData
+                ->map(fn ($file) => $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']))
+                ->mapSpread(fn (AuditLoggable $entity) => $entity)
+                ->unique();
+
+            $data = $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedEntities,
+                function () use ($filesData) {
+                    return $filesData->map(function ($file) {
+                        [$entity, $collectionOwnerEntity, $collectionName] = $this->determineEntityAndCollectionName($file['reference_object_type'], $file['reference_object_id'], $file['collection']);
+                        if (empty($entity)) {
+                            abort(404, $file['reference_object_type'] . ' entity not found by ID ' . $file['reference_object_id']);
+                        }
+
+                        $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
+                        $media = Media::getModel()
+                            ->where('model_id', $collectionOwnerEntity->id)
+                            ->where('model_type', $collectionOwnerEntity::class)
+                            ->where('collection_name', $collectionName)
+                            ->where('id', $file['id'])
+                            ->first() ?? abort(404);
+
+                        $this->authorize($ability, [$entity, $media->getCustomProperty('assignment_id')]);
+
+                        $media->delete();
+                        return $media;
+                    });
                 }
-
-                $ability = $this->determineAuthorizationAbility($entity, $file['collection']);
-                $media = Media::getModel()
-                    ->where('model_id', $collectionOwnerEntity->id)
-                    ->where('model_type', $collectionOwnerEntity::class)
-                    ->where('collection_name', $collectionName)
-                    ->where('id', $file['id'])
-                    ->first() ?? abort(404);
-
-                $this->authorize($ability, [$entity, $media->getCustomProperty('assignment_id')]);
-
-                $media->delete();
-                return $media;
-            });
+            );
 
             return MediaResource::collection($data);
         });
@@ -203,6 +226,14 @@ class MediaController extends Controller
             ->where('id', $params['id'])
             ->first() ?? abort(404);
 
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()->toDownloadProjectFileEvent(
+                $media->id,
+                $collectionOwnerEntity->id,
+                $collectionOwnerEntity->ext_id,
+                $media->file_name
+            )
+        );
 
         return $media->toResponse($request);
     }

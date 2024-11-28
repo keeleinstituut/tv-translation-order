@@ -49,7 +49,7 @@ use SyncTools\Traits\IsCachedEntity;
  */
 class Institution extends Model
 {
-    use IsCachedEntity, HasCachedEntityFactory, HasUuids, SoftDeletes;
+    use HasCachedEntityFactory, HasUuids, IsCachedEntity, SoftDeletes;
 
     protected $table = 'cached_institutions';
 

@@ -10,6 +10,7 @@ use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Requests\API\VolumeUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
 use App\Http\Resources\API\VolumeResource;
+use App\Models\Assignment;
 use App\Models\Volume;
 use App\Observers\VolumeObserver;
 use App\Policies\VolumePolicy;
@@ -38,8 +39,16 @@ class VolumeController extends Controller
         $this->authorize('create', Volume::class);
 
         return DB::transaction(function () use ($request) {
-            $volume = (new Volume)->fill($request->validated());
-            $volume->saveOrFail();
+            $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
+            $volume = $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $affectedAssignment,
+                function () use ($request): Volume {
+                    $volume = (new Volume)->fill($request->validated());
+                    $volume->saveOrFail();
+
+                    return $volume;
+                }
+            );
 
             return $this->getEnrichedVolumeResource($volume);
         });
@@ -61,10 +70,18 @@ class VolumeController extends Controller
         $this->authorize('create', Volume::class);
 
         return DB::transaction(function () use ($request) {
-            $volume = (new Volume)->fill($request->validated());
-            $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
-            $volume->unit_type = $volume->catToolJob?->volume_unit_type;
-            $volume->saveOrFail();
+            $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
+            $volume = $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $affectedAssignment,
+                function () use ($request): Volume {
+                    $volume = (new Volume)->fill($request->validated());
+                    $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
+                    $volume->unit_type = $volume->catToolJob?->volume_unit_type;
+                    $volume->saveOrFail();
+
+                    return $volume;
+                }
+            );
 
             return $this->getEnrichedVolumeResource($volume);
         });
@@ -85,11 +102,17 @@ class VolumeController extends Controller
     public function update(VolumeUpdateRequest $request): VolumeResource
     {
         return DB::transaction(function () use ($request) {
-            $volume = self::getBaseQuery()->findOrFail($request->route('id'))
-                ->fill($request->validated());
+            $volume = self::getBaseQuery()->with('assignment')->findOrFail($request->route('id'));
+            $affectedAssignment = $volume->assignment;
 
-            $this->authorize('update', $volume);
-            $volume->saveOrFail();
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $affectedAssignment,
+                function () use ($request, $volume): void {
+                    $volume->fill($request->validated());
+                    $this->authorize('update', $volume);
+                    $volume->saveOrFail();
+                }
+            );
 
             return $this->getEnrichedVolumeResource($volume);
         });
@@ -110,11 +133,18 @@ class VolumeController extends Controller
     public function updateCatToolVolume(CatToolVolumeUpdateRequest $request): VolumeResource
     {
         return DB::transaction(function () use ($request) {
-            $volume = self::getBaseQuery()->findOrFail($request->route('id'))
-                ->fill($request->validated());
-            $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
-            $this->authorize('update', $volume);
-            $volume->saveOrFail();
+            $volume = self::getBaseQuery()->with('assignment')->findOrFail($request->route('id'));
+            $affectedAssignment = $volume->assignment;
+
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $affectedAssignment,
+                function () use ($request, $volume): void {
+                    $volume->fill($request->validated());
+                    $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
+                    $this->authorize('update', $volume);
+                    $volume->saveOrFail();
+                }
+            );
 
             return $this->getEnrichedVolumeResource($volume);
         });
@@ -155,10 +185,14 @@ class VolumeController extends Controller
         $volume = self::getBaseQuery()->findOrFail($request->route('id'));
         $assignment = $volume->assignment;
 
-        DB::transaction(function () use ($volume) {
-            $this->authorize('delete', $volume);
-
-            $volume->delete();
+        DB::transaction(function () use ($volume, $assignment) {
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($volume): void {
+                    $this->authorize('delete', $volume);
+                    $volume->deleteOrFail();
+                }
+            );
         });
 
         if (filled($assignment)) {

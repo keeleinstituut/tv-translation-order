@@ -34,7 +34,7 @@ class JobDefinitionSeeder extends Seeder
 
                 JobDefinition::updateOrCreate([
                     'project_type_config_id' => $projectTypeConfig->id,
-                    'job_key' => $jobDefinitionAttributes['job_key']
+                    'job_key' => $jobDefinitionAttributes['job_key'],
                 ], $jobDefinitionAttributes);
             }
         });
@@ -51,7 +51,7 @@ class JobDefinitionSeeder extends Seeder
                     'skill' => 'Suuline tõlge',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'POST_TRANSLATION' => [
                 [
@@ -61,7 +61,7 @@ class JobDefinitionSeeder extends Seeder
                     'skill' => 'Järeltõlge',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'SYNCHRONOUS_TRANSLATION' => [
                 [
@@ -71,7 +71,7 @@ class JobDefinitionSeeder extends Seeder
                     'skill' => 'Sünkroontõlge',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'SIGN_LANGUAGE' => [
                 [
@@ -81,7 +81,7 @@ class JobDefinitionSeeder extends Seeder
                     'skill' => 'Viipekeel',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'CAT_TRANSLATION_REVIEW' => [
                 [
@@ -98,7 +98,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'CAT_TRANSLATION' => [
                 [
@@ -108,7 +108,7 @@ class JobDefinitionSeeder extends Seeder
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => true,
-                ]
+                ],
             ],
             'TRANSLATION_REVIEW' => [
                 [
@@ -125,7 +125,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'TRANSLATION' => [
                 [
@@ -135,7 +135,7 @@ class JobDefinitionSeeder extends Seeder
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'EDITING_REVIEW' => [
                 [
@@ -152,7 +152,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'EDITING' => [
                 [
@@ -179,7 +179,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'EDITED_TRANSLATION' => [
                 [
@@ -214,7 +214,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'CAT_TRANSLATION_EDITING' => [
                 [
@@ -257,7 +257,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'TRANSLATION_EDITING' => [
                 [
@@ -292,7 +292,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'MANUSCRIPT_TRANSLATION' => [
                 [
@@ -329,7 +329,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'SWORN_CAT_TRANSLATION_REVIEW' => [
                 [
@@ -346,7 +346,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'SWORN_CAT_TRANSLATION' => [
                 [
@@ -373,7 +373,7 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
                     'linking_with_cat_tool_jobs_enabled' => false,
-                ]
+                ],
             ],
             'SWORN_TRANSLATION' => [
                 [
@@ -384,7 +384,7 @@ class JobDefinitionSeeder extends Seeder
                     'multi_assignments_enabled' => true,
                     'linking_with_cat_tool_jobs_enabled' => false,
                 ],
-            ]
+            ],
         ];
     }
 

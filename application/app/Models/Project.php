@@ -9,6 +9,8 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\ProjectPriceCalculator;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
+use AuditLogClient\Enums\AuditLogEventObjectType;
+use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\ProjectFactory;
 use Eloquent;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -110,14 +112,13 @@ use Throwable;
  *
  * @mixin Eloquent
  */
-class Project extends Model implements HasMedia
+class Project extends Model implements AuditLoggable, HasMedia
 {
     use HasFactory;
     use HasUuids;
     use InteractsWithMedia;
     use HasRelationships;
     use SoftDeletes;
-    use HasRelationships;
 
     protected $table = 'projects';
 
@@ -290,6 +291,7 @@ class Project extends Model implements HasMedia
             $subProject->source_language_classifier_value_id = $sourceLanguage->id;
             $subProject->destination_language_classifier_value_id = $destinationLanguage->id;
             $subProject->deadline_at = $this->deadline_at;
+
             return $subProject;
         };
 
@@ -355,5 +357,31 @@ class Project extends Model implements HasMedia
     public function getPriceCalculator(): PriceCalculator
     {
         return new ProjectPriceCalculator($this);
+    }
+
+    public function getIdentitySubset(): array
+    {
+        return $this->only(['id', 'ext_id']);
+    }
+
+    public function getAuditLogRepresentation(): array
+    {
+        return $this->withoutRelations()
+            ->load([
+                'institution',
+                'media',
+                'translationDomainClassifierValue',
+                'typeClassifierValue',
+                'typeClassifierValue.projectTypeConfig',
+                'translationDomainClassifierValue',
+                'clientInstitutionUser',
+                'managerInstitutionUser',
+            ])
+            ->toArray();
+    }
+
+    public function getAuditLogObjectType(): AuditLogEventObjectType
+    {
+        return AuditLogEventObjectType::Project;
     }
 }

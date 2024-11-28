@@ -12,7 +12,9 @@ use App\Http\Requests\API\PriceListRequest;
 use App\Http\Resources\API\PriceResource;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Price;
+use App\Models\Vendor;
 use App\Policies\PricePolicy;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -139,10 +141,19 @@ class PriceController extends Controller
         $params = collect($request->validated());
 
         return DB::transaction(function () use ($params) {
-            $obj = new Price();
-            $obj->fill($params->toArray());
-            $this->authorize('create', $obj);
-            $obj->save();
+            $vendor = Vendor::findOrFail($params['vendor_id']);
+
+            $obj = $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $vendor,
+                function () use ($params): Price {
+                    $obj = new Price();
+                    $obj->fill($params->toArray());
+                    $this->authorize('create', $obj);
+                    $obj->saveOrFail();
+
+                    return $obj;
+                }
+            );
 
             $obj
                 ->load('vendor')
@@ -165,19 +176,23 @@ class PriceController extends Controller
     #[OAH\CollectionResponse(itemsRef: PriceResource::class, description: 'Created prices', response: Response::HTTP_CREATED)]
     public function bulkStore(PriceBulkCreateRequest $request)
     {
-        $params = collect($request->validated());
+        $inputData = collect($request->validated('data'));
 
-        return DB::transaction(function () use ($params) {
-            $inputData = collect($params->get('data'));
+        return DB::transaction(function () use ($inputData) {
+            $affectedVendors = $inputData->pluck('vendor_id')->unique()->map(fn (string $id) => Vendor::findOrFail($id));
+            $data = $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedVendors,
+                function () use ($inputData): Collection {
+                    return $inputData->map(function ($input) {
+                        $obj = new Price();
+                        $obj->fill($input);
+                        $this->authorize('create', $obj);
+                        $obj->saveOrFail();
 
-            $data = $inputData->map(function ($input) {
-                $obj = new Price();
-                $obj->fill($input);
-                $this->authorize('create', $obj);
-                $obj->save();
-
-                return $obj;
-            });
+                        return $obj;
+                    });
+                }
+            );
 
             $data = Price::getModel()
                 ->whereIn('id', $data->pluck('id'))
@@ -219,16 +234,22 @@ class PriceController extends Controller
             ->get();
 
         return DB::transaction(function () use ($mappedById, $prices) {
-            $data = collect($prices)->map(function ($price) use ($mappedById) {
-                $this->authorize('update', $price);
+            $affectedVendors = $prices->pluck('vendor_id')->unique()->map(fn (string $id) => Vendor::findOrFail($id));
+            $data = $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedVendors,
+                function () use ($mappedById, $prices): Collection {
+                    return collect($prices)->map(function ($price) use ($mappedById) {
+                        $this->authorize('update', $price);
 
-                $input = $mappedById->get($price->id);
-                $price->fill($input);
+                        $input = $mappedById->get($price->id);
+                        $price->fill($input);
 
-                $price->save();
+                        $price->saveOrFail();
 
-                return $price;
-            });
+                        return $price;
+                    });
+                }
+            );
 
             return PriceResource::collection($data);
         });
@@ -259,10 +280,16 @@ class PriceController extends Controller
                 ->orderBy('created_at', 'asc')
                 ->get();
 
-            $data->each(function ($obj) {
-                $this->authorize('delete', $obj);
-                $obj->delete();
-            });
+            $affectedVendors = $data->pluck('vendor_id')->unique()->map(fn (string $id) => Vendor::findOrFail($id));
+            $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $affectedVendors,
+                function () use ($data): void {
+                    $data->each(function ($obj) {
+                        $this->authorize('delete', $obj);
+                        $obj->deleteOrFail();
+                    });
+                }
+            );
 
             return PriceResource::collection($data);
         });

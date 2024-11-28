@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 /**
  * App\Models\ProjectTypeConfig
@@ -41,12 +40,16 @@ use Illuminate\Support\Str;
  * @method static Builder|ProjectTypeConfig whereWorkflowProcessDefinitionId($value)
  * @method static Builder|ProjectTypeConfig whereIsStartDateSupported($value)
  *
+ * @property-read int|null $job_definitions_count
+ *
+ * @method static Builder|ProjectTypeConfig whereCatToolEnabled($value)
+ *
  * @mixin Eloquent
  */
 class ProjectTypeConfig extends Model
 {
-    use HasUuids;
     use HasFactory;
+    use HasUuids;
 
     protected $guarded = [];
 

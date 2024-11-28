@@ -29,6 +29,7 @@ use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
 use App\Services\Workflows\WorkflowService;
+use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -44,8 +45,9 @@ use Throwable;
 
 class AssignmentController extends Controller
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher)
+    public function __construct(private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
     {
+        parent::__construct($auditLogPublisher);
     }
 
     /**
@@ -109,30 +111,36 @@ class AssignmentController extends Controller
         return DB::transaction(function () use ($request) {
             $affectedAssignmentIds = collect();
             $assignmentsIndexedById = $request->getAssignments();
-            if (filled($request->validated('linking'))) {
-                collect($request->validated('linking'))->mapToGroups(function (array $item) {
-                    return [$item['assignment_id'] => $item['cat_tool_job_id']];
-                })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById, $affectedAssignmentIds) {
-                    $assignment = $assignmentsIndexedById->get($assignmentId);
-                    $assignment->catToolJobs()->sync($catToolJobsIds);
-                    $affectedAssignmentIds->add($assignment->id);
-                });
-            }
 
-            AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
-                $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
-                    ->where('job_definition_id', $request->getJobDefinition()->id)
-                    ->when(
-                        filled($request->getAssignments()->keys()),
-                        fn(Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
-                            'id',
-                            $request->getAssignments()->keys()
-                        )
-                    );
-            })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
-                $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
-                $assignmentCatToolJob->delete();
-            });
+            $this->auditLogPublisher->publishModifyObjectsAfterAction(
+                $assignmentsIndexedById,
+                function () use ($affectedAssignmentIds, $assignmentsIndexedById, $request) {
+                    if (filled($request->validated('linking'))) {
+                        collect($request->validated('linking'))->mapToGroups(function (array $item) {
+                            return [$item['assignment_id'] => $item['cat_tool_job_id']];
+                        })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById, $affectedAssignmentIds) {
+                            $assignment = $assignmentsIndexedById->get($assignmentId);
+                            $assignment->catToolJobs()->sync($catToolJobsIds);
+                            $affectedAssignmentIds->add($assignment->id);
+                        });
+                    }
+
+                    AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
+                        $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
+                            ->where('job_definition_id', $request->getJobDefinition()->id)
+                            ->when(
+                                filled($request->getAssignments()->keys()),
+                                fn(Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
+                                    'id',
+                                    $request->getAssignments()->keys()
+                                )
+                            );
+                    })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
+                        $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
+                        $assignmentCatToolJob->delete();
+                    });
+                }
+            );
 
             return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
         });
@@ -165,6 +173,7 @@ class AssignmentController extends Controller
             $assignment->fill($attributes);
             $this->authorize('create', $assignment);
             $assignment->saveOrFail();
+            $this->auditLogPublisher->publishCreateObject($assignment);
             $assignment->refresh();
 
             $assignment->load([
@@ -193,11 +202,20 @@ class AssignmentController extends Controller
     public function update(AssignmentUpdateRequest $request)
     {
         return DB::transaction(function () use ($request) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
-            $this->authorize('update', $assignment);
 
-            $assignment->fill($request->validated());
-            $assignment->saveOrFail();
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($request, $assignment) {
+                    $this->authorize('update', $assignment);
+
+                    $assignment->fill($request->validated());
+                    $assignment->saveOrFail();
+                    $assignment->refresh();
+                }
+            );
+
 
             $assignment->load([
                 'candidates.vendor.institutionUser',
@@ -225,11 +243,18 @@ class AssignmentController extends Controller
     public function updateAssigneeComment(AssignmentUpdateAssigneeCommentRequest $request)
     {
         return DB::transaction(function () use ($request) {
+            /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($request->route('id'));
-            $this->authorize('updateAssigneeComment', $assignment);
 
-            $assignment->fill($request->validated());
-            $assignment->saveOrFail();
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($request, $assignment) {
+                    $this->authorize('updateAssigneeComment', $assignment);
+
+                    $assignment->fill($request->validated());
+                    $assignment->saveOrFail();
+                }
+            );
 
             return AssignmentResource::make($assignment);
         });
@@ -255,6 +280,7 @@ class AssignmentController extends Controller
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
             $this->authorize('update', $assignment);
 
+
             if ($assignment->status === AssignmentStatus::Done) {
                 abort(Response::HTTP_BAD_REQUEST, 'Not possible to add candidates for the assignment that is done');
             }
@@ -263,25 +289,30 @@ class AssignmentController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Review task can be done only by the assigned project manager');
             }
 
-            /** @var Collection $newCandidates */
-            $newCandidates = collect($params->get('data'))
-                ->unique(fn($data) => $data['vendor_id'])
-                ->map(Candidate::make(...));
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($params, $assignment) {
+                    /** @var Collection $newCandidates */
+                    $newCandidates = collect($params->get('data'))
+                        ->unique(fn($data) => $data['vendor_id'])
+                        ->map(Candidate::make(...));
 
-            $assignment->candidates()->saveMany($newCandidates);
+                    $assignment->candidates()->saveMany($newCandidates);
 
-            $assignment->load('candidates.vendor.institutionUser');
+                    $assignment->load('candidates.vendor.institutionUser');
 
-            $newCandidatesVendorIds = $newCandidates->pluck('vendor_id');
-            $newCandidatesInstitutionUserIds = $assignment->candidates->filter(function (Candidate $candidate) use ($newCandidatesVendorIds) {
-                return $newCandidatesVendorIds->contains($candidate->vendor_id);
-            })->map(function (Candidate $candidate) {
-                return $candidate->vendor?->institution_user_id;
-            })->filter()->values();
+                    $newCandidatesVendorIds = $newCandidates->pluck('vendor_id');
+                    $newCandidatesInstitutionUserIds = $assignment->candidates->filter(function (Candidate $candidate) use ($newCandidatesVendorIds) {
+                        return $newCandidatesVendorIds->contains($candidate->vendor_id);
+                    })->map(function (Candidate $candidate) {
+                        return $candidate->vendor?->institution_user_id;
+                    })->filter()->values();
 
-            if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
-                AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
-            }
+                    if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
+                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
+                    }
+                }
+            );
 
             return AssignmentResource::make($assignment);
         });
@@ -306,23 +337,29 @@ class AssignmentController extends Controller
         return DB::transaction(function () use ($assignmentId, $params) {
             /** @var Assignment $assignment */
             $assignment = self::getBaseQuery()->findOrFail($assignmentId);
-            $this->authorize('update', $assignment);
 
-            $vendorIds = collect($params->get('data'))->pluck('vendor_id');
-            $deletedCandidatesInstitutionUserIds = collect();
-            $assignment->candidates()
-                ->whereIn('vendor_id', $vendorIds)
-                ->each(function (Candidate $candidate) use ($deletedCandidatesInstitutionUserIds) {
-                    if (filled($candidate->vendor?->institution_user_id)) {
-                        $deletedCandidatesInstitutionUserIds->push($candidate->vendor?->institution_user_id);
+            $this->auditLogPublisher->publishModifyObjectAfterAction(
+                $assignment,
+                function () use ($params, $assignment) {
+                    $this->authorize('update', $assignment);
+
+                    $vendorIds = collect($params->get('data'))->pluck('vendor_id');
+                    $deletedCandidatesInstitutionUserIds = collect();
+                    $assignment->candidates()
+                        ->whereIn('vendor_id', $vendorIds)
+                        ->each(function (Candidate $candidate) use ($deletedCandidatesInstitutionUserIds) {
+                            if (filled($candidate->vendor?->institution_user_id)) {
+                                $deletedCandidatesInstitutionUserIds->push($candidate->vendor?->institution_user_id);
+                            }
+
+                            $candidate->deleteQuietly();
+                        });
+
+                    if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
+                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
                     }
-
-                    $candidate->deleteQuietly();
-                });
-
-            if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
-                DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
-            }
+                }
+            );
 
             $assignment->load('candidates.vendor.institutionUser');
             return AssignmentResource::make($assignment);
@@ -364,7 +401,9 @@ class AssignmentController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Not possible to delete the assignment as the task related to it is done.');
             }
 
-            $assignment->delete();
+            $assignment->deleteOrFail();
+
+            $this->auditLogPublisher->publishRemoveObject($assignment);
         });
 
         return response()->noContent();
@@ -491,7 +530,7 @@ class AssignmentController extends Controller
                 'assignee.institutionUser',
                 'volumes.institutionDiscount',
                 'catToolJobs',
-                'jobDefinition'
+                'jobDefinition',
             ]);
     }
 

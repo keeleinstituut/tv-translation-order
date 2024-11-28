@@ -17,7 +17,7 @@ use OpenApi\Attributes as OA;
         'type_classifier_value_id',
         'features',
         'is_start_date_supported',
-        'cat_tool_enabled'
+        'cat_tool_enabled',
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
@@ -48,7 +48,7 @@ class ProjectTypeConfigResource extends JsonResource
                 'cat_tool_enabled',
             ),
             'type_classifier_value' => ClassifierValueResource::make($this->whenLoaded('typeClassifierValue')),
-            'job_definitions' => JobDefinitionResource::collection($this->whenLoaded('jobDefinitions'))
+            'job_definitions' => JobDefinitionResource::collection($this->whenLoaded('jobDefinitions')),
         ];
     }
 }

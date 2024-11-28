@@ -116,6 +116,7 @@ class SubProjectPolicy
         if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
             return true;
         }
+
         return false;
     }
 

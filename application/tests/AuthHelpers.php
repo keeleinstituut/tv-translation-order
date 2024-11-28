@@ -4,8 +4,10 @@ namespace Tests;
 
 use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\InstitutionUser;
+use Faker\Generator;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 readonly class AuthHelpers
@@ -18,8 +20,15 @@ readonly class AuthHelpers
                 ->first(),
             'iss' => config('keycloak.base_url').'/realms/'.config('keycloak.realm'),
             'tolkevarav' => collect([
-                'userId' => 1,
-                'personalIdentificationCode' => '11111111111',
+                'userId' => fake()->uuid(),
+                'institutionUserId' => fake()->uuid(),
+                'forename' => fake()->firstName(),
+                'surname' => fake()->lastName(),
+                'personalIdentificationCode' => app(Generator::class)->estonianPIC(),
+                'selectedInstitution' => [
+                    'id' => fake()->uuid(),
+                    'name' => fake()->company(),
+                ],
                 'privileges' => [],
             ])->merge($tolkevaravPayload)->toArray(),
         ]);
@@ -110,5 +119,15 @@ readonly class AuthHelpers
                 ->unique()
                 ->all(),
         ];
+    }
+
+    public static function fakeServiceValidationResponse(): void
+    {
+        Http::fake([
+            rtrim(config('keycloak.base_url'), '/').'/*' => Http::response([
+                'access_token' => AuthHelpers::generateServiceAccountJwt(),
+                'expires_in' => 300,
+            ]),
+        ]);
     }
 }

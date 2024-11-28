@@ -46,6 +46,6 @@ class ClassifierValueFullSync extends BaseEntityFullSyncCommand
 
     protected function getSingleSyncQueueName(): string
     {
-        return "tv-translation-order.classifier-value";
+        return 'tv-translation-order.classifier-value';
     }
 }

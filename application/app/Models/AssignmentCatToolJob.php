@@ -34,7 +34,7 @@ use Illuminate\Support\Carbon;
  */
 class AssignmentCatToolJob extends Pivot
 {
-    use HasUuids, HasFactory;
+    use HasFactory, HasUuids;
 
     protected $table = 'assignment_cat_tool_jobs';
 
