@@ -70,7 +70,9 @@ class PublishAuditLogFailureMessageIfRequired
      */
     private static function resolveEventTypeAndParameters(): ?array
     {
-        [$controller, $action] = explode('@', Route::currentRouteAction());
+        $params = collect(explode('@', Route::currentRouteAction()));
+        $controller = $params->get(0);
+        $action = $params->get(1);
 
         return match ($controller) {
             MediaController::class,
