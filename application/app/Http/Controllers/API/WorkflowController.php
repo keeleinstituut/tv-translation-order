@@ -30,6 +30,7 @@ use App\Policies\VendorPolicy;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
+use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Auth;
 use BadMethodCallException;
@@ -305,6 +306,11 @@ class WorkflowController extends Controller
         TrackSubProjectStatus::dispatchSync($assignment->subProject);
         $assignment->load('subProject');
 
+        $this->auditLogPublisher->publish(
+            AuditLogMessageBuilder::makeUsingJWT()
+                ->toAcceptTaskEvent($assignment->id, $assignment->ext_id)
+        );
+
         return TaskResource::make($taskData);
     }
 
@@ -418,6 +424,14 @@ class WorkflowController extends Controller
             if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
                 $this->notificationPublisher->publishEmailNotification($message);
             }
+
+            $this->auditLogPublisher->publish(
+                AuditLogMessageBuilder::makeUsingJWT()
+                    ->toCompleteAssignmentEvent(
+                        $assignment->id,
+                        $assignment->ext_id,
+                    )
+            );
         });
 
         TrackSubProjectStatus::dispatchSync($assignment->subProject);
@@ -493,6 +507,24 @@ class WorkflowController extends Controller
             }
 
             WorkflowService::completeReviewTask(data_get($taskData, 'task.id'), $validated['accepted']);
+
+            if ($validated['accepted']) {
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toApproveAssignmentResultEvent(
+                            $assignment->id,
+                            $assignment->ext_id,
+                        )
+                );
+            } else {
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toRejectAssignmentResultEvent(
+                            $assignment->id,
+                            $assignment->ext_id,
+                        )
+                );
+            }
         });
 
         TrackSubProjectStatus::dispatchSync($assignment->subProject);
@@ -558,6 +590,24 @@ class WorkflowController extends Controller
             }
 
             WorkflowService::completeProjectReviewTask(data_get($taskData, 'task.id'), $isAccepted);
+
+            if ($isAccepted) {
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toApproveProjectEvent(
+                            $project->id,
+                            $project->ext_id,
+                        )
+                );
+            } else {
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toRejectProjectEvent(
+                            $project->id,
+                            $project->ext_id,
+                        )
+                );
+            }
         });
 
 
