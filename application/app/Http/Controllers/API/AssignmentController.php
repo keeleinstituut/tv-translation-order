@@ -29,6 +29,7 @@ use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
 use App\Services\Workflows\WorkflowService;
+use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -468,12 +469,39 @@ class AssignmentController extends Controller
                 } catch (InvalidArgumentException $e) {
                     abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
                 }
+
+                if ($validated['accepted']) {
+                    $this->auditLogPublisher->publish(
+                        AuditLogMessageBuilder::makeUsingJWT()
+                            ->toApproveAssignmentResultEvent(
+                                $assignment->id,
+                                $assignment->ext_id,
+                            )
+                    );
+                } else {
+                    $this->auditLogPublisher->publish(
+                        AuditLogMessageBuilder::makeUsingJWT()
+                            ->toRejectAssignmentResultEvent(
+                                $assignment->id,
+                                $assignment->ext_id,
+                            )
+                    );
+                }
             } else {
                 if (data_get($taskData, 'variables.task_type', TaskType::Default->value) !== TaskType::Default->value) {
                     abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'The task has the wrong type that not match with the assignment');
                 }
 
                 WorkflowService::completeTask($taskId);
+
+                $this->auditLogPublisher->publish(
+                    AuditLogMessageBuilder::makeUsingJWT()
+                        ->toCompleteAssignmentEvent(
+                            $assignment->id,
+                            $assignment->ext_id,
+                        )
+                );
+
                 $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
                 if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
                     $this->notificationPublisher->publishEmailNotification($message);
