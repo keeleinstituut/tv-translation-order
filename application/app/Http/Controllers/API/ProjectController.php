@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\ProjectStatus;
+use App\Enums\SubProjectStatus;
 use App\Enums\VolumeUnits;
 use App\Helpers\DateUtil;
 use App\Http\Controllers\Controller;
@@ -489,6 +490,13 @@ class ProjectController extends Controller
         )->lazy()->each(function (Project $project) use ($csvDocument) {
             $project->assignments->each(function (Assignment $assignment) use ($csvDocument, $project) {
                 $subProject = $assignment->subProject;
+
+                // https://github.com/keeleinstituut/tv-tolkevarav/issues/819#issuecomment-2538206783
+                $assignee = $assignment->assignee?->institutionUser?->getUserFullName();
+                if (empty($assignee) && $subProject->status === SubProjectStatus::Completed) {
+                    $assignee = $project->managerInstitutionUser?->getUserFullName();
+                }
+
                 $csvDocument->insertOne([
                     $assignment->ext_id,
                     $project->reference_number,
@@ -496,7 +504,7 @@ class ProjectController extends Controller
                     $subProject?->sourceLanguageClassifierValue?->value,
                     $subProject?->destinationLanguageClassifierValue?->value,
                     $project->managerInstitutionUser?->getUserFullName(),
-                    $assignment->assignee?->institutionUser?->getUserFullName(),
+                    $assignee,
                     $subProject?->status?->value,
                     $project->clientInstitutionUser?->getUserFullName(),
                     $project->translationDomainClassifierValue?->name,
