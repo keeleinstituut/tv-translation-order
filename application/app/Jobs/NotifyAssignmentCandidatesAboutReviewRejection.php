@@ -41,14 +41,17 @@ class NotifyAssignmentCandidatesAboutReviewRejection implements ShouldQueue
         $this->subProject->assignments()->where('job_definition_id', $activeJobDefinition->id)
             ->each(function (Assignment $assignment) use ($notificationPublisher) {
                 if (filled($assignment->assignee) && filled($receiver = $assignment->assignee?->institutionUser) && filled($receiver->email)) {
-                    $notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
-                        'notification_type' => NotificationType::TaskRejected,
-                        'receiver_email' => $receiver->email,
-                        'receiver_name' => $receiver->getUserFullName(),
-                        'variables' => [
-                            'assignment' => $assignment->only(['ext_id']),
-                        ]
-                    ]));
+                    $notificationPublisher->publishEmailNotification(
+                        EmailNotificationMessage::make([
+                            'notification_type' => NotificationType::TaskRejected,
+                            'receiver_email' => $receiver->email,
+                            'receiver_name' => $receiver->getUserFullName(),
+                            'variables' => [
+                                'assignment' => $assignment->only(['ext_id']),
+                            ]
+                        ]),
+                        $this->subProject->project->institution_id
+                    );
                 }
             });
     }

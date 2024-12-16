@@ -92,7 +92,8 @@ class ProjectReviewRejectionObserver
                                 ->each(fn(SubProject $subProject) => $subProject->only(['ext_id']))
                         ]
                     ]
-                ])
+                ]),
+                $project->institution_id
             );
         }
     }

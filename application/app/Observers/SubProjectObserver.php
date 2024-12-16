@@ -144,7 +144,8 @@ class SubProjectObserver
                             'ext_id'
                         ]),
                     ]
-                ])
+                ]),
+                $subProject->project->institution_id
             );
         }
     }
