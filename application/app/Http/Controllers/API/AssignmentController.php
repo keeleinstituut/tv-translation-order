@@ -517,11 +517,6 @@ class AssignmentController extends Controller
                 $assignment->saveOrFail();
             });
 
-            DB::query()->from('failed_jobs')->where('uuid', '3e95d08d-10bb-482b-b540-309d3aaf1ce1')->get();
-            DB::query()->from('failed_jobs')->where('uuid', '10752fde-3b59-40ea-a95b-9c837e883b1c')->get();
-            DB::query()->from('failed_jobs')->where('uuid', '7cac83c6-927e-4c57-bbcf-c4c44ab36c28')->get();
-            DB::query()->from('failed_jobs')->where('uuid', 'a41407ff-70a2-4101-b61c-ad00395e711c')->get();
-
             TrackSubProjectStatus::dispatchSync($assignment->subProject);
 
             $assignment->load('subProject.activeJobDefinition');
