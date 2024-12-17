@@ -179,18 +179,21 @@ readonly class AssignmentObserver
 
     private function publishTaskAcceptedEmailNotification(Assignment $assignment, InstitutionUser $receiver): void
     {
-        if (filled($receiver->email)) {
-            $this->notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
-                'notification_type' => NotificationType::TaskAccepted,
-                'receiver_email' => $receiver->email,
-                'receiver_name' => $receiver->getUserFullName(),
-                'variables' => [
-                    'assignment' => $assignment->only('ext_id'),
-                    'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
-                    'vendor' => $assignment->assignee?->only(['company_name']),
-                    'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
-                ]
-            ]));
+        if (filled($receiver->email) && filled($assignment->subProject?->project?->institution_id)) {
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::TaskAccepted,
+                    'receiver_email' => $receiver->email,
+                    'receiver_name' => $receiver->getUserFullName(),
+                    'variables' => [
+                        'assignment' => $assignment->only('ext_id'),
+                        'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                        'vendor' => $assignment->assignee?->only(['company_name']),
+                        'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
+                    ]
+                ]),
+                $assignment->subProject->project->institution_id
+            );
         }
     }
 }

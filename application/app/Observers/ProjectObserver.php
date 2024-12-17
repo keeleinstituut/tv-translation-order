@@ -58,14 +58,17 @@ class ProjectObserver
         $seq->saveOrFail();
 
         if (filled($projectManager = $project->managerInstitutionUser) && filled($projectManager->email)) {
-            $this->notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
-                'notification_type' => NotificationType::ProjectCreated,
-                'receiver_email' => $projectManager->email,
-                'receiver_name' => $projectManager->getUserFullName(),
-                'variables' => [
-                    'project' => $project->only(['ext_id'])
-                ]
-            ]));
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::ProjectCreated,
+                    'receiver_email' => $projectManager->email,
+                    'receiver_name' => $projectManager->getUserFullName(),
+                    'variables' => [
+                        'project' => $project->only(['ext_id'])
+                    ]
+                ]),
+                $project->institution_id
+            );
         }
     }
 
@@ -215,7 +218,8 @@ class ProjectObserver
                     'variables' => [
                         'project' => $project->only(['ext_id']),
                     ]
-                ])
+                ]),
+                $project->institution_id
             );
         }
     }
@@ -232,7 +236,8 @@ class ProjectObserver
                     'variables' => [
                         'project' => $project->only(['ext_id']),
                     ]
-                ])
+                ]),
+                $project->institution_id
             );
         }
     }
@@ -240,14 +245,17 @@ class ProjectObserver
     private function publishPmOrClientAssignedToProject(Project $project, InstitutionUser $assignee): void
     {
         if (filled($assignee->email)) {
-            $this->notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
-                'notification_type' => NotificationType::InstitutionUserAssignedToProject,
-                'receiver_email' => $assignee->email,
-                'receiver_name' => $assignee->getUserFullName(),
-                'variables' => [
-                    'project' => $project->only(['ext_id'])
-                ]
-            ]));
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::InstitutionUserAssignedToProject,
+                    'receiver_email' => $assignee->email,
+                    'receiver_name' => $assignee->getUserFullName(),
+                    'variables' => [
+                        'project' => $project->only(['ext_id'])
+                    ]
+                ]),
+                $project->institution_id
+            );
         }
     }
 
@@ -266,14 +274,15 @@ class ProjectObserver
                             'cancellation_comment'
                         ]),
                     ]
-                ])
+                ]),
+                $project->institution_id
             );
         }
     }
 
     private function publishProjectCancelledEmailNotificationForVendors(Project $project): void
     {
-        $project->assignments->each(function (Assignment $assignment) {
+        $project->assignments->each(function (Assignment $assignment) use ($project) {
             if (filled($receiver = $assignment->assignee?->institutionUser) && filled($receiver->email)) {
                 $this->notificationPublisher->publishEmailNotification(
                     EmailNotificationMessage::make([
@@ -284,7 +293,8 @@ class ProjectObserver
                             'assignment' => $assignment->only('ext_id'),
                             'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
                         ]
-                    ])
+                    ]),
+                    $project->institution_id
                 );
             }
         });
@@ -303,7 +313,8 @@ class ProjectObserver
                             'ext_id'
                         ]),
                     ]
-                ])
+                ]),
+                $project->institution_id
             );
         }
     }
@@ -322,7 +333,8 @@ class ProjectObserver
                             'ext_id'
                         ]),
                     ]
-                ])
+                ]),
+                $project->institution_id
             );
         }
     }

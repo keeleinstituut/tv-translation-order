@@ -16,7 +16,6 @@ use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;

@@ -51,7 +51,7 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                 $candidate->saveOrFail();
 
                 $institutionUser = $candidate->vendor?->institutionUser;
-                if (filled($institutionUser?->email)) {
+                if (filled($institutionUser?->email) && filled($this->assignment->subProject?->project?->institution_id)) {
                     $notificationPublisher->publishEmailNotification(
                         EmailNotificationMessage::make([
                             'notification_type' => NotificationType::TaskCreated,
@@ -62,7 +62,8 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                                     'ext_id'
                                 ]),
                             ]
-                        ])
+                        ]),
+                        $this->assignment->subProject->project->institution_id
                     );
                 }
             }

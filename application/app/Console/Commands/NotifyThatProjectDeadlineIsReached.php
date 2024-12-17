@@ -27,26 +27,32 @@ class NotifyThatProjectDeadlineIsReached extends Command
                 $atLeastOneNotificationSent = false;
                 if (empty($project->deadline_notification_sent_at) && filled($project->deadline_at) && $project->deadline_at < Carbon::now()) {
                     if (filled($client = $project->clientInstitutionUser) && filled($client->email)) {
-                        $notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
-                            'notification_type' => NotificationType::ProjectDeadlineReached,
-                            'receiver_email' => $client->email,
-                            'receiver_name' => $client->getUserFullName(),
-                            'variables' => [
-                                'project' => $project->only(['ext_id']),
-                            ]
-                        ]));
+                        $notificationPublisher->publishEmailNotification(
+                            EmailNotificationMessage::make([
+                                'notification_type' => NotificationType::ProjectDeadlineReached,
+                                'receiver_email' => $client->email,
+                                'receiver_name' => $client->getUserFullName(),
+                                'variables' => [
+                                    'project' => $project->only(['ext_id']),
+                                ]
+                            ]),
+                            $project->institution_id
+                        );
                         $atLeastOneNotificationSent = true;
                     }
 
                     if (filled($manager = $project->managerInstitutionUser) && filled($manager->email)) {
-                        $notificationPublisher->publishEmailNotification(EmailNotificationMessage::make([
-                            'notification_type' => NotificationType::ProjectDeadlineReached,
-                            'receiver_email' => $manager->email,
-                            'receiver_name' => $manager->getUserFullName(),
-                            'variables' => [
-                                'project' => $project->only(['ext_id']),
-                            ]
-                        ]));
+                        $notificationPublisher->publishEmailNotification(
+                            EmailNotificationMessage::make([
+                                'notification_type' => NotificationType::ProjectDeadlineReached,
+                                'receiver_email' => $manager->email,
+                                'receiver_name' => $manager->getUserFullName(),
+                                'variables' => [
+                                    'project' => $project->only(['ext_id']),
+                                ]
+                            ]),
+                            $project->institution_id
+                        );
                         $atLeastOneNotificationSent = true;
                     }
 
