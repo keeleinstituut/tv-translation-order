@@ -136,11 +136,11 @@ class PublishAuditLogFailureMessageIfRequired
                 'object_identity_subset' => SubProject::find(Route::current()->parameter('sub_project_id'))?->getIdentitySubset(),
                 'input' => Request::input(),
             ]],
-            [CatToolController::class, 'downloadXLIFFs'] => [AuditLogEventType::DownloadSubprojectXliffs, [
+            [CatToolController::class, 'downloadXLIFFs'] => [AuditLogEventType::DownloadSubProjectXliffs, [
                 'object_type' => AuditLogEventObjectType::Subproject->value,
                 'input' => Request::input(),
             ]],
-            [CatToolController::class, 'downloadTranslations'] => [AuditLogEventType::DownloadSubprojectTranslations, [
+            [CatToolController::class, 'downloadTranslations'] => [AuditLogEventType::DownloadSubProjectTranslations, [
                 'object_type' => AuditLogEventObjectType::Subproject->value,
                 'input' => Request::input(),
             ]],
