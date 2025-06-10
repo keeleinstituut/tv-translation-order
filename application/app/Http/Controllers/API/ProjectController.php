@@ -276,12 +276,18 @@ class ProjectController extends Controller
         /** @var Project $project */
         $project = $this->getBaseQuery()->find($id) ?? abort(404);
 
-        if (filled($client = $request->validated('client_institution_user_id')) && $project->client_institution_user_id !== $client) {
+        // Check changeProjectManager policy when client is changed
+        if (filled($client = $params->get('client_institution_user_id')) && $project->client_institution_user_id !== $client) {
             $this->authorize('changeClient', $project);
-            if (count($request->validated()) > 1) {
-                $this->authorize('update', $project);
-            }
-        } else {
+        }
+
+        // Check changeProjectManager policy when manager is changed
+        if (filled($manager = $params->get('manager_institution_user_id')) && $project->manager_institution_user_id !== $manager) {
+            $this->authorize('changeProjectManager', $project);
+        }
+
+        // For all other fields check update policy
+        if (count($params->except(['client_institution_user_id', 'manager_institution_user_id'])) > 0) {
             $this->authorize('update', $project);
         }
 

@@ -64,6 +64,7 @@ class JobDefinition extends Model
         'multi_assignments_enabled',
         'linking_with_cat_tool_jobs_enabled',
         'sequence',
+        'skill_id',
     ];
 
     public function projectTypeConfig(): BelongsTo
