@@ -23,6 +23,7 @@ class InstitutionUserPolicy
 
         if ($projectRole === 'client') {
             return Auth::hasPrivilege(PrivilegeKey::ChangeClient->value) ||
+                Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value) ||
                 Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
         }
 
