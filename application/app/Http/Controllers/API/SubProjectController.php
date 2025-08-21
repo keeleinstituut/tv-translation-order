@@ -18,10 +18,12 @@ use App\Policies\SubProjectPolicy;
 use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\Service\Attribute\Required;
 use Throwable;
 
 class SubProjectController extends Controller
@@ -269,6 +271,43 @@ class SubProjectController extends Controller
             ]);
             return SubProjectResource::make($subProject);
         });
+    }
+
+
+    /**
+     * List combinations of languages used for available projects
+     *
+     * @throws AuthorizationException
+     */
+    #[OA\Get(
+        path: '/subprojects/languages',
+        description: 'Project\'s languages are based on related sub-projects',
+        summary: 'Get all combinations of languages used on available projects',
+        tags: ['Sub-projects'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OA\Response(
+        response: Response::HTTP_OK,
+        description: 'List of unique language combinations',
+        content: new OA\JsonContent(
+            required: ['data'],
+            properties: [
+                new OA\Property(
+                    property: 'data', type: 'array', items: new OA\Items(type: 'string', example: 'srcLangUUID:dstLangUUID')
+                ),
+            ]
+        )
+    )]
+    public function getLanguageCombinations(): JsonResponse
+    {
+        $this->authorize('viewAny', [SubProject::class, false]);
+
+        $languageCombinations = $this->getBaseQuery()->select('source_language_classifier_value_id', 'destination_language_classifier_value_id')
+            ->distinct()
+            ->get()
+            ->map(fn($subProject) => $subProject->source_language_classifier_value_id . ':' . $subProject->destination_language_classifier_value_id);
+
+        return response()->json(['data' => $languageCombinations]);
     }
 
     private static function getBaseQuery(): Builder

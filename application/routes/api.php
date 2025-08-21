@@ -71,6 +71,7 @@ Route::prefix('/subprojects')
         Route::post('/{id}/start-workflow', 'startWorkflow')->name('translation-order.subprojects.startWorkflow');
         Route::put('/{id}', 'update')->name('translation-order.subprojects.update');
         Route::post('/{id}/set-project-final-files', 'setProjectFinalFiles')->name('translation-order.subprojects.setProjectFinalFiles');
+        Route::get('/languages', 'getLanguageCombinations')->name('translation-order.subprojects.getLanguageCombinations');
     });
 
 Route::prefix('/cat-tool')
