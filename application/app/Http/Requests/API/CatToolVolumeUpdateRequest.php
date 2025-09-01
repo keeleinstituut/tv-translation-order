@@ -37,7 +37,7 @@ class CatToolVolumeUpdateRequest extends FormRequest
         $unitQualityRule = ['sometimes', 'decimal:0,3', 'min:0'];
 
         return [
-            'unit_fee' => 'decimal:0,2|between:0,99999999.99',
+            'unit_fee' => 'decimal:0,3|between:0,99999999.99',
             'custom_volume_analysis.tm_101' => $unitQualityRule,
             'custom_volume_analysis.repetitions' => $unitQualityRule,
             'custom_volume_analysis.tm_100' => $unitQualityRule,
