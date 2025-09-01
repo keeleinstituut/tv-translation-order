@@ -114,6 +114,7 @@ class ProjectController extends Controller
                 'subProjects',
                 'subProjects.sourceLanguageClassifierValue',
                 'subProjects.destinationLanguageClassifierValue',
+                'clientInstitutionUser',
             ]);
 
         if ($param = $params->get('ext_id')) {

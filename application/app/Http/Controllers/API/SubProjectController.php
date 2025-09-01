@@ -94,7 +94,9 @@ class SubProjectController extends Controller
             'sourceLanguageClassifierValue',
             'destinationLanguageClassifierValue',
             'project.typeClassifierValue',
-            'activeJobDefinition'
+            'activeJobDefinition',
+            'project.clientInstitutionUser',
+            'project.tags',
         ]);
 
         if ($param = $params->get('ext_id')) {
@@ -130,7 +132,7 @@ class SubProjectController extends Controller
 
         $data = $query->orderBy(
             $request->validated('sort_by', 'created_at'),
-            $request->validated('sort_order', 'asc')
+            $request->validated('sort_order', 'desc')
         )->paginate($params->get('per_page', 10));
 
         return SubProjectResource::collection($data);

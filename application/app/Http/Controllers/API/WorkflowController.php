@@ -771,7 +771,9 @@ class WorkflowController extends Controller
         $relations = collect([
             'subProject.project.typeClassifierValue',
             'subProject.sourceLanguageClassifierValue',
-            'subProject.destinationLanguageClassifierValue'
+            'subProject.destinationLanguageClassifierValue',
+            'subProject.project.tags',
+            'subProject.project.clientInstitutionUser',
         ])->merge($assignmentAdditionalRelations)->unique();
 
         $assignmentIds = collect($tasks)->map(fn($task) => data_get($task, 'variables.assignment_id'));
@@ -803,7 +805,9 @@ class WorkflowController extends Controller
         $relations = collect([
             'typeClassifierValue',
             'subProjects.destinationLanguageClassifierValue',
-            'subProjects.sourceLanguageClassifierValue'
+            'subProjects.sourceLanguageClassifierValue',
+            'tags',
+            'clientInstitutionUser',
         ])->merge($projectAdditionalRelations)->unique();
 
         $projectIds = collect($tasks)->map(fn($task) => data_get($task, 'variables.project_id'));
