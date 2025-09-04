@@ -20,7 +20,18 @@ class WorkflowHistoryTaskListRequest extends FormRequest
             'lang_pair.*.dst' => 'required|uuid',
             'type_classifier_value_id' => 'sometimes|array|max:1',
             'type_classifier_value_id.*' => 'required|uuid',
-            'sort_by' => Rule::in(['deadline_at']),
+            'sort_by' => Rule::in([
+                'created_at',
+
+                'project.ext_id',
+                'project.price',
+                'project.deadline_at',
+                'project.event_start_at',
+                'project.reference_number',
+                'project.clientInstitutionUser.name',
+
+                'assignment.subProject.project.ext_id'
+            ]),
             'sort_order' => Rule::in(['asc', 'desc']),
         ];
     }

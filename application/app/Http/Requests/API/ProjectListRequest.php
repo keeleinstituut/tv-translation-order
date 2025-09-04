@@ -26,7 +26,16 @@ class ProjectListRequest extends FormRequest
         return [
             'per_page' => 'integer',
             'page' => 'integer',
-            'sort_by' => Rule::in(['price', 'deadline_at', 'created_at', 'event_start_at']),
+            'sort_by' => Rule::in([
+                'price',
+                'deadline_at',
+                'created_at',
+                'event_start_at',
+                'status',
+                'reference_number',
+                'ext_id',
+                'clientInstitutionUser.name',
+            ]),
             'sort_order' => Rule::in(['asc', 'desc']),
             'ext_id' => 'string',
             'only_show_personal_projects' => 'boolean',

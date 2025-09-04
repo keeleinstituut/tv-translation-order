@@ -147,9 +147,54 @@ class ProjectController extends Controller
             });
         }
 
-        $data = $query
-            ->orderBy($request->validated('sort_by', 'created_at'), $request->validated('sort_order', 'desc'))
-            ->paginate($params->get('per_page', 10));
+        $query = $query
+            ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+            ->select('projects.*')
+            ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
+
+
+        $sortBy = $params->get('sort_by');
+        $sortOrder = $params->get('sort_order', 'desc');
+
+        switch ($sortBy) {
+            case 'price':
+                $query = $query->orderBy('price', $sortOrder);
+                break;
+
+            case 'deadline_at':
+                $query = $query->orderBy('deadline_at', $sortOrder);
+                break;
+
+            case 'created_at':
+                $query = $query->orderBy('created_at', $sortOrder);
+                break;
+
+            case 'event_start_at':
+                $query = $query->orderBy('event_start_at', $sortOrder);
+                break;
+
+            case 'status':
+                $query = $query->orderBy('status', $sortOrder);
+                break;
+
+            case 'reference_number':
+                $query = $query->orderBy('reference_number', $sortOrder);
+                break;
+
+            case 'ext_id':
+                $query = $query->orderBy('ext_id', $sortOrder);
+                break;
+
+            case 'clientInstitutionUser.name':
+                $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
+                break;
+            
+            default:
+                $query = $query->orderBy('created_at', $sortOrder);
+                break;
+        }
+
+        $data = $query->paginate($params->get('per_page', 10));
 
         return ProjectResource::collection($data);
 

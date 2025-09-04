@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use Illuminate\Support\Facades\Auth;
 use App\Enums\AssignmentStatus;
 use App\Enums\CandidateStatus;
 use App\Enums\PrivilegeKey;
@@ -12,6 +13,7 @@ use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
+use App\Http\Resources\TaskResource2;
 use App\Jobs\NotifyAssignmentCandidatesAboutReviewRejection;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -32,7 +34,6 @@ use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
-use Auth;
 use BadMethodCallException;
 use DB;
 use Gate;
@@ -53,6 +54,9 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
+use App\Models\CamundaTask;
+use Ramsey\Uuid\Uuid;
+
 
 class WorkflowController extends Controller
 {
@@ -60,6 +64,239 @@ class WorkflowController extends Controller
     public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient, private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
     {
         parent::__construct($auditLogPublisher);
+    }
+
+    public function getTasks2(WorkflowTaskListRequest $request)
+    {
+        $params = collect($request->validated());
+        $perPage = intval($request->get('per_page'));
+        $pagination = new PaginationBuilder(5000);
+
+        $bodyParams = collect($this->buildAdditionalParams($params));
+
+        $tasks = WorkflowService::getTasks($bodyParams, $pagination->getPaginationParams());
+        $count = WorkflowService::getTasksCount($bodyParams)['count'];
+
+        $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
+        $data = $this->mapWithVariables($tasks, $variableInstances);
+
+        $queryId = $this->populateToDatabase($data);
+
+        $query = CamundaTask::where('query_id', $queryId)
+            ->with([
+                'assignment',
+                'assignment.subProject',
+                'assignment.subProject.sourceLanguageClassifierValue',
+                'assignment.subProject.destinationLanguageClassifierValue',
+                'assignment.subProject.project',
+                'assignment.subProject.project.tags',
+                'assignment.subProject.project.clientInstitutionUser',
+                'assignment.subProject.project.typeClassifierValue',
+                'project',
+                'project.tags',
+                'project.typeClassifierValue',
+                'project.clientInstitutionUser',
+                'project.subProjects.sourceLanguageClassifierValue',
+                'project.subProjects.destinationLanguageClassifierValue',
+            ]);
+
+        $query = $query
+            ->join('projects', 'projects.id', '=', 'var_project_id')
+            ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+            ->select('camunda_tasks.*')
+            ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
+
+        if ($param = $params->get('type_classifier_value_id')) {
+            $query = $query->where('projects.type_classifier_value_id', $param);
+        }
+        
+
+        $sortBy = $params->get('sort_by');
+        $sortOrder = $params->get('sort_order', 'desc');
+
+        switch ($sortBy) {
+            case 'created_at':
+                $query = $query->orderBy('camunda_tasks.task_created', $sortOrder);
+                break;
+
+            case 'project.ext_id':
+                $query = $query->orderBy('projects.ext_id', $sortOrder);
+                break;
+
+            case 'project.reference_number':
+                $query = $query->orderBy('projects.reference_number', $sortOrder);
+                break;
+
+            case 'project.price':
+                $query = $query->orderBy('projects.price', $sortOrder);
+                break;
+
+            case 'project.deadline_at':
+                $query = $query->orderBy('projects.deadline_at', $sortOrder);
+                break;
+
+            case 'project.event_start_at':
+                $query = $query->orderBy('projects.event_start_at', $sortOrder);
+                break;
+
+            case 'project.clientInstitutionUser.name':
+                $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
+                break;
+            
+            default:
+                $query = $query->orderBy('deadline_at', $sortOrder);
+                break;
+        }
+
+        $result = $query->paginate();
+
+        $this->removeFromDatabase($queryId);
+
+        return TaskResource2::collection($result);
+    }
+
+    public function getHistoryTasks2(WorkflowHistoryTaskListRequest $request): AnonymousResourceCollection
+    {
+
+        $params = collect($request->validated());
+        $perPage = intval($request->get('per_page'));
+        $pagination = new PaginationBuilder(5000);
+
+        $bodyParams = collect([
+            ...$this->buildAdditionalParams($params, true),
+            'finished' => true,
+        ]);
+
+        $tasks = WorkflowService::getHistoryTask($bodyParams, $pagination->getPaginationParams());
+        $count = WorkflowService::getHistoryTaskCount($bodyParams)['count'];
+
+        $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
+        $data = $this->mapWithVariables($tasks, $variableInstances);
+
+        $queryId = $this->populateToDatabase($data, true);
+
+        $query = CamundaTask::where('query_id', $queryId)
+            ->with([
+                'assignment',
+                'assignment.subProject',
+                'assignment.subProject.sourceLanguageClassifierValue',
+                'assignment.subProject.destinationLanguageClassifierValue',
+                'assignment.subProject.project',
+                'assignment.subProject.project.tags',
+                'assignment.subProject.project.clientInstitutionUser',
+                'assignment.subProject.project.typeClassifierValue',
+                'project',
+                'project.tags',
+                'project.typeClassifierValue',
+                'project.clientInstitutionUser',
+                'project.subProjects.sourceLanguageClassifierValue',
+                'project.subProjects.destinationLanguageClassifierValue',
+            ]);
+
+        $query = $query
+            ->join('projects', 'projects.id', '=', 'var_project_id')
+            ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+            ->select('camunda_tasks.*')
+            ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
+
+        if ($param = $params->get('type_classifier_value_id')) {
+            $query = $query->where('projects.type_classifier_value_id', $param);
+        }
+        
+
+        $sortBy = $params->get('sort_by');
+        $sortOrder = $params->get('sort_order', 'desc');
+
+        switch ($sortBy) {
+            case 'created_at':
+                $query = $query->orderBy('camunda_tasks.task_created', $sortOrder);
+                break;
+
+            case 'project.ext_id':
+                $query = $query->orderBy('projects.ext_id', $sortOrder);
+                break;
+
+            case 'project.reference_number':
+                $query = $query->orderBy('projects.reference_number', $sortOrder);
+                break;
+
+            case 'project.price':
+                $query = $query->orderBy('projects.price', $sortOrder);
+                break;
+
+            case 'project.deadline_at':
+                $query = $query->orderBy('projects.deadline_at', $sortOrder);
+                break;
+
+            case 'project.event_start_at':
+                $query = $query->orderBy('projects.event_start_at', $sortOrder);
+                break;
+
+            case 'project.clientInstitutionUser.name':
+                $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
+                break;
+            
+            default:
+                $query = $query->orderBy('deadline_at', $sortOrder);
+                break;
+        }
+
+        $result = $query->paginate();
+
+        $this->removeFromDatabase($queryId);
+
+        return TaskResource2::collection($result);
+    }
+
+    // Saves task info temporarily to database for easier integration with existing data
+    // for leveraging database functions for sorting and filtering based on fields in other existing tables.
+    public function populateToDatabase($data, $forHistoricTasks = false)
+    {
+        $queryId = (string) Uuid::uuid4();
+
+        $entities = collect($data)->map(function ($taskData) use ($queryId, $forHistoricTasks) {
+            $row = [];
+            $row['id'] = (string) Uuid::uuid4();
+            $row['query_id'] = $queryId; 
+            $row['task_id'] = data_get($taskData, 'task.id');
+            $row['task_name'] = data_get($taskData, 'task.name');
+            $row['task_created'] = data_get($taskData, $forHistoricTasks ? 'task.startTime' : 'task.created');
+            $row['task_execution_id'] = data_get($taskData, 'task.executionId');
+            $row['task_process_definition_id'] = data_get($taskData, 'task.processDefinitionId');
+            $row['task_process_instance_id'] = data_get($taskData, 'task.processInstanceId');
+            $row['task_task_definition_key'] = data_get($taskData, 'task.taskDefinitionKey');
+
+            $row['var_project_id'] = data_get($taskData, 'variables.project_id');
+            $row['var_sub_project_id'] = data_get($taskData, 'variables.sub_project_id');
+            $row['var_institution_id'] = data_get($taskData, 'variables.institution_id');
+            $row['var_assignment_id'] = data_get($taskData, 'variables.assignment_id');
+            $row['var_source_language_classifier_value_id'] = data_get($taskData, 'variables.source_language_classifier_value_id');
+            $row['var_destination_language_classifier_value_id'] = data_get($taskData, 'variables.destination_language_classifier_value_id');
+            $row['var_type_classifier_value_id'] = data_get($taskData, 'variables.type_classifier_value_id');
+            $row['var_deadline_at'] = data_get($taskData, 'variables.deadline_at');
+            $row['var_task_type'] = data_get($taskData, 'variables.task_type');
+            return $row;
+        });
+
+        // For some reason tasks from camunda are missing project_id when assignment_id is set.
+        // Project_id is directly derivable through one-to-one relations between assignment -> subProject -> project.
+        $assignments = collect(Assignment::getModel()->with('subProject.project')->whereIn('id', $entities->pluck('var_assignment_id'))->get());
+        $entities = $entities->map(function ($entity) use ($assignments) {;
+            $assignment = $assignments->firstWhere('id', $entity['var_assignment_id']);
+            if ($assignment) {
+                $entity['var_project_id'] = $assignment->subProject->project->id;
+                $entity['var_sub_project_id'] = $assignment->subProject->id;
+            }
+            return $entity;
+        });
+
+        CamundaTask::insert($entities->toArray());
+        return $queryId;
+    }
+
+    private function removeFromDatabase($queryId)
+    {
+        CamundaTask::where('query_id', $queryId)->delete();
     }
 
     /**
@@ -645,28 +882,28 @@ class WorkflowController extends Controller
         $processVariablesFilter = collect();
         $sortingParams = collect();
 
-        if ($param = $requestParams->get('lang_pair')) {
-            $langPair = collect($param)->first();
-            $processVariablesFilter->push([
-                "name" => 'source_language_classifier_value_id',
-                "value" => $langPair['src'],
-                "operator" => "eq",
-            ]);
-            $processVariablesFilter->push([
-                'name' => 'destination_language_classifier_value_id',
-                'value' => "%{$langPair['dst']}%",
-                'operator' => 'like',
-            ]);
-        }
+        // if ($param = $requestParams->get('lang_pair')) {
+        //     $langPair = collect($param)->first();
+        //     $processVariablesFilter->push([
+        //         "name" => 'source_language_classifier_value_id',
+        //         "value" => $langPair['src'],
+        //         "operator" => "eq",
+        //     ]);
+        //     $processVariablesFilter->push([
+        //         'name' => 'destination_language_classifier_value_id',
+        //         'value' => "%{$langPair['dst']}%",
+        //         'operator' => 'like',
+        //     ]);
+        // }
 
-        if ($param = $requestParams->get('type_classifier_value_id')) {
-            $typeClassifierValueId = collect($param)->first();
-            $processVariablesFilter->push([
-                'name' => 'type_classifier_value_id',
-                'value' => $typeClassifierValueId,
-                'operator' => 'eq',
-            ]);
-        }
+        // if ($param = $requestParams->get('type_classifier_value_id')) {
+        //     $typeClassifierValueId = collect($param)->first();
+        //     $processVariablesFilter->push([
+        //         'name' => 'type_classifier_value_id',
+        //         'value' => $typeClassifierValueId,
+        //         'operator' => 'eq',
+        //     ]);
+        // }
 
         if ($param = $requestParams->get('task_type')) {
             $processVariablesFilter->push([
@@ -676,17 +913,17 @@ class WorkflowController extends Controller
             ]);
         }
 
-        if ($sortBy = $requestParams->get('sort_by')) {
-            $sortOrder = $requestParams->get('sort_order', 'asc');
-            $sortingParams->push([
-                'sortBy' => 'processVariable',
-                'sortOrder' => $sortOrder,
-                'parameters' => [
-                    'variable' => $sortBy,
-                    'type' => 'string',
-                ]
-            ]);
-        }
+        // if ($sortBy = $requestParams->get('sort_by')) {
+        //     $sortOrder = $requestParams->get('sort_order', 'asc');
+        //     $sortingParams->push([
+        //         'sortBy' => 'processVariable',
+        //         'sortOrder' => $sortOrder,
+        //         'parameters' => [
+        //             'variable' => $sortBy,
+        //             'type' => 'string',
+        //         ]
+        //     ]);
+        // }
 
         $processVariablesFilter->push([
             "name" => 'institution_id',
@@ -699,12 +936,12 @@ class WorkflowController extends Controller
             'sorting' => $sortingParams->toArray(),
         ]);
 
-        if ($projectId = $requestParams->get('project_id')) {
-            $project = Project::withGlobalScope('policy', ProjectPolicy::scope())->findOrFail($projectId);
-            $params->put('processInstanceBusinessKey', $project->workflow()->getBusinessKey());
-        } else {
-            $params->put('processInstanceBusinessKeyLike', ProjectWorkflowProcessInstance::BUSINESS_KEY_PREFIX . '%');
-        }
+        // if ($projectId = $requestParams->get('project_id')) {
+        //     $project = Project::withGlobalScope('policy', ProjectPolicy::scope())->findOrFail($projectId);
+        //     $params->put('processInstanceBusinessKey', $project->workflow()->getBusinessKey());
+        // } else {
+        //     $params->put('processInstanceBusinessKeyLike', ProjectWorkflowProcessInstance::BUSINESS_KEY_PREFIX . '%');
+        // }
 
         $assigned = $requestParams->get('assigned_to_me', true);
         $currentUserId = Auth::user()->institutionUserId;
