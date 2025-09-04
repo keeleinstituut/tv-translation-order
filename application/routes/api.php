@@ -126,12 +126,12 @@ Route::prefix('/workflow')
     ->controller(API\WorkflowController::class)
     ->whereUuid('id')->group(function (): void {
         Route::get('/tasks', [API\WorkflowController::class, 'getTasks'])->name('translation-order.workflow.getTasks');
-        Route::get('/tasks2', [API\WorkflowController::class, 'getTasks2'])->name('translation-order.workflow.getTasks');
+        Route::get('/tasks2', [API\WorkflowController::class, 'getTasks2'])->name('translation-order.workflow.getTasks2');
         Route::get('/tasks/{id}', [API\WorkflowController::class, 'getTask'])->name('translation-order.workflow.getTask');
         Route::post('/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask'])->name('translation-order.workflow.completeTask');
         Route::post('/tasks/{id}/accept', [API\WorkflowController::class, 'acceptTask'])->name('translation-order.workflow.acceptTask');
         Route::get('/history/tasks', [API\WorkflowController::class, 'getHistoryTasks'])->name('translation-order.workflow.getHistoryTasks');
-        Route::get('/history/tasks2', [API\WorkflowController::class, 'getHistoryTasks2'])->name('translation-order.workflow.getHistoryTasks');
+        Route::get('/history/tasks2', [API\WorkflowController::class, 'getHistoryTasks2'])->name('translation-order.workflow.getHistoryTasks2');
         Route::get('/history/tasks/{id}', [API\WorkflowController::class, 'getHistoryTask'])->name('translation-order.workflow.getHistoryTask');
     });
 
