@@ -23,10 +23,10 @@ class VolumePriceCalculator implements PriceCalculator
         }
 
         if ($this->volume->unit_type === VolumeUnits::Words && filled($this->volume->getVolumeAnalysis())) {
-            return $this->getDiscountedPrice();
+            return round($this->getDiscountedPrice(), 2);
         }
 
-        return $this->volume->unit_quantity * $this->getUnitFee();
+        return round($this->volume->unit_quantity * $this->getUnitFee(), 2);
     }
 
     public function setDiscount(?VolumeAnalysisDiscount $discount): static
