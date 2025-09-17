@@ -51,6 +51,7 @@ class VolumePriceCalculator implements PriceCalculator
         return array_sum(
             array_map(fn ($item) => $item * $this->getUnitFee(), [
                 $volumeAnalysis->tm_101 * (100 - $discount->discount_percentage_101) / 100,
+                $volumeAnalysis->repetitions * (100 - $discount->discount_percentage_repetitions) / 100,
                 $volumeAnalysis->tm_100 * (100 - $discount->discount_percentage_100) / 100,
                 $volumeAnalysis->tm_95_99 * (100 - $discount->discount_percentage_95_99) / 100,
                 $volumeAnalysis->tm_85_94 * (100 - $discount->discount_percentage_85_94) / 100,
