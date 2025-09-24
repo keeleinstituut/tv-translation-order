@@ -100,15 +100,15 @@ class SubProjectController extends Controller
         ]);
 
         if ($param = $params->get('ext_id')) {
-            $query = $query->where('ext_id', 'ilike', "%$param%");
+            $query = $query->where('sub_projects.ext_id', 'ilike', "%$param%");
         }
 
         if ($param = $params->get('project_id')) {
-            $query = $query->where('project_id', $param);
+            $query = $query->where('sub_projects.project_id', $param);
         }
 
         if ($param = $params->get('status')) {
-            $query = $query->whereIn('status', $param);
+            $query = $query->whereIn('sub_projects.status', $param);
         }
 
         if ($param = $params->get('type_classifier_value_id')) {
@@ -141,15 +141,15 @@ class SubProjectController extends Controller
 
         switch ($sortBy) {
             case 'price':
-                $query = $query->orderBy('price', $sortOrder);
+                $query = $query->orderBy('sub_projects.price', $sortOrder);
                 break;
 
             case 'deadline_at':
-                $query = $query->orderBy('deadline_at', $sortOrder);
+                $query = $query->orderBy('sub_projects.deadline_at', $sortOrder);
                 break;
 
             case 'created_at':
-                $query = $query->orderBy('created_at', $sortOrder);
+                $query = $query->orderBy('sub_projects.created_at', $sortOrder);
                 break;
 
             case 'project.event_start_at':
@@ -157,7 +157,7 @@ class SubProjectController extends Controller
                 break;
 
             case 'status':
-                $query = $query->orderBy('status', $sortOrder);
+                $query = $query->orderBy('sub_projects.status', $sortOrder);
                 break;
 
             case 'project.reference_number':
@@ -165,7 +165,7 @@ class SubProjectController extends Controller
                 break;
 
             case 'ext_id':
-                $query = $query->orderBy('ext_id', $sortOrder);
+                $query = $query->orderBy('sub_projects.ext_id', $sortOrder);
                 break;
 
             case 'clientInstitutionUser.name':
@@ -173,7 +173,7 @@ class SubProjectController extends Controller
                 break;
             
             default:
-                $query = $query->orderBy('created_at', $sortOrder);
+                $query = $query->orderBy('sub_projects.created_at', $sortOrder);
                 break;
         }
 
