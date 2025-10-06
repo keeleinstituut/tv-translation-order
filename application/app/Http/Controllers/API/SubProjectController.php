@@ -14,6 +14,7 @@ use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
 use App\Models\Media;
 use App\Models\SubProject;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Policies\SubProjectPolicy;
 use DB;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -346,7 +347,8 @@ class SubProjectController extends Controller
     )]
     public function getLanguageCombinations(): JsonResponse
     {
-        $this->authorize('viewAny', [SubProject::class, false]);
+        // Returns classifier values so using policy for ClassifierValue
+        $this->authorize('viewAny', [ClassifierValue::class]);
 
         $languageCombinations = $this->getBaseQuery()->select('source_language_classifier_value_id', 'destination_language_classifier_value_id')
             ->distinct()
