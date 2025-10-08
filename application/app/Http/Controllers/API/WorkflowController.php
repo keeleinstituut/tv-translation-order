@@ -218,6 +218,19 @@ class WorkflowController extends Controller
                 });
             }
 
+            // Works for tasks that have direct assignment, but doesn't for tasks that have only
+            // project reference without assignment
+            // if ($param = $params->get('lang_pair')) {
+            //     $query->whereHas('assignment.subProject', function (Builder $builder) use ($param) {
+            //         $builder->where(function ($builder) use ($param) {
+            //             collect($param)->each(function ($pair) use ($builder) {
+            //                 $builder->orWhere('source_language_classifier_value_id', $pair['src'])
+            //                     ->where('destination_language_classifier_value_id', $pair['dst']);
+            //             });
+            //         });
+            //     });
+            // }
+
             $sortBy = $params->get('sort_by');
             $sortOrder = $params->get('sort_order', 'desc');
 
@@ -897,19 +910,19 @@ class WorkflowController extends Controller
         $processVariablesFilter = collect();
         $sortingParams = collect();
 
-        // if ($param = $requestParams->get('lang_pair')) {
-        //     $langPair = collect($param)->first();
-        //     $processVariablesFilter->push([
-        //         "name" => 'source_language_classifier_value_id',
-        //         "value" => $langPair['src'],
-        //         "operator" => "eq",
-        //     ]);
-        //     $processVariablesFilter->push([
-        //         'name' => 'destination_language_classifier_value_id',
-        //         'value' => "%{$langPair['dst']}%",
-        //         'operator' => 'like',
-        //     ]);
-        // }
+        if ($param = $requestParams->get('lang_pair')) {
+            $langPair = collect($param)->first();
+            $processVariablesFilter->push([
+                "name" => 'source_language_classifier_value_id',
+                "value" => $langPair['src'],
+                "operator" => "eq",
+            ]);
+            $processVariablesFilter->push([
+                'name' => 'destination_language_classifier_value_id',
+                'value' => "%{$langPair['dst']}%",
+                'operator' => 'like',
+            ]);
+        }
 
         // if ($param = $requestParams->get('type_classifier_value_id')) {
         //     $typeClassifierValueId = collect($param)->first();
@@ -951,12 +964,12 @@ class WorkflowController extends Controller
             'sorting' => $sortingParams->toArray(),
         ]);
 
-        // if ($projectId = $requestParams->get('project_id')) {
-        //     $project = Project::withGlobalScope('policy', ProjectPolicy::scope())->findOrFail($projectId);
-        //     $params->put('processInstanceBusinessKey', $project->workflow()->getBusinessKey());
-        // } else {
-        //     $params->put('processInstanceBusinessKeyLike', ProjectWorkflowProcessInstance::BUSINESS_KEY_PREFIX . '%');
-        // }
+        if ($projectId = $requestParams->get('project_id')) {
+            $project = Project::withGlobalScope('policy', ProjectPolicy::scope())->findOrFail($projectId);
+            $params->put('processInstanceBusinessKey', $project->workflow()->getBusinessKey());
+        } else {
+            $params->put('processInstanceBusinessKeyLike', ProjectWorkflowProcessInstance::BUSINESS_KEY_PREFIX . '%');
+        }
 
         $assigned = $requestParams->get('assigned_to_me', true);
         $currentUserId = Auth::user()->institutionUserId;

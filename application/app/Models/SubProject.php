@@ -261,10 +261,8 @@ class SubProject extends Model implements AuditLoggable
         $builder->where(function (Builder $groupedClause) use ($languageDirections) {
             collect($languageDirections)->eachSpread(
                 function (string $sourceLanguageClassifierValueId, string $destinationLanguageClassifierValueId) use ($groupedClause) {
-                    $groupedClause->orWhere([
-                        'source_language_classifier_value_id' => $sourceLanguageClassifierValueId,
-                        'destination_language_classifier_value_id' => $destinationLanguageClassifierValueId,
-                    ]);
+                    $groupedClause->orWhere('source_language_classifier_value_id', $sourceLanguageClassifierValueId)
+                        ->where('destination_language_classifier_value_id', $destinationLanguageClassifierValueId);
                 });
         });
     }
