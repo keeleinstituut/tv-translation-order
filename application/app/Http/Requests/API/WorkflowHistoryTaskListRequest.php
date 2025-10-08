@@ -4,6 +4,9 @@ namespace App\Http\Requests\API;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Tag;
+use App\Rules\ModelBelongsToInstitutionRule;
+use Illuminate\Support\Facades\Auth;
 
 class WorkflowHistoryTaskListRequest extends FormRequest
 {
@@ -33,6 +36,17 @@ class WorkflowHistoryTaskListRequest extends FormRequest
                 'assignment.subProject.project.ext_id'
             ]),
             'sort_order' => Rule::in(['asc', 'desc']),
+            'tag_ids' => 'array',
+            'tag_ids.*' => [
+                'uuid',
+                'bail',
+                static::existsTagInSameInstitution(),
+            ],
         ];
+    }
+
+    private static function existsTagInSameInstitution(): ModelBelongsToInstitutionRule
+    {
+        return ModelBelongsToInstitutionRule::create(Tag::class, fn () => Auth::user()?->institutionId);
     }
 }
