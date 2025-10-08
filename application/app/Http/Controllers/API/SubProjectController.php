@@ -68,6 +68,14 @@ class SubProjectController extends Controller
                 )
             ),
             new OA\QueryParameter(
+                name: 'tag_ids',
+                description: 'Filter the result set to projects which have any of the specified tags.',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(type: 'string', format: 'uuid')
+                )
+            ),
+            new OA\QueryParameter(
                 name: 'language_direction[]',
                 description: 'Filter the result set to projects which have any of the specified language directions.',
                 schema: new OA\Schema(
@@ -117,6 +125,12 @@ class SubProjectController extends Controller
                 'project',
                 fn(Builder $projectQuery) => $projectQuery->whereIn('type_classifier_value_id', $param)
             );
+        }
+
+        if ($param = $params->get('tag_ids')) {
+            $query = $query->whereHas('project.tags', function (Builder $builder) use ($param) {
+                $builder->whereIn('tags.id', $param);
+            });
         }
 
         if ($params->get('language_direction')) {
