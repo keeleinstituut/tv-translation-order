@@ -56,6 +56,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 use App\Models\CamundaTask;
 use Ramsey\Uuid\Uuid;
+use Illuminate\Database\Eloquent\Builder;
 
 
 class WorkflowController extends Controller
@@ -80,79 +81,86 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        $queryId = $this->populateToDatabase($data);
+        return DB::transaction(function () use ($data, $params) {
+            $queryId = $this->populateToDatabase($data);
 
-        $query = CamundaTask::where('query_id', $queryId)
-            ->with([
-                'assignment',
-                'assignment.subProject',
-                'assignment.subProject.sourceLanguageClassifierValue',
-                'assignment.subProject.destinationLanguageClassifierValue',
-                'assignment.subProject.project',
-                'assignment.subProject.project.tags',
-                'assignment.subProject.project.clientInstitutionUser',
-                'assignment.subProject.project.typeClassifierValue',
-                'project',
-                'project.tags',
-                'project.typeClassifierValue',
-                'project.clientInstitutionUser',
-                'project.subProjects.sourceLanguageClassifierValue',
-                'project.subProjects.destinationLanguageClassifierValue',
-            ]);
+            $query = CamundaTask::where('query_id', $queryId)
+                ->with([
+                    'assignment',
+                    'assignment.subProject',
+                    'assignment.subProject.sourceLanguageClassifierValue',
+                    'assignment.subProject.destinationLanguageClassifierValue',
+                    'assignment.subProject.project',
+                    'assignment.subProject.project.tags',
+                    'assignment.subProject.project.clientInstitutionUser',
+                    'assignment.subProject.project.typeClassifierValue',
+                    'project',
+                    'project.tags',
+                    'project.typeClassifierValue',
+                    'project.clientInstitutionUser',
+                    'project.subProjects.sourceLanguageClassifierValue',
+                    'project.subProjects.destinationLanguageClassifierValue',
+                ]);
 
-        $query = $query
-            ->join('projects', 'projects.id', '=', 'var_project_id')
-            ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
-            ->select('camunda_tasks.*')
-            ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
+            $query = $query
+                ->join('projects', 'projects.id', '=', 'var_project_id')
+                ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                ->select('camunda_tasks.*')
+                ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
 
-        if ($param = $params->get('type_classifier_value_id')) {
-            $query = $query->where('projects.type_classifier_value_id', $param);
-        }
-        
+            if ($param = $params->get('type_classifier_value_id')) {
+                $query = $query->where('projects.type_classifier_value_id', $param);
+            }
 
-        $sortBy = $params->get('sort_by');
-        $sortOrder = $params->get('sort_order', 'desc');
+            if ($param = $params->get('tag_ids')) {
+                $query = $query->whereHas('project.tags', function (Builder $builder) use ($param) {
+                    $builder->whereIn('tags.id', $param);
+                });
+            }
 
-        switch ($sortBy) {
-            case 'created_at':
-                $query = $query->orderBy('camunda_tasks.task_created', $sortOrder);
-                break;
+            $sortBy = $params->get('sort_by');
+            $sortOrder = $params->get('sort_order', 'desc');
 
-            case 'project.ext_id':
-                $query = $query->orderBy('projects.ext_id', $sortOrder);
-                break;
+            switch ($sortBy) {
+                case 'created_at':
+                    $query = $query->orderBy('camunda_tasks.task_created', $sortOrder);
+                    break;
 
-            case 'project.reference_number':
-                $query = $query->orderBy('projects.reference_number', $sortOrder);
-                break;
+                case 'project.ext_id':
+                    $query = $query->orderBy('projects.ext_id', $sortOrder);
+                    break;
 
-            case 'project.price':
-                $query = $query->orderBy('projects.price', $sortOrder);
-                break;
+                case 'project.reference_number':
+                    $query = $query->orderBy('projects.reference_number', $sortOrder);
+                    break;
 
-            case 'project.deadline_at':
-                $query = $query->orderBy('projects.deadline_at', $sortOrder);
-                break;
+                case 'project.price':
+                    $query = $query->orderBy('projects.price', $sortOrder);
+                    break;
 
-            case 'project.event_start_at':
-                $query = $query->orderBy('projects.event_start_at', $sortOrder);
-                break;
+                case 'project.deadline_at':
+                    $query = $query->orderBy('projects.deadline_at', $sortOrder);
+                    break;
 
-            case 'project.clientInstitutionUser.name':
-                $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
-                break;
-            
-            default:
-                $query = $query->orderBy('deadline_at', $sortOrder);
-                break;
-        }
+                case 'project.event_start_at':
+                    $query = $query->orderBy('projects.event_start_at', $sortOrder);
+                    break;
 
-        $result = $query->paginate();
+                case 'project.clientInstitutionUser.name':
+                    $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
+                    break;
 
-        $this->removeFromDatabase($queryId);
+                default:
+                    $query = $query->orderBy('deadline_at', $sortOrder);
+                    break;
+            }
 
-        return TaskResource2::collection($result);
+            $result = $query->paginate();
+
+            $this->removeFromDatabase($queryId);
+
+            return TaskResource2::collection($result);
+        });
     }
 
     public function getHistoryTasks2(WorkflowHistoryTaskListRequest $request): AnonymousResourceCollection
@@ -173,79 +181,86 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        $queryId = $this->populateToDatabase($data, true);
+        return DB::transaction(function () use ($data, $params) {
+            $queryId = $this->populateToDatabase($data, true);
 
-        $query = CamundaTask::where('query_id', $queryId)
-            ->with([
-                'assignment',
-                'assignment.subProject',
-                'assignment.subProject.sourceLanguageClassifierValue',
-                'assignment.subProject.destinationLanguageClassifierValue',
-                'assignment.subProject.project',
-                'assignment.subProject.project.tags',
-                'assignment.subProject.project.clientInstitutionUser',
-                'assignment.subProject.project.typeClassifierValue',
-                'project',
-                'project.tags',
-                'project.typeClassifierValue',
-                'project.clientInstitutionUser',
-                'project.subProjects.sourceLanguageClassifierValue',
-                'project.subProjects.destinationLanguageClassifierValue',
-            ]);
+            $query = CamundaTask::where('query_id', $queryId)
+                ->with([
+                    'assignment',
+                    'assignment.subProject',
+                    'assignment.subProject.sourceLanguageClassifierValue',
+                    'assignment.subProject.destinationLanguageClassifierValue',
+                    'assignment.subProject.project',
+                    'assignment.subProject.project.tags',
+                    'assignment.subProject.project.clientInstitutionUser',
+                    'assignment.subProject.project.typeClassifierValue',
+                    'project',
+                    'project.tags',
+                    'project.typeClassifierValue',
+                    'project.clientInstitutionUser',
+                    'project.subProjects.sourceLanguageClassifierValue',
+                    'project.subProjects.destinationLanguageClassifierValue',
+                ]);
 
-        $query = $query
-            ->join('projects', 'projects.id', '=', 'var_project_id')
-            ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
-            ->select('camunda_tasks.*')
-            ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
+            $query = $query
+                ->join('projects', 'projects.id', '=', 'var_project_id')
+                ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                ->select('camunda_tasks.*')
+                ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
 
-        if ($param = $params->get('type_classifier_value_id')) {
-            $query = $query->where('projects.type_classifier_value_id', $param);
-        }
-        
+            if ($param = $params->get('type_classifier_value_id')) {
+                $query = $query->where('projects.type_classifier_value_id', $param);
+            }
 
-        $sortBy = $params->get('sort_by');
-        $sortOrder = $params->get('sort_order', 'desc');
+            if ($param = $params->get('tag_ids')) {
+                $query = $query->whereHas('project.tags', function (Builder $builder) use ($param) {
+                    $builder->whereIn('tags.id', $param);
+                });
+            }
 
-        switch ($sortBy) {
-            case 'created_at':
-                $query = $query->orderBy('camunda_tasks.task_created', $sortOrder);
-                break;
+            $sortBy = $params->get('sort_by');
+            $sortOrder = $params->get('sort_order', 'desc');
 
-            case 'project.ext_id':
-                $query = $query->orderBy('projects.ext_id', $sortOrder);
-                break;
+            switch ($sortBy) {
+                case 'created_at':
+                    $query = $query->orderBy('camunda_tasks.task_created', $sortOrder);
+                    break;
 
-            case 'project.reference_number':
-                $query = $query->orderBy('projects.reference_number', $sortOrder);
-                break;
+                case 'project.ext_id':
+                    $query = $query->orderBy('projects.ext_id', $sortOrder);
+                    break;
 
-            case 'project.price':
-                $query = $query->orderBy('projects.price', $sortOrder);
-                break;
+                case 'project.reference_number':
+                    $query = $query->orderBy('projects.reference_number', $sortOrder);
+                    break;
 
-            case 'project.deadline_at':
-                $query = $query->orderBy('projects.deadline_at', $sortOrder);
-                break;
+                case 'project.price':
+                    $query = $query->orderBy('projects.price', $sortOrder);
+                    break;
 
-            case 'project.event_start_at':
-                $query = $query->orderBy('projects.event_start_at', $sortOrder);
-                break;
+                case 'project.deadline_at':
+                    $query = $query->orderBy('projects.deadline_at', $sortOrder);
+                    break;
 
-            case 'project.clientInstitutionUser.name':
-                $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
-                break;
-            
-            default:
-                $query = $query->orderBy('deadline_at', $sortOrder);
-                break;
-        }
+                case 'project.event_start_at':
+                    $query = $query->orderBy('projects.event_start_at', $sortOrder);
+                    break;
 
-        $result = $query->paginate();
+                case 'project.clientInstitutionUser.name':
+                    $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
+                    break;
 
-        $this->removeFromDatabase($queryId);
+                default:
+                    $query = $query->orderBy('deadline_at', $sortOrder);
+                    break;
+            }
 
-        return TaskResource2::collection($result);
+            $result = $query->paginate();
+
+            $this->removeFromDatabase($queryId);
+
+            return TaskResource2::collection($result);
+        });
     }
 
     // Saves task info temporarily to database for easier integration with existing data

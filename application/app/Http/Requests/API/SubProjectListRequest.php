@@ -6,9 +6,12 @@ use App\Enums\SubProjectStatus;
 use App\Http\Requests\Helpers\LanguageDirectionValidationTools;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
+use App\Models\Tag;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Rules\ModelBelongsToInstitutionRule;
+use Illuminate\Support\Facades\Auth;
 
 class SubProjectListRequest extends FormRequest
 {
@@ -45,6 +48,12 @@ class SubProjectListRequest extends FormRequest
                 'bail',
                 Rule::exists(ProjectTypeConfig::class, 'type_classifier_value_id'),
             ],
+            'tag_ids' => 'array',
+            'tag_ids.*' => [
+                'uuid',
+                'bail',
+                static::existsTagInSameInstitution(),
+            ],
             'project_id' => [
                 'uuid',
                 'bail',
@@ -57,6 +66,11 @@ class SubProjectListRequest extends FormRequest
                 static::validateLanguageDirectionExists(...),
             ],
         ];
+    }
+
+    private static function existsTagInSameInstitution(): ModelBelongsToInstitutionRule
+    {
+        return ModelBelongsToInstitutionRule::create(Tag::class, fn () => Auth::user()?->institutionId);
     }
 
     protected function getLanguageDirections(): array
