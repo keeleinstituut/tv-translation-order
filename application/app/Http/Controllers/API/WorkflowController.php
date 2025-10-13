@@ -298,8 +298,6 @@ class WorkflowController extends Controller
             $row['var_sub_project_id'] = data_get($taskData, 'variables.sub_project_id');
             $row['var_institution_id'] = data_get($taskData, 'variables.institution_id');
             $row['var_assignment_id'] = data_get($taskData, 'variables.assignment_id');
-            $row['var_source_language_classifier_value_id'] = data_get($taskData, 'variables.source_language_classifier_value_id');
-            $row['var_destination_language_classifier_value_id'] = data_get($taskData, 'variables.destination_language_classifier_value_id');
             $row['var_type_classifier_value_id'] = data_get($taskData, 'variables.type_classifier_value_id');
             $row['var_deadline_at'] = data_get($taskData, 'variables.deadline_at');
             $row['var_task_type'] = data_get($taskData, 'variables.task_type');
