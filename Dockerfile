@@ -42,6 +42,7 @@ RUN sed -i 's/^\(\[supervisord\]\)$/\1\nnodaemon=true/' /etc/supervisord.conf &&
 # Set custom php.ini settings
 RUN echo 'post_max_size = 512M' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'upload_max_filesize = 256M' >> /usr/local/etc/php/conf.d/my-php.ini && \
+    echo 'max_file_uploads = 50' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'memory_limit = 512M' >> /usr/local/etc/php/conf.d/my-php.ini
 
 RUN ln -s /dev/stdout /var/log/nginx/access.log && \
