@@ -17,6 +17,7 @@ RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
 
 RUN echo 'post_max_size = 512M' >> /usr/local/etc/php/php.ini && \
     echo 'upload_max_filesize = 256M' >> /usr/local/etc/php/php.ini && \
+    echo 'max_file_uploads = 50' >> /usr/local/etc/php/conf.d/my-php.ini && \
     echo 'memory_limit = 512M' >> /usr/local/etc/php/php.ini
 
 RUN mkdir $APP_ROOT
