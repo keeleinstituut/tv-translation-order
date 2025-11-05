@@ -117,6 +117,13 @@ class ProjectController extends Controller
                 'clientInstitutionUser',
             ]);
 
+        if ($param = $params->get('q')) {
+            $query = $query->where(function ($query) use ($param) {
+                $query->where('ext_id', 'ilike', "%$param%")
+                    ->orWhere('reference_number', 'ilike', "%$param%");
+            });
+        }
+
         if ($param = $params->get('ext_id')) {
             $query = $query->where('ext_id', 'ilike', "%$param%");
         }
@@ -127,6 +134,10 @@ class ProjectController extends Controller
 
         if ($param = $params->get('type_classifier_value_ids')) {
             $query = $query->whereIn('type_classifier_value_id', $param);
+        }
+
+        if ($param = $params->get('client_institution_user_ids')) {
+            $query = $query->whereIn('client_institution_user_id', $param);
         }
 
         if ($param = $params->get('tag_ids')) {
@@ -145,6 +156,18 @@ class ProjectController extends Controller
                     ->where('manager_institution_user_id', Auth::user()->institutionUserId)
                     ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
             });
+        }
+
+        if ($param = $params->get('deadline_at')) {
+            $query = $query->whereDate('deadline_at', $param);
+        }
+
+        if ($param = $params->get('created_at')) {
+            $query = $query->whereDate('created_at', $param);
+        }
+
+        if ($param = $params->get('event_start_at')) {
+            $query = $query->whereDate('event_start_at', $param);
         }
 
         $query = $query
