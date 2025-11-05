@@ -24,6 +24,7 @@ class ProjectListRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'q' => 'string',
             'per_page' => 'integer',
             'page' => 'integer',
             'sort_by' => Rule::in([
@@ -47,6 +48,11 @@ class ProjectListRequest extends FormRequest
                 'bail',
                 Rule::exists(ProjectTypeConfig::class, 'type_classifier_value_id'),
             ],
+            'client_institution_user_ids' => 'array',
+            'client_institution_user_ids.*' => [
+                'uuid',
+                'bail',
+            ],
             'tag_ids' => 'array',
             'tag_ids.*' => [
                 'uuid',
@@ -59,6 +65,9 @@ class ProjectListRequest extends FormRequest
                 'bail',
                 static::validateLanguageDirectionExists(...),
             ],
+            'deadline_at' => 'date_format:Y-m-d',
+            'created_at' => 'date_format:Y-m-d',
+            'event_start_at' => 'date_format:Y-m-d',
         ];
     }
 

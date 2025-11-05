@@ -108,6 +108,13 @@ class SubProjectController extends Controller
             'project.tags',
         ]);
 
+        if ($param = $params->get('q')) {
+            $query = $query->where(function ($query) use ($param) {
+                $query->where('sub_projects.ext_id', 'ilike', "%$param%")
+                    ->orWhere('projects.reference_number', 'ilike', "%$param%");
+            });
+        }
+
         if ($param = $params->get('ext_id')) {
             $query = $query->where('sub_projects.ext_id', 'ilike', "%$param%");
         }
@@ -143,6 +150,25 @@ class SubProjectController extends Controller
                     ->where('manager_institution_user_id', Auth::user()->institutionUserId)
                     ->orWhere('client_institution_user_id', Auth::user()->institutionUserId);
             });
+        }
+
+        if ($param = $params->get('client_institution_user_ids')) {
+            $query = $query->whereRelation(
+                'project',
+                fn(Builder $projectQuery) => $projectQuery->whereIn('client_institution_user_id', $param)
+            );
+        }
+
+        if ($param = $params->get('deadline_at')) {
+            $query = $query->whereDate('sub_projects.deadline_at', $param);
+        }
+
+        if ($param = $params->get('created_at')) {
+            $query = $query->whereDate('sub_projects.created_at', $param);
+        }
+
+        if ($param = $params->get('event_start_at')) {
+            $query = $query->whereDate('projects.event_start_at', $param);
         }
         
         $query = $query
