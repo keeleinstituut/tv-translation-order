@@ -62,9 +62,6 @@ class InstitutionFullSyncTest extends TestCase
         $this->assertModelHasAttributesValues($institution, $institutionAttributes);
     }
 
-    /**
-     * @skip
-     */
     public function test_not_synced_institutions_removed(): void
     {
         $institutions = Institution::factory(10)->create(['synced_at' => Carbon::now()->subDay()]);
@@ -76,7 +73,9 @@ class InstitutionFullSyncTest extends TestCase
 
         $this->artisan('sync:institutions')->assertExitCode(0);
         foreach ($institutions as $institution) {
-            $this->assertModelMissing($institution);
+            // Refresh the model from database to get current state
+            $institution->refresh();
+            $this->assertModelSoftDeleted($institution);
         }
     }
 

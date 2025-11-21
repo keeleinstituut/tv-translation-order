@@ -82,10 +82,10 @@ class InstitutionUserFactory extends Factory
                 'id' => Str::orderedUuid(),
                 'name' => fake()->name,
                 'institution_id' => $institutionId,
-                'privileges' => fake()->randomElements(
+                'privileges' => collect(fake()->randomElements(
                     PrivilegeKey::values(),
                     fake()->numberBetween(1, 16)
-                ),
+                ))->map(fn (string $key) => ['key' => $key])->toArray(),
             ],
         ];
     }
@@ -107,7 +107,7 @@ class InstitutionUserFactory extends Factory
     {
         $institutionUser = $this->create();
         [$newRole] = $this->generateRolesData($institutionUser->institution['id']);
-        $newRole['privileges'] = collect($privileges)->map(fn (PrivilegeKey $key) => $key->value)->all();
+        $newRole['privileges'] = collect($privileges)->map(fn (PrivilegeKey $key) => ['key' => $key->value])->toArray();
 
         $institutionUser->updateOrFail([
             'roles' => [$newRole],
@@ -123,8 +123,8 @@ class InstitutionUserFactory extends Factory
         [$newRole] = $this->generateRolesData($institutionUser->institution['id']);
         $newRole['privileges'] = collect(PrivilegeKey::cases())
             ->reject(fn (PrivilegeKey $key) => in_array($key, $privileges))
-            ->map(fn (PrivilegeKey $key) => $key->value)
-            ->all();
+            ->map(fn (PrivilegeKey $key) => ['key' => $key->value])
+            ->toArray();
 
         $institutionUser->updateOrFail([
             'roles' => [$newRole],

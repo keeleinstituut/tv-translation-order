@@ -116,6 +116,7 @@ readonly class AuthHelpers
             ],
             'privileges' => collect($institutionUser->roles)
                 ->flatMap(fn (array $role) => $role['privileges'])
+                ->map(fn (array|string $privilege) => is_array($privilege) ? ($privilege['key'] ?? $privilege) : $privilege)
                 ->unique()
                 ->all(),
         ];

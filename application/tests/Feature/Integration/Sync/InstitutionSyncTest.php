@@ -62,6 +62,6 @@ class InstitutionSyncTest extends TestCase
         ]);
 
         $this->artisan('sync:single:institution', ['id' => $institution->id])->assertExitCode(0);
-        $this->assertModelMissing($institution);
+        $this->assertModelSoftDeleted($institution);
     }
 }

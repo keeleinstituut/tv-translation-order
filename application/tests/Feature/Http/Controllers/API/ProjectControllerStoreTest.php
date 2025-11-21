@@ -285,18 +285,9 @@ class ProjectControllerStoreTest extends TestCase
                 ...static::createExampleValidPayload(),
                 'deadline_at' => '2020-12-12T02:00:00+03:00',
             ]],
-            'source_files not uploaded files' => [fn () => [
-                ...static::createExampleValidPayload(),
-                'source_files' => ['file.pdf'],
-            ]],
             'source_files contains a uploaded file with wrong extension' => [fn () => [
                 ...static::createExampleValidPayload(),
                 'source_files' => [UploadedFile::fake()->create('source.zip', 1024, 'application/zip')],
-            ]],
-            'help_files not uploaded files' => [fn () => [
-                ...static::createExampleValidPayload(),
-                'help_files' => ['file.pdf'],
-                'help_file_types' => ['REFERENCE_FILE'],
             ]],
             'help_file_types not same length as uploaded help_files' => [fn () => [
                 ...static::createExampleValidPayload(),

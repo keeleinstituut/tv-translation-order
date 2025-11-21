@@ -65,6 +65,6 @@ class ClassifierValueSyncTest extends TestCase
         ]);
 
         $this->artisan('sync:single:classifier-value', ['id' => $classifierValue->id])->assertExitCode(0);
-        $this->assertModelMissing($classifierValue);
+        $this->assertModelSoftDeleted($classifierValue);
     }
 }

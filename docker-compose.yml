@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:latest
@@ -29,8 +27,8 @@ services:
 
   camunda:
     image: camunda/camunda-bpm-platform:run-latest
-#    command: ./camunda.sh --webapps --rest --swaggerui
-    command: ./camunda.sh --webapps --rest --swaggerui --example
+#    command: ./camunda.sh --webapps --rest
+    command: ./camunda.sh --webapps --rest --example
     ports:
       - 8090:8080
     environment:

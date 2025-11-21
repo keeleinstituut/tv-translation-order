@@ -48,5 +48,11 @@
         <env name="AUDIT_LOG_EVENTS_EXCHANGE" value="audit-log-events-test" />
         <env name="AUDIT_LOG_EVENTS_QUEUE" value="audit-log-events-test" />
         <env name="AUDIT_LOG_TRACE_ID_HTTP_HEADER" value="x-request-id" />
+
+        <env name="AMQP_HOST" value="rabbitmq" />
+        <env name="AMQP_PORT" value="5672" />
+        <env name="AMQP_USER" value="guest" />
+        <env name="AMQP_PASSWORD" value="guest" />
+        <env name="AMQP_VHOST" value="/" />
     </php>
 </phpunit>
