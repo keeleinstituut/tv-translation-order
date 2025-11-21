@@ -11,8 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $syncSchema = Config::get('pgsql-connection.sync.properties.schema');
-        Schema::create('project_review_rejections', function (Blueprint $table) use ($syncSchema) {
+        Schema::create('project_review_rejections', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('project_id')
                 ->constrained('projects');
@@ -20,7 +19,7 @@ return new class extends Migration
             $table->jsonb('sub_project_ids');
             $table->string('file_collection');
             $table->foreignUuid('institution_user_id')
-                ->constrained("$syncSchema.cached_institution_users");
+                ->constrained('cached_institution_users');
             $table->timestampsTz();
         });
     }

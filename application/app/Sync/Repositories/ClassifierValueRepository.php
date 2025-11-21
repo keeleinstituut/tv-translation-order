@@ -47,6 +47,6 @@ class ClassifierValueRepository implements CachedEntityRepositoryInterface
 
     private function getBaseModel(): ClassifierValue
     {
-        return ClassifierValue::getModel()->setConnection(config('pgsql-connection.sync.name'));
+        return ClassifierValue::getModel();
     }
 }

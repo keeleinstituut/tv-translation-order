@@ -98,7 +98,7 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
 
     private function getBaseModel(): InstitutionUser
     {
-        return InstitutionUser::getModel()->setConnection(config('pgsql-connection.sync.name'));
+        return InstitutionUser::getModel();
     }
 
     private function getNestedResourceAsJson(array $resource, string $key, array $attributes): array

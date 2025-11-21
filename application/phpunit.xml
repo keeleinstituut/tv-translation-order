@@ -27,13 +27,7 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
 
-        <env name="DB_CONNECTION" value="pgsql_app" />
-        <env name="PG_APP_USERNAME" value="app_user" />
-        <env name="PG_APP_SCHEMA" value="application" />
-        <env name="PG_SYNC_USERNAME" value="sync_user" />
-        <env name="PG_SYNC_SCHEMA" value="entity_cache" />
-        <env name="PG_SYNC_CONNECTION_NAME" value="pgsql_sync" />
-        <env name="PG_ADMIN_CONNECTION_NAME" value="pgsql_admin" />
+        <env name="DB_CONNECTION" value="pgsql" />
 
         <env name="KEYCLOAK_BASE_URL" value="https://sso.dev.tolkevarav.eki.ee" />
         <env name="REALM_PUBLIC_KEY_RETRIEVAL_MODE" value="config" />

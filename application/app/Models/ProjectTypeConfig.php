@@ -53,8 +53,6 @@ class ProjectTypeConfig extends Model
 
     protected $guarded = [];
 
-    protected $connection = 'pgsql_app';
-
     protected $table = 'project_type_configs';
 
     protected $casts = [
