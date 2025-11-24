@@ -10,6 +10,7 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Media;
 use App\Models\Project;
+use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
@@ -53,10 +54,13 @@ class ProjectControllerStoreTest extends TestCase
             'Project type "Suuline tõlge"' => [
                 fn () => [
                     ...static::createExampleValidPayload(),
-                    'type_classifier_value_id' => ClassifierValue::where([
-                        'type' => ClassifierValueType::ProjectType,
-                        'value' => 'S',
-                    ])->firstOrFail()->id,
+                    'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
+                        $query->select('id')
+                            ->from('entity_cache.cached_classifier_values')
+                            ->where('type', ClassifierValueType::ProjectType->value)
+                            ->where('value', 'ORAL_TRANSLATION')
+                            ->limit(1);
+                    })->firstOrFail()->type_classifier_value_id,
                     'reference_number' => '4321',
                     'comments' => "Project\n\n4321",
                     'event_start_at' => '2020-12-31T12:00:00Z',
@@ -108,8 +112,8 @@ class ProjectControllerStoreTest extends TestCase
                 ],
                 function (TestCase $testCase, TestResponse $testResponse) {
                     $project = Project::findOrFail($testResponse->json('data.id'));
-                    $testCase->assertCount(2, $project->getSourceFiles());
-                    $project->getSourceFiles()->each(function (Media $media) use ($testCase) {
+                    $testCase->assertCount(2, $project->sourceFiles);
+                    $project->sourceFiles->each(function (Media $media) use ($testCase) {
                         $testCase->assertEquals(Project::SOURCE_FILES_COLLECTION, $media->collection_name);
                         Storage::disk($media->disk)->assertExists($media->getPathRelativeToRoot());
                     });
@@ -126,12 +130,12 @@ class ProjectControllerStoreTest extends TestCase
                 ],
                 function (TestCase $testCase, TestResponse $testResponse, array $sentPayload) {
                     $project = Project::findOrFail($testResponse->json('data.id'));
-                    $testCase->assertCount(2, $project->getHelpFiles());
+                    $testCase->assertCount(2, $project->helpFiles);
                     collect($sentPayload['help_files'])
                         ->zip($sentPayload['help_file_types'])
                         ->eachSpread(function (File $helpFile, string $helpFileType) use ($testCase, $project) {
                             /** @var Media $media */
-                            $media = $project->getHelpFiles()->firstWhere('file_name', $helpFile->getClientOriginalName());
+                            $media = $project->helpFiles->firstWhere('file_name', $helpFile->getClientOriginalName());
                             $testCase->assertModelExists($media);
                             $testCase->assertEquals(Project::HELP_FILES_COLLECTION, $media->collection_name);
                             $testCase->assertEquals(['type' => $helpFileType], $media->custom_properties);
@@ -154,7 +158,11 @@ class ProjectControllerStoreTest extends TestCase
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $this->seed(ClassifiersAndProjectTypesSeeder::class); // declaring seeder on class level ($seeder=...) causes it to not run when running all tests
-        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject, PrivilegeKey::ChangeClient);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(
+            PrivilegeKey::CreateProject,
+            PrivilegeKey::ChangeClient,
+            PrivilegeKey::ChangeProjectManager
+        );
 
         $payload = collect($createValidPayload($actingUser));
         $response = $this
@@ -287,7 +295,7 @@ class ProjectControllerStoreTest extends TestCase
             ]],
             'source_files contains a uploaded file with wrong extension' => [fn () => [
                 ...static::createExampleValidPayload(),
-                'source_files' => [UploadedFile::fake()->create('source.zip', 1024, 'application/zip')],
+                'source_files' => [UploadedFile::fake()->create('source.exe', 1024, 'application/x-msdownload')],
             ]],
             'help_file_types not same length as uploaded help_files' => [fn () => [
                 ...static::createExampleValidPayload(),
@@ -320,10 +328,13 @@ class ProjectControllerStoreTest extends TestCase
             ]],
             'Project type "Suuline tõlge" without event_start_at' => [fn () => [
                 ...static::createExampleValidPayload(),
-                'type_classifier_value_id' => ClassifierValue::where([
-                    'type' => ClassifierValueType::ProjectType,
-                    'value' => 'S',
-                ])->firstOrFail()->id,
+                'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
+                    $query->select('id')
+                        ->from('entity_cache.cached_classifier_values')
+                        ->where('type', ClassifierValueType::ProjectType->value)
+                        ->where('value', 'ORAL_TRANSLATION')
+                        ->limit(1);
+                })->firstOrFail()->type_classifier_value_id,
                 'reference_number' => '4321',
                 'comments' => "Project\n\n4321",
             ]],
@@ -420,10 +431,10 @@ class ProjectControllerStoreTest extends TestCase
 
         [$sourceLanguage, $destinationLanguage] = $languages;
 
-        return [
-            'type_classifier_value_id' => ClassifierValue::where(['type' => ClassifierValueType::ProjectType])
-                ->firstOrFail()
-                ->id,
+        $projectTypeConfig = ProjectTypeConfig::firstOrFail();
+
+        $payload = [
+            'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
             'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
                 ->firstOrFail()
                 ->id,
@@ -433,5 +444,11 @@ class ProjectControllerStoreTest extends TestCase
                 $destinationLanguage->id,
             ],
         ];
+
+        if (ClassifierValue::isProjectTypeSupportingEventStartDate($projectTypeConfig->type_classifier_value_id)) {
+            $payload['event_start_at'] = Date::now()->addDays(5)->toIso8601ZuluString();
+        }
+
+        return $payload;
     }
 }

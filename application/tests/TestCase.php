@@ -5,6 +5,7 @@ namespace Tests;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 use SyncTools\Traits\RefreshDatabaseWithCachedEntitySchema;
 
 abstract class TestCase extends BaseTestCase
@@ -16,37 +17,62 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        Config::set('amqp.publisher', [
-            'exchanges' => [
-                [
-                    'exchange' => 'classifier-value',
-                    'type' => 'fanout',
-                ],
-                [
-                    'exchange' => 'institution',
-                    'type' => 'fanout',
-                ],
-                [
-                    'exchange' => 'institution-user',
-                    'type' => 'fanout',
-                ],
-                [
-                    'exchange' => env('AUDIT_LOG_EVENTS_EXCHANGE'),
-                    'type' => 'topic',
-                ],
-                [
-                    'exchange' => env('EMAIL_NOTIFICATION_EXCHANGE'),
-                    'type' => 'topic',
-                ],
+        $exchanges = [
+            [
+                'exchange' => 'classifier-value',
+                'type' => 'fanout',
             ],
+            [
+                'exchange' => 'institution',
+                'type' => 'fanout',
+            ],
+            [
+                'exchange' => 'institution-user',
+                'type' => 'fanout',
+            ],
+        ];
+
+        if (env('AUDIT_LOG_EVENTS_EXCHANGE')) {
+            $exchanges[] = [
+                'exchange' => env('AUDIT_LOG_EVENTS_EXCHANGE'),
+                'type' => 'topic',
+            ];
+        }
+
+        if (env('EMAIL_NOTIFICATION_EXCHANGE')) {
+            $exchanges[] = [
+                'exchange' => env('EMAIL_NOTIFICATION_EXCHANGE'),
+                'type' => 'topic',
+            ];
+        }
+
+        Config::set('amqp.publisher', [
+            'exchanges' => $exchanges,
         ]);
 
         Artisan::call('amqp:setup');
 
-        // Mock FileScanService to always return safe results without calling external API
+        Config::set('keycloak.realm_public_key_retrieval_mode', 'config');
+        Config::set('keycloak.realm_public_key', env('KEYCLOAK_REALM_PUBLIC_KEY'));
+
         FakeFileScanService::bind();
 
         AuthHelpers::fakeServiceValidationResponse();
+
+        $camundaBaseUrl = env('CAMUNDA_API_URL', 'http://process-definition');
+        Http::fake([
+            rtrim($camundaBaseUrl, '/') . '/*' => Http::response([
+                'id' => fake()->uuid(),
+                'definitionId' => fake()->uuid(),
+                'businessKey' => fake()->uuid(),
+            ], 200),
+            // Also match any process-definition URL pattern
+            'process-definition/*' => Http::response([
+                'id' => fake()->uuid(),
+                'definitionId' => fake()->uuid(),
+                'businessKey' => fake()->uuid(),
+            ], 200),
+        ]);
     }
 
     protected function prepareAuthorizedRequest($accessToken): TestCase
