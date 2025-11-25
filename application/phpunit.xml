@@ -42,5 +42,6 @@
         <env name="AUDIT_LOG_EVENTS_EXCHANGE" value="audit-log-events-test" />
         <env name="AUDIT_LOG_EVENTS_QUEUE" value="audit-log-events-test" />
         <env name="AUDIT_LOG_TRACE_ID_HTTP_HEADER" value="x-request-id" />
+        <env name="CAMUNDA_API_URL" value="http://process-definition" />
     </php>
 </phpunit>

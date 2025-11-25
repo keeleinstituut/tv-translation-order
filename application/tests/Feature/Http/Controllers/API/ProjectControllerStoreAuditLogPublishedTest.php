@@ -37,7 +37,7 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
         Date::setTestNow(Date::now());
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         Http::fake([
-            rtrim(env('CAMUNDA_API_URL'), '/').'/*' => Http::response(['hi']),
+            rtrim(config('services.camunda.api_url', 'http://process-definition'), '/').'/*' => Http::response(['hi']),
         ]);
 
         if (static::$isDatabaseSeeded) {
