@@ -3,8 +3,8 @@
 namespace App\Sync\Repositories;
 
 use App\Models\CachedEntities\InstitutionUser;
-use Arr;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionUserRepository implements CachedEntityRepositoryInterface
