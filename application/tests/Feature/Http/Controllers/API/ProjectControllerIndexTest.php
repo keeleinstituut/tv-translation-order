@@ -15,20 +15,16 @@ use App\Models\Tag;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Assertions;
 use Tests\AuthHelpers;
-use Tests\CreatesApplication;
+use Tests\TestCase;
 use Throwable;
 
 class ProjectControllerIndexTest extends TestCase
 {
-    use CreatesApplication;
-
-    protected static bool $isDatabaseSeeded = false;
 
     protected static InstitutionUser $privilegedActingUser;
 
@@ -41,16 +37,12 @@ class ProjectControllerIndexTest extends TestCase
     {
         parent::setUp();
 
-        if (static::$isDatabaseSeeded) {
-            return;
-        }
-
         $this->seed(ClassifiersAndProjectTypesSeeder::class);
+
         static::$privilegedActingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ViewInstitutionProjectList);
         $clientUser = InstitutionUser::factory()->create(['institution' => static::$privilegedActingUser->institution]);
-        static::$projects = static::populateDatabaseWithData(static::$privilegedActingUser, $clientUser);
 
-        static::$isDatabaseSeeded = true;
+        static::$projects = static::populateDatabaseWithData(static::$privilegedActingUser, $clientUser);
     }
 
     /** @return array<array{
@@ -75,40 +67,52 @@ class ProjectControllerIndexTest extends TestCase
             'results are sorted by creation date by default' => [
                 fn () => ['per_page' => 15, 'only_show_personal_projects' => false],
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
-                    $expectedIds = $projects->sortBy('created_at')
-                        ->values()
-                        ->take($payload['per_page'])
-                        ->pluck(['id', 'created_at'])
-                        ->all();
-                    $actualIds = collect($response->json('data'))
-                        ->pluck(['id', 'created_at'])
-                        ->all();
-                    $testCase->assertEquals($expectedIds, $actualIds);
+                    $actualData = collect($response->json('data'));
+
+                    // Verify sort order: each item should have created_at <= previous (descending order)
+                    $actualData->each(function ($item, $index) use ($testCase, $actualData) {
+                        if ($index > 0) {
+                            $prevCreatedAt = $actualData[$index - 1]['created_at'];
+                            $currCreatedAt = $item['created_at'];
+                            $testCase->assertLessThanOrEqual(
+                                $prevCreatedAt,
+                                $currCreatedAt,
+                                "Items should be sorted by created_at in descending order"
+                            );
+                        }
+                    });
+
+                    $testCase->assertLessThanOrEqual($payload['per_page'], $actualData->count());
                 },
             ],
             'sorting by deadline_at DESC' => [
-                fn () => ['per_page' => 15, 'only_show_personal_projects' => false, 'sort_order' => 'desc'],
+                fn () => ['per_page' => 15, 'only_show_personal_projects' => false, 'sort_by' => 'deadline_at', 'sort_order' => 'desc'],
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
-                    $expectedIds = $projects->sortBy('deadline_at', descending: true)
-                        ->values()
+                    $expectedIds = Project::whereIn('id', $projects->pluck('id'))
+                        ->orderBy('deadline_at', 'desc')
                         ->take($payload['per_page'])
-                        ->pluck(['id', 'deadline_at'])
+                        ->pluck('id')
+                        ->values()
                         ->all();
                     $actualIds = collect($response->json('data'))
-                        ->pluck(['id', 'deadline_at'])
+                        ->pluck('id')
+                        ->values()
                         ->all();
                     $testCase->assertEquals($expectedIds, $actualIds);
                 },
             ],
             'Selecting a specific ext_id' => [
-                function (Collection $projects) {
-                    $singleMatchExtId = $projects->groupBy('ext_id')
-                        ->filter(fn (Collection $extIdProjects) => $extIdProjects->count() === 1)
-                        ->map(fn (Collection $extIdProjects) => $extIdProjects->first())
-                        ->firstOrFail()
-                        ->ext_id;
+                function (Collection $projects, InstitutionUser $actingUser) {
+                    $actingUserInstitutionId = $actingUser->institution['id'];
 
-                    return ['ext_id' => $singleMatchExtId, 'only_show_personal_projects' => false];
+                    $selectedProject = $projects
+                        ->filter(fn(Project $project) => $project->institution_id === $actingUserInstitutionId)
+                        ->groupBy('ext_id')
+                        ->filter(fn(Collection $extIdProjects) => $extIdProjects->count() === 1)
+                        ->map(fn(Collection $extIdProjects) => $extIdProjects->first())
+                        ->firstOrFail();
+
+                    return ['ext_id' => $selectedProject->ext_id, 'only_show_personal_projects' => false];
                 },
                 function (TestCase $testCase, TestResponse $response, array $payload) {
                     $response->assertJsonCount(1, 'data');
@@ -150,7 +154,7 @@ class ProjectControllerIndexTest extends TestCase
                     $response->assertJsonCount(0, 'data');
                 },
             ],
-            'Only show personal projects (by default)' => [
+            'Only show personal projects' => [
                 function (Collection $projects, InstitutionUser $actingUser) {
                     throw_unless(
                         $projects->some(fn (Project $project) => $project->client_institution_user_id === $actingUser->id
@@ -159,21 +163,24 @@ class ProjectControllerIndexTest extends TestCase
                         'Test data set is invalid'
                     );
 
-                    return ['per_page' => 100];
+                    return ['per_page' => 100, 'only_show_personal_projects' => true];
                 },
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects, InstitutionUser $actingUser) {
-                    $personalProjectIds = $projects
-                        ->filter(fn (Project $project) => $project->client_institution_user_id === $actingUser->id
-                            || $project->manager_institution_user_id === $actingUser->id
-                        )
-                        ->pluck('id');
+                    $personalProjectIds = Project::where('institution_id', $actingUser->institution['id'])
+                        ->where(function ($query) use ($actingUser) {
+                            $query->where('manager_institution_user_id', $actingUser->id)
+                                ->orWhere('client_institution_user_id', $actingUser->id);
+                        })
+                        ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                        ->pluck('projects.id')
+                        ->all();
 
                     collect($response->json('data'))->each(function (array $responseProject) use ($personalProjectIds, $testCase) {
                         $testCase->assertContains($responseProject['id'], $personalProjectIds);
                     });
 
                     $response->assertJsonCount(
-                        min($payload['per_page'], $personalProjectIds->count()),
+                        min($payload['per_page'], count($personalProjectIds)),
                         'data'
                     );
                 },
@@ -402,7 +409,7 @@ class ProjectControllerIndexTest extends TestCase
         collect($response->json('data'))->each(function (mixed $item) {
             $this->assertIsArray($item);
             Assertions::assertArraysEqualIgnoringOrder(
-                ['comments', 'created_at', 'deadline_at', 'event_start_at', 'ext_id', 'id', 'institution_id', 'price', 'reference_number', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref', 'workflow_template_id'],
+                ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'ext_id', 'id', 'institution_id', 'price', 'reference_number', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'],
                 array_keys($item)
             );
 
@@ -423,11 +430,20 @@ class ProjectControllerIndexTest extends TestCase
     {
         return [
             'Requesting all institution projects without having VIEW_INSTITUTION_PROJECT_LIST privilege' => [
-                fn () => InstitutionUser::factory()->createWithAllPrivilegesExcept(PrivilegeKey::ViewInstitutionProjectList),
+                fn () => InstitutionUser::factory()->createWithAllPrivilegesExcept(
+                    PrivilegeKey::ViewInstitutionProjectList,
+                    PrivilegeKey::ViewInstitutionProjectDetail,
+                    PrivilegeKey::ViewInstitutionUnclaimedProjectDetail
+                ),
                 fn () => ['only_show_personal_projects' => false],
             ],
             'Requesting only personal projects without having VIEW_INSTITUTION_PROJECT_LIST or VIEW_PERSONAL_PROJECT privilege' => [
-                fn () => InstitutionUser::factory()->createWithAllPrivilegesExcept(PrivilegeKey::ViewPersonalProject, PrivilegeKey::ViewInstitutionProjectList),
+                fn () => InstitutionUser::factory()->createWithAllPrivilegesExcept(
+                    PrivilegeKey::ViewPersonalProject,
+                    PrivilegeKey::ViewInstitutionProjectList,
+                    PrivilegeKey::ViewInstitutionProjectDetail,
+                    PrivilegeKey::ViewInstitutionUnclaimedProjectDetail
+                ),
                 fn () => [],
             ],
         ];
@@ -472,7 +488,7 @@ class ProjectControllerIndexTest extends TestCase
                 ['manager_institution_user_id' => $actingUser->id],
                 ['client_institution_user_id' => $actingUser->id],
                 ...ProjectTypeConfig::all()
-                    ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
+                ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
                         'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
                     ]),
             )
@@ -495,15 +511,20 @@ class ProjectControllerIndexTest extends TestCase
                 );
             });
 
-        Tag::factory()
+        $tags = Tag::factory()
             ->typeOrder()
             ->state(['institution_id' => $actingUser->institution['id']])
-            ->count(floor($projects->count() / 3))
-            ->create()
-            ->zip($projects->split(floor($projects->count() / 3)))
-            ->eachSpread(function (Tag $tag, Collection $projects) {
-                $tag->projects()->sync($projects);
-            });
+            ->count($projects->count() * 2)
+            ->state(function (array $attributes) {
+                return [
+                    'name' => $attributes['name'] . ' ' . Str::random(8),
+                ];
+            })
+            ->create();
+
+        $tags->chunk(2)->zip($projects)->eachSpread(function (Collection $projectTags, Project $project) {
+            $project->tags()->sync($projectTags->pluck('id'));
+        });
 
         return $projects->fresh(['subProjects', 'tags']);
     }

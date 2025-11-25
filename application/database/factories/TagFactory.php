@@ -6,6 +6,7 @@ use App\Enums\TagType;
 use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Tag>
@@ -14,8 +15,11 @@ class TagFactory extends Factory
 {
     public function definition(): array
     {
+        $baseName = substr(str_replace("'", '', $this->faker->name), 0, 30);
+        $uniqueName = $baseName . ' ' . Str::random(8);
+
         return [
-            'name' => $this->faker->name,
+            'name' => $uniqueName,
             'type' => $this->faker->randomElement([
                 TagType::Order,
                 TagType::Vendor,

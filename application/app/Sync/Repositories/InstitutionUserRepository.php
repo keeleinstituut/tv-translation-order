@@ -87,13 +87,13 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
 
     public function deleteNotSynced(): void
     {
-        $this->getBaseModel()->whereNull('synced_at')
+        $this->getBaseModel()->newQuery()->whereNull('synced_at')
             ->delete();
     }
 
     public function cleanupLastSyncDateTime(): void
     {
-        $this->getBaseModel()->update(['synced_at' => null]);
+        $this->getBaseModel()->newQuery()->update(['synced_at' => null]);
     }
 
     private function getBaseModel(): InstitutionUser

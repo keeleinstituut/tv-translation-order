@@ -97,6 +97,6 @@ class SaveInstitutionListenerTest extends TestCase
         $this->app->make(SaveInstitutionListener::class)
             ->handle(new InstitutionSaved($institution->id));
 
-        $this->assertModelMissing($institution);
+        $this->assertModelSoftDeleted($institution);
     }
 }

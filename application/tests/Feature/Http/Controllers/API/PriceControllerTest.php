@@ -3,6 +3,7 @@
 namespace Tests\Feature\Http\Controllers\API;
 
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Price;
 use App\Models\Skill;
 use App\Models\Vendor;
@@ -20,13 +21,15 @@ class PriceControllerTest extends TestCase
     {
         // GIVEN
         $institutionId = Str::orderedUuid();
-        $testPrices = Price::factory(10)->create();
-        $randomPrices = fake()->randomElements($testPrices, 4);
-        collect($randomPrices)->each(function ($price) use ($institutionId) {
-            $institutionUser = $price->vendor->institutionUser;
-            $institutionUser->institution['id'] = $institutionId;
-            $institutionUser->save();
-        });
+        $randomPrices = collect();
+        for ($i = 0; $i < 4; $i++) {
+            $institutionUser = InstitutionUser::factory()->setInstitution(['id' => $institutionId])->create();
+            $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id]);
+            $randomPrices->push(Price::factory()->create(['vendor_id' => $vendor->id]));
+        }
+        
+        // Create additional prices with different institution IDs
+        Price::factory(6)->create();
 
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
@@ -47,23 +50,22 @@ class PriceControllerTest extends TestCase
             ->with('skill', 'sourceLanguageClassifierValue', 'destinationLanguageClassifierValue')
             ->orderBy('created_at', 'desc')
             ->get();
-        $this->assertCount(count($randomPrices), $savedPrices);
+        $this->assertCount($randomPrices->count(), $savedPrices);
 
         $response
             ->assertStatus(200)
             ->assertJson([
                 'data' => collect($savedPrices)->map(fn ($obj) => $this->constructRepresentation($obj))->toArray(),
             ])
-            ->assertJsonCount(count($randomPrices), 'data');
+            ->assertJsonCount($randomPrices->count(), 'data');
     }
 
     public function test_create(): void
     {
         // GIVEN
         $institutionId = Str::orderedUuid();
-        $testVendor = Vendor::factory()->create();
-        $testVendor->institutionUser->institution['id'] = $institutionId;
-        $testVendor->institutionUser->save();
+        $institutionUser = InstitutionUser::factory()->setInstitution(['id' => $institutionId])->create();
+        $testVendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id]);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
@@ -112,13 +114,14 @@ class PriceControllerTest extends TestCase
     {
         // GIVEN
         $institutionId = Str::orderedUuid();
-        $testVendors = Vendor::factory(10)->create();
-        $payloadVendors = $testVendors->random(2)->each(function ($vendor) use ($institutionId) {
-            $institutionUser = $vendor->institutionUser;
-            $institutionUser->institution['id'] = $institutionId;
-            $institutionUser->save();
-            $vendor->refresh();
-        });
+        $payloadVendors = collect();
+        for ($i = 0; $i < 2; $i++) {
+            $institutionUser = InstitutionUser::factory()->setInstitution(['id' => $institutionId])->create();
+            $payloadVendors->push(Vendor::factory()->create(['institution_user_id' => $institutionUser->id]));
+        }
+        
+        // Create additional vendors with different institution IDs
+        Vendor::factory(8)->create();
 
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
@@ -169,13 +172,16 @@ class PriceControllerTest extends TestCase
     {
         // GIVEN
         $institutionId = Str::orderedUuid();
-        $testPrices = Price::factory(10)->create();
-        $payloadPriceIds = $testPrices->random(2)->each(function ($price) use ($institutionId) {
-            $institutionUser = $price->vendor->institutionUser;
-            $institutionUser->institution['id'] = $institutionId;
-            $institutionUser->save();
-            $price->refresh();
-        })->pluck('id');
+        $payloadPrices = collect();
+        for ($i = 0; $i < 2; $i++) {
+            $institutionUser = InstitutionUser::factory()->setInstitution(['id' => $institutionId])->create();
+            $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id]);
+            $payloadPrices->push(Price::factory()->create(['vendor_id' => $vendor->id]));
+        }
+        $payloadPriceIds = $payloadPrices->pluck('id');
+        
+        // Create additional prices with different institution IDs
+        Price::factory(8)->create();
 
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
@@ -216,13 +222,15 @@ class PriceControllerTest extends TestCase
     {
         // GIVEN
         $institutionId = Str::orderedUuid();
-        $testPrices = Price::factory(10)->create();
-        $payloadPrices = $testPrices->random(2)->each(function ($price) use ($institutionId) {
-            $institutionUser = $price->vendor->institutionUser;
-            $institutionUser->institution['id'] = $institutionId;
-            $institutionUser->save();
-            $price->refresh();
-        });
+        $payloadPrices = collect();
+        for ($i = 0; $i < 2; $i++) {
+            $institutionUser = InstitutionUser::factory()->setInstitution(['id' => $institutionId])->create();
+            $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id]);
+            $payloadPrices->push(Price::factory()->create(['vendor_id' => $vendor->id]));
+        }
+        
+        // Create additional prices with different institution IDs
+        Price::factory(8)->create();
 
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [
