@@ -81,7 +81,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params) {
+        return DB::transaction(function () use ($data, $params, $request) {
             $queryId = $this->populateToDatabase($data);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -155,11 +155,15 @@ class WorkflowController extends Controller
                     break;
             }
 
-            $result = $query->paginate();
+            $objects = $query->get();
+            $count = $query->count();
+
+            $perPage = intval($request->get('per_page'));
+            $pagination = new PaginationBuilder($perPage);
 
             $this->removeFromDatabase($queryId);
 
-            return TaskResource2::collection($result);
+            return TaskResource2::collection($pagination->toPaginator($objects, $count));
         });
     }
 
@@ -181,7 +185,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params) {
+        return DB::transaction(function () use ($data, $params, $request) {
             $queryId = $this->populateToDatabase($data, true);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -268,11 +272,15 @@ class WorkflowController extends Controller
                     break;
             }
 
-            $result = $query->paginate();
+            $objects = $query->get();
+            $count = $query->count();
+
+            $perPage = intval($request->get('per_page'));
+            $pagination = new PaginationBuilder($perPage);
 
             $this->removeFromDatabase($queryId);
 
-            return TaskResource2::collection($result);
+            return TaskResource2::collection($pagination->toPaginator($objects, $count));
         });
     }
 
