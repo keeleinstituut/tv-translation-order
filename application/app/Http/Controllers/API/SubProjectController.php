@@ -243,6 +243,7 @@ class SubProjectController extends Controller
             'sourceFiles',
             'finalFiles.assignment.jobDefinition',
             'finalFiles.copies',
+            'finalFiles.institutionUser',
             'project.typeClassifierValue.projectTypeConfig.jobDefinitions',
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',

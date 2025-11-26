@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\API\AssignmentResource;
+use App\Http\Resources\API\InstitutionUserResource;
 use App\Models\Media;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'assignment', ref: AssignmentResource::class, nullable: true),
+        new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, nullable: true),
         new OA\Property(property: 'is_project_final_file', type: 'boolean', nullable: true),
     ],
     type: 'object'
@@ -67,6 +69,7 @@ class MediaResource extends JsonResource
                 'updated_at',
             ),
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
+            'institution_user' => InstitutionUserResource::make($this->whenLoaded('institutionUser')),
             ...$this->getSubProjectFinalFileIsProjectFinalFileField()
         ];
     }
