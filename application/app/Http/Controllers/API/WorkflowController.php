@@ -76,12 +76,12 @@ class WorkflowController extends Controller
         $bodyParams = collect($this->buildAdditionalParams($params));
 
         $tasks = WorkflowService::getTasks($bodyParams, $pagination->getPaginationParams());
-        $count = WorkflowService::getTasksCount($bodyParams)['count'];
+        $totalCount = WorkflowService::getTasksCount($bodyParams)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params, $pagination) {
+        return DB::transaction(function () use ($data, $params, $pagination, $totalCount) {
             $queryId = $this->populateToDatabase($data);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -156,11 +156,10 @@ class WorkflowController extends Controller
             }
 
             $objects = $query->get();
-            $count = $query->count();
 
             $this->removeFromDatabase($queryId);
 
-            return TaskResource2::collection($pagination->toPaginator($objects, $count));
+            return TaskResource2::collection($pagination->toPaginator($objects, $totalCount));
         });
     }
 
@@ -177,12 +176,12 @@ class WorkflowController extends Controller
         ]);
 
         $tasks = WorkflowService::getHistoryTask($bodyParams, $pagination->getPaginationParams());
-        $count = WorkflowService::getHistoryTaskCount($bodyParams)['count'];
+        $totalCount = WorkflowService::getHistoryTaskCount($bodyParams)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params, $pagination) {
+        return DB::transaction(function () use ($data, $params, $pagination, $totalCount) {
             $queryId = $this->populateToDatabase($data, true);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -270,11 +269,10 @@ class WorkflowController extends Controller
             }
 
             $objects = $query->get();
-            $count = $query->count();
 
             $this->removeFromDatabase($queryId);
 
-            return TaskResource2::collection($pagination->toPaginator($objects, $count));
+            return TaskResource2::collection($pagination->toPaginator($objects, $totalCount));
         });
     }
 
