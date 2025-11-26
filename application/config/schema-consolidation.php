@@ -25,5 +25,20 @@ return [
     |
     */
     'target_schema' => env('SCHEMA_CONSOLIDATION_TARGET', 'public'),
-];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Entity Cache Table Names
+    |--------------------------------------------------------------------------
+    |
+    | The specific table names in the entity_cache schema that need to be moved.
+    | These are hardcoded since there are only 3 tables and they use a different
+    | connection (sync_user) during creation.
+    |
+    */
+    'entity_cache_tables' => [
+        'cached_classifier_values',
+        'cached_institutions',
+        'cached_institution_users',
+    ],
+];
