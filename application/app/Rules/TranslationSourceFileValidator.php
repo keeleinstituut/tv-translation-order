@@ -54,7 +54,9 @@ class TranslationSourceFileValidator
         }
         $fileExtension = Str::lower($value->getClientOriginalExtension());
         if (collect(static::ALLOWED_FILE_EXTENSIONS)->doesntContain($fileExtension)) {
-            $fail("The file extension of $attribute ($fileExtension) is not allowed.");
+            // $fail("The file extension of $attribute ($fileExtension) is not allowed.");
+            // TODO: temporary quick fix
+            $fail("Faililaiend .$fileExtension ei ole lubatud.");
         }
     }
 
