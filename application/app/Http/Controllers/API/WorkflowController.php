@@ -71,7 +71,7 @@ class WorkflowController extends Controller
     {
         $params = collect($request->validated());
         $perPage = intval($request->get('per_page'));
-        $pagination = new PaginationBuilder(5000);
+        $pagination = new PaginationBuilder($perPage);
 
         $bodyParams = collect($this->buildAdditionalParams($params));
 
@@ -81,7 +81,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params, $request) {
+        return DB::transaction(function () use ($data, $params, $pagination) {
             $queryId = $this->populateToDatabase($data);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -158,9 +158,6 @@ class WorkflowController extends Controller
             $objects = $query->get();
             $count = $query->count();
 
-            $perPage = intval($request->get('per_page'));
-            $pagination = new PaginationBuilder($perPage);
-
             $this->removeFromDatabase($queryId);
 
             return TaskResource2::collection($pagination->toPaginator($objects, $count));
@@ -172,7 +169,7 @@ class WorkflowController extends Controller
 
         $params = collect($request->validated());
         $perPage = intval($request->get('per_page'));
-        $pagination = new PaginationBuilder(5000);
+        $pagination = new PaginationBuilder($perPage);
 
         $bodyParams = collect([
             ...$this->buildAdditionalParams($params, true),
@@ -185,7 +182,7 @@ class WorkflowController extends Controller
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params, $request) {
+        return DB::transaction(function () use ($data, $params, $pagination) {
             $queryId = $this->populateToDatabase($data, true);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -274,9 +271,6 @@ class WorkflowController extends Controller
 
             $objects = $query->get();
             $count = $query->count();
-
-            $perPage = intval($request->get('per_page'));
-            $pagination = new PaginationBuilder($perPage);
 
             $this->removeFromDatabase($queryId);
 
