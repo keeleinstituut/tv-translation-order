@@ -32,7 +32,5 @@ class Skill extends Model
     use HasFactory;
     use HasUuids;
 
-    protected $connection = 'pgsql_app';
-
     protected $table = 'skills';
 }

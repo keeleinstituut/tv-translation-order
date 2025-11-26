@@ -17,10 +17,10 @@ return new class extends Migration
             $table->string('reference_number');
             $table->foreignUuid('institution_id')
                 ->references('id')
-                ->on('entity_cache.cached_institutions');
+                ->on('cached_institutions');
             $table->foreignUuid('type_classifier_value_id')
                 ->references('id')
-                ->on('entity_cache.cached_classifier_values');
+                ->on('cached_classifier_values');
             $table->text('comments')->default('');
             $table->string('workflow_template_id')->nullable();
             $table->string('workflow_instance_ref')->nullable();

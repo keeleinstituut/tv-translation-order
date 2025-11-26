@@ -11,6 +11,8 @@ class ClassifierValueTest extends TestCase
 {
     public function test_classifier_values_have_readonly_access()
     {
+        $this->markTestSkipped('readonly access is not needed anymore');
+
         $id = ClassifierValue::factory()->create()->id;
 
         $this->expectException(QueryException::class);

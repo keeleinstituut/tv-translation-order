@@ -117,7 +117,7 @@ class VendorController extends Controller
         }
 
         $data = $query
-            ->join('entity_cache.cached_institution_users', 'vendors.institution_user_id', '=', 'entity_cache.cached_institution_users.id')
+            ->join('cached_institution_users', 'vendors.institution_user_id', '=', 'cached_institution_users.id')
             ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
             ->paginate($params->get('per_page', 10));

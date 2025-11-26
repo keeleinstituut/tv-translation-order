@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'mysql'),
+    'default' => env('DB_CONNECTION', 'pgsql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -63,33 +63,18 @@ return [
             ]) : [],
         ],
 
-        'pgsql_app' => [
+        'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('PG_APP_USERNAME', 'forge'),
-            'password' => env('PG_APP_PASSWORD', env('DB_PASSWORD', '')),
+            'username' => env('DB_USERNAME', 'forge'),
+            'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => env('PG_APP_SCHEMA', 'public'),
-            'sslmode' => 'prefer',
-        ],
-
-        env('PG_SYNC_CONNECTION_NAME', 'pgsql_sync') => [
-            'driver' => 'pgsql',
-            'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('PG_SYNC_USERNAME', 'forge'),
-            'password' => env('PG_SYNC_PASSWORD', env('DB_PASSWORD', '')),
-            'charset' => 'utf8',
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => env('PG_SYNC_SCHEMA', 'entity_cache'),
+            'search_path' => 'public',
             'sslmode' => 'prefer',
         ],
 

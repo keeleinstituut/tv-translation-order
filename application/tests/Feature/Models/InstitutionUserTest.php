@@ -14,6 +14,8 @@ class InstitutionUserTest extends TestCase
      */
     public function test_institution_users_have_readonly_access(): void
     {
+        $this->markTestSkipped('readonly access is not needed anymore');
+
         $id = InstitutionUser::factory()->create()->id;
 
         $this->expectException(QueryException::class);
