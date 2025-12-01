@@ -28,8 +28,8 @@ services:
       - 6379:6379
 
   camunda:
-    image: camunda/camunda-bpm-platform:run-latest
-#    command: ./camunda.sh --webapps --rest --swaggerui
+    image: camunda/camunda-bpm-platform:7.18.0
+    #    command: ./camunda.sh --webapps --rest --swaggerui
     command: ./camunda.sh --webapps --rest --swaggerui --example
     ports:
       - 8090:8080

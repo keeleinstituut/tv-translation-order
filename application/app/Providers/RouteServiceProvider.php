@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,13 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
+            Route::withoutMiddleware([StartSession::class])
+                ->group(function () {
+                    Route::get('/healthz/startup', [\App\Http\Controllers\HealthCheckController::class, 'startup'])->name('healthz.startup');
+                    Route::get('/healthz/ready', [\App\Http\Controllers\HealthCheckController::class, 'ready'])->name('healthz.ready');
+                    Route::get('/healthz/live', [\App\Http\Controllers\HealthCheckController::class, 'live'])->name('healthz.live');
+                });
+
             Route::middleware(['api', 'auth:api'])
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
