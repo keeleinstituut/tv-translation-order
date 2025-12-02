@@ -28,7 +28,6 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
-            // Health check route - no middleware, bypasses StartSession
             Route::withoutMiddleware([StartSession::class])
                 ->get('/healthz', [\App\Http\Controllers\HealthCheckController::class, 'index'])
                 ->name('healthz');
