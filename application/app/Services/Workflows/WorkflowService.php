@@ -239,6 +239,6 @@ class WorkflowService
     {
         $baseUrl = getenv('CAMUNDA_API_URL');
 
-        return Http::baseUrl($baseUrl);
+        return Http::baseUrl($baseUrl)->timeout(300);
     }
 }
