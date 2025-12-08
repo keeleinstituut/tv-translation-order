@@ -16,8 +16,8 @@ return new class extends Migration
             $table->foreignUuid('assignment_id')->constrained('assignments')
                 ->onDelete('cascade');
             $table->enum('unit_type', ['CHARACTERS', 'WORDS', 'PAGES', 'MINUTES', 'HOURS']);
-            $table->unsignedDecimal('unit_quantity');
-            $table->unsignedDecimal('unit_fee')->nullable();
+            $table->decimal('unit_quantity')->unsigned();
+            $table->decimal('unit_fee')->unsigned()->nullable();
             $table->foreignUuid('cat_tool_job_id')->nullable()
                 ->constrained('cat_tool_jobs')->onDelete('cascade');
             $table->json('discounts')->default('{}');
