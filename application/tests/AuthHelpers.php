@@ -12,16 +12,13 @@ use Illuminate\Support\Str;
 
 readonly class AuthHelpers
 {
-    public static function generateAccessToken(array $tolkevaravPayload = [], string $azp = null, int $expiresIn = null): string
+    public static function generateAccessToken(array $tolkevaravPayload = [], string $azp = null): string
     {
-        $now = time();
         $payload = collect([
             'azp' => $azp ?? Str::of(config('keycloak.accepted_authorized_parties'))
                 ->explode(',')
                 ->first(),
             'iss' => config('keycloak.base_url').'/realms/'.config('keycloak.realm'),
-            'iat' => $now,
-            'exp' => $now + ($expiresIn ?: 3600),
             'tolkevarav' => collect([
                 'userId' => fake()->uuid(),
                 'institutionUserId' => fake()->uuid(),
@@ -119,7 +116,6 @@ readonly class AuthHelpers
             ],
             'privileges' => collect($institutionUser->roles)
                 ->flatMap(fn (array $role) => $role['privileges'])
-                ->map(fn (array|string $privilege) => is_array($privilege) ? ($privilege['key'] ?? $privilege) : $privilege)
                 ->unique()
                 ->all(),
         ];

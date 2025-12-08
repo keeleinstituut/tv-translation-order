@@ -14,6 +14,7 @@ use App\Http\Requests\API\ProjectListRequest;
 use App\Http\Requests\API\ProjectsExportRequest;
 use App\Http\Requests\API\ProjectUpdateRequest;
 use App\Http\Resources\API\ProjectResource;
+use App\Http\Resources\API\ProjectSummaryResource;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
@@ -97,7 +98,7 @@ class ProjectController extends Controller
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\PaginatedCollectionResponse(itemsRef: ProjectResource::class, description: 'Filtered projects of current institution')]
+    #[OAH\PaginatedCollectionResponse(itemsRef: ProjectSummaryResource::class, description: 'Filtered projects of current institution')]
     public function index(ProjectListRequest $request): AnonymousResourceCollection
     {
         $params = collect($request->validated());
@@ -210,7 +211,7 @@ class ProjectController extends Controller
             case 'clientInstitutionUser.name':
                 $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
                 break;
-
+            
             default:
                 $query = $query->orderBy('created_at', $sortOrder);
                 break;

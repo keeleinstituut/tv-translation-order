@@ -7,10 +7,9 @@ use App\Enums\TagType;
 use App\Http\Controllers\TagController;
 use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
-use App\Policies\TagPolicy;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Str;
 use Tests\AuthHelpers;
 use Tests\Feature\RepresentationHelpers;
 use Tests\TestCase;
@@ -31,22 +30,15 @@ class TagControllerStoreTest extends TestCase
         ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]));
 
         $response->assertOk();
-        $responseTags = collect($response->json('data'));
-        $this->assertCount($tagsAttributes->count(), $responseTags, 'Response should contain all tags');
-        $tagsByName = $responseTags->keyBy(fn ($tag) => strtolower($tag['name']));
 
         $tags = collect();
         foreach ($tagsAttributes as $tagAttributes) {
-            $responseTag = $tagsByName->get(strtolower($tagAttributes['name']));
-            $this->assertNotNull($responseTag, "Tag with name '{$tagAttributes['name']}' was not found in response");
-            $tag = Tag::query()
-                ->withGlobalScope('policy', TagPolicy::scope())
-                ->where('id', $responseTag['id'])
+            $tag = Tag::query()->where('name', $tagAttributes['name'])
+                ->where('type', $tagAttributes['type'])
+                ->where('institution_id', $institution->id)
                 ->first();
 
-            $this->assertNotNull($tag, "Tag with id '{$responseTag['id']}' was not found in database");
             $this->assertModelExists($tag);
-            $this->assertEquals($tagAttributes['name'], $tag->name, 'Tag name should match');
             $tags->add($tag);
         }
 

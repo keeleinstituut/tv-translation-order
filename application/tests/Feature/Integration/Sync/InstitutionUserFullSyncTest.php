@@ -78,9 +78,7 @@ class InstitutionUserFullSyncTest extends TestCase
         $this->artisan('sync:institution-users')->assertExitCode(0);
 
         foreach ($institutionUsers as $institutionUser) {
-            // Refresh the model from database to get current state
-            $institutionUser->refresh();
-            $this->assertModelSoftDeleted($institutionUser);
+            $this->assertModelMissing($institutionUser);
         }
     }
 

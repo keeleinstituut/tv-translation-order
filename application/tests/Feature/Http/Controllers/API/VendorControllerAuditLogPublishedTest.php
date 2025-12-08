@@ -30,7 +30,6 @@ class VendorControllerAuditLogPublishedTest extends AuditLogTestCase
 
     public function test_bulk_create_audit_log_published(): void
     {
-        $this->markTestSkipped('Skipping audit log validation test');
         $institutionId = Str::orderedUuid();
         $testIUsers = InstitutionUser::factory(10)
             ->setInstitution([
@@ -92,7 +91,6 @@ class VendorControllerAuditLogPublishedTest extends AuditLogTestCase
 
     public function test_bulk_delete_audit_log_published(): void
     {
-        $this->markTestSkipped('Skipping audit log validation test');
         $institutionId = Str::orderedUuid();
 
         $testIUsers = InstitutionUser::factory()
@@ -147,7 +145,6 @@ class VendorControllerAuditLogPublishedTest extends AuditLogTestCase
 
     public function test_update_audit_log_published(): void
     {
-        $this->markTestSkipped('Skipping audit log validation test');
         $institution = Institution::factory()->create();
         $institutionId = $institution->id;
 

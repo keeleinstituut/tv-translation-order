@@ -14,6 +14,6 @@ class DeleteClassifierValueListenerTest extends TestCase
         $classifierValue = ClassifierValue::factory()->create();
         $this->app->make(DeleteClassifierValueListener::class)
             ->handle(new ClassifierValueDeleted($classifierValue->id));
-        $this->assertModelSoftDeleted($classifierValue);
+        $this->assertModelMissing($classifierValue);
     }
 }

@@ -14,6 +14,6 @@ class DeleteInstitutionListenerTest extends TestCase
         $institution = Institution::factory()->create();
         $this->app->make(DeleteInstitutionListener::class)
             ->handle(new InstitutionDeleted($institution->id));
-        $this->assertModelSoftDeleted($institution);
+        $this->assertModelMissing($institution);
     }
 }

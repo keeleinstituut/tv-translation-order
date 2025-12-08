@@ -85,7 +85,7 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
                     ...static::createExampleValidPayload(),
                     'manager_institution_user_id' => InstitutionUser::factory()
                         ->state(['institution' => $actingUser->institution])
-                        ->createWithPrivileges(PrivilegeKey::ManageProject, PrivilegeKey::ReceiveProject)
+                        ->createWithPrivileges(PrivilegeKey::ReceiveAndManageProject)
                         ->id,
                 ],
             ],
@@ -139,7 +139,6 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
      */
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload): void
     {
-        $this->markTestSkipped('Skipping audit log validation test');
         $payload = collect($createValidPayload(static::$privilegedActingUser));
 
         $response = $this
@@ -173,14 +172,14 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
             'manager_institution_user_id from another institution' => [fn () => [
                 ...static::createExampleValidPayload(),
                 'manager_institution_user_id' => InstitutionUser::factory()
-                    ->createWithPrivileges(PrivilegeKey::ManageProject, PrivilegeKey::ReceiveProject)
+                    ->createWithPrivileges(PrivilegeKey::ReceiveAndManageProject)
                     ->id,
             ]],
             'manager_institution_user_id without RECEIVE_PROEJCT privilege' => [fn (InstitutionUser $actingUser) => [
                 ...static::createExampleValidPayload(),
                 'manager_institution_user_id' => InstitutionUser::factory()
                     ->state(['institution' => $actingUser->institution])
-                    ->createWithAllPrivilegesExcept(PrivilegeKey::ManageProject, PrivilegeKey::ReceiveProject)
+                    ->createWithAllPrivilegesExcept(PrivilegeKey::ReceiveAndManageProject)
                     ->id,
             ]],
             'client_institution_user_id from another institution' => [fn () => [
@@ -269,7 +268,6 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
      */
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
-        $this->markTestSkipped('Skipping audit log validation test');
         $payload = $createInvalidPayload(static::$privilegedActingUser);
         $this
             ->withHeaders(AuthHelpers::createHeadersForInstitutionUser(static::$privilegedActingUser))
@@ -318,7 +316,6 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
      */
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
-        $this->markTestSkipped('Skipping audit log validation test');
         $actingUser = $createActingUser();
         $payload = $createPayload($actingUser);
 

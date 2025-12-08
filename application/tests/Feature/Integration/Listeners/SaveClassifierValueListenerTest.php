@@ -68,6 +68,6 @@ class SaveClassifierValueListenerTest extends TestCase
         $this->app->make(SaveClassifierValueListener::class)
             ->handle(new ClassifierValueSaved($classifierValue->id));
 
-        $this->assertModelSoftDeleted($classifierValue);
+        $this->assertModelMissing($classifierValue);
     }
 }

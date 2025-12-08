@@ -131,10 +131,10 @@ readonly class ProjectWorkflowProcessInstance
                 'value' => $this->project->deadline_at?->format(WorkflowService::DATETIME_FORMAT),
             ],
             'source_language_classifier_value_id' => [
-                'value' => $this->project->subProjects->pluck('source_language_classifier_value_id')->first(),
+                'value' => $this->project->sourceLanguageClassifierValue->id,
             ],
             'destination_language_classifier_value_id' => [
-                'value' => $this->project->subProjects->pluck('destination_language_classifier_value_id')->join(';'),
+                'value' => $this->project->destinationLanguageClassifierValues->pluck('id')->join(';'),
             ],
             'subProjects' => [
                 'value' => $this->project->subProjects->map(function (SubProject $subProject) {

@@ -17,13 +17,8 @@ class JobDefinitionSeeder extends Seeder
     {
         $skillsMap = Skill::all(['id', 'name'])->keyBy(fn($data) => $this->normalizeSkillName($data['name']));
 
-        ProjectTypeConfig::query()
-            ->with('typeClassifierValue')
-            ->each(function (ProjectTypeConfig $projectTypeConfig) use ($skillsMap) {
-                if (!$projectTypeConfig->typeClassifierValue) {
-                    return;
-                }
-                $jobsDefinitions = self::getData()[$projectTypeConfig->typeClassifierValue->value] ?? [];
+        ProjectTypeConfig::query()->each(function (ProjectTypeConfig $projectTypeConfig) use ($skillsMap) {
+            $jobsDefinitions = self::getData()[$projectTypeConfig->typeClassifierValue->value] ?? [];
             foreach ($jobsDefinitions as $idx => $jobDefinitionAttributes) {
                 $jobDefinitionAttributes['sequence'] = $idx;
 
