@@ -10,6 +10,7 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Media;
 use App\Models\Project;
+use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 use Throwable;
@@ -143,13 +145,12 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreatorsAndExtraAssertions
-     *
      * @param  Closure(InstitutionUser): array  $createValidPayload
      * @param  Closure(TestCase, TestResponse, array): void  $performExtraAssertions
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreatorsAndExtraAssertions')]
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload, Closure $performExtraAssertions): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -340,12 +341,11 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideInvalidPayloadCreators
-     *
      * @param  Closure(InstitutionUser): array  $createInvalidPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideInvalidPayloadCreators')]
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -393,13 +393,12 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
