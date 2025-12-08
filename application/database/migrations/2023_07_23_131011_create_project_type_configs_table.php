@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('type_classifier_value_id')
                 ->references('id')
-                ->on('entity_cache.cached_classifier_values');
+                ->on('cached_classifier_values');
             $table->string('workflow_process_definition_id');
             $table->json('features');
             $table->timestampsTz();

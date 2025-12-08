@@ -43,7 +43,7 @@ class VendorControllerTest extends TestCase
         $expectedVendors = Vendor::getModel()
             ->whereIn('institution_user_id', $randomTestIUserIds)
             ->with('prices', 'institutionUser', 'tags')
-            ->join('entity_cache.cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
+            ->join('cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
             ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
             ->select('vendors.*')
             ->get();
@@ -110,7 +110,7 @@ class VendorControllerTest extends TestCase
             ->whereRelation('institutionUser', 'institution->id', $institutionId)
             ->whereRelation('prices.sourceLanguageClassifierValue', fn ($query) => $query->whereIn('id', $requestedSourceLangs))
             ->whereRelation('prices.destinationLanguageClassifierValue', fn ($query) => $query->whereIn('id', $requestedDestinationLangs))
-            ->join('entity_cache.cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
+            ->join('cached_institution_users as institution_users', 'vendors.institution_user_id', '=', 'institution_users.id')
             ->orderByRaw("CONCAT(institution_users.\"user\"->>'forename', institution_users.\"user\"->>'surname') ASC")
             ->select('vendors.*')
             ->get();

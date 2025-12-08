@@ -34,4 +34,8 @@ return [
     'nectm' => [
         'base_url' => env('TRANSLATION_MEMORY_SERVICE_BASE_URL', 'http://127.0.0.1:8004/api/v1'),
     ],
+
+    'camunda' => [
+        'api_url' => env('CAMUNDA_API_URL'),
+    ],
 ];

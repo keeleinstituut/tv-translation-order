@@ -43,7 +43,7 @@ class ProjectSeeder extends Seeder
                 'type_classifier_value_id' => fake()->randomElement($projectTypes)->id,
                 'workflow_template_id' => 'project-workflow',
                 'client_institution_user_id' => $client->id,
-                'institution_id' => $client->institution['id'],
+                'ext_id' => fake()->text(5),
             ])->create();
 
         $projects->each($this->addRandomFilesToProject(...));
@@ -59,7 +59,7 @@ class ProjectSeeder extends Seeder
             $project->subProjects->each(function (SubProject $subProject) {
                 $subProject->assignments->each($this->setAssigneeOrCandidates(...));
             });
-            $project->workflow()->start();
+            //$project->workflow()->start();
         });
     }
 

@@ -65,8 +65,6 @@ class Price extends Model
     use HasUuids;
     use SoftDeletes;
 
-    protected $connection = 'pgsql_app';
-
     protected $table = 'prices';
 
     protected $fillable = [
