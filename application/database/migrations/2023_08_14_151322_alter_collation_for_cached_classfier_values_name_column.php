@@ -9,7 +9,7 @@ return new class extends BaseCachedEntityTableMigration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE entity_cache.cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "et-EE-x-icu"');
+        DB::statement('ALTER TABLE cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "et-EE-x-icu"');
     }
 
     /**
@@ -17,6 +17,6 @@ return new class extends BaseCachedEntityTableMigration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE entity_cache.cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "default"');
+        DB::statement('ALTER TABLE cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "default"');
     }
 };

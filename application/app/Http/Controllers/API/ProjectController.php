@@ -171,7 +171,7 @@ class ProjectController extends Controller
         }
 
         $query = $query
-            ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+            ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
             ->select('projects.*')
             ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
 

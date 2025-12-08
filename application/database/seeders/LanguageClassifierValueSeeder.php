@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Enums\ClassifierValueType;
 use App\Models\CachedEntities\ClassifierValue;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
 class LanguageClassifierValueSeeder extends Seeder
@@ -16,7 +15,6 @@ class LanguageClassifierValueSeeder extends Seeder
     public function run(): void
     {
         ClassifierValue::getModel()
-            ->setConnection(Config::get('pgsql-connection.sync.name'))
             ->insert(
                 collect(static::getData())
                     ->mapSpread(fn (string $name, string $value, string $iso3Code) => [
