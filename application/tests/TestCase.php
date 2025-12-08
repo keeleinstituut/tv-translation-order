@@ -2,16 +2,16 @@
 
 namespace Tests;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
-use SyncTools\Traits\RefreshDatabaseWithCachedEntitySchema;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
-    use RefreshDatabaseWithCachedEntitySchema;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -55,13 +55,13 @@ abstract class TestCase extends BaseTestCase
         Config::set('keycloak.realm_public_key_retrieval_mode', 'config');
         Config::set('keycloak.realm_public_key', env('KEYCLOAK_REALM_PUBLIC_KEY'));
 
-        FakeFileScanService::bind();
+        // FakeFileScanService::bind();
 
         AuthHelpers::fakeServiceValidationResponse();
 
         $camundaBaseUrl = env('CAMUNDA_API_URL', 'http://process-definition');
         Http::fake([
-            rtrim($camundaBaseUrl, '/') . '/*' => Http::response([
+            rtrim($camundaBaseUrl, '/').'/*' => Http::response([
                 'id' => fake()->uuid(),
                 'definitionId' => fake()->uuid(),
                 'businessKey' => fake()->uuid(),
@@ -77,7 +77,7 @@ abstract class TestCase extends BaseTestCase
 
     protected function prepareAuthorizedRequest($accessToken): TestCase
     {
-        return $this->withHeader('Authorization', 'Bearer ' . $accessToken);
+        return $this->withHeader('Authorization', 'Bearer '.$accessToken);
     }
 
     public function assertArrayHasSubsetIgnoringOrder(?array $expectedSubset, ?array $actual): void

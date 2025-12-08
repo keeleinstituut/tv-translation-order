@@ -1,8 +1,9 @@
 <?php
 
-use SyncTools\Database\Helpers\BaseCachedEntityTableMigration;
 
-return new class extends BaseCachedEntityTableMigration
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration
 {
     /**
      * Run the migrations.
