@@ -47,25 +47,27 @@ class RepresentationHelpers
 
     public static function createVendorRepresentation(Vendor $obj): array
     {
-        return self::clean([
+        $representation = [
             'id' => $obj->id,
             'institution_user_id' => $obj->institution_user_id,
             'company_name' => $obj->company_name,
-            'comment' => $obj->comment,
             'created_at' => $obj->created_at->toIsoString(),
             'updated_at' => $obj->updated_at->toIsoString(),
-            'prices' => self::transformRelation($obj, 'prices', self::createPriceRepresentation(...)),
-            'discount_percentage_101' => $obj->discount_percentage_101,
-            'discount_percentage_repetitions' => $obj->discount_percentage_repetitions,
-            'discount_percentage_100' => $obj->discount_percentage_100,
-            'discount_percentage_95_99' => $obj->discount_percentage_95_99,
-            'discount_percentage_85_94' => $obj->discount_percentage_85_94,
-            'discount_percentage_75_84' => $obj->discount_percentage_75_84,
-            'discount_percentage_50_74' => $obj->discount_percentage_50_74,
-            'discount_percentage_0_49' => $obj->discount_percentage_0_49,
-            'institution_user' => self::transformRelation($obj, 'institutionUser', self::createInstitutionUserRepresentation(...)),
-            'tags' => self::transformRelation($obj, 'tags', self::createTagFlatRepresentation(...)),
-        ]);
+            'comment' => $obj->comment,
+        ];
+
+        // Only include discount fields if institutionUser.institutionDiscount is loaded
+        // This matches VendorResource behavior
+        if ($obj->relationLoaded('institutionUser') && $obj->institutionUser?->relationLoaded('institutionDiscount')) {
+            $discount = $obj->getVolumeAnalysisDiscount()->jsonSerialize();
+            $representation = array_merge($representation, $discount);
+        }
+
+        $representation['prices'] = self::transformRelation($obj, 'prices', self::createPriceRepresentation(...));
+        $representation['institution_user'] = self::transformRelation($obj, 'institutionUser', self::createInstitutionUserRepresentation(...));
+        $representation['tags'] = self::transformRelation($obj, 'tags', self::createTagFlatRepresentation(...));
+
+        return self::clean($representation);
     }
 
     public static function createClassifierValueRepresentation(ClassifierValue $obj): array
@@ -75,6 +77,7 @@ class RepresentationHelpers
             'type' => $obj->type->value,
             'value' => $obj->value,
             'name' => $obj->name,
+            'meta' => $obj->meta,
         ]);
     }
 
@@ -96,6 +99,7 @@ class RepresentationHelpers
             'institution' => $obj->institution,
             'department' => $obj->department,
             'roles' => collect($obj->roles)->map(fn ($role) => collect($role)->only('id', 'name')),
+            'vacations' => $obj->vacations,
         ]);
     }
 

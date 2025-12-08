@@ -109,6 +109,9 @@ trait ApiResponseHelpers
         $classifierValueAttributes['deleted_at'] = Carbon::now();
         if (filled($classifierValueAttributes['meta'])) {
             $classifierValueAttributes['meta'] = json_decode($classifierValueAttributes['meta'], true);
+        } else {
+            // Explicitly set meta to [] if it's empty, to match repository default
+            $classifierValueAttributes['meta'] = [];
         }
 
         return $classifierValueAttributes;
