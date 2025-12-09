@@ -17,7 +17,8 @@ RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && \
                                 sodium \
                                 pcntl \
                                 sockets \
-                                exif
+                                exif \
+                                fileinfo
 
 COPY --chown=www-data:www-data ./application ${APP_ROOT}
 WORKDIR $APP_ROOT

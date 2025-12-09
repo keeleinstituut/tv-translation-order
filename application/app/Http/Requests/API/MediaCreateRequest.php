@@ -5,6 +5,7 @@ namespace App\Http\Requests\API;
 use App\Models\Assignment;
 use App\Models\Project;
 use App\Policies\AssignmentPolicy;
+use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,7 +52,7 @@ class MediaCreateRequest extends FormRequest
     {
         return [
             'files' => 'required|array|min:1',
-            'files.*.content' => ['required', 'file', new ScannedRule()],
+            'files.*.content' => ['required', ProjectFileValidator::createRule(), ScannedRule::createRule()],
             'files.*.collection' => ['required', 'string', Rule::in([Project::SOURCE_FILES_COLLECTION, Project::FINAL_FILES_COLLECTION, Project::HELP_FILES_COLLECTION])],
             'files.*.reference_object_id' => 'required|uuid',
             'files.*.reference_object_type' => ['required', 'string', Rule::in(['project', 'subproject'])],
