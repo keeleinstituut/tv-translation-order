@@ -10,8 +10,8 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Rules\ModelBelongsToInstitutionRule;
+use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
-use App\Rules\TranslationSourceFileValidator;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -140,9 +140,9 @@ class ProjectCreateRequest extends FormRequest
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::TranslationDomain),
             ],
             'source_files' => ['array', 'min:1', 'max:20'],
-            'source_files.*' => [TranslationSourceFileValidator::createRule(), new ScannedRule()],
+            'source_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
             'help_files' => ['required_with:help_file_types', 'array', 'max:20'],
-            'help_files.*' => ['file', new ScannedRule()],
+            'help_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
             'help_file_types' => ['required_with:help_files', 'array'],
             'help_file_types.*' => [Rule::in(Project::HELP_FILE_TYPES)],
             'source_language_classifier_value_id' => [
