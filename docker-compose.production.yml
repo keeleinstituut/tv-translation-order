@@ -9,6 +9,9 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - redis
+      - minio
+      - camunda
     ports:
       - ${APP_PORT}:80
     environment:
@@ -61,5 +64,5 @@ services:
       - CLASSIFIER_SERVICE_BASE_URL=http://host.docker.internal:8003/api
       - AUTHORIZATION_SERVICE_BASE_URL=http://host.docker.internal:8002/api
       - TRANSLATION_MEMORY_SERVICE_BASE_URL=http://host.docker.internal:5000/api/v1
-      - AUDIT_LOG_EVENTS_QUEUE=tv-audit-log.events
+      - AUDIT_LOG_EVENTS_EXCHANGE=tv-audit-log.events
       - EMAIL_NOTIFICATION_EXCHANGE=tv-notification.email
