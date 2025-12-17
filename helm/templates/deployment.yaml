@@ -37,14 +37,30 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
+          startupProbe:
+            exec:
+              command: ["/healthz-startup.sh"]
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            exec:
+              command: ["/healthz-live.sh"]
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            exec:
+              command: ["/healthz-ready.sh"]
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.extraEnvVars }}

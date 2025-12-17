@@ -9,6 +9,9 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - redis
+      - minio
+      - camunda
     ports:
       - ${APP_PORT}:80
     environment:
