@@ -97,6 +97,7 @@ class MediaController extends Controller
                         }
 
                         $newMedia->load('assignment.jobDefinition');
+                        $newMedia->load('institutionUser');
                         return $newMedia;
                     });
                 }
