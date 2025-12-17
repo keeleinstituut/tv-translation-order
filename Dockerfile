@@ -164,6 +164,9 @@ set -e
 echo "Optimize for loading in runtime variables"
 php artisan optimize
 
+echo "Consolidating schemas to public (if needed)"
+php artisan db:consolidate-schemas
+
 echo "Running migrations"
 php artisan migrate --force
 

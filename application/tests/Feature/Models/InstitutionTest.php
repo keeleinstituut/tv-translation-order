@@ -14,6 +14,8 @@ class InstitutionTest extends TestCase
      */
     public function test_institutions_have_readonly_access()
     {
+        $this->markTestSkipped('readonly access is not needed anymore');
+
         $id = Institution::factory()->create()->id;
 
         $this->expectException(QueryException::class);

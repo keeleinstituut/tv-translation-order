@@ -2,9 +2,9 @@
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use SyncTools\Database\Helpers\BaseCachedEntityTableMigration;
+use Illuminate\Database\Migrations\Migration;
 
-return new class extends BaseCachedEntityTableMigration
+return new class extends Migration
 {
     /**
      * Run the migrations.

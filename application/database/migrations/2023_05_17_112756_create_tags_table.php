@@ -15,9 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('name', 50);
             $table->enum('type', TagType::values());
-            $table->foreignUuid('institution_id')->nullable()->constrained(
-                app()->make(Institution::class)->getTable()
-            );
+            $table->foreignUuid('institution_id')->nullable()->constrained('cached_institutions');
             $table->timestampsTz();
             $table->softDeletesTz();
         });

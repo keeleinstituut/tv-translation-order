@@ -12,14 +12,13 @@ use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
-use SyncTools\Traits\HasCachedEntityFactory;
-use SyncTools\Traits\IsCachedEntity;
 
 /**
  * App\Models\CachedEntities\InstitutionUser
@@ -63,7 +62,7 @@ use SyncTools\Traits\IsCachedEntity;
  */
 class InstitutionUser extends Model
 {
-    use IsCachedEntity, HasCachedEntityFactory, HasUuids, SoftDeletes;
+    use HasUuids, SoftDeletes, HasFactory;
 
     protected $table = 'cached_institution_users';
 
