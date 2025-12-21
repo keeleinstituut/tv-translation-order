@@ -14,3 +14,11 @@
 /application/Homestead.yaml
 /application/npm-debug.log
 /application/yarn-error.log
+
+# Tests
+/application/tests/
+/application/phpunit.xml
+/application/.phpunit.cache
+
+# Development stubs
+/application/stubs/
