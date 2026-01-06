@@ -186,11 +186,15 @@ class ProjectControllerIndexTest extends TestCase
                 },
             ],
             'Filter by single type classifier value' => [
-                fn (Collection $projects) => [
-                    'type_classifier_value_ids' => [$projects->first()->type_classifier_value_id],
-                    'per_page' => 15,
-                    'only_show_personal_projects' => false,
-                ],
+                function (Collection $projects) {
+                    /** @var Project $project */
+                    $project = $projects->first();
+                    return [
+                        'type_classifier_value_ids' => [$project->type_classifier_value_id],
+                        'per_page' => 15,
+                        'only_show_personal_projects' => false,
+                    ];
+                },
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
                     $specifiedTypeProjectIds = $projects
                         ->filter(fn (Project $project) => $project->type_classifier_value_id === $payload['type_classifier_value_ids'][0])

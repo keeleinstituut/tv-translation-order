@@ -115,6 +115,7 @@ class ProjectController extends Controller
                 'clientInstitutionUser',
             ]);
 
+        /** @var string $param */
         if ($param = $params->get('q')) {
             $query = $query->where(function ($query) use ($param) {
                 $query->where('ext_id', 'ilike', "%$param%")
@@ -122,6 +123,7 @@ class ProjectController extends Controller
             });
         }
 
+        /** @var string $param */
         if ($param = $params->get('ext_id')) {
             $query = $query->where('ext_id', 'ilike', "%$param%");
         }
@@ -156,14 +158,17 @@ class ProjectController extends Controller
             });
         }
 
+        /** @var string $param */
         if ($param = $params->get('deadline_at')) {
             $query = $query->whereDate('deadline_at', $param);
         }
 
+        /** @var string $param */
         if ($param = $params->get('created_at')) {
             $query = $query->whereDate('created_at', $param);
         }
 
+        /** @var string $param */
         if ($param = $params->get('event_start_at')) {
             $query = $query->whereDate('event_start_at', $param);
         }
@@ -183,10 +188,6 @@ class ProjectController extends Controller
 
             case 'deadline_at':
                 $query = $query->orderBy('deadline_at', $sortOrder);
-                break;
-
-            case 'created_at':
-                $query = $query->orderBy('created_at', $sortOrder);
                 break;
 
             case 'event_start_at':
