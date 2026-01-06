@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.development
+    depends_on:
+      - rabbitmq
     ports:
       - ${APP_PORT}:8000
     volumes:

@@ -7,6 +7,7 @@ use App\Enums\TagType;
 use App\Http\Controllers\TagController;
 use App\Models\CachedEntities\Institution;
 use App\Models\Tag;
+use App\Policies\TagPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Testing\TestResponse;
 use Tests\AuthHelpers;
@@ -50,17 +51,23 @@ class TagControllerUpdateTest extends TestCase
         ]));
         $response->assertOk();
 
+        $responseTags = collect($response->json('data'));
+        $this->assertCount($tagsAttributes->count(), $responseTags, 'Response should contain all tags');
+        $tagsByName = $responseTags->keyBy('name');
+
         $tags = collect();
         foreach ($tagsAttributes as $tagAttributes) {
-            $tag = Tag::query()->where('name', $tagAttributes['name'])
-                ->where('type', $tagsType)
-                ->where('institution_id', $institution->id)
-                ->when(
-                    filled($tagAttributes['id']),
-                    fn (Builder $query) => $query->where('id', $tagAttributes['id']))
+            $responseTag = $tagsByName->get($tagAttributes['name']);
+            $this->assertNotNull($responseTag, "Tag with name '{$tagAttributes['name']}' was not found in response");
+
+            $tag = Tag::query()
+                ->withGlobalScope('policy', TagPolicy::scope())
+                ->where('id', $responseTag['id'])
                 ->first();
 
+            $this->assertNotNull($tag, "Tag with id '{$responseTag['id']}' was not found in database");
             $this->assertModelExists($tag);
+            $this->assertEquals($tagAttributes['name'], $tag->name, 'Tag name should match');
             $tags->add($tag);
         }
 

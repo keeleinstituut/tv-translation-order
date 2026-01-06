@@ -244,7 +244,7 @@ class VendorControllerTest extends TestCase
         $randomVendorsIds = collect($testVendors->random(3))->pluck('id');
         $randomVendors = Vendor::getModel()
             ->whereIn('id', $randomVendorsIds)
-            ->with('institutionUser', 'prices')
+            ->with('institutionUser.institutionDiscount', 'prices')
             ->orderBy('created_at')
             ->get();
 
@@ -318,7 +318,7 @@ class VendorControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)->putJson("/api/vendors/$testVendor->id", $payload);
 
         $savedVendor = Vendor::find($testVendor->id)
-            ->load('institutionUser', 'tags');
+            ->load('institutionUser.institutionDiscount', 'tags');
         $response
             ->assertStatus(200)
             ->assertSimilarJson([

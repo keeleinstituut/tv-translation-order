@@ -16,18 +16,22 @@ class InstitutionUserControllerTest extends TestCase
     public function test_list(): void
     {
         $institutionId = Str::orderedUuid();
+
         InstitutionUser::factory()
-            ->count(20)
+            ->count(10)
+            ->setInstitution(['id' => $institutionId])
             ->create();
 
+        // Create 10 more with different institution IDs
+        InstitutionUser::factory()
+            ->count(10)
+            ->create();
+
+        // Re-query to get them in the correct order
         $expectedInstitutionUsers = InstitutionUser::getModel()
+            ->where('institution->id', $institutionId)
             ->orderByRaw("CONCAT(\"user\"->>'forename', \"user\"->>'surname') COLLATE \"et-EE-x-icu\" ASC")
-            ->take(10)
-            ->get()
-            ->each(function ($iuser) use ($institutionId) {
-                $iuser->institution['id'] = $institutionId;
-                $iuser->save();
-            });
+            ->get();
 
         $queryParams = [];
 
