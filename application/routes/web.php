@@ -13,6 +13,3 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/healthz', function (Request $request) {
-    return response('/healthz');
-});

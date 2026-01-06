@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:latest
@@ -7,9 +5,11 @@ services:
     ports:
       - ${DB_PORT}:5432
     environment:
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=app
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
+    volumes:
+      - ./dev-db-init.sql:/docker-entrypoint-initdb.d/init.sql
 
   rabbitmq:
     image: rabbitmq:management
@@ -27,7 +27,7 @@ services:
 
   camunda:
     image: camunda/camunda-bpm-platform:7.18.0
-#    command: ./camunda.sh --webapps --rest --swaggerui
+    #    command: ./camunda.sh --webapps --rest --swaggerui
     command: ./camunda.sh --webapps --rest --swaggerui --example
     ports:
       - 8090:8080

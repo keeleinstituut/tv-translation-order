@@ -239,6 +239,6 @@ class WorkflowService
     {
         $baseUrl = config('services.camunda.api_url');
 
-        return Http::baseUrl($baseUrl);
+        return Http::baseUrl($baseUrl)->timeout(300);
     }
 }
