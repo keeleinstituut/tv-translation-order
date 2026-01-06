@@ -18,10 +18,7 @@ use Throwable;
 
 readonly class AssignmentObserver
 {
-    public function __construct(private NotificationPublisher $notificationPublisher)
-    {
-
-    }
+    public function __construct(private NotificationPublisher $notificationPublisher) {}
 
     /**
      * Handle the Assignment "creating" event.
@@ -39,6 +36,7 @@ readonly class AssignmentObserver
 
     /**
      * Handle the Assignment "created" event.
+     *
      * @throws Throwable
      */
     public function created(Assignment $assignment): void
@@ -55,6 +53,7 @@ readonly class AssignmentObserver
 
     /**
      * Handle the Assignment "updated" event.
+     *
      * @throws Throwable
      */
     public function updated(Assignment $assignment): void
@@ -75,12 +74,11 @@ readonly class AssignmentObserver
         }
     }
 
-    public function deleting(Assignment $assignment): void
-    {
-    }
+    public function deleting(Assignment $assignment): void {}
 
     /**
      * Handle the Assignment "deleted" event.
+     *
      * @throws Throwable
      */
     public function deleted(Assignment $assignment): void
@@ -130,7 +128,7 @@ readonly class AssignmentObserver
             if (filled($assignment->volumes)) {
                 $assignment->load('assignee');
 
-                Volume::withoutEvents(fn() => $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type !== VolumeUnits::MinimalFee)
+                Volume::withoutEvents(fn () => $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type !== VolumeUnits::MinimalFee)
                     ->map(function (Volume $volume) use ($assignment) {
                         $volume->discounts = $assignment->assignee->getVolumeAnalysisDiscount();
                         $volume->unit_fee = $assignment->assignee->getPriceList(
@@ -168,7 +166,7 @@ readonly class AssignmentObserver
         }
     }
 
-    private function setExternalId(Assignment $assignment, int $sequence = null): void
+    private function setExternalId(Assignment $assignment, ?int $sequence = null): void
     {
         $idx = $assignment->jobDefinition?->sequence ?: 0;
         $sequence = is_null($sequence) ? $assignment->getSameJobDefinitionAssignmentsQuery()
@@ -190,7 +188,7 @@ readonly class AssignmentObserver
                         'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
                         'vendor' => $assignment->assignee?->only(['company_name']),
                         'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
-                    ]
+                    ],
                 ]),
                 $assignment->subProject->project->institution_id
             );

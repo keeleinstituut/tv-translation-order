@@ -26,7 +26,7 @@ class ModelBelongsToInstitutionRule implements ValidationRule
      * @param  ?Closure(SpecificModelType): mixed  $actualInstitutionIdRetriever
      * @param  ?Closure(SpecificModelType): array<string>  $extraErrorChecker
      */
-    public function __construct(string $modelClassName, Closure $expectedInstitutionIdRetriever, Closure $actualInstitutionIdRetriever = null, Closure $extraErrorChecker = null)
+    public function __construct(string $modelClassName, Closure $expectedInstitutionIdRetriever, ?Closure $actualInstitutionIdRetriever = null, ?Closure $extraErrorChecker = null)
     {
         if (! class_exists($modelClassName)
             || ! ($model = new $modelClassName)
@@ -93,8 +93,8 @@ class ModelBelongsToInstitutionRule implements ValidationRule
     public static function create(
         string $modelClassName,
         Closure $expectedInstitutionIdRetriever,
-        Closure $actualInstitutionIdRetriever = null,
-        Closure $extraErrorChecker = null
+        ?Closure $actualInstitutionIdRetriever = null,
+        ?Closure $extraErrorChecker = null
     ): static {
         return new static(
             $modelClassName,

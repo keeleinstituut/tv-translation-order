@@ -115,7 +115,6 @@ class Vendor extends Model implements AuditLoggable
         return $this->hasMany(Candidate::class);
     }
 
-
     public function tags()
     {
         return $this
@@ -145,7 +144,7 @@ class Vendor extends Model implements AuditLoggable
         return new VolumeAnalysisDiscount($this->only($discountAttributes));
     }
 
-    public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, string $skillId = null): ?Price
+    public function getPriceList(string $sourceLanguageId, string $destinationLanguageId, ?string $skillId = null): ?Price
     {
         if (empty($skillId)) {
             return null;

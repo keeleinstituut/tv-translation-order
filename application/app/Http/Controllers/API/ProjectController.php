@@ -36,7 +36,6 @@ use League\Csv\Writer;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ProjectController extends Controller
@@ -103,7 +102,7 @@ class ProjectController extends Controller
         $params = collect($request->validated());
 
         $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', false), FILTER_VALIDATE_BOOLEAN);
-        $showOnlyUnclaimedProjects  = $params->get('statuses', []) === [ProjectStatus::New->value];
+        $showOnlyUnclaimedProjects = $params->get('statuses', []) === [ProjectStatus::New->value];
         $this->authorize('viewAny', [Project::class, $showOnlyPersonalProjects, $showOnlyUnclaimedProjects]);
 
         $query = self::getBaseQuery()
@@ -173,7 +172,6 @@ class ProjectController extends Controller
             ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
             ->select('projects.*')
             ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
-
 
         $sortBy = $params->get('sort_by');
         $sortOrder = $params->get('sort_order', 'desc');
@@ -289,8 +287,9 @@ class ProjectController extends Controller
                 'clientInstitutionUser',
                 'typeClassifierValue',
                 'translationDomainClassifierValue',
-                'subProjects.assignments'
+                'subProjects.assignments',
             ]);
+
             return new ProjectResource($project);
         });
     }
@@ -323,7 +322,7 @@ class ProjectController extends Controller
             'helpFiles',
             'reviewFiles',
             'reviewRejections.files',
-            'tags'
+            'tags',
         ])->findOrFail($id);
 
         $this->authorize('view', $project);
@@ -333,6 +332,7 @@ class ProjectController extends Controller
 
     /**
      * Update the specified resource in storage.
+     *
      * @throws AuthorizationException
      * @throws Throwable
      */
@@ -373,7 +373,7 @@ class ProjectController extends Controller
                         'reference_number',
                         'comments',
                         'deadline_at',
-                        'event_start_at'
+                        'event_start_at',
                     ])->filter()->toArray(), $project->fill(...));
 
                     $project->save();
@@ -384,12 +384,12 @@ class ProjectController extends Controller
                         $project->tags()->attach($tagsInput);
                     }
 
-                    $sourceLang = $params->get('source_language_classifier_value_id', fn() => $project->subProjects->pluck('source_language_classifier_value_id')->first());
-                    $destinationLangs = $params->get('destination_language_classifier_value_ids', fn() => $project->subProjects->pluck('destination_language_classifier_value_id'));
+                    $sourceLang = $params->get('source_language_classifier_value_id', fn () => $project->subProjects->pluck('source_language_classifier_value_id')->first());
+                    $destinationLangs = $params->get('destination_language_classifier_value_ids', fn () => $project->subProjects->pluck('destination_language_classifier_value_id'));
                     $reInitializeSubProjects = $project->wasChanged('type_classifier_value_id');
                     $projectHasStartedSubProjectWorkflow = $project->subProjects
-                            ->filter(fn(SubProject $subProject) => $subProject->workflow()->isStarted())
-                            ->count() > 0;
+                        ->filter(fn (SubProject $subProject) => $subProject->workflow()->isStarted())
+                        ->count() > 0;
 
                     [$createdCount, $deletedCount] = $project->initSubProjects(
                         ClassifierValue::findOrFail($sourceLang),
@@ -426,7 +426,6 @@ class ProjectController extends Controller
         });
     }
 
-
     /**
      * @throws Throwable
      */
@@ -449,7 +448,7 @@ class ProjectController extends Controller
 
             $this->authorize('cancel', $project);
 
-            if (!in_array($project->status, [ProjectStatus::New, ProjectStatus::Registered])) {
+            if (! in_array($project->status, [ProjectStatus::New, ProjectStatus::Registered])) {
                 abort(Response::HTTP_BAD_REQUEST, 'Only projects with status `NEW` or `REGISTERED` can be cancelled.');
             }
 
@@ -551,16 +550,16 @@ class ProjectController extends Controller
             'destinationLanguageClassifierValues',
             'assignees.institutionUser',
             'catToolTmKeys',
-            'volumes'
+            'volumes',
         ])->when(
             $params->get('status'),
-            fn(Builder $query, $statuses) => $query->whereIn('status', $statuses)
+            fn (Builder $query, $statuses) => $query->whereIn('status', $statuses)
         )->when(
             $params->get('date_from'),
-            fn(Builder $query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate)
+            fn (Builder $query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate)
         )->when(
             $params->get('date_to'),
-            fn(Builder $query, $toDate) => $query->whereDate('created_at', '<=', $toDate)
+            fn (Builder $query, $toDate) => $query->whereDate('created_at', '<=', $toDate)
         )->lazy()->each(function (Project $project) use ($csvDocument) {
             $project->assignments->each(function (Assignment $assignment) use ($csvDocument, $project) {
                 $subProject = $assignment->subProject;
@@ -584,16 +583,16 @@ class ProjectController extends Controller
                     $project->translationDomainClassifierValue?->name,
                     $this->getDateTimeWithTimezoneOrNull($assignment->created_at, 'd/m/Y H:i'),
                     $assignment->assignee?->company_name,
-                    $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::MinimalFee)->pluck('unit_quantity')->sum(),
-                    $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Minutes)->pluck('unit_quantity')->sum(),
-                    $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Hours)->pluck('unit_quantity')->sum(),
-                    $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Pages)->pluck('unit_quantity')->sum(),
-                    $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
-                    $assignment->volumes->filter(fn(Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
+                    $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type === VolumeUnits::MinimalFee)->pluck('unit_quantity')->sum(),
+                    $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type === VolumeUnits::Minutes)->pluck('unit_quantity')->sum(),
+                    $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type === VolumeUnits::Hours)->pluck('unit_quantity')->sum(),
+                    $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type === VolumeUnits::Pages)->pluck('unit_quantity')->sum(),
+                    $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type === VolumeUnits::Characters)->pluck('unit_quantity')->sum(),
+                    $assignment->volumes->filter(fn (Volume $volume) => $volume->unit_type === VolumeUnits::Words)->pluck('unit_quantity')->sum(),
                     is_null($assignment->price) ? '' : "$assignment->price €",
                     $this->getDateTimeWithTimezoneOrNull($assignment->event_start_at ?: $project->event_start_at, 'd/m/Y H:i'),
                     $this->getDateTimeWithTimezoneOrNull($assignment->deadline_at ?: $project->deadline_at, 'd/m/Y H:i'),
-                    $this->getDateTimeWithTimezoneOrNull($assignment->completed_at,'d/m/Y H:i'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->completed_at, 'd/m/Y H:i'),
                     $this->getDateTimeWithTimezoneOrNull($assignment->completed_at)?->locale('et_EE')->format('Y F'),
                     $project->clientInstitutionUser?->getDepartmentName(),
                     $project->tags?->pluck('name')->implode(', '),
@@ -617,7 +616,7 @@ class ProjectController extends Controller
         );
     }
 
-    private function getDateTimeWithTimezoneOrNull(Carbon $datetime = null, string $format = null): Carbon|string|null
+    private function getDateTimeWithTimezoneOrNull(?Carbon $datetime = null, ?string $format = null): Carbon|string|null
     {
         if (empty($datetime)) {
             return null;

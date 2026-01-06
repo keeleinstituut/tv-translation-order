@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1.4.0
 
 FROM composer:latest as composer
-FROM php:8.3.0-fpm-alpine3.19 as runtime
+FROM php:8.5-fpm-alpine3.23 as runtime
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
@@ -166,7 +166,7 @@ chown -R www-data:www-data ./storage
 
 # Run artisan commands as www-data user
 echo "Optimize for loading in runtime variables"
-su www-data -s /bin/sh -c "php artisan optimize"
+su www-data -s /bin/sh -c "php artisan optimize --except view:cache"
 
 echo "Consolidating schemas to public (if needed)"
 su www-data -s /bin/sh -c "php artisan db:consolidate-schemas"

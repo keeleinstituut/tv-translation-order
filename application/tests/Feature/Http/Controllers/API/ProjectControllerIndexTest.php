@@ -18,15 +18,14 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Assertions;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 use Throwable;
-use PHPUnit\Framework\Attributes\DataProvider;
 
 class ProjectControllerIndexTest extends TestCase
 {
-
     protected static InstitutionUser $privilegedActingUser;
 
     protected static Collection $projects;
@@ -78,7 +77,7 @@ class ProjectControllerIndexTest extends TestCase
                             $testCase->assertLessThanOrEqual(
                                 $prevCreatedAt,
                                 $currCreatedAt,
-                                "Items should be sorted by created_at in descending order"
+                                'Items should be sorted by created_at in descending order'
                             );
                         }
                     });
@@ -107,10 +106,10 @@ class ProjectControllerIndexTest extends TestCase
                     $actingUserInstitutionId = $actingUser->institution['id'];
 
                     $selectedProject = $projects
-                        ->filter(fn(Project $project) => $project->institution_id === $actingUserInstitutionId)
+                        ->filter(fn (Project $project) => $project->institution_id === $actingUserInstitutionId)
                         ->groupBy('ext_id')
-                        ->filter(fn(Collection $extIdProjects) => $extIdProjects->count() === 1)
-                        ->map(fn(Collection $extIdProjects) => $extIdProjects->first())
+                        ->filter(fn (Collection $extIdProjects) => $extIdProjects->count() === 1)
+                        ->map(fn (Collection $extIdProjects) => $extIdProjects->first())
                         ->firstOrFail();
 
                     return ['ext_id' => $selectedProject->ext_id, 'only_show_personal_projects' => false];
@@ -172,7 +171,7 @@ class ProjectControllerIndexTest extends TestCase
                             $query->where('manager_institution_user_id', $actingUser->id)
                                 ->orWhere('client_institution_user_id', $actingUser->id);
                         })
-                        ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                        ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
                         ->pluck('projects.id')
                         ->all();
 
@@ -229,11 +228,15 @@ class ProjectControllerIndexTest extends TestCase
                 },
             ],
             'Filter by single tag' => [
-                fn (Collection $projects) => [
-                    'tag_ids' => [$projects->first()->tags->first()->id],
-                    'per_page' => 15,
-                    'only_show_personal_projects' => false,
-                ],
+                function (Collection $projects) {
+                    /** @var Project $project */
+                    $project = $projects->first();
+                    return [
+                            'tag_ids' => [$project->tags->first()?->id],
+                            'per_page' => 15,
+                            'only_show_personal_projects' => false,
+                        ];
+                },
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
                     $specifiedTagProjectIds = $projects
                         ->filter(fn (Project $project) => $project->tags->pluck('id')->contains($payload['tag_ids'][0]))
@@ -487,7 +490,7 @@ class ProjectControllerIndexTest extends TestCase
                 ['manager_institution_user_id' => $actingUser->id],
                 ['client_institution_user_id' => $actingUser->id],
                 ...ProjectTypeConfig::all()
-                ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
+                    ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
                         'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
                     ]),
             )
@@ -498,6 +501,7 @@ class ProjectControllerIndexTest extends TestCase
             ->split($projects->count())
             ->zip($projects)
             ->eachSpread(function (Collection $languages, Project $project) {
+                /** @var ClassifierValue $sourceLanguage */
                 $sourceLanguage = $languages->first();
                 $languages->skip(1)->each(
                     fn (ClassifierValue $destinationLanguage) => SubProject::create([
@@ -516,7 +520,7 @@ class ProjectControllerIndexTest extends TestCase
             ->count($projects->count() * 2)
             ->state(function (array $attributes) {
                 return [
-                    'name' => $attributes['name'] . ' ' . Str::random(8),
+                    'name' => $attributes['name'].' '.Str::random(8),
                 ];
             })
             ->create();
