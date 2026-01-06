@@ -48,6 +48,6 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
 
     private function getBaseModel(): Institution
     {
-        return Institution::getModel()->setConnection(config('pgsql-connection.sync.name'));
+        return Institution::getModel();
     }
 }

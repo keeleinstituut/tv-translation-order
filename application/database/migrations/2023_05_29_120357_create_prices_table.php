@@ -23,13 +23,13 @@ return new class extends Migration
             $table
                 ->foreignUuid('src_lang_classifier_value_id')
                 ->references('id')
-                ->on('entity_cache.cached_classifier_values')
+                ->on('cached_classifier_values')
                 ->constrained();
 
             $table
                 ->foreignUuid('dst_lang_classifier_value_id')
                 ->references('id')
-                ->on('entity_cache.cached_classifier_values')
+                ->on('cached_classifier_values')
                 ->constrained();
 
             $table->unsignedDecimal('character_fee', 10, 2);

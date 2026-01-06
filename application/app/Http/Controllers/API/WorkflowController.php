@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\API;
 
-use Illuminate\Support\Facades\Auth;
 use App\Enums\AssignmentStatus;
 use App\Enums\CandidateStatus;
 use App\Enums\PrivilegeKey;
@@ -19,6 +18,7 @@ use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\CamundaTask;
 use App\Models\Candidate;
 use App\Models\Media;
 use App\Models\Project;
@@ -29,6 +29,8 @@ use App\Policies\InstitutionUserPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
+use App\Rules\ProjectFileValidator;
+use App\Rules\ScannedRule;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
@@ -39,6 +41,7 @@ use DB;
 use Gate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -46,18 +49,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use NotificationClient\Services\NotificationPublisher;
 use OpenApi\Attributes as OA;
+use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
-use App\Models\CamundaTask;
-use Ramsey\Uuid\Uuid;
-use Illuminate\Database\Eloquent\Builder;
-
 
 class WorkflowController extends Controller
 {
@@ -71,17 +72,17 @@ class WorkflowController extends Controller
     {
         $params = collect($request->validated());
         $perPage = intval($request->get('per_page'));
-        $pagination = new PaginationBuilder(5000);
+        $pagination = new PaginationBuilder($perPage);
 
         $bodyParams = collect($this->buildAdditionalParams($params));
 
         $tasks = WorkflowService::getTasks($bodyParams, $pagination->getPaginationParams());
-        $count = WorkflowService::getTasksCount($bodyParams)['count'];
+        $totalCount = WorkflowService::getTasksCount($bodyParams)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params) {
+        return DB::transaction(function () use ($data, $params, $pagination, $totalCount) {
             $queryId = $this->populateToDatabase($data);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -104,7 +105,7 @@ class WorkflowController extends Controller
 
             $query = $query
                 ->join('projects', 'projects.id', '=', 'var_project_id')
-                ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
                 ->select('camunda_tasks.*')
                 ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
 
@@ -155,11 +156,11 @@ class WorkflowController extends Controller
                     break;
             }
 
-            $result = $query->paginate();
+            $objects = $query->get();
 
             $this->removeFromDatabase($queryId);
 
-            return TaskResource2::collection($result);
+            return TaskResource2::collection($pagination->toPaginator($objects, $totalCount));
         });
     }
 
@@ -168,7 +169,7 @@ class WorkflowController extends Controller
 
         $params = collect($request->validated());
         $perPage = intval($request->get('per_page'));
-        $pagination = new PaginationBuilder(5000);
+        $pagination = new PaginationBuilder($perPage);
 
         $bodyParams = collect([
             ...$this->buildAdditionalParams($params, true),
@@ -176,12 +177,12 @@ class WorkflowController extends Controller
         ]);
 
         $tasks = WorkflowService::getHistoryTask($bodyParams, $pagination->getPaginationParams());
-        $count = WorkflowService::getHistoryTaskCount($bodyParams)['count'];
+        $totalCount = WorkflowService::getHistoryTaskCount($bodyParams)['count'];
 
         $variableInstances = $this->fetchVariableInstancesForTasks($tasks, true);
         $data = $this->mapWithVariables($tasks, $variableInstances);
 
-        return DB::transaction(function () use ($data, $params) {
+        return DB::transaction(function () use ($data, $params, $pagination, $totalCount) {
             $queryId = $this->populateToDatabase($data, true);
 
             $query = CamundaTask::where('query_id', $queryId)
@@ -204,7 +205,7 @@ class WorkflowController extends Controller
 
             $query = $query
                 ->join('projects', 'projects.id', '=', 'var_project_id')
-                ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
                 ->select('camunda_tasks.*')
                 ->selectRaw("concat(cached_institution_users.user->>'forename', ' ', cached_institution_users.user->>'surname') as project_client_institution_user_name"); // For ordering by client's name
 
@@ -268,11 +269,11 @@ class WorkflowController extends Controller
                     break;
             }
 
-            $result = $query->paginate();
+            $objects = $query->get();
 
             $this->removeFromDatabase($queryId);
 
-            return TaskResource2::collection($result);
+            return TaskResource2::collection($pagination->toPaginator($objects, $totalCount));
         });
     }
 
@@ -285,7 +286,7 @@ class WorkflowController extends Controller
         $entities = collect($data)->map(function ($taskData) use ($queryId, $forHistoricTasks) {
             $row = [];
             $row['id'] = (string) Uuid::uuid4();
-            $row['query_id'] = $queryId; 
+            $row['query_id'] = $queryId;
             $row['task_id'] = data_get($taskData, 'task.id');
             $row['task_name'] = data_get($taskData, 'task.name');
             $row['task_created'] = data_get($taskData, $forHistoricTasks ? 'task.startTime' : 'task.created');
@@ -833,7 +834,7 @@ class WorkflowController extends Controller
             }],
             'description' => ['required_if:accepted,0', 'string', 'max:500'],
             'review_file' => ['sometimes', 'array'],
-            'review_file.*' => ['file']
+            'review_file.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()]
         ]));
 
         DB::transaction(function () use ($project, $taskData, $validated) {

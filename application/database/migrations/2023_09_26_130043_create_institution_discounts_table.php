@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $syncSchema = Config::get('pgsql-connection.sync.properties.schema');
-        Schema::create('institution_discounts', function (Blueprint $table) use ($syncSchema) {
+        Schema::create('institution_discounts', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('institution_id')->unique()
-                ->constrained("$syncSchema.cached_institutions");
+                ->constrained('cached_institutions');
             $table->unsignedDecimal('discount_percentage_101', 5)->nullable();
             $table->unsignedDecimal('discount_percentage_repetitions', 5)->nullable();
             $table->unsignedDecimal('discount_percentage_100', 5)->nullable();

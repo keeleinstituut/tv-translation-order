@@ -237,8 +237,8 @@ class WorkflowService
 
     private static function client(): PendingRequest
     {
-        $baseUrl = getenv('CAMUNDA_API_URL');
+        $baseUrl = config('services.camunda.api_url');
 
-        return Http::baseUrl($baseUrl);
+        return Http::baseUrl($baseUrl)->timeout(300);
     }
 }

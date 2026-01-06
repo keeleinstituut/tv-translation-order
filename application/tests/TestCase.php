@@ -2,16 +2,16 @@
 
 namespace Tests;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
-use SyncTools\Traits\RefreshDatabaseWithCachedEntitySchema;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
-    use RefreshDatabaseWithCachedEntitySchema;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

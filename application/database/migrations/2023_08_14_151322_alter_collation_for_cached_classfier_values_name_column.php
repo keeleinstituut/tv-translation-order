@@ -1,15 +1,16 @@
 <?php
 
-use SyncTools\Database\Helpers\BaseCachedEntityTableMigration;
 
-return new class extends BaseCachedEntityTableMigration
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration
 {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE entity_cache.cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "et-EE-x-icu"');
+        DB::statement('ALTER TABLE cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "et-EE-x-icu"');
     }
 
     /**
@@ -17,6 +18,6 @@ return new class extends BaseCachedEntityTableMigration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE entity_cache.cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "default"');
+        DB::statement('ALTER TABLE cached_classifier_values ALTER COLUMN name TYPE VARCHAR(255) COLLATE "default"');
     }
 };
