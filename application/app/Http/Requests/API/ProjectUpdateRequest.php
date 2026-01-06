@@ -21,7 +21,6 @@ class ProjectUpdateRequest extends ProjectCreateRequest
 
     private ?Project $project;
 
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -68,12 +67,12 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 $this->userCanBeSelectedAsClientRule(),
             ],
             'reference_number' => ['nullable', 'string'],
-            'comments' => ['sometimes', 'nullable', 'string', 'max:'. MaxLengthValue::TEXT],
-            'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
+            'comments' => ['sometimes', 'nullable', 'string', 'max:'.MaxLengthValue::TEXT],
+            'deadline_at' => ['sometimes', 'date_format:'.self::DATETIME_FORMAT],
             'event_start_at' => [
                 'sometimes',
-                'date_format:' . self::DATETIME_FORMAT,
-                Rule::prohibitedIf(fn() => !ClassifierValue::isProjectTypeSupportingEventStartDate(
+                'date_format:'.self::DATETIME_FORMAT,
+                Rule::prohibitedIf(fn () => ! ClassifierValue::isProjectTypeSupportingEventStartDate(
                     $this->get(
                         'type_classifier_value_id',
                         $this->getProject()->type_classifier_value_id
@@ -88,22 +87,20 @@ class ProjectUpdateRequest extends ProjectCreateRequest
         ];
     }
 
-    public function after(): array
+    public function withValidator(Validator $validator): void
     {
-        return [
-            function (Validator $validator): void {
-                if ($validator->errors()->isNotEmpty()) {
-                    return;
-                }
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
 
-                $validated = $validator->validated();
-                $deadline = data_get($validated, 'deadline_at', $this->getProject()->deadline_at?->format(self::DATETIME_FORMAT));
-                $eventStart = data_get($validated, 'event_start_at', $this->getProject()->event_start_at?->format(self::DATETIME_FORMAT));
-                if (filled($deadline) && filled($eventStart) && $deadline < $eventStart) {
-                    $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
-                }
-            },
-        ];
+            $validated = $validator->validated();
+            $deadline = data_get($validated, 'deadline_at', $this->getProject()->deadline_at?->format(self::DATETIME_FORMAT));
+            $eventStart = data_get($validated, 'event_start_at', $this->getProject()->event_start_at?->format(self::DATETIME_FORMAT));
+            if (filled($deadline) && filled($eventStart) && $deadline < $eventStart) {
+                $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
+            }
+        });
     }
 
     private function getProject(): Project
@@ -118,7 +115,6 @@ class ProjectUpdateRequest extends ProjectCreateRequest
 
             $this->project = $project;
         }
-
 
         return $this->project;
     }

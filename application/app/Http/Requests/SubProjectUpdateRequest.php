@@ -32,30 +32,28 @@ class SubProjectUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'deadline_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
+            'deadline_at' => ['sometimes', 'date_format:'.self::DATETIME_FORMAT],
         ];
     }
 
-    public function after(): array
+    public function withValidator(Validator $validator): void
     {
-        return [
-            function (Validator $validator) {
-                if ($validator->errors()->isNotEmpty()) {
-                    return;
-                }
-
-                $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-                    ->find($this->route('id'));
-
-                if (empty($subProject)) {
-                    abort(Response::HTTP_NOT_FOUND, 'Sub-project not found');
-                }
-
-                $projectDeadline = $subProject->project->deadline_at?->format(self::DATETIME_FORMAT);
-                if (filled($this->validated('deadline_at')) && filled($projectDeadline) && $this->validated('deadline_at') > $projectDeadline) {
-                    $validator->errors()->add('deadline_at', 'Sub-project deadline should be less or equal to the project deadline');
-                }
+        $validator->after(function (Validator $validator) {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
             }
-        ];
+
+            $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
+                ->find($this->route('id'));
+
+            if (empty($subProject)) {
+                abort(Response::HTTP_NOT_FOUND, 'Sub-project not found');
+            }
+
+            $projectDeadline = $subProject->project->deadline_at?->format(self::DATETIME_FORMAT);
+            if (filled($this->validated('deadline_at')) && filled($projectDeadline) && $this->validated('deadline_at') > $projectDeadline) {
+                $validator->errors()->add('deadline_at', 'Sub-project deadline should be less or equal to the project deadline');
+            }
+        });
     }
 }

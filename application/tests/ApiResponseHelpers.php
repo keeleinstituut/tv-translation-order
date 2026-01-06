@@ -5,8 +5,8 @@ namespace Tests;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
-use Arr;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -102,7 +102,7 @@ trait ApiResponseHelpers
         ];
     }
 
-    protected function generateClassifierValueResponseData(string $id = null): array
+    protected function generateClassifierValueResponseData(?string $id = null): array
     {
         $classifierValueAttributes = ClassifierValue::factory()->make()->getAttributes();
         $classifierValueAttributes['id'] = $id ?: Str::orderedUuid()->toString();
@@ -117,7 +117,7 @@ trait ApiResponseHelpers
         return $classifierValueAttributes;
     }
 
-    protected function generateInstitutionResponseData(string $id = null, bool $isDeleted = false): array
+    protected function generateInstitutionResponseData(?string $id = null, bool $isDeleted = false): array
     {
         $institutionAttributes = Institution::factory()->make()->getAttributes();
 
@@ -127,7 +127,7 @@ trait ApiResponseHelpers
         return $institutionAttributes;
     }
 
-    protected function generateInstitutionUserResponseData(string $id = null, bool $isDeleted = false): array
+    protected function generateInstitutionUserResponseData(?string $id = null, bool $isDeleted = false): array
     {
         $institutionUser = InstitutionUser::factory()->make();
         $institutionUserAttributes = $institutionUser->getAttributes();

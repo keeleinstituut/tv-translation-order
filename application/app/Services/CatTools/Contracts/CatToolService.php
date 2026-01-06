@@ -19,7 +19,7 @@ interface CatToolService
      *
      * @throws CatToolSetupFailedException
      */
-    public function setupJobs(array $filesIds = null): void;
+    public function setupJobs(?array $filesIds = null): void;
 
     /**
      * @return Collection<int, CatToolJob>
