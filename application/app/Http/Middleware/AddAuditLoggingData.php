@@ -16,16 +16,17 @@ class AddAuditLoggingData
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
-
-        $routeName = Route::currentRouteName();
-
-        if ($routeName == null) {
-            throw new \Exception("Route name unspecified", 1);
-        }
-
-        $response->headers->set('X-Log-Action', $routeName);
-
-        return $response;
+        return $next($request);
+//        $response = $next($request);
+//
+//        $routeName = Route::currentRouteName();
+//
+//        if ($routeName == null) {
+//            throw new \Exception("Route name unspecified", 1);
+//        }
+//
+//        $response->headers->set('X-Log-Action', $routeName);
+//
+//        return $response;
     }
 }
