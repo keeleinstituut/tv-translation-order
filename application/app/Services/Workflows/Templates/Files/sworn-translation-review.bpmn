@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1e050m4" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.19.0">
-  <bpmn:process id="sworn-translation-review-sub-project" name="Vandetõlge, Ülevaatus" isExecutable="true">
+  <bpmn:process id="sworn-translation-review-sub-project" name="Vandetõlge, Ülevaatus" isExecutable="true" camunda:historyTimeToLive="365">
     <bpmn:startEvent id="StartEvent_1">
       <bpmn:outgoing>Flow_1sns91t</bpmn:outgoing>
     </bpmn:startEvent>
