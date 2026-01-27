@@ -28,6 +28,10 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
 
         <env name="DB_CONNECTION" value="pgsql" />
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="5433"/>
+        <env name="DB_USERNAME" value="user"/>
+        <env name="DB_PASSWORD" value="pass"/>
 
         <env name="KEYCLOAK_BASE_URL" value="https://sso.dev.tolkevarav.eki.ee" />
         <env name="REALM_PUBLIC_KEY_RETRIEVAL_MODE" value="config" />
@@ -45,8 +49,8 @@
         <env name="EMAIL_NOTIFICATION_EXCHANGE" value="tv-notification.email" />
         <env name="CAMUNDA_API_URL" value="http://process-definition" />
 
-        <env name="AMQP_HOST" value="rabbitmq" />
-        <env name="AMQP_PORT" value="5672" />
+        <env name="AMQP_HOST" value="127.0.0.1" />
+        <env name="AMQP_PORT" value="5673" />
         <env name="AMQP_USER" value="guest" />
         <env name="AMQP_PASSWORD" value="guest" />
         <env name="AMQP_VHOST" value="/" />
