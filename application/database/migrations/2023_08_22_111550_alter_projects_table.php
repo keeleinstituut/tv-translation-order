@@ -38,8 +38,8 @@ return new class extends Migration
             $table->dropColumn('translation_domain_classifier_value_id');
             $table->dropColumn('client_institution_user_id');
             $table->dropColumn('manager_institution_user_id');
-            $table->string('reference_number')->change();
-            $table->text('comments')->change();
+            $table->string('reference_number')->nullable(false)->change();
+            $table->text('comments')->default('')->nullable(false)->change();
         });
     }
 };

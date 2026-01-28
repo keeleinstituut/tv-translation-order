@@ -11,7 +11,6 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
-use App\Models\SubProject;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Testing\File;
@@ -21,6 +20,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 use Throwable;
@@ -39,8 +39,7 @@ class ProjectControllerStoreTest extends TestCase
         return [
             'Required fields only' => [
                 static::createExampleValidPayload(...),
-                function () {
-                },
+                function () {},
             ],
             'Include optional fields for project type of value "T"' => [
                 fn () => [
@@ -48,15 +47,14 @@ class ProjectControllerStoreTest extends TestCase
                     'reference_number' => '1234',
                     'comments' => "Project\n\n1234",
                 ],
-                function () {
-                },
+                function () {},
             ],
             'Project type "Suuline tõlge"' => [
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
                         $query->select('id')
-                            ->from('entity_cache.cached_classifier_values')
+                            ->from('cached_classifier_values')
                             ->where('type', ClassifierValueType::ProjectType->value)
                             ->where('value', 'ORAL_TRANSLATION')
                             ->limit(1);
@@ -65,8 +63,7 @@ class ProjectControllerStoreTest extends TestCase
                     'comments' => "Project\n\n4321",
                     'event_start_at' => '2020-12-31T12:00:00Z',
                 ],
-                function () {
-                },
+                function () {},
             ],
             'Assigning a project manager from same institution' => [
                 fn (InstitutionUser $actingUser) => [
@@ -76,8 +73,7 @@ class ProjectControllerStoreTest extends TestCase
                         ->createWithPrivileges(PrivilegeKey::ReceiveProject)
                         ->id,
                 ],
-                function () {
-                },
+                function () {},
             ],
             'Creating a project for a different client' => [
                 fn (InstitutionUser $actingUser) => [
@@ -87,8 +83,7 @@ class ProjectControllerStoreTest extends TestCase
                         ->createWithPrivileges(PrivilegeKey::CreateProject)
                         ->id,
                 ],
-                function () {
-                },
+                function () {},
             ],
             'Creating a project with multiple destination languages' => [
                 fn () => [
@@ -99,15 +94,20 @@ class ProjectControllerStoreTest extends TestCase
                         ->pluck('id')
                         ->all(),
                 ],
-                function () {
-                },
+                function () {},
             ],
             'Creating a project with source files' => [
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'source_files' => [
-                        UploadedFile::fake()->create('source1.pdf', 1024, 'application/pdf'),
-                        UploadedFile::fake()->create('source2.docx', 1024, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                        UploadedFile::fake()->createWithContent(
+                            'source1.pdf',
+                            "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000056 00000 n\n0000000115 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF"
+                        ),
+                        UploadedFile::fake()->createWithContent(
+                            'source2.docx',
+                            file_get_contents(database_path('seeders/sample-files/en/B5_pgn_activity_criticalthinking.docx'))
+                        ),
                     ],
                 ],
                 function (TestCase $testCase, TestResponse $testResponse) {
@@ -123,8 +123,14 @@ class ProjectControllerStoreTest extends TestCase
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'help_files' => [
-                        UploadedFile::fake()->create('help1.pdf', 1024, 'application/pdf'),
-                        UploadedFile::fake()->create('help2.docx', 1024, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                        UploadedFile::fake()->createWithContent(
+                            'help1.pdf',
+                            "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000056 00000 n\n0000000115 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF"
+                        ),
+                        UploadedFile::fake()->createWithContent(
+                            'help2.docx',
+                            file_get_contents(database_path('seeders/sample-files/en/pgn_activity_empathy_SL.docx'))
+                        ),
                     ],
                     'help_file_types' => ['REFERENCE_FILE', 'STYLE_GUIDE'],
                 ],
@@ -147,13 +153,12 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreatorsAndExtraAssertions
-     *
      * @param  Closure(InstitutionUser): array  $createValidPayload
      * @param  Closure(TestCase, TestResponse, array): void  $performExtraAssertions
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreatorsAndExtraAssertions')]
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload, Closure $performExtraAssertions): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -225,18 +230,22 @@ class ProjectControllerStoreTest extends TestCase
             $project->subProjects
         );
 
-        collect($project->subProjects)
-            ->zip($payload['destination_language_classifier_value_ids'])
-            ->eachSpread(function (SubProject $subProject, string $destination_language_classifier_value_id) use ($payload) {
-                $this->assertEquals(
-                    $payload['source_language_classifier_value_id'],
-                    $subProject->source_language_classifier_value_id
-                );
-                $this->assertEquals(
-                    $destination_language_classifier_value_id,
-                    $subProject->destination_language_classifier_value_id
-                );
-            });
+        foreach ($payload['destination_language_classifier_value_ids'] as $destination_language_classifier_value_id) {
+            $subProject = $project->subProjects->firstWhere(
+                'destination_language_classifier_value_id',
+                $destination_language_classifier_value_id
+            );
+
+            $this->assertNotNull(
+                $subProject,
+                "SubProject with destination language ID {$destination_language_classifier_value_id} not found"
+            );
+
+            $this->assertEquals(
+                $payload['source_language_classifier_value_id'],
+                $subProject->source_language_classifier_value_id
+            );
+        }
 
         $performExtraAssertions($this, $response, $payload->all());
     }
@@ -330,7 +339,7 @@ class ProjectControllerStoreTest extends TestCase
                 ...static::createExampleValidPayload(),
                 'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
                     $query->select('id')
-                        ->from('entity_cache.cached_classifier_values')
+                        ->from('cached_classifier_values')
                         ->where('type', ClassifierValueType::ProjectType->value)
                         ->where('value', 'ORAL_TRANSLATION')
                         ->limit(1);
@@ -342,12 +351,11 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideInvalidPayloadCreators
-     *
      * @param  Closure(InstitutionUser): array  $createInvalidPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideInvalidPayloadCreators')]
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -395,13 +403,12 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));

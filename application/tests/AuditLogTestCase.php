@@ -24,7 +24,7 @@ class AuditLogTestCase extends TestCase
 
     const TRACE_ID = '123-ABC';
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -77,9 +77,9 @@ class AuditLogTestCase extends TestCase
         AuditLogEventType $eventType,
         CarbonInterface $happenedAt,
         InstitutionUser $institutionUser,
-        array $eventParameters = null,
-        AuditLogEventFailureType $failureType = null,
-        string $traceId = null,
+        ?array $eventParameters = null,
+        ?AuditLogEventFailureType $failureType = null,
+        ?string $traceId = null,
     ): array {
         return static::createExpectedMessageBody(
             $eventType,
@@ -99,15 +99,15 @@ class AuditLogTestCase extends TestCase
     public static function createExpectedMessageBody(
         AuditLogEventType $eventType,
         CarbonInterface $happenedAt,
-        string $actingUserPic = null,
-        string $actingUserForename = null,
-        string $actingUserSurname = null,
-        string $actingInstitutionUserId = null,
-        string $contextInstitutionId = null,
-        string $contextDepartmentId = null,
-        array $eventParameters = null,
-        AuditLogEventFailureType $failureType = null,
-        string $traceId = null,
+        ?string $actingUserPic = null,
+        ?string $actingUserForename = null,
+        ?string $actingUserSurname = null,
+        ?string $actingInstitutionUserId = null,
+        ?string $contextInstitutionId = null,
+        ?string $contextDepartmentId = null,
+        ?array $eventParameters = null,
+        ?AuditLogEventFailureType $failureType = null,
+        ?string $traceId = null,
     ): array {
         return [
             'happened_at' => $happenedAt->toISOString(),

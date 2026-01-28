@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Assertions;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -171,7 +172,7 @@ class ProjectControllerIndexTest extends TestCase
                             $query->where('manager_institution_user_id', $actingUser->id)
                                 ->orWhere('client_institution_user_id', $actingUser->id);
                         })
-                        ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                        ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
                         ->pluck('projects.id')
                         ->all();
 
@@ -186,11 +187,15 @@ class ProjectControllerIndexTest extends TestCase
                 },
             ],
             'Filter by single type classifier value' => [
-                fn (Collection $projects) => [
-                    'type_classifier_value_ids' => [$projects->first()->type_classifier_value_id],
-                    'per_page' => 15,
-                    'only_show_personal_projects' => false,
-                ],
+                function (Collection $projects) {
+                    /** @var Project $project */
+                    $project = $projects->first();
+                    return [
+                        'type_classifier_value_ids' => [$project->type_classifier_value_id],
+                        'per_page' => 15,
+                        'only_show_personal_projects' => false,
+                    ];
+                },
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
                     $specifiedTypeProjectIds = $projects
                         ->filter(fn (Project $project) => $project->type_classifier_value_id === $payload['type_classifier_value_ids'][0])
@@ -228,11 +233,15 @@ class ProjectControllerIndexTest extends TestCase
                 },
             ],
             'Filter by single tag' => [
-                fn (Collection $projects) => [
-                    'tag_ids' => [$projects->first()->tags->first()->id],
-                    'per_page' => 15,
-                    'only_show_personal_projects' => false,
-                ],
+                function (Collection $projects) {
+                    /** @var Project $project */
+                    $project = $projects->first();
+                    return [
+                            'tag_ids' => [$project->tags->first()?->id],
+                            'per_page' => 15,
+                            'only_show_personal_projects' => false,
+                        ];
+                },
                 function (TestCase $testCase, TestResponse $response, array $payload, Collection $projects) {
                     $specifiedTagProjectIds = $projects
                         ->filter(fn (Project $project) => $project->tags->pluck('id')->contains($payload['tag_ids'][0]))
@@ -386,13 +395,12 @@ class ProjectControllerIndexTest extends TestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreatorsAndExtraAssertions
-     *
      * @param  Closure(Collection, InstitutionUser): array  $createValidPayload
      * @param  Closure(TestCase, TestResponse, array, Collection, InstitutionUser): void  $performAssertions
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreatorsAndExtraAssertions')]
     public function test_expected_subset_of_projects_returned_for_valid_payloads(Closure $createValidPayload, Closure $performAssertions): void
     {
         $payload = $createValidPayload(static::$projects, static::$privilegedActingUser);
@@ -450,13 +458,12 @@ class ProjectControllerIndexTest extends TestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -488,7 +495,7 @@ class ProjectControllerIndexTest extends TestCase
                 ['manager_institution_user_id' => $actingUser->id],
                 ['client_institution_user_id' => $actingUser->id],
                 ...ProjectTypeConfig::all()
-                ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
+                    ->map(fn (ProjectTypeConfig $projectTypeConfig) => [
                         'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
                     ]),
             )
@@ -499,6 +506,7 @@ class ProjectControllerIndexTest extends TestCase
             ->split($projects->count())
             ->zip($projects)
             ->eachSpread(function (Collection $languages, Project $project) {
+                /** @var ClassifierValue $sourceLanguage */
                 $sourceLanguage = $languages->first();
                 $languages->skip(1)->each(
                     fn (ClassifierValue $destinationLanguage) => SubProject::create([
