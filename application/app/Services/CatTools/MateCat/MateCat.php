@@ -46,7 +46,7 @@ readonly class MateCat implements CatToolService
      *
      * @throws ValidationException
      */
-    public function setupJobs(array $filesIds = null, bool $useMT = true): void
+    public function setupJobs(?array $filesIds = null, bool $useMT = true): void
     {
         if ($this->getSetupStatus() === CatToolSetupStatus::Done) {
             throw new BadMethodCallException('Cat tool is already setup');

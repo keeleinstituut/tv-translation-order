@@ -12,12 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('prices', function (Blueprint $table) {
-            $table->unsignedDecimal('character_fee', places: 3)->change();
-            $table->unsignedDecimal('word_fee', places: 3)->change();
-            $table->unsignedDecimal('page_fee', places: 3)->change();
-            $table->unsignedDecimal('minute_fee', places: 3)->change();
-            $table->unsignedDecimal('hour_fee', places: 3)->change();
-            $table->unsignedDecimal('minimal_fee', places: 3)->change();
+            $table->decimal('character_fee', places: 3)->unsigned()->nullable(false)->change();
+            $table->decimal('word_fee', places: 3)->unsigned()->nullable(false)->change();
+            $table->decimal('page_fee', places: 3)->unsigned()->nullable(false)->change();
+            $table->decimal('minute_fee', places: 3)->unsigned()->nullable(false)->change();
+            $table->decimal('hour_fee', places: 3)->unsigned()->nullable(false)->change();
+            $table->decimal('minimal_fee', places: 3)->unsigned()->nullable(false)->change();
         });
     }
 
@@ -27,12 +27,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('prices', function (Blueprint $table) {
-            $table->unsignedDecimal('character_fee')->change();
-            $table->unsignedDecimal('word_fee')->change();
-            $table->unsignedDecimal('page_fee')->change();
-            $table->unsignedDecimal('minute_fee')->change();
-            $table->unsignedDecimal('hour_fee')->change();
-            $table->unsignedDecimal('minimal_fee')->change();
+            $table->decimal('character_fee', 10, 2)->unsigned()->nullable(false)->change();
+            $table->decimal('word_fee', 10, 2)->unsigned()->nullable(false)->change();
+            $table->decimal('page_fee', 10, 2)->unsigned()->nullable(false)->change();
+            $table->decimal('minute_fee', 10, 2)->unsigned()->nullable(false)->change();
+            $table->decimal('hour_fee', 10, 2)->unsigned()->nullable(false)->change();
+            $table->decimal('minimal_fee', 10, 2)->unsigned()->nullable(false)->change();
         });
     }
 };
