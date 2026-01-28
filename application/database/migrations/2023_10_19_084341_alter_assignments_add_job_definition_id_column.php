@@ -25,7 +25,7 @@ return new class extends Migration
     {
         Schema::table('assignments', function (Blueprint $table) {
             $table->dropColumn('job_definition_id');
-            $table->string('feature')->change();
+            $table->string('feature')->nullable(false)->change();
         });
     }
 };

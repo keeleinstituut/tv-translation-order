@@ -36,7 +36,6 @@ use League\Csv\Writer;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ProjectController extends Controller
@@ -617,7 +616,7 @@ class ProjectController extends Controller
         );
     }
 
-    private function getDateTimeWithTimezoneOrNull(Carbon $datetime = null, string $format = null): Carbon|string|null
+    private function getDateTimeWithTimezoneOrNull(?Carbon $datetime = null, ?string $format = null): Carbon|string|null
     {
         if (empty($datetime)) {
             return null;

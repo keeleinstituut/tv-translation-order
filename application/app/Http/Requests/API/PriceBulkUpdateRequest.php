@@ -47,17 +47,15 @@ class PriceBulkUpdateRequest extends FormRequest
         ];
     }
 
-    public function after()
+    public function withValidator(Validator $validator): void
     {
-        return [
-            function (Validator $validator) {
-                collect($this->data)->each(function ($element, $index) use ($validator) {
-                    NestedFormRequestValidator::formRequest(new PriceUpdateRequest())
-                        ->setData($element)
-                        ->validate()
-                        ->setMessagesToValidator($validator, "data.$index");
-                });
-            },
-        ];
+        $validator->after(function (Validator $validator) {
+            collect($this->data)->each(function ($element, $index) use ($validator) {
+                NestedFormRequestValidator::formRequest(new PriceUpdateRequest())
+                    ->setData($element)
+                    ->validate()
+                    ->setMessagesToValidator($validator, "data.$index");
+            });
+        });
     }
 }

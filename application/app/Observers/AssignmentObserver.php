@@ -168,7 +168,7 @@ readonly class AssignmentObserver
         }
     }
 
-    private function setExternalId(Assignment $assignment, int $sequence = null): void
+    private function setExternalId(Assignment $assignment, ?int $sequence = null): void
     {
         $idx = $assignment->jobDefinition?->sequence ?: 0;
         $sequence = is_null($sequence) ? $assignment->getSameJobDefinitionAssignmentsQuery()

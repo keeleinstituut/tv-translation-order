@@ -88,22 +88,20 @@ class ProjectUpdateRequest extends ProjectCreateRequest
         ];
     }
 
-    public function after(): array
+    public function withValidator(Validator $validator): void
     {
-        return [
-            function (Validator $validator): void {
-                if ($validator->errors()->isNotEmpty()) {
-                    return;
-                }
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
 
-                $validated = $validator->validated();
-                $deadline = data_get($validated, 'deadline_at', $this->getProject()->deadline_at?->format(self::DATETIME_FORMAT));
-                $eventStart = data_get($validated, 'event_start_at', $this->getProject()->event_start_at?->format(self::DATETIME_FORMAT));
-                if (filled($deadline) && filled($eventStart) && $deadline < $eventStart) {
-                    $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
-                }
-            },
-        ];
+            $validated = $validator->validated();
+            $deadline = data_get($validated, 'deadline_at', $this->getProject()->deadline_at?->format(self::DATETIME_FORMAT));
+            $eventStart = data_get($validated, 'event_start_at', $this->getProject()->event_start_at?->format(self::DATETIME_FORMAT));
+            if (filled($deadline) && filled($eventStart) && $deadline < $eventStart) {
+                $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
+            }
+        });
     }
 
     private function getProject(): Project
