@@ -171,9 +171,6 @@ su www-data -s /bin/sh -c "php artisan optimize --except view:cache"
 echo "Consolidating schemas to public (if needed)"
 su www-data -s /bin/sh -c "php artisan db:consolidate-schemas"
 
-echo "Consolidating schemas to public (if needed)"
-php artisan db:consolidate-schemas
-
 echo "Running migrations"
 su www-data -s /bin/sh -c "php artisan migrate --force"
 
