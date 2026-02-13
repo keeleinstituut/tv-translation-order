@@ -14,15 +14,22 @@ RUN apk add --no-cache libpq libpq-dev libsodium libsodium-dev linux-headers && 
     docker-php-ext-install pgsql pdo pdo_pgsql sodium pcntl sockets exif fileinfo && \
     apk del libpq-dev libsodium-dev linux-headers
 
-COPY --chown=www-data:www-data ./application ${APP_ROOT}
+COPY ./application ${APP_ROOT}
+
 WORKDIR $APP_ROOT
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction && \
+    composer clear-cache && \
+    rm -f /usr/bin/composer
+
+RUN chown -R root:root ${APP_ROOT} && \
+    chown -R www-data:www-data ${APP_ROOT}/storage ${APP_ROOT}/bootstrap/cache && \
+    find ${APP_ROOT} -type f -exec chmod 644 {} \; && \
+    find ${APP_ROOT} -type d -exec chmod 755 {} \; && \
+    chmod -R 775 ${APP_ROOT}/storage ${APP_ROOT}/bootstrap/cache
 
 RUN rm -rf ${WEB_ROOT} && \
         ln -s ${APP_ROOT}/public ${WEB_ROOT}
-
-RUN su www-data -s /bin/sh -c "composer install --no-dev --optimize-autoloader --no-interaction" && \
-    su www-data -s /bin/sh -c "composer clear-cache" && \
-    rm -f /usr/bin/composer
 
 RUN apk add --no-cache nginx supervisor curl
 
@@ -159,11 +166,6 @@ EOF
 RUN <<EOF cat > ${ENTRYPOINT}
 #!/bin/sh
 set -e
-
-# Fix permissions (run as root)
-chown -R www-data:www-data ./bootstrap/cache
-chown -R www-data:www-data ./storage
-
 # Run artisan commands as www-data user
 echo "Optimize for loading in runtime variables"
 su www-data -s /bin/sh -c "php artisan optimize --except view:cache"
