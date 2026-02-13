@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('vendors', function (Blueprint $table) {
-            $table->unsignedDecimal('discount_percentage_101', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_repetitions', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_100', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_95_99', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_85_94', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_75_84', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_50_74', 5, 2)->nullable();
-            $table->unsignedDecimal('discount_percentage_0_49', 5, 2)->nullable();
+            $table->decimal('discount_percentage_101', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_repetitions', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_100', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_95_99', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_85_94', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_75_84', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_50_74', 5, 2)->unsigned()->nullable();
+            $table->decimal('discount_percentage_0_49', 5, 2)->unsigned()->nullable();
         });
     }
 

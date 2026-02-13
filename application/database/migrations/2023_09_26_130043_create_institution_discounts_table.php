@@ -15,14 +15,14 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('institution_id')->unique()
                 ->constrained('cached_institutions');
-            $table->unsignedDecimal('discount_percentage_101', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_repetitions', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_100', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_95_99', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_85_94', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_75_84', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_50_74', 5)->nullable();
-            $table->unsignedDecimal('discount_percentage_0_49', 5)->nullable();
+            $table->decimal('discount_percentage_101', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_repetitions', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_100', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_95_99', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_85_94', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_75_84', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_50_74', 5)->unsigned()->nullable();
+            $table->decimal('discount_percentage_0_49', 5)->unsigned()->nullable();
             $table->timestampsTz();
         });
     }
