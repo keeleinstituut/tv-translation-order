@@ -22,6 +22,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction && \
     composer clear-cache && \
     rm -f /usr/bin/composer
 
+RUN mkdir -p /home/www-data && chown www-data:www-data /home/www-data
+
 RUN chown -R root:root ${APP_ROOT} && \
     chown -R www-data:www-data ${APP_ROOT}/storage ${APP_ROOT}/bootstrap/cache && \
     find ${APP_ROOT} -type f -exec chmod 644 {} \; && \
@@ -108,6 +110,7 @@ command=php /app/artisan queue:work
 autostart=true
 autorestart=true
 user=www-data
+environment=HOME="/home/www-data"
 numprocs=1
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
@@ -120,6 +123,7 @@ command=php /app/artisan schedule:work
 autostart=true
 autorestart=true
 user=www-data
+environment=HOME="/home/www-data"
 numprocs=1
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
@@ -132,6 +136,7 @@ command=php /app/artisan amqp:consume tv-translation-order.classifier-value # se
 autostart=true
 autorestart=true
 user=www-data
+environment=HOME="/home/www-data"
 numprocs=1
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
@@ -144,6 +149,7 @@ command=php /app/artisan amqp:consume tv-translation-order.institution  # see ap
 autostart=true
 autorestart=true
 user=www-data
+environment=HOME="/home/www-data"
 numprocs=1
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
@@ -156,6 +162,7 @@ command=php /app/artisan amqp:consume tv-translation-order.institution-user  # s
 autostart=true
 autorestart=true
 user=www-data
+environment=HOME="/home/www-data"
 numprocs=1
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes = 0
