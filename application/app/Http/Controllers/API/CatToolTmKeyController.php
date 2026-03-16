@@ -11,10 +11,12 @@ use App\Http\Requests\API\TmKeySubProjectListRequest;
 use App\Http\Resources\API\CatToolTmKeyResource;
 use App\Http\Resources\API\CreatedCatToolTmKeyResource;
 use App\Http\Resources\API\SubProjectResource;
+use App\Http\Resources\CatV2TranslationMemoryResource;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
 use App\Policies\CatToolTmKeyPolicy;
 use App\Policies\SubProjectPolicy;
+use App\Services\CatV2\CatV2Service;
 use App\Services\CatTools\Enums\CatToolSetupStatus;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use AuditLogClient\Services\AuditLogPublisher;
@@ -25,6 +27,7 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -206,18 +209,28 @@ class CatToolTmKeyController extends Controller
 
         return DB::transaction(function () use ($subProject) {
             try {
-                $tmKeyData = $this->apiClient->createTag([
-                    'name' => $subProject->ext_id,
-                    'type' => TranslationMemoryType::Private->value,
-                    'institution_id' => Auth::user()->institutionId,
-                    'tv_domain' => $subProject->project->translation_domain_classifier_value_id,
-                    'lang_pair' => TvTranslationMemoryApiClient::getLanguagePair(
-                        $subProject->sourceLanguageClassifierValue,
-                        $subProject->destinationLanguageClassifierValue
-                    )
-                ]);
+                $langPair = TvTranslationMemoryApiClient::getLanguagePair(
+                    $subProject->sourceLanguageClassifierValue,
+                    $subProject->destinationLanguageClassifierValue
+                );
 
-                if (empty($tmKeyId = data_get($tmKeyData, 'tag.id'))) {
+                $locales = Str::of($langPair)->explode('_');
+
+                $createResponse = CatV2Service::createTranslationMemory([
+                    'name' => $subProject->ext_id,
+                    'source_locale' => $locales[0],
+                    'target_locale' => $locales[1],
+                    'meta' => [
+                        'visibility' => TranslationMemoryType::Private->value,
+                        'institution_id' => Auth::user()->institutionId,
+                        'tv_domain' => $subProject->project->translation_domain_classifier_value_id,
+                    ]
+                ]);
+                $tmKeyData = CatV2TranslationMemoryResource::make($createResponse['data']);
+
+                $tmKeyId = data_get($tmKeyData, 'id');
+
+                if (empty($tmKeyId)) {
                     abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Translation memory service response has invalid format');
                 }
 
@@ -231,7 +244,9 @@ class CatToolTmKeyController extends Controller
 
                 return CreatedCatToolTmKeyResource::make([
                     'key' => $tmKey->refresh(),
-                    'meta' => $tmKeyData
+                    'meta' => [
+                        'tag' => $tmKeyData,
+                    ],
                 ]);
             } catch (InvalidArgumentException $e) {
                 abort(Response::HTTP_BAD_REQUEST, $e->getMessage());
