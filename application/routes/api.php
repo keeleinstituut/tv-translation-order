@@ -102,12 +102,12 @@ Route::prefix('/catv2')
     ->controller(API\CatV2Controller::class)
     ->whereUuid('translation_memory_id')
     ->group(function (): void {
-        Route::get('/translation-memories', 'translationMemoryIndex')->name('temp');
-        Route::post('/translation-memories', 'translationMemoryStore')->name('temp');
-        Route::get('/translation-memories/{translation_memory_id}', 'translationMemoryShow')->name('temp');
-        Route::put('/translation-memories/{translation_memory_id}', 'translationMemoryUpdate')->name('temp');
-        Route::post('/translation-memories/import', 'translationMemoryImport')->name('temp');
-        Route::get('/translation-memories/content-checks', 'translationMemoryContentCheckIndex')->name('temp');
+        Route::get('/translation-memories', 'translationMemoryIndex')->name('translation-memory.tags.index');
+        Route::post('/translation-memories', 'translationMemoryStore')->name('translation-memory.tags.create');
+        Route::get('/translation-memories/{translation_memory_id}', 'translationMemoryShow')->name('translation-memory.tags.show');
+        Route::put('/translation-memories/{translation_memory_id}', 'translationMemoryUpdate')->name('translation-memory.tags.update');
+        Route::post('/translation-memories/import', 'translationMemoryImport')->name('translation-memory.tm.import');
+        Route::get('/translation-memories/content-checks', 'translationMemoryContentCheckIndex')->name('translation-memory.content-checks.index');
     });
 
 Route::prefix('/volumes')
