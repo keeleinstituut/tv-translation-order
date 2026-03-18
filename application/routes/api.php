@@ -98,6 +98,18 @@ Route::prefix('/tm-keys')
         Route::post('/{sub_project_id}', 'create')->name('translation-order.cat_tool_tm_keys.create');
     });
 
+Route::prefix('/catv2')
+    ->controller(API\CatV2Controller::class)
+    ->whereUuid('translation_memory_id')
+    ->group(function (): void {
+        Route::get('/translation-memories', 'translationMemoryIndex')->name('temp');
+        Route::post('/translation-memories', 'translationMemoryStore')->name('temp');
+        Route::get('/translation-memories/{translation_memory_id}', 'translationMemoryShow')->name('temp');
+        Route::put('/translation-memories/{translation_memory_id}', 'translationMemoryUpdate')->name('temp');
+        Route::post('/translation-memories/import', 'translationMemoryImport')->name('temp');
+        Route::get('/translation-memories/content-checks', 'translationMemoryContentCheckIndex')->name('temp');
+    });
+
 Route::prefix('/volumes')
     ->controller(API\VolumeController::class)
     ->whereUuid('id')->group(function (): void {
