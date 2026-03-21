@@ -3,21 +3,24 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\PrivilegeKey;
 use App\Enums\TagType;
 use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\Tag;
+use App\Models\Vendor;
 use App\Policies\ProjectPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use Symfony\Component\HttpFoundation\Response;
 
 class ProjectUpdateRequest extends ProjectCreateRequest
 {
-    const DATETIME_FORMAT = 'Y-m-d\\TH:i:s\\Z'; //only UTC (zero offset)
+    const string DATETIME_FORMAT = 'Y-m-d\\TH:i:s\\Z'; //only UTC (zero offset)
 
     private ?Project $project;
 
@@ -73,13 +76,30 @@ class ProjectUpdateRequest extends ProjectCreateRequest
             'event_start_at' => [
                 'sometimes',
                 'date_format:' . self::DATETIME_FORMAT,
-                Rule::prohibitedIf(fn() => !ClassifierValue::isProjectTypeSupportingEventStartDate(
+                Rule::prohibitedIf(fn() => !$this->isCalendarProject() && !ClassifierValue::isProjectTypeSupportingEventStartDate(
                     $this->get(
                         'type_classifier_value_id',
                         $this->getProject()->type_classifier_value_id
                     )
                 )),
             ],
+            'event_end_at' => [
+                'sometimes',
+                'date_format:' . self::DATETIME_FORMAT,
+                Rule::prohibitedIf(fn() => !$this->isCalendarProject()),
+            ],
+            'service_type' => ['sometimes', 'nullable', 'string'],
+            'location' => ['sometimes', 'nullable', 'string'],
+            'meeting_link' => ['sometimes', 'nullable', 'string'],
+            'candidate_vendor_id' => [
+                'sometimes',
+                'nullable',
+                'uuid',
+                'bail',
+                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ManageProject->value)),
+                Rule::exists(Vendor::class, 'id'),
+            ],
+            'use_external_vendor' => ['sometimes', 'nullable', 'boolean'],
             'tags' => 'sometimes|array',
             'tags.*' => [
                 'required',
@@ -98,10 +118,21 @@ class ProjectUpdateRequest extends ProjectCreateRequest
             $validated = $validator->validated();
             $deadline = data_get($validated, 'deadline_at', $this->getProject()->deadline_at?->format(self::DATETIME_FORMAT));
             $eventStart = data_get($validated, 'event_start_at', $this->getProject()->event_start_at?->format(self::DATETIME_FORMAT));
+            $eventEnd = data_get($validated, 'event_end_at', $this->getProject()->event_end_at?->format(self::DATETIME_FORMAT));
+
             if (filled($deadline) && filled($eventStart) && $deadline < $eventStart) {
                 $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
             }
+
+            if (filled($eventStart) && filled($eventEnd) && $eventEnd <= $eventStart) {
+                $validator->errors()->add('event_end_at', 'Event end datetime should be greater than event start datetime');
+            }
         });
+    }
+
+    private function isCalendarProject(): bool
+    {
+        return $this->getProject()->is_calendar_project;
     }
 
     private function getProject(): Project

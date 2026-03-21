@@ -25,6 +25,22 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
         $obj->deleted_at = $resource['deleted_at'];
         $obj->synced_at = Carbon::now();
 
+        $obj->worktime_timezone = $resource['worktime_timezone'] ?? null;
+        $obj->monday_worktime_start = $resource['monday_worktime_start'] ?? null;
+        $obj->monday_worktime_end = $resource['monday_worktime_end'] ?? null;
+        $obj->tuesday_worktime_start = $resource['tuesday_worktime_start'] ?? null;
+        $obj->tuesday_worktime_end = $resource['tuesday_worktime_end'] ?? null;
+        $obj->wednesday_worktime_start = $resource['wednesday_worktime_start'] ?? null;
+        $obj->wednesday_worktime_end = $resource['wednesday_worktime_end'] ?? null;
+        $obj->thursday_worktime_start = $resource['thursday_worktime_start'] ?? null;
+        $obj->thursday_worktime_end = $resource['thursday_worktime_end'] ?? null;
+        $obj->friday_worktime_start = $resource['friday_worktime_start'] ?? null;
+        $obj->friday_worktime_end = $resource['friday_worktime_end'] ?? null;
+        $obj->saturday_worktime_start = $resource['saturday_worktime_start'] ?? null;
+        $obj->saturday_worktime_end = $resource['saturday_worktime_end'] ?? null;
+        $obj->sunday_worktime_start = $resource['sunday_worktime_start'] ?? null;
+        $obj->sunday_worktime_end = $resource['sunday_worktime_end'] ?? null;
+
         $obj->save();
     }
 

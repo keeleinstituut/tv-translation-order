@@ -17,7 +17,8 @@
         "league/flysystem-aws-s3-v3": "^3.30",
         "predis/predis": "^2.2",
         "spatie/laravel-medialibrary": "^11.0.0",
-        "staudenmeir/eloquent-has-many-deep": "^1.21"
+        "staudenmeir/eloquent-has-many-deep": "^1.21",
+        "u01jmg3/ics-parser": "^3.5"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.6",

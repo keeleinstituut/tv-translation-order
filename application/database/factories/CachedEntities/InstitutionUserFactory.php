@@ -90,7 +90,7 @@ class InstitutionUserFactory extends Factory
         ];
     }
 
-    public function setInstitution($institutionAttributes)
+    public function setInstitution($institutionAttributes): Factory|InstitutionUserFactory
     {
         return $this->state(function ($attributes, $parent) use ($institutionAttributes) {
             return [

@@ -56,7 +56,7 @@ class ProjectControllerStoreTest extends TestCase
                     ...static::createExampleValidPayload(),
                     'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
                         $query->select('id')
-                            ->from('entity_cache.cached_classifier_values')
+                            ->from('cached_classifier_values')
                             ->where('type', ClassifierValueType::ProjectType->value)
                             ->where('value', 'ORAL_TRANSLATION')
                             ->limit(1);
@@ -330,7 +330,7 @@ class ProjectControllerStoreTest extends TestCase
                 ...static::createExampleValidPayload(),
                 'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
                     $query->select('id')
-                        ->from('entity_cache.cached_classifier_values')
+                        ->from('cached_classifier_values')
                         ->where('type', ClassifierValueType::ProjectType->value)
                         ->where('value', 'ORAL_TRANSLATION')
                         ->limit(1);
