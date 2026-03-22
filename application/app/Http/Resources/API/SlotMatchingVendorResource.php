@@ -28,7 +28,8 @@ class SlotMatchingVendorResource extends JsonResource
             'id' => $this->id,
             'institution_user_id' => $this->institution_user_id,
             'name' => $this->institutionUser?->getUserFullName(),
-            'is_internal' => $this->is_internal
+            'is_internal' => $this->is_internal,
+            'company_name' => $this->company_name
         ];
     }
 }

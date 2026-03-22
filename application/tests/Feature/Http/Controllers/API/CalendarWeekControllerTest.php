@@ -246,6 +246,7 @@ class CalendarWeekControllerTest extends TestCase
     {
         // GIVEN — vendor with Monday worktime and no bookings
         $monday = Carbon::today()->utc()->startOfWeek();
+        Carbon::setTestNow($monday->copy()->setTime(0, 0));
         $institution = Institution::factory()->create([
             'worktime_timezone' => 'UTC',
             'monday_worktime_start' => '08:00',
@@ -285,6 +286,7 @@ class CalendarWeekControllerTest extends TestCase
     {
         // GIVEN — vendor fully booked during Monday working hours (no ≥1h free gap remains)
         $monday = Carbon::today()->utc()->startOfWeek();
+        Carbon::setTestNow($monday->copy()->setTime(0, 0));
         $institution = Institution::factory()->create([
             'worktime_timezone' => 'UTC',
             'monday_worktime_start' => '08:00',
@@ -388,6 +390,7 @@ class CalendarWeekControllerTest extends TestCase
     {
         // GIVEN — vendor with worktime, no bookings
         $monday = Carbon::today()->utc()->startOfWeek();
+        Carbon::setTestNow($monday->copy()->setTime(0, 0));
         $institution = Institution::factory()->create([
             'worktime_timezone' => 'UTC',
             'monday_worktime_start' => '08:00',

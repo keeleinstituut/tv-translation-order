@@ -6,7 +6,7 @@ use App\Helpers\IntervalsUtil;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
-readonly class VendorAvailabilityService
+readonly class VendorsAvailabilityService
 {
     public function __construct(
         private VendorWorkingHoursResolver $workingHoursResolver,

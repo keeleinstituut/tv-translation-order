@@ -170,6 +170,7 @@ Route::prefix('/workflow')
         Route::get('/tasks/{id}', [API\WorkflowController::class, 'getTask'])->name('translation-order.workflow.getTask');
         Route::post('/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask'])->name('translation-order.workflow.completeTask');
         Route::post('/tasks/{id}/accept', [API\WorkflowController::class, 'acceptTask'])->name('translation-order.workflow.acceptTask');
+        Route::post('/tasks/{id}/decline', [API\WorkflowController::class, 'declineTask'])->name('translation-order.workflow.declineTask');
         Route::get('/history/tasks', [API\WorkflowController::class, 'getHistoryTasks'])->name('translation-order.workflow.getHistoryTasks');
         Route::get('/history/tasks2', [API\WorkflowController::class, 'getHistoryTasks2'])->name('translation-order.workflow.getHistoryTasks2');
         Route::get('/history/tasks/{id}', [API\WorkflowController::class, 'getHistoryTask'])->name('translation-order.workflow.getHistoryTask');

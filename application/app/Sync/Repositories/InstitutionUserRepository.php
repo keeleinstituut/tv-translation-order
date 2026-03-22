@@ -55,24 +55,26 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
                 'privileges',
             ]);
 
-        $vacations = array_merge(
-            $this->getNestedResourceAsJson(
-                $resource, 'vacations.institution_user_vacations', [
-                    'id',
-                    'start_date',
-                    'end_date',
-                ]),
-            $this->getNestedResourceAsJson(
-                $resource, 'vacations.institution_vacations', [
-                    'id',
-                    'start_date',
-                    'end_date',
-                ]),
-        );
+        $userVacations = collect($this->getNestedResourceAsJson(
+            $resource, 'vacations.institution_user_vacations', ['id', 'start_date', 'end_date']
+        ))->map(fn (array $v) => [
+            ...$v,
+            'institution_user_vacation_id' => $v['id'],
+            'institution_vacation_id' => null,
+        ]);
 
-        if (filled($vacations)) {
-            usort($vacations, fn ($v1, $v2) => $v1['start_date'] <=> $v2['start_date']);
-        }
+        $institutionVacations = collect($this->getNestedResourceAsJson(
+            $resource, 'vacations.institution_vacations', ['id', 'start_date', 'end_date']
+        ))->map(fn (array $v) => [
+            ...$v,
+            'institution_user_vacation_id' => null,
+            'institution_vacation_id' => $v['id'],
+        ]);
+
+        $vacations = $userVacations->merge($institutionVacations)
+            ->sortBy('start_date')
+            ->values()
+            ->toArray();
 
         $obj->vacations = $vacations;
         $obj->deleted_at = $resource['deleted_at'];
@@ -118,9 +120,12 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
     }
 
     /**
-     * Replace vacation-type vendor_calendar_entries for this user's vendor.
+     * Upsert vacation-type vendor_calendar_entries for this user's vendor.
      *
-     * @param  array<array{start_date: string, end_date: string}>  $vacationsFromJsonb
+     * Only future-starting VCE rows whose source ID is missing from the
+     * incoming set are deleted; past rows are never touched.
+     *
+     * @param  array<array{start_date: string, end_date: string, institution_user_vacation_id: ?string, institution_vacation_id: ?string}>  $vacationsFromJsonb
      */
     private function syncVacations(InstitutionUser $user, array $vacationsFromJsonb): void
     {
@@ -130,21 +135,79 @@ class InstitutionUserRepository implements CachedEntityRepositoryInterface
             return;
         }
 
-        VendorCalendarEntry::where('vendor_id', $vendorId)->vacationsOnly()->forceDelete();
-
+        $today = Carbon::today()->utc();
         $now = Carbon::now()->toDateTimeString();
 
-        $rows = collect($vacationsFromJsonb)->map(fn ($v) => [
-            'id' => Str::uuid()->toString(),
-            'vendor_id' => $vendorId,
-            'start_at' => Carbon::parse($v['start_date'])->startOfDay()->utc(),
-            'end_at' => Carbon::parse($v['end_date'])->addDay()->startOfDay()->utc(),
-            'created_at' => $now,
-            'updated_at' => $now,
-        ])->toArray();
+        $userVacationIds = [];
+        $instVacationIds = [];
+        $userRows = [];
+        $instRows = [];
 
-        if (! empty($rows)) {
-            VendorCalendarEntry::insert($rows);
+        foreach ($vacationsFromJsonb as $v) {
+            $sourceUserId = $v['institution_user_vacation_id'] ?? null;
+            $sourceInstId = $v['institution_vacation_id'] ?? null;
+
+            $row = [
+                'id' => Str::uuid()->toString(),
+                'vendor_id' => $vendorId,
+                'start_at' => Carbon::parse($v['start_date'])->startOfDay()->utc(),
+                'end_at' => Carbon::parse($v['end_date'])->addDay()->startOfDay()->utc(),
+                'institution_user_vacation_id' => $sourceUserId,
+                'institution_vacation_id' => $sourceInstId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            if ($sourceUserId !== null) {
+                $userVacationIds[] = $sourceUserId;
+                $userRows[] = $row;
+            }
+
+            if ($sourceInstId !== null) {
+                $instVacationIds[] = $sourceInstId;
+                $instRows[] = $row;
+            }
+        }
+
+        // Delete future-starting VCE rows whose source ID is no longer in incoming set
+        VendorCalendarEntry::where('vendor_id', $vendorId)
+            ->where('start_at', '>=', $today)
+            ->whereNotNull('institution_user_vacation_id')
+            ->whereNotIn('institution_user_vacation_id', $userVacationIds)
+            ->forceDelete();
+
+        VendorCalendarEntry::where('vendor_id', $vendorId)
+            ->where('start_at', '>=', $today)
+            ->whereNotNull('institution_vacation_id')
+            ->whereNotIn('institution_vacation_id', $instVacationIds)
+            ->forceDelete();
+
+        // Upsert — updateOrCreate is needed because the unique indexes are partial
+        // (WHERE ... IS NOT NULL AND deleted_at IS NULL), which Laravel's upsert() cannot target.
+        foreach ($userRows as $row) {
+            VendorCalendarEntry::updateOrCreate(
+                [
+                    'vendor_id' => $row['vendor_id'],
+                    'institution_user_vacation_id' => $row['institution_user_vacation_id'],
+                ],
+                [
+                    'start_at' => $row['start_at'],
+                    'end_at' => $row['end_at'],
+                ]
+            );
+        }
+
+        foreach ($instRows as $row) {
+            VendorCalendarEntry::updateOrCreate(
+                [
+                    'vendor_id' => $row['vendor_id'],
+                    'institution_vacation_id' => $row['institution_vacation_id'],
+                ],
+                [
+                    'start_at' => $row['start_at'],
+                    'end_at' => $row['end_at'],
+                ]
+            );
         }
     }
 

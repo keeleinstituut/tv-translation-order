@@ -5,8 +5,8 @@ namespace Tests;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
-use Arr;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -127,7 +127,7 @@ trait ApiResponseHelpers
         return $institutionAttributes;
     }
 
-    protected function generateInstitutionUserResponseData(string $id = null, bool $isDeleted = false): array
+    protected function generateInstitutionUserResponseData(string $id = null, bool $isDeleted = false, ?array $vacations = null): array
     {
         $institutionUser = InstitutionUser::factory()->make();
         $institutionUserAttributes = $institutionUser->getAttributes();
@@ -138,6 +138,10 @@ trait ApiResponseHelpers
         $institutionUserAttributes['department'] = $institutionUser->department;
         $institutionUserAttributes['institution'] = $institutionUser->institution;
         $institutionUserAttributes['roles'] = $institutionUser->roles;
+        $institutionUserAttributes['vacations'] = $vacations ?? [
+            'institution_user_vacations' => [],
+            'institution_vacations' => [],
+        ];
 
         return $institutionUserAttributes;
     }

@@ -21,6 +21,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $prebook_at
  * @property array<array-key, mixed>|null $metadata
  * @property string|null $vendor_calendar_import_id
+ * @property string|null $institution_user_vacation_id
+ * @property string|null $institution_vacation_id
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -31,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder<static>|VendorCalendarEntry assignmentsOnly()
  * @method static Builder<static>|VendorCalendarEntry vacationsOnly()
  * @method static Builder<static>|VendorCalendarEntry forClient(string $institutionUserId)
+ * @method static Builder<static>|VendorCalendarEntry withoutPrebooked()
  * @method static Builder<static>|VendorCalendarEntry newModelQuery()
  * @method static Builder<static>|VendorCalendarEntry newQuery()
  * @method static Builder<static>|VendorCalendarEntry onlyTrashed()
@@ -117,12 +120,13 @@ class VendorCalendarEntry extends Model
         return $query->whereNotNull('assignment_id');
     }
 
-    /** Only vacation-type entries (all type-determining FKs are null). */
+    /** Only vacation-type entries (have a vacation source ID set). */
     public function scopeVacationsOnly(Builder $query): Builder
     {
-        return $query->whereNull('assignment_id')
-            ->whereNull('prebook_institution_user_id')
-            ->whereNull('vendor_calendar_import_id');
+        return $query->where(fn (Builder $q) => $q
+            ->whereNotNull('institution_user_vacation_id')
+            ->orWhereNotNull('institution_vacation_id')
+        );
     }
 
     /** Only bookings belonging to a specific client user's orders. */
@@ -131,6 +135,14 @@ class VendorCalendarEntry extends Model
         return $query->whereHas(
             'assignment.subProject.project',
             fn (Builder $sub) => $sub->where('client_institution_user_id', $institutionUserId)
+        );
+    }
+
+    public function scopeWithoutPrebooked(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->whereNull('prebook_institution_user_id')
+            ->whereNull('prebook_at')
         );
     }
 }

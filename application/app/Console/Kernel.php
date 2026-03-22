@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\ExpireOverdueProposals;
 use App\Console\Commands\NotifyThatProjectDeadlineIsReached;
 use App\Helpers\DateUtil;
 use Illuminate\Console\Scheduling\Schedule;
@@ -26,6 +27,11 @@ class Kernel extends ConsoleKernel
             ->timezone($timezone)
             ->onOneServer()
             ->hourly();
+
+        $schedule
+            ->command(ExpireOverdueProposals::class)
+            ->onOneServer()
+            ->everyFiveMinutes();
     }
 
     /**

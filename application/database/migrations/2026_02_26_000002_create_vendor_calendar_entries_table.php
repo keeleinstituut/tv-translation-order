@@ -22,6 +22,8 @@ return new class extends Migration
             $table->jsonb('metadata')->nullable();
             $table->foreignUuid('vendor_calendar_import_id')
                 ->nullable()->constrained('vendor_calendar_imports')->cascadeOnDelete();
+            $table->uuid('institution_user_vacation_id')->nullable();
+            $table->uuid('institution_vacation_id')->nullable();
             $table->softDeletesTz();
             $table->timestampsTz();
 
@@ -43,6 +45,14 @@ return new class extends Migration
         DB::statement('
             CREATE UNIQUE INDEX idx_vc_assignment_active ON vendor_calendar_entries (assignment_id)
             WHERE assignment_id IS NOT NULL AND deleted_at IS NULL
+        ');
+        DB::statement('
+            CREATE UNIQUE INDEX idx_vc_user_vacation ON vendor_calendar_entries (vendor_id, institution_user_vacation_id)
+            WHERE institution_user_vacation_id IS NOT NULL AND deleted_at IS NULL
+        ');
+        DB::statement('
+            CREATE UNIQUE INDEX idx_vc_institution_vacation ON vendor_calendar_entries (vendor_id, institution_vacation_id)
+            WHERE institution_vacation_id IS NOT NULL AND deleted_at IS NULL
         ');
     }
 

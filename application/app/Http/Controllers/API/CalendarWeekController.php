@@ -18,7 +18,7 @@ use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotDiscretizationService;
-use App\Services\Calendar\VendorAvailabilityService;
+use App\Services\Calendar\VendorsAvailabilityService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use AuditLogClient\Services\AuditLogPublisher;
@@ -30,12 +30,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class CalendarWeekController extends Controller
 {
     public function __construct(
-        private readonly CalendarDataLoader        $dataLoader,
-        private readonly VendorAvailabilityService $availabilityService,
-        private readonly SlotDiscretizationService $discretizationService,
-        private readonly CalendarVendorRepository  $vendorRepo,
-        private readonly CalendarRoleResolver      $roleResolver,
-        AuditLogPublisher                          $auditLogPublisher,
+        private readonly CalendarDataLoader         $dataLoader,
+        private readonly VendorsAvailabilityService $availabilityService,
+        private readonly SlotDiscretizationService  $discretizationService,
+        private readonly CalendarVendorRepository   $vendorRepo,
+        private readonly CalendarRoleResolver       $roleResolver,
+        AuditLogPublisher                           $auditLogPublisher,
     ) {
         parent::__construct($auditLogPublisher);
     }
@@ -150,13 +150,19 @@ class CalendarWeekController extends Controller
         $precomputedAvailability = $this->availabilityService->computeSlotAvailability($data, $slots, excludeEmergency: true);
 
         $results = collect();
+        $now = Carbon::now();
         foreach ($slots as $slotIndex => $slotStart) {
+            $slotEnd = $slotStart->copy()->addHours(6);
+            if ($slotEnd <  $now) {
+                continue;
+            }
+
             $results = $results->merge(
                 $this->discretizationService->computeSlotLanguageAvailability(
                     $data->coverageByLanguage,
                     $precomputedAvailability,
                     $slotStart,
-                    $slotStart->copy()->addHours(6),
+                    $slotEnd,
                     $slotIndex,
                     $institutionId,
                 )
@@ -192,13 +198,19 @@ class CalendarWeekController extends Controller
         $precomputedAvailability = $this->availabilityService->computeSlotAvailability($data, $slots);
 
         $results = collect();
+        $now = Carbon::now();
         foreach ($slots as $slotIndex => $slotStart) {
+            $slotEnd = $slotStart->copy()->addHours(6);
+            if ($slotEnd <  $now) {
+                continue;
+            }
+
             $results = $results->merge(
                 $this->discretizationService->computeSlotLanguageAvailability(
                     $data->coverageByLanguage,
                     $precomputedAvailability,
                     $slotStart,
-                    $slotStart->copy()->addHours(6),
+                    $slotEnd,
                     $slotIndex,
                     $institutionId,
                 )

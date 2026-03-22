@@ -11,7 +11,7 @@ use App\Models\VendorCalendarEntry;
 use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
-use App\Services\Calendar\VendorAvailabilityService;
+use App\Services\Calendar\VendorsAvailabilityService;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
@@ -25,10 +25,10 @@ class CalendarSearchController extends Controller
     private const int DEFAULT_DURATION_MINUTES = 60;
 
     public function __construct(
-        private readonly CalendarDataLoader        $dataLoader,
-        private readonly VendorAvailabilityService $availabilityService,
-        private readonly CalendarRoleResolver      $roleResolver,
-        AuditLogPublisher                          $auditLogPublisher,
+        private readonly CalendarDataLoader         $dataLoader,
+        private readonly VendorsAvailabilityService $availabilityService,
+        private readonly CalendarRoleResolver       $roleResolver,
+        AuditLogPublisher                           $auditLogPublisher,
     ) {
         parent::__construct($auditLogPublisher);
     }

@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Enums\CandidateStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
-use DB;
+use App\Services\Calendar\CalendarVendorTaskProposalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,7 +30,7 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
     /**
      * @throws Throwable
      */
-    public function handle(NotificationPublisher $notificationPublisher): void
+    public function handle(NotificationPublisher $notificationPublisher, CalendarVendorTaskProposalService $vendorTaskProposalService): void
     {
         if (filled($this->assignment->assigned_vendor_id)) {
             return;
@@ -42,6 +42,11 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
         }
 
         if (empty($this->assignment->candidates)) {
+            return;
+        }
+
+        if ($this->assignment->subProject->project->is_calendar_project) {
+            $vendorTaskProposalService->proposeTaskToVendor($this->assignment);
             return;
         }
 

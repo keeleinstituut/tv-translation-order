@@ -57,6 +57,7 @@ class Candidate extends Model
     protected $casts = [
         'status' => CandidateStatus::class,
         'position' => 'integer',
+        'notified_at' => 'datetime',
     ];
 
     public function vendor(): BelongsTo

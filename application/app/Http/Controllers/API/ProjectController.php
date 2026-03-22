@@ -53,10 +53,10 @@ use Throwable;
 class ProjectController extends Controller
 {
     public function __construct(
-        readonly protected AuditLogPublisher  $auditLogPublisher,
         private readonly SlotMatchingService  $slotMatchingService,
         private readonly PrebookService       $prebookService,
         private readonly CalendarRoleResolver $calendarRoleResolver,
+        AuditLogPublisher  $auditLogPublisher,
     )
     {
         parent::__construct($auditLogPublisher);

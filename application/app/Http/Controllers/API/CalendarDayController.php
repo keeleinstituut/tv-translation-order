@@ -20,7 +20,7 @@ use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotDiscretizationService;
-use App\Services\Calendar\VendorAvailabilityService;
+use App\Services\Calendar\VendorsAvailabilityService;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
@@ -32,12 +32,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class CalendarDayController extends Controller
 {
     public function __construct(
-        private readonly CalendarDataLoader        $dataLoader,
-        private readonly VendorAvailabilityService $availabilityService,
-        private readonly SlotDiscretizationService $discretizationService,
-        private readonly CalendarVendorRepository  $vendorRepo,
-        private readonly CalendarRoleResolver      $roleResolver,
-        AuditLogPublisher                          $auditLogPublisher,
+        private readonly CalendarDataLoader         $dataLoader,
+        private readonly VendorsAvailabilityService $availabilityService,
+        private readonly SlotDiscretizationService  $discretizationService,
+        private readonly CalendarVendorRepository   $vendorRepo,
+        private readonly CalendarRoleResolver       $roleResolver,
+        AuditLogPublisher                           $auditLogPublisher,
     )
     {
         parent::__construct($auditLogPublisher);
@@ -109,11 +109,12 @@ class CalendarDayController extends Controller
     {
         return VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
             ->where('vendor_id', $vendorId)
-            ->overlapping($start, $end)
             ->with([
                 'assignment.subProject.sourceLanguageClassifierValue',
                 'assignment.subProject.destinationLanguageClassifierValue',
             ])
+            ->overlapping($start, $end)
+            ->withoutPrebooked()
             ->orderBy('start_at')
             ->get();
     }
@@ -159,7 +160,7 @@ class CalendarDayController extends Controller
     /**
      * Entries for client day view, scoped to client with assignment relations.
      *
-     * @param  Collection<int, string>  $vendorIds
+     * @param Collection<int, string> $vendorIds
      * @return Collection<int, VendorCalendarEntry>
      */
     private function getEntriesForClientWithRelations(Collection $vendorIds, string $clientUserId, Carbon $start, Carbon $end): Collection

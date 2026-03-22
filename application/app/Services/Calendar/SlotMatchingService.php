@@ -60,12 +60,13 @@ readonly class SlotMatchingService
      *   5. Alphabetical (surname, then forename)
      */
     public function pickBestInternalVendor(
-        string     $languageId,
-        Carbon     $eventStartAt,
-        Carbon     $eventEndAt,
-        string     $institutionId,
-        Collection $tagIds,
-        ?string    $excludePrebookUserId = null,
+        string      $languageId,
+        Carbon      $eventStartAt,
+        Carbon      $eventEndAt,
+        string      $institutionId,
+        Collection  $tagIds,
+        ?string     $excludePrebookUserId = null,
+        ?Collection $excludeVendorIds = null,
     ): ?Vendor
     {
         $internals = $this->findAvailableVendors(
@@ -75,6 +76,10 @@ readonly class SlotMatchingService
             $institutionId,
             $excludePrebookUserId,
         )->filter(fn(Vendor $v) => $v->is_internal);
+
+        if ($excludeVendorIds?->isNotEmpty()) {
+            $internals = $internals->reject(fn(Vendor $v) => $excludeVendorIds->contains($v->id));
+        }
 
         if ($internals->isEmpty()) {
             return null;
@@ -102,7 +107,11 @@ readonly class SlotMatchingService
         return $this->pickAlphabetically($internals);
     }
 
-    public function pickBestInternalVendorForProject(Project $project, ?string $excludePrebookUserId = null): ?Vendor
+    public function pickBestInternalVendorForProject(
+        Project     $project,
+        ?string     $excludePrebookUserId = null,
+        ?Collection $excludeVendorIds = null,
+    ): ?Vendor
     {
         return $this->pickBestInternalVendor(
             $project->subProjects->first()->destination_language_classifier_value_id,
@@ -111,6 +120,7 @@ readonly class SlotMatchingService
             $project->institution_id,
             $project->tags->pluck('id'),
             $excludePrebookUserId,
+            $excludeVendorIds,
         );
     }
 
