@@ -80,7 +80,7 @@ class AssignmentResource extends JsonResource
             // Done in this way as we're expecting that in the future multiple PMs can be candidates for review tasks.
             'manager_candidates' => [
                 ProjectManagerCandidateResource::make(
-                    $this->when($this->jobDefinition->job_key === JobKey::JOB_OVERVIEW, $this)
+                    $this->when($this->jobDefinition?->job_key === JobKey::JOB_OVERVIEW, $this)
                 )
             ],
         ];

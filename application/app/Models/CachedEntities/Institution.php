@@ -43,7 +43,36 @@ use Illuminate\Support\Carbon;
  * @method static Builder|Institution whereSyncedAt($value)
  * @method static Builder|Institution withTrashed()
  * @method static Builder|Institution withoutTrashed()
- *
+ * @property string|null $worktime_timezone
+ * @property string|null $monday_worktime_start
+ * @property string|null $monday_worktime_end
+ * @property string|null $tuesday_worktime_start
+ * @property string|null $tuesday_worktime_end
+ * @property string|null $wednesday_worktime_start
+ * @property string|null $wednesday_worktime_end
+ * @property string|null $thursday_worktime_start
+ * @property string|null $thursday_worktime_end
+ * @property string|null $friday_worktime_start
+ * @property string|null $friday_worktime_end
+ * @property string|null $saturday_worktime_start
+ * @property string|null $saturday_worktime_end
+ * @property string|null $sunday_worktime_start
+ * @property string|null $sunday_worktime_end
+ * @method static Builder<static>|Institution whereFridayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereFridayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereMondayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereMondayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereSaturdayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereSaturdayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereSundayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereSundayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereThursdayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereThursdayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereTuesdayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereTuesdayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereWednesdayWorktimeEnd($value)
+ * @method static Builder<static>|Institution whereWednesdayWorktimeStart($value)
+ * @method static Builder<static>|Institution whereWorktimeTimezone($value)
  * @mixin Eloquent
  */
 class Institution extends Model

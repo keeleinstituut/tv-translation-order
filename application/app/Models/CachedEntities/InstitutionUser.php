@@ -57,12 +57,42 @@ use Illuminate\Support\Facades\Date;
  * @method static Builder|InstitutionUser whereUser($value)
  * @method static Builder|InstitutionUser withTrashed()
  * @method static Builder|InstitutionUser withoutTrashed()
- *
+ * @property string|null $worktime_timezone
+ * @property string|null $monday_worktime_start
+ * @property string|null $monday_worktime_end
+ * @property string|null $tuesday_worktime_start
+ * @property string|null $tuesday_worktime_end
+ * @property string|null $wednesday_worktime_start
+ * @property string|null $wednesday_worktime_end
+ * @property string|null $thursday_worktime_start
+ * @property string|null $thursday_worktime_end
+ * @property string|null $friday_worktime_start
+ * @property string|null $friday_worktime_end
+ * @property string|null $saturday_worktime_start
+ * @property string|null $saturday_worktime_end
+ * @property string|null $sunday_worktime_start
+ * @property string|null $sunday_worktime_end
+ * @method static Builder<static>|InstitutionUser whereFridayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereFridayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereMondayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereMondayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereSaturdayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereSaturdayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereSundayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereSundayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereThursdayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereThursdayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereTuesdayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereTuesdayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereVacations($value)
+ * @method static Builder<static>|InstitutionUser whereWednesdayWorktimeEnd($value)
+ * @method static Builder<static>|InstitutionUser whereWednesdayWorktimeStart($value)
+ * @method static Builder<static>|InstitutionUser whereWorktimeTimezone($value)
  * @mixin Eloquent
  */
 class InstitutionUser extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'cached_institution_users';
 

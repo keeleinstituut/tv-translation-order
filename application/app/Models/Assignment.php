@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -101,6 +102,11 @@ class Assignment extends Model implements AuditLoggable
     {
         return $this->belongsToMany(CatToolJob::class, AssignmentCatToolJob::class)
             ->using(AssignmentCatToolJob::class);
+    }
+
+    public function calendarEntry(): HasOne
+    {
+        return $this->hasOne(VendorCalendarEntry::class);
     }
 
     public function jobDefinition(): BelongsTo

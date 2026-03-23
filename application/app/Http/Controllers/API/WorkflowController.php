@@ -31,6 +31,7 @@ use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
 use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
+use App\Services\Calendar\CalendarVendorTaskProposalService;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
@@ -574,6 +575,58 @@ class WorkflowController extends Controller
             AuditLogMessageBuilder::makeUsingJWT()
                 ->toAcceptTaskEvent($assignment->id, $assignment->ext_id)
         );
+
+        return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/decline',
+        summary: 'Decline the task as a vendor',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function declineTask(Request $request, CalendarVendorTaskProposalService $vendorTaskProposalService): TaskResource
+    {
+        $taskId = $request->route('id');
+        $taskData = $this->getTaskDataOrFail($taskId);
+
+        if (empty($taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type')))) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unknown task type');
+        }
+
+        if ($taskType !== TaskType::Default) {
+            abort(Response::HTTP_BAD_REQUEST, 'Declining of the tasks available only for vendor tasks');
+        }
+
+        $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->first();
+
+        if (empty($activeVendor)) {
+            abort(Response::HTTP_BAD_REQUEST, 'The active user is not a vendor');
+        }
+
+        /** @var Assignment $assignment */
+        if (empty($assignment = $taskData['assignment'])) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Missed assignment for the vendor task');
+        }
+
+        /** @var Candidate $candidate */
+        $candidate = $assignment->candidates()
+            ->where('vendor_id', $activeVendor->id)
+            ->where('status', CandidateStatus::SubmittedToVendor)
+            ->first();
+
+        if (empty($candidate)) {
+            abort(Response::HTTP_BAD_REQUEST, 'The vendor has no pending proposal for this task');
+        }
+
+        $vendorTaskProposalService->handleDecline($candidate);
 
         return TaskResource::make($taskData);
     }

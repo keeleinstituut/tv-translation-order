@@ -7,7 +7,17 @@ use App\Enums\CandidateStatus;
 use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use OpenApi\Attributes as OA;
 
+#[OA\Schema(
+    title: 'Project Manager Candidate',
+    properties: [
+        new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, nullable: true),
+        new OA\Property(property: 'status', type: 'string', enum: CandidateStatus::class),
+        new OA\Property(property: 'price', type: 'number', format: 'float', nullable: true),
+    ],
+    type: 'object'
+)]
 /**
  * @mixin Assignment
  */
