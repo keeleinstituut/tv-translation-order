@@ -10,9 +10,8 @@ use App\Http\Resources\API\CalendarMonthProjectManagerResource;
 use App\Http\Resources\API\CalendarMonthSlotsResource;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use App\Models\VendorEmergencySchedule;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Repositories\Calendar\CalendarVendorRepository;
+use App\Policies\VendorPolicy;
 use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
@@ -21,6 +20,7 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +30,6 @@ class CalendarMonthController extends Controller
 {
     public function __construct(
         private readonly CalendarDataLoader       $dataLoader,
-        private readonly CalendarVendorRepository $vendorRepo,
         private readonly CalendarRoleResolver     $roleResolver,
         AuditLogPublisher                         $auditLogPublisher,
     )
@@ -66,6 +65,8 @@ class CalendarMonthController extends Controller
     )]
     public function index(MonthAggregationRequest $request): JsonResource
     {
+        $this->authorize('viewAny', VendorCalendarEntry::class);
+
         $startAt = Carbon::parse($request->validated('date_from'))->startOfDay()->utc();
         $endAt = Carbon::parse($request->validated('date_to'))->endOfDay()->utc();
 
@@ -91,10 +92,11 @@ class CalendarMonthController extends Controller
 
     private function vendorView(Vendor $vendor, Carbon $startAt, Carbon $endAt): CalendarMonthSlotsResource
     {
-        $entries = $this->assignmentEntriesBaseQuery($startAt, $endAt)
-            ->where('vendor_id', $vendor->id)
-            ->get();
-        $timestampedRows = $this->entriesToTimestampedRows($entries);
+        $timestampedRows = $this->entriesToTimestampedRows(
+            $this->assignmentEntriesBaseQuery($startAt, $endAt)
+                ->where('vendor_calendar_entries.vendor_id', $vendor->id)
+                ->cursor()
+        );
 
         return CalendarMonthSlotsResource::make([
             'slots' => $this->aggregateEntriesByLanguagePerSlot($timestampedRows, $startAt, $endAt),
@@ -103,10 +105,11 @@ class CalendarMonthController extends Controller
 
     private function clientView(string $institutionUserId, Carbon $startAt, Carbon $endAt): CalendarMonthSlotsResource
     {
-        $entries = $this->assignmentEntriesBaseQuery($startAt, $endAt)
-            ->forClient($institutionUserId)
-            ->get();
-        $timestampedRows = $this->entriesToTimestampedRows($entries);
+        $timestampedRows = $this->entriesToTimestampedRows(
+            $this->assignmentEntriesBaseQuery($startAt, $endAt)
+                ->forClient($institutionUserId)
+                ->cursor()
+        );
 
         return CalendarMonthSlotsResource::make([
             'slots' => $this->aggregateEntriesByLanguagePerSlot($timestampedRows, $startAt, $endAt),
@@ -115,7 +118,7 @@ class CalendarMonthController extends Controller
 
     private function projectManagerView(string $institutionId, Carbon $startAt, Carbon $endAt): CalendarMonthProjectManagerResource
     {
-        $data = $this->dataLoader->loadWithoutEntries($institutionId, $startAt, $endAt);
+        $data = $this->dataLoader->loadCoverageOnly($institutionId, $startAt, $endAt);
 
         if ($data->importedCalendarVendorIds->isEmpty()) {
             return CalendarMonthProjectManagerResource::make([
@@ -124,20 +127,11 @@ class CalendarMonthController extends Controller
             ]);
         }
 
-        $emergencySchedules = $this->vendorRepo->getEmergencySchedulesForVendors($data->allVendorIds, $startAt, $endAt);
-
-        $entries = $this->assignmentEntriesBaseQuery($startAt, $endAt)
-            ->whereIn('vendor_id', $data->importedCalendarVendorIds)
-            ->get();
-
-        if ($entries->isEmpty()) {
-            return CalendarMonthProjectManagerResource::make([
-                'available_slots' => [],
-                'vendors' => $this->buildVendorsMap($data, $emergencySchedules),
-            ]);
-        }
-
-        $timestampedRows = $this->entriesToTimestampedRows($entries);
+        $timestampedRows = $this->entriesToTimestampedRows(
+            $this->assignmentEntriesBaseQuery($startAt, $endAt)
+                ->whereIn('vendor_calendar_entries.vendor_id', $data->importedCalendarVendorIds)
+                ->cursor()
+        );
 
         $slots = IntervalsUtil::generateSlots($startAt, $endAt, 24);
         $cursor = 0;
@@ -148,7 +142,7 @@ class CalendarMonthController extends Controller
             $slotStartTs = $slotStart->timestamp;
             $slotEndTs = $slotEnd->timestamp;
 
-            while ($cursor < $timestampedRows->count() && $timestampedRows[$cursor]['end_ts'] <= $slotStartTs) {
+            while ($cursor < $timestampedRows->count() && $timestampedRows[$cursor]['start_ts'] < $slotStartTs) {
                 $cursor++;
             }
 
@@ -170,7 +164,7 @@ class CalendarMonthController extends Controller
                 $vendorHours = [];
 
                 foreach ($languageEntries as $row) {
-                    $hours = max(0, min($row['end_ts'], $slotEndTs) - max($row['start_ts'], $slotStartTs)) / 3600;
+                    $hours = ($row['end_ts'] - $row['start_ts']) / 3600;
 
                     if ($hours > 0) {
                         $vendorHours[$row['vendor_id']] = round(($vendorHours[$row['vendor_id']] ?? 0) + $hours, 2);
@@ -189,7 +183,7 @@ class CalendarMonthController extends Controller
 
         return CalendarMonthProjectManagerResource::make([
             'available_slots' => $results->sortBy(['language_id', 'date'])->values()->all(),
-            'vendors' => $this->buildVendorsMap($data, $emergencySchedules),
+            'vendors' => $this->buildVendorsMap($data),
         ]);
     }
 
@@ -214,7 +208,7 @@ class CalendarMonthController extends Controller
             $slotStartTs = $slotStart->timestamp;
             $slotEndTs = $slotEnd->timestamp;
 
-            while ($cursor < $entries->count() && $entries->get($cursor)['end_ts'] <= $slotStartTs) {
+            while ($cursor < $entries->count() && $entries->get($cursor)['start_ts'] < $slotStartTs) {
                 $cursor++;
             }
 
@@ -233,8 +227,8 @@ class CalendarMonthController extends Controller
             $groupedByLanguage = $slotEntries->groupBy(fn(array $e) => $e['language_id']);
 
             foreach ($groupedByLanguage as $languageId => $languageEntries) {
-                $vendorHours = $languageEntries->sum(function (array $e) use ($slotStartTs, $slotEndTs) {
-                    return max(0, min($e['end_ts'], $slotEndTs) - max($e['start_ts'], $slotStartTs)) / 3600;
+                $vendorHours = $languageEntries->sum(function (array $e) {
+                    return ($e['end_ts'] - $e['start_ts']) / 3600;
                 });
 
                 if ($vendorHours <= 0) {
@@ -255,42 +249,52 @@ class CalendarMonthController extends Controller
     /**
      * Pre-compute timestamps to avoid repeated Carbon/attribute access in hot loops.
      *
-     * @param Collection<int, VendorCalendarEntry> $entries
+     * @param LazyCollection<int, VendorCalendarEntry> $entries
      * @return Collection<int, array{start_ts: int, end_ts: int, vendor_id: string, language_id: string}>
      */
-    private function entriesToTimestampedRows(Collection $entries): Collection
+    private function entriesToTimestampedRows(LazyCollection $entries): Collection
     {
         return $entries->map(fn(VendorCalendarEntry $e) => [
             'start_ts' => $e->start_at->timestamp,
             'end_ts' => $e->end_at->timestamp,
             'vendor_id' => $e->vendor_id,
-            'language_id' => $e->assignment->subProject->destination_language_classifier_value_id,
-        ])->values();
+            'language_id' => $e->destination_language_classifier_value_id,
+        ])->collect();
     }
 
     private function assignmentEntriesBaseQuery(Carbon $start, Carbon $end): EloquentBuilder
     {
         return VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->assignmentsOnly()
-            ->overlapping($start, $end)
-            ->with('assignment.subProject')
-            ->orderBy('start_at');
+            ->whereNotNull('vendor_calendar_entries.assignment_id')
+            ->where('vendor_calendar_entries.start_at', '<', $end)
+            ->where('vendor_calendar_entries.end_at', '>', $start)
+            ->join('assignments', 'assignments.id', '=', 'vendor_calendar_entries.assignment_id')
+            ->join('sub_projects', 'sub_projects.id', '=', 'assignments.sub_project_id')
+            ->select([
+                'vendor_calendar_entries.start_at',
+                'vendor_calendar_entries.end_at',
+                'vendor_calendar_entries.vendor_id',
+                'sub_projects.destination_language_classifier_value_id',
+            ])
+            ->orderBy('vendor_calendar_entries.start_at');
     }
 
     /**
-     * @param Collection<string, Collection<int, VendorEmergencySchedule>> $emergencySchedules
      * @return array<int, array>
      */
-    private function buildVendorsMap(CalendarData $data, Collection $emergencySchedules): array
+    private function buildVendorsMap(CalendarData $data): array
     {
-        $vendors = $this->vendorRepo->getVendorsWithInstitutionUser($data->allVendorIds);
-        $vendorLanguages = $data->getLanguagesByVendor();
+        $vendors = $data->internalVendorIds->isNotEmpty() ?
+            Vendor::withGlobalScope('policy', VendorPolicy::scope())
+                ->whereIn('id', $data->internalVendorIds)
+                ->with('institutionUser')
+                ->get() : collect();
 
-        return $vendors->map(fn(Vendor $vendor, string $vendorId) => [
-            'id' => $vendorId,
+        return $vendors->map(fn(Vendor $vendor) => [
+            'id' => $vendor->id,
             'institutionUser' => $vendor->institutionUser,
-            'languages' => $vendorLanguages[$vendorId] ?? [],
-            'emergency_schedules' => $emergencySchedules->get($vendorId, collect()),
-        ])->values()->all();
+            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
+            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
+        ])->all();
     }
 }

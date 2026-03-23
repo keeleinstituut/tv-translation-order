@@ -15,13 +15,14 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Policies\ProjectPolicy;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Repositories\Calendar\CalendarVendorRepository;
+use App\Policies\VendorPolicy;
 use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotDiscretizationService;
 use App\Services\Calendar\VendorsAvailabilityService;
 use AuditLogClient\Services\AuditLogPublisher;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -35,7 +36,6 @@ class CalendarDayController extends Controller
         private readonly CalendarDataLoader         $dataLoader,
         private readonly VendorsAvailabilityService $availabilityService,
         private readonly SlotDiscretizationService  $discretizationService,
-        private readonly CalendarVendorRepository   $vendorRepo,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
     )
@@ -43,6 +43,9 @@ class CalendarDayController extends Controller
         parent::__construct($auditLogPublisher);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/calendar/day',
         description: 'Vendor: own calendar entries for the day. Client: 1h language-tagged available/booked slot grid, client-visible calendar entries, and unassigned projects. TPM: 1h slots with available vendor IDs plus full per-vendor metadata (entries, languages, emergency schedules).',
@@ -71,6 +74,8 @@ class CalendarDayController extends Controller
     )]
     public function index(DayCalendarRequest $request): JsonResource
     {
+        $this->authorize('viewAny', VendorCalendarEntry::class);
+
         $date = Carbon::parse($request->date ?? today());
 
         return match ($this->roleResolver->resolve()) {
@@ -96,27 +101,20 @@ class CalendarDayController extends Controller
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
 
-        return VendorCalendarDayResource::make([
-            'calendar_entries' => $this->getEntriesForVendorWithRelations(
-                $vendor->id,
-                $dayStart,
-                $dayEnd
-            ),
-        ]);
-    }
-
-    public function getEntriesForVendorWithRelations(string $vendorId, Carbon $start, Carbon $end): Collection
-    {
-        return VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->where('vendor_id', $vendorId)
+        $entries = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
+            ->where('vendor_id', $vendor->id)
             ->with([
                 'assignment.subProject.sourceLanguageClassifierValue',
                 'assignment.subProject.destinationLanguageClassifierValue',
             ])
-            ->overlapping($start, $end)
+            ->overlapping($dayStart, $dayEnd)
             ->withoutPrebooked()
             ->orderBy('start_at')
             ->get();
+
+        return VendorCalendarDayResource::make([
+            'calendar_entries' => $entries,
+        ]);
     }
 
     private function clientView(string $institutionId, string $actingUserId, Carbon $date): CalendarClientDayResource
@@ -126,7 +124,7 @@ class CalendarDayController extends Controller
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
 
-        $data = $this->dataLoader->loadWithEntries(
+        $data = $this->dataLoader->loadFull(
             $institutionId,
             $dayStart,
             $dayEnd
@@ -145,30 +143,10 @@ class CalendarDayController extends Controller
         $availableSlots = $this->discretizationService->discretizeLanguageSlots($perLanguageIntervals);
         $bookedSlots = $this->discretizationService->computeFullyBookedSlots($availableSlots, $data->coverageByLanguage, $vendorWindows);
 
-        $calendarEntries = $this->getEntriesForClientWithRelations(
-            $data->importedCalendarVendorIds, $actingUserId, $dayStart, $dayEnd
-        );
-
-        return CalendarClientDayResource::make([
-            'available_slots' => $availableSlots,
-            'booked_slots' => $bookedSlots,
-            'calendar_entries' => $calendarEntries,
-            'unassigned_projects' => $unassignedProjects,
-        ]);
-    }
-
-    /**
-     * Entries for client day view, scoped to client with assignment relations.
-     *
-     * @param Collection<int, string> $vendorIds
-     * @return Collection<int, VendorCalendarEntry>
-     */
-    private function getEntriesForClientWithRelations(Collection $vendorIds, string $clientUserId, Carbon $start, Carbon $end): Collection
-    {
-        return VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->whereIn('vendor_id', $vendorIds)
-            ->overlapping($start, $end)
-            ->forClient($clientUserId)
+        $entries = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
+            ->whereIn('vendor_id', $data->importedCalendarVendorIds)
+            ->overlapping($dayStart, $dayEnd)
+            ->forClient($actingUserId)
             ->with([
                 'assignment.subProject.sourceLanguageClassifierValue',
                 'assignment.subProject.destinationLanguageClassifierValue',
@@ -176,13 +154,20 @@ class CalendarDayController extends Controller
             ])
             ->orderBy('start_at')
             ->get();
+
+        return CalendarClientDayResource::make([
+            'available_slots' => $availableSlots,
+            'booked_slots' => $bookedSlots,
+            'calendar_entries' => $entries,
+            'unassigned_projects' => $unassignedProjects,
+        ]);
     }
 
     private function projectManagerView(string $institutionId, Carbon $date): CalendarDayProjectManagerResource
     {
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
-        $data = $this->dataLoader->loadWithEntries($institutionId, $dayStart, $dayEnd);
+        $data = $this->dataLoader->loadFull($institutionId, $dayStart, $dayEnd);
 
         if ($data->importedCalendarVendorIds->isEmpty()) {
             return CalendarDayProjectManagerResource::make([
@@ -220,27 +205,30 @@ class CalendarDayController extends Controller
      */
     private function buildVendorsMap(CalendarData $data, Carbon $dayStart, Carbon $dayEnd): array
     {
-        $vendors = $this->vendorRepo->getVendorsWithInstitutionUser($data->allVendorIds);
-        $entries = $this->getMinimalEntriesForVendors($data->allVendorIds, $dayStart, $dayEnd);
+        $vendors = $data->internalVendorIds->isNotEmpty() ?
+            Vendor::withGlobalScope('policy', VendorPolicy::scope())
+                ->whereIn('id', $data->internalVendorIds)
+                ->with('institutionUser')
+                ->get() : collect();
 
-        return $vendors->map(fn(Vendor $vendor, string $vendorId) => [
-            'id' => $vendorId,
+        $entries = $data->internalVendorIds->isNotEmpty() ? VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
+            ->whereIn('vendor_id', $data->internalVendorIds)
+            ->overlapping($dayStart, $dayEnd)
+            ->with([
+                'assignment.subProject.sourceLanguageClassifierValue',
+                'assignment.subProject.destinationLanguageClassifierValue',
+                'assignment.subProject.project',
+            ])
+            ->orderBy('start_at')
+            ->get()
+            ->groupBy('vendor_id') : collect();
+
+        return $vendors->map(fn(Vendor $vendor) => [
+            'id' => $vendor->id,
             'institutionUser' => $vendor->institutionUser,
-            'calendar_entries' => $entries->get($vendorId, collect()),
-            'languages' => $data->getLanguagesForVendor($vendorId)->all(),
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendorId),
-        ])->values()->all();
-    }
-
-    private function getMinimalEntriesForVendors(Collection $vendorIds, Carbon $start, Carbon $end): Collection
-    {
-        if ($vendorIds->isEmpty()) {
-            return collect();
-        }
-
-        return VendorCalendarEntry::whereIn('vendor_id', $vendorIds)
-            ->overlapping($start, $end)
-            ->get(['id', 'vendor_id', 'start_at', 'end_at', 'assignment_id', 'prebook_institution_user_id', 'vendor_calendar_import_id'])
-            ->groupBy('vendor_id');
+            'calendar_entries' => $entries->get($vendor->id, collect()),
+            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
+            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
+        ])->all();
     }
 }

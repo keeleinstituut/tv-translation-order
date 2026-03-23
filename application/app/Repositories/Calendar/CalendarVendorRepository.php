@@ -48,22 +48,4 @@ readonly class CalendarVendorRepository
             ->get()
             ->groupBy('vendor_id');
     }
-
-    /**
-     * Load vendors with their institutionUser relation, keyed by vendor ID.
-     *
-     * @param  Collection<int, string>  $vendorIds
-     * @return Collection<string, Vendor>
-     */
-    public function getVendorsWithInstitutionUser(Collection $vendorIds): Collection
-    {
-        if ($vendorIds->isEmpty()) {
-            return collect();
-        }
-
-        return Vendor::whereIn('id', $vendorIds)
-            ->with('institutionUser')
-            ->get()
-            ->keyBy('id');
-    }
 }

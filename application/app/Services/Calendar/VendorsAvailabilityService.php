@@ -3,6 +3,7 @@
 namespace App\Services\Calendar;
 
 use App\Helpers\IntervalsUtil;
+use App\Models\VendorCalendarEntry;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -60,6 +61,9 @@ readonly class VendorsAvailabilityService
         $result = [];
         $seen = [];
 
+        $start = $date->copy()->startOfDay()->utc();
+        $end = $date->copy()->endOfDay()->utc();
+
         foreach ($data->importedCalendarVendorIds as $vendorId) {
             if (isset($seen[$vendorId])) {
                 continue;
@@ -84,7 +88,7 @@ readonly class VendorsAvailabilityService
 
             $freeIntervals = IntervalsUtil::subtractIntervals(
                 $workWindow,
-                $data->getEntriesForVendor($vendorId),
+                $this->getEntriesForVendor($vendorId, $start, $end),
             );
 
             if (!empty($freeIntervals)) {
@@ -96,16 +100,16 @@ readonly class VendorsAvailabilityService
     }
 
     /**
-     * Compute free intervals per vendor, filtered to a specific language.
-     * Intervals are clipped to the effective search start timestamp.
+     * Compute free intervals for a language across a multi-day range.
+     * Queries entries once per vendor, iterates days internally.
      *
-     * @return array<string, array<array{0: int, 1: int}>>  vendor_id => free intervals
+     * @return array<string, array<array{0: int, 1: int}>>  vendor_id => free intervals (all days combined)
      */
-    public function computeFreeIntervalsForLanguage(
+    public function computeFreeIntervalsForLanguageInRange(
         CalendarData $data,
-        Carbon       $date,
+        Carbon       $start,
+        Carbon       $end,
         string       $languageId,
-        ?int         $effectiveStartTs = null,
         ?Collection  $excludeVendorIds = null,
     ): array {
         $result = [];
@@ -125,34 +129,29 @@ readonly class VendorsAvailabilityService
                 continue;
             }
 
-            $workWindow = $this->workingHoursResolver->getWorkingWindow(
-                $data->getVendorWorktime($vendorId),
-                $data->institutionWorktime,
-                $date,
-            );
+            $entries = $this->getEntriesForVendor($vendorId, $start, $end);
+            $vendorIntervals = [];
 
-            if ($workWindow === null) {
-                continue;
-            }
+            $currentDate = $start->copy()->startOfDay();
+            $rangeEnd = $end->copy()->startOfDay();
 
-            $freeIntervals = IntervalsUtil::subtractIntervals(
-                $workWindow,
-                $data->getEntriesForVendor($vendorId),
-            );
+            while ($currentDate->lte($rangeEnd)) {
+                $workWindow = $this->workingHoursResolver->getWorkingWindow(
+                    $data->getVendorWorktime($vendorId),
+                    $data->institutionWorktime,
+                    $currentDate,
+                );
 
-            if ($effectiveStartTs !== null) {
-                $clipped = [];
-                foreach ($freeIntervals as [$start, $end]) {
-                    $clippedStart = max($start, $effectiveStartTs);
-                    if ($clippedStart < $end) {
-                        $clipped[] = [$clippedStart, $end];
-                    }
+                if ($workWindow !== null) {
+                    $freeIntervals = IntervalsUtil::subtractIntervals($workWindow, $entries);
+                    array_push($vendorIntervals, ...$freeIntervals);
                 }
-                $freeIntervals = $clipped;
+
+                $currentDate->addDay();
             }
 
-            if (!empty($freeIntervals)) {
-                $result[$vendorId] = $freeIntervals;
+            if (!empty($vendorIntervals)) {
+                $result[$vendorId] = $vendorIntervals;
             }
         }
 
@@ -170,10 +169,17 @@ readonly class VendorsAvailabilityService
         array        $slots,
         bool         $excludeEmergency = false,
     ): array {
+        if (empty($slots)) {
+            return [];
+        }
+
+        $start = $slots[0];
+        $end = end($slots)->copy()->addHours(6);
+
         $result = [];
 
         foreach ($data->importedCalendarVendorIds as $vendorId) {
-            $entries = $data->getEntriesForVendor($vendorId)
+            $entries = $this->getEntriesForVendor($vendorId, $start, $end)
                 ->sortBy('start_ts')->values()->all();
             $vendorWorktime = $data->getVendorWorktime($vendorId);
             $cursor = 0;
@@ -224,5 +230,23 @@ readonly class VendorsAvailabilityService
         }
 
         return $result;
+    }
+
+    /**
+     * Get overlapping entries as timestamp arrays for a single vendor.
+     *
+     * @return Collection<int, array{id: string, vendor_id: string, start_ts: int, end_ts: int}>
+     */
+    private function getEntriesForVendor(string $vendorId, Carbon $start, Carbon $end): Collection
+    {
+        return VendorCalendarEntry::where('vendor_id', $vendorId)
+            ->overlapping($start, $end)
+            ->get(['id', 'vendor_id', 'start_at', 'end_at'])
+            ->map(fn(VendorCalendarEntry $entry) => [
+                'id' => $entry->id,
+                'vendor_id' => $entry->vendor_id,
+                'start_ts' => Carbon::parse($entry->start_at)->utc()->timestamp,
+                'end_ts' => Carbon::parse($entry->end_at)->utc()->timestamp,
+            ]);
     }
 }

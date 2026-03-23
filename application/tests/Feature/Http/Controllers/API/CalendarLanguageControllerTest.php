@@ -330,6 +330,7 @@ class CalendarLanguageControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $institutionUser->id,
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::EditInstitution->value],
         ]);
 
         // WHEN
@@ -398,6 +399,7 @@ class CalendarLanguageControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $userA->id,
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::EditInstitution->value],
         ]);
 
         // WHEN

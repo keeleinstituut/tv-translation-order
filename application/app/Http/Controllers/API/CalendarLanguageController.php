@@ -51,6 +51,8 @@ class CalendarLanguageController extends Controller
     #[OAH\ResourceResponse(dataRef: CalendarLanguageResource::class, description: 'Language lists for the requested date range. Vendor callers receive empty main_languages and pinned_languages arrays.')]
     public function languages(CalendarLanguagesRequest $request): CalendarLanguageResource
     {
+        $this->authorize('viewAny', InstitutionMainLanguage::class);
+
         $dateFrom = Carbon::parse($request->validated('date_from'))->startOfDay()->utc();
         $dateTo = Carbon::parse($request->validated('date_to'))->endOfDay()->utc();
 

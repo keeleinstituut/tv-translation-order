@@ -16,8 +16,45 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        properties: [
+            new OA\Property(property: 'type_classifier_value_id', type: 'string', format: 'uuid', nullable: true),
+            new OA\Property(property: 'translation_domain_classifier_value_id', type: 'string', format: 'uuid', nullable: true),
+            new OA\Property(property: 'source_language_classifier_value_id', type: 'string', format: 'uuid', nullable: true),
+            new OA\Property(
+                property: 'destination_language_classifier_value_ids',
+                type: 'array',
+                items: new OA\Items(type: 'string', format: 'uuid'),
+                nullable: true
+            ),
+            new OA\Property(property: 'manager_institution_user_id', type: 'string', format: 'uuid', nullable: true),
+            new OA\Property(property: 'client_institution_user_id', type: 'string', format: 'uuid', nullable: true),
+            new OA\Property(property: 'reference_number', type: 'string', nullable: true),
+            new OA\Property(property: 'comments', type: 'string', nullable: true),
+            new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
+            new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
+            new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', example: '2020-12-31T14:00:00Z', nullable: true),
+            new OA\Property(property: 'service_type', type: 'string', nullable: true),
+            new OA\Property(property: 'location', type: 'string', nullable: true),
+            new OA\Property(property: 'meeting_link', type: 'string', nullable: true),
+            new OA\Property(property: 'candidate_vendor_id', type: 'string', format: 'uuid', nullable: true),
+            new OA\Property(property: 'use_external_vendor', type: 'boolean', nullable: true),
+            new OA\Property(
+                property: 'tags',
+                type: 'array',
+                items: new OA\Items(type: 'string', format: 'uuid'),
+                nullable: true
+            ),
+        ],
+        type: 'object'
+    )
+)]
 class ProjectUpdateRequest extends ProjectCreateRequest
 {
     const string DATETIME_FORMAT = 'Y-m-d\\TH:i:s\\Z'; //only UTC (zero offset)

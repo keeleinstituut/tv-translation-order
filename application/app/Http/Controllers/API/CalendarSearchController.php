@@ -8,7 +8,6 @@ use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CalendarSearchRequest;
 use App\Http\Resources\API\CalendarSearchSlotResource;
 use App\Models\VendorCalendarEntry;
-use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\VendorsAvailabilityService;
@@ -29,7 +28,8 @@ class CalendarSearchController extends Controller
         private readonly VendorsAvailabilityService $availabilityService,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
-    ) {
+    )
+    {
         parent::__construct($auditLogPublisher);
     }
 
@@ -69,7 +69,7 @@ class CalendarSearchController extends Controller
 
         $languageId = $request->validated('language_id');
         $searchFrom = Carbon::parse($request->validated('datetime') ?? now())->utc();
-        $durationMinutes = (int) ($request->validated('duration_minutes') ?? self::DEFAULT_DURATION_MINUTES);
+        $durationMinutes = (int)($request->validated('duration_minutes') ?? self::DEFAULT_DURATION_MINUTES);
 
         $result = $this->findFirstAvailableSlot(
             $this->roleResolver->getInstitutionId(),
@@ -80,11 +80,11 @@ class CalendarSearchController extends Controller
         );
 
         return CalendarSearchSlotResource::make($result ?? [
-            'start_at'    => null,
-            'end_at'      => null,
-            'vendor_ids'  => null,
+            'start_at' => null,
+            'end_at' => null,
+            'vendor_ids' => null,
             'language_id' => null,
-            'role'        => $role,
+            'role' => $role,
         ]);
     }
 
@@ -97,11 +97,12 @@ class CalendarSearchController extends Controller
         Carbon       $searchFrom,
         int          $durationMinutes,
         CalendarRole $role,
-    ): ?array {
+    ): ?array
+    {
         $searchStart = $searchFrom->copy()->startOfDay();
         $searchEnd = $searchFrom->copy()->addDays(self::MAX_SEARCH_DAYS);
 
-        $data = $this->dataLoader->loadWithEntries(
+        $data = $this->dataLoader->loadFull(
             $institutionId,
             $searchStart->copy()->startOfDay()->utc(),
             $searchEnd->copy()->endOfDay()->utc(),
@@ -111,44 +112,15 @@ class CalendarSearchController extends Controller
             return null;
         }
 
-        $currentDate = $searchStart->copy();
-
-        while ($currentDate->lte($searchEnd)) {
-            $slot = $this->findSlotInDay($data, $languageId, $searchFrom, $durationMinutes, $role, $currentDate);
-            if ($slot !== null) {
-                return $slot;
-            }
-
-            $currentDate->addDay();
-        }
-
-        return null;
-    }
-
-    /**
-     * @return array{start_at: string, end_at: string, vendor_ids: string[], language_id: string, role: CalendarRole}|null
-     */
-    private function findSlotInDay(
-        CalendarData $data,
-        string       $languageId,
-        Carbon       $searchFrom,
-        int          $durationMinutes,
-        CalendarRole $role,
-        Carbon       $date,
-    ): ?array {
-        $dayStart = $date->copy()->startOfDay()->utc();
-        $effectiveStartTs = max($dayStart->timestamp, $searchFrom->timestamp);
-        $durationSeconds = $durationMinutes * 60;
-
         $excludeVendorIds = $role === CalendarRole::Client
             ? $data->vendorIdsWithEmergencySchedule()
             : null;
 
-        $vendorFreeIntervals = $this->availabilityService->computeFreeIntervalsForLanguage(
+        $vendorFreeIntervals = $this->availabilityService->computeFreeIntervalsForLanguageInRange(
             $data,
-            $date,
+            $searchStart->copy()->startOfDay()->utc(),
+            $searchEnd->copy()->endOfDay()->utc(),
             $languageId,
-            $effectiveStartTs,
             $excludeVendorIds,
         );
 
@@ -156,13 +128,18 @@ class CalendarSearchController extends Controller
             return null;
         }
 
+        $durationSeconds = $durationMinutes * 60;
+        $searchFromTs = $searchFrom->timestamp;
+
+        // Find the earliest slot of sufficient duration across all vendors
         $earliestSlotStart = null;
 
         foreach ($vendorFreeIntervals as $intervals) {
             foreach ($intervals as [$start, $end]) {
-                if (($end - $start) >= $durationSeconds) {
-                    if ($earliestSlotStart === null || $start < $earliestSlotStart) {
-                        $earliestSlotStart = $start;
+                $effectiveStart = max($start, $searchFromTs);
+                if (($end - $effectiveStart) >= $durationSeconds) {
+                    if ($earliestSlotStart === null || $effectiveStart < $earliestSlotStart) {
+                        $earliestSlotStart = $effectiveStart;
                     }
                     break;
                 }
@@ -175,6 +152,7 @@ class CalendarSearchController extends Controller
 
         $slotEnd = $earliestSlotStart + $durationSeconds;
 
+        // Collect vendor IDs available for this slot
         $availableVendorIds = [];
         foreach ($vendorFreeIntervals as $vendorId => $intervals) {
             foreach ($intervals as [$start, $end]) {
@@ -186,11 +164,11 @@ class CalendarSearchController extends Controller
         }
 
         return [
-            'start_at'    => Carbon::createFromTimestamp($earliestSlotStart)->utc()->toIso8601String(),
-            'end_at'      => Carbon::createFromTimestamp($slotEnd)->utc()->toIso8601String(),
-            'vendor_ids'  => $availableVendorIds,
+            'start_at' => Carbon::createFromTimestamp($earliestSlotStart)->utc()->toIso8601String(),
+            'end_at' => Carbon::createFromTimestamp($slotEnd)->utc()->toIso8601String(),
+            'vendor_ids' => $availableVendorIds,
             'language_id' => $languageId,
-            'role'        => $role,
+            'role' => $role,
         ];
     }
 }

@@ -14,6 +14,9 @@ use Illuminate\Support\Collection;
  */
 readonly class CalendarData
 {
+    /** @var Collection<string, Collection<int, array>> language_id => coverage row arrays */
+    public Collection $coverageByLanguage;
+
     /** @var Collection<string, Collection<int, string>> vendor_id => language IDs */
     private Collection $vendorLanguages;
 
@@ -22,26 +25,24 @@ readonly class CalendarData
 
     /**
      * @param  string  $institutionId
-     * @param  Collection<string, Collection<int, array>>  $coverageByLanguage  language_id => coverage row arrays
-     * @param  Collection<int, string>  $allVendorIds
+     * @param  Collection<int, string>  $internalVendorIds
      * @param  Collection<int, string>  $importedCalendarVendorIds  vendors with calendar imports for the period
      * @param  array<string, mixed>|null  $institutionWorktime
      * @param  Collection<string, array<string, mixed>>|null  $institutionUserWorktimes  keyed by institution_user_id
-     * @param  Collection<string, Collection<int, array{id: string, vendor_id: string, start_ts: int, end_ts: int}>>|null  $entriesByVendor
      * @param  Collection<string, Collection<int, VendorEmergencySchedule>>|null  $emergencySchedules  grouped by vendor_id
-     * @param  Collection<int, array>  $vendorLanguageCoverages  flat coverage rows (consumed to derive private lookups)
+     * @param  Collection<int, array>  $vendorLanguageCoverages  flat coverage rows (all shapes derived from this)
      */
     public function __construct(
         public string      $institutionId,
-        public Collection  $coverageByLanguage,
-        public Collection  $allVendorIds,
+        public Collection  $internalVendorIds,
         public Collection  $importedCalendarVendorIds,
         public ?array      $institutionWorktime,
         public ?Collection $institutionUserWorktimes,
-        public ?Collection $entriesByVendor,
         public ?Collection $emergencySchedules,
         Collection         $vendorLanguageCoverages,
     ) {
+        $this->coverageByLanguage = $vendorLanguageCoverages->groupBy('language_id');
+
         $this->vendor2institutionUserId = $vendorLanguageCoverages
             ->pluck('institution_user_id', 'vendor_id');
 
@@ -80,24 +81,6 @@ readonly class CalendarData
     public function getLanguagesForVendor(string $vendorId): Collection
     {
         return $this->vendorLanguages->get($vendorId, collect());
-    }
-
-    /**
-     * @return array<string, array<int, string>> vendor_id => language IDs
-     */
-    public function getLanguagesByVendor(): array
-    {
-        return $this->vendorLanguages
-            ->map(fn(Collection $langs) => $langs->all())
-            ->all();
-    }
-
-    /**
-     * @return Collection<int, array{id: string, vendor_id: string, start_ts: int, end_ts: int}>
-     */
-    public function getEntriesForVendor(string $vendorId): Collection
-    {
-        return $this->entriesByVendor?->get($vendorId, collect()) ?? collect();
     }
 
     /**

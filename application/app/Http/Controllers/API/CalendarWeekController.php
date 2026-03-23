@@ -13,7 +13,7 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Http\Resources\API\VendorCalendarEntryResource;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Repositories\Calendar\CalendarVendorRepository;
+use App\Policies\VendorPolicy;
 use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
@@ -33,10 +33,10 @@ class CalendarWeekController extends Controller
         private readonly CalendarDataLoader         $dataLoader,
         private readonly VendorsAvailabilityService $availabilityService,
         private readonly SlotDiscretizationService  $discretizationService,
-        private readonly CalendarVendorRepository   $vendorRepo,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
-    ) {
+    )
+    {
         parent::__construct($auditLogPublisher);
     }
 
@@ -69,6 +69,8 @@ class CalendarWeekController extends Controller
     )]
     public function index(WeekAggregationRequest $request): JsonResource
     {
+        $this->authorize('viewAny', VendorCalendarEntry::class);
+
         $startAt = Carbon::parse($request->validated('date_from'))->startOfDay()->utc();
         $endAt = Carbon::parse($request->validated('date_to'))->endOfDay()->utc();
 
@@ -103,7 +105,7 @@ class CalendarWeekController extends Controller
             $slotStartTs = $slotStart->timestamp;
             $slotEndTs = $slotEnd->timestamp;
 
-            while ($cursor < $entries->count() && $entries->get($cursor)->end_at->timestamp <= $slotStartTs) {
+            while ($cursor < $entries->count() && $entries->get($cursor)->start_at->timestamp < $slotStartTs) {
                 $cursor++;
             }
 
@@ -140,7 +142,7 @@ class CalendarWeekController extends Controller
 
     private function clientView(string $institutionId, Carbon $startAt, Carbon $endAt): ClientCalendarWeekSlotsResource
     {
-        $data = $this->dataLoader->loadWithEntries($institutionId, $startAt, $endAt);
+        $data = $this->dataLoader->loadFull($institutionId, $startAt, $endAt);
 
         if ($data->importedCalendarVendorIds->isEmpty()) {
             return ClientCalendarWeekSlotsResource::make(['slots' => collect()]);
@@ -153,7 +155,7 @@ class CalendarWeekController extends Controller
         $now = Carbon::now();
         foreach ($slots as $slotIndex => $slotStart) {
             $slotEnd = $slotStart->copy()->addHours(6);
-            if ($slotEnd <  $now) {
+            if ($slotEnd < $now) {
                 continue;
             }
 
@@ -178,14 +180,13 @@ class CalendarWeekController extends Controller
                     'total_vendors' => $item['total_vendors'],
                     'available_vendors' => $item['available_vendors'],
                 ])
-                ->sortBy(['language_id', 'start_at'])
-                ->values(),
+                ->sortBy(['language_id', 'start_at']),
         ]);
     }
 
     private function projectManagerView(string $institutionId, Carbon $startAt, Carbon $endAt): CalendarWeekProjectManagerResource
     {
-        $data = $this->dataLoader->loadWithEntries($institutionId, $startAt, $endAt);
+        $data = $this->dataLoader->loadFull($institutionId, $startAt, $endAt);
 
         if ($data->importedCalendarVendorIds->isEmpty()) {
             return CalendarWeekProjectManagerResource::make([
@@ -201,7 +202,7 @@ class CalendarWeekController extends Controller
         $now = Carbon::now();
         foreach ($slots as $slotIndex => $slotStart) {
             $slotEnd = $slotStart->copy()->addHours(6);
-            if ($slotEnd <  $now) {
+            if ($slotEnd < $now) {
                 continue;
             }
 
@@ -225,7 +226,6 @@ class CalendarWeekController extends Controller
                 'vendor_ids' => $item['available_vendor_ids'],
             ])
             ->sortBy(['language_id', 'start_at'])
-            ->values()
             ->all();
 
         return CalendarWeekProjectManagerResource::make([
@@ -239,14 +239,17 @@ class CalendarWeekController extends Controller
      */
     private function buildVendorsMap(CalendarData $data): array
     {
-        $vendors = $this->vendorRepo->getVendorsWithInstitutionUser($data->allVendorIds);
-        $vendorLanguages = $data->getLanguagesByVendor();
+        $vendors = $data->internalVendorIds->isNotEmpty() ?
+            Vendor::withGlobalScope('policy', VendorPolicy::scope())
+                ->whereIn('id', $data->internalVendorIds)
+                ->with('institutionUser')
+                ->get() : collect();
 
-        return $vendors->map(fn(Vendor $vendor, string $vendorId) => [
-            'id' => $vendorId,
+        return $vendors->map(fn(Vendor $vendor) => [
+            'id' => $vendor->id,
             'institutionUser' => $vendor->institutionUser,
-            'languages' => $vendorLanguages[$vendorId] ?? [],
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendorId),
-        ])->values()->all();
+            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
+            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
+        ])->all();
     }
 }
