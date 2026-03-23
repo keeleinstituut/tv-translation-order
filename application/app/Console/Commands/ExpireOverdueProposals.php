@@ -26,7 +26,7 @@ class ExpireOverdueProposals extends Command
             ->where('status', CandidateStatus::SubmittedToVendor)
             ->whereNotNull('notified_at')
             ->whereHas('assignment', fn($q) => $q->whereNull('assigned_vendor_id'))
-            ->whereHas('vendor', fn($q) => $q->where('is_internal', false))
+            ->whereHas('vendor', fn($q) => $q->whereNotNull('company_name'))
             ->with('assignment.subProject.project', 'vendor')
             ->get();
 
