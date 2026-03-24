@@ -225,8 +225,8 @@ class ProjectControllerStoreTest extends TestCase
             $project->subProjects
         );
 
-        collect($project->subProjects)
-            ->zip($payload['destination_language_classifier_value_ids'])
+        collect($project->subProjects->sortBy('destination_language_classifier_value_id')->values())
+            ->zip(collect($payload['destination_language_classifier_value_ids'])->sort()->values())
             ->eachSpread(function (SubProject $subProject, string $destination_language_classifier_value_id) use ($payload) {
                 $this->assertEquals(
                     $payload['source_language_classifier_value_id'],

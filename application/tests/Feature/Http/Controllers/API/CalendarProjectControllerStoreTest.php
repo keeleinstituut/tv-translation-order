@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ServiceType;
 use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
@@ -82,9 +83,8 @@ class CalendarProjectControllerStoreTest extends TestCase
         $project = Project::findOrFail($response->json('data.id'));
         $this->assertNotNull($project->event_start_at);
         $this->assertNotNull($project->event_end_at);
-        $this->assertEquals($payload['service_type'], $project->service_type);
+        $this->assertEquals($payload['service_type'], $project->service_type->value);
         $this->assertEquals($payload['location'], $project->location);
-        $this->assertEquals($payload['meeting_link'], $project->meeting_link);
         $this->assertNull($project->deadline_at);
 
         $assignment = $project->subProjects->first()->assignments->first();
@@ -613,9 +613,8 @@ class CalendarProjectControllerStoreTest extends TestCase
             'event_start_at' => $eventStart->toIso8601ZuluString(),
             'event_end_at' => $eventEnd->toIso8601ZuluString(),
             'candidate_vendor_id' => $vendor->id,
-            'service_type' => 'on-site',
+            'service_type' => ServiceType::OnSite->value,
             'location' => 'Tallinn, Estonia',
-            'meeting_link' => 'https://meet.example.com/tpm-test',
         ];
 
         // WHEN
@@ -631,9 +630,8 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->assertEquals($clientUser->id, $project->client_institution_user_id);
         $this->assertEquals($eventStart->toDateTimeString(), $project->event_start_at->toDateTimeString());
         $this->assertEquals($eventEnd->toDateTimeString(), $project->event_end_at->toDateTimeString());
-        $this->assertEquals('on-site', $project->service_type);
+        $this->assertEquals(ServiceType::OnSite, $project->service_type);
         $this->assertEquals('Tallinn, Estonia', $project->location);
-        $this->assertEquals('https://meet.example.com/tpm-test', $project->meeting_link);
         $this->assertTrue($project->is_calendar_project);
         $this->assertNull($project->deadline_at);
 
@@ -670,8 +668,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'destination_language_classifier_value_ids' => [$this->destinationLanguage->id],
             'event_start_at' => $eventStart->toIso8601ZuluString(),
             'event_end_at' => $eventEnd->toIso8601ZuluString(),
-            'service_type' => 'remote',
-            'location' => 'Tartu, Estonia',
+            'service_type' => ServiceType::Remote->value,
             'meeting_link' => 'https://meet.example.com/client-test',
         ];
 
@@ -688,8 +685,7 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->assertEquals($clientUser->id, $project->client_institution_user_id);
         $this->assertEquals($eventStart->toDateTimeString(), $project->event_start_at->toDateTimeString());
         $this->assertEquals($eventEnd->toDateTimeString(), $project->event_end_at->toDateTimeString());
-        $this->assertEquals('remote', $project->service_type);
-        $this->assertEquals('Tartu, Estonia', $project->location);
+        $this->assertEquals(ServiceType::Remote, $project->service_type);
         $this->assertEquals('https://meet.example.com/client-test', $project->meeting_link);
         $this->assertTrue($project->is_calendar_project);
         $this->assertNull($project->deadline_at);
@@ -742,9 +738,8 @@ class CalendarProjectControllerStoreTest extends TestCase
             'destination_language_classifier_value_ids' => [$this->destinationLanguage->id],
             'event_start_at' => $eventStart->toIso8601ZuluString(),
             'event_end_at' => $eventEnd->toIso8601ZuluString(),
-            'service_type' => 'on-site',
+            'service_type' => ServiceType::OnSite->value,
             'location' => 'Tallinn',
-            'meeting_link' => 'https://meet.example.com/abc',
         ];
 
         return array_merge($payload, $overrides);
