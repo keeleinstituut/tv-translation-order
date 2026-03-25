@@ -13,12 +13,10 @@ class RefreshVendorLanguageCoverageJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, SerializesModels;
 
-    public string $queue = 'calendar-refresh';
-
     public int $tries = 3;
 
     public int $backoff = 5;
-    
+
     public int $uniqueFor = 10;
 
     public function handle(): void
