@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProjectStatus;
+use App\Enums\ServiceType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -20,7 +21,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -54,6 +54,8 @@ use Throwable;
  * @property Carbon|null $submitted_to_client_review_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
+ * @property Carbon|null $event_end_at
+ * @property bool $is_calendar_project
  * @property Carbon|null $deleted_at
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
@@ -109,15 +111,39 @@ use Throwable;
  * @method static Builder|Project withTrashed()
  * @method static Builder|Project withoutTrashed()
  * @method static Builder|Project hasAnyOfLanguageDirections(array[] $languageDirections)
- *
+ * @property string|null $service_type
+ * @property string|null $location
+ * @property string|null $meeting_link
+ * @property-read int|null $comments_count
+ * @property-read Collection<int, \App\Models\ProjectReviewRejection> $reviewRejections
+ * @property-read int|null $review_rejections_count
+ * @property-read \App\Models\Taggable|null $pivot
+ * @property-read int|null $destination_language_classifier_values_count
+ * @property-read int|null $assignments_count
+ * @property-read int|null $candidates_count
+ * @property-read int|null $volumes_count
+ * @property-read int|null $assignees_count
+ * @property-read int|null $cat_tool_tm_keys_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereAcceptedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereCancellationComment($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereCancellationReason($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereCancelledAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereCorrectedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereDeadlineNotificationSentAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereLocation($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereMeetingLink($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project wherePrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereRejectedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereServiceType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereSubmittedToClientReviewAt($value)
  * @mixin Eloquent
  */
 class Project extends Model implements AuditLoggable, HasMedia
 {
     use HasFactory;
+    use HasRelationships;
     use HasUuids;
     use InteractsWithMedia;
-    use HasRelationships;
     use SoftDeletes;
 
     protected $table = 'projects';
@@ -142,6 +168,7 @@ class Project extends Model implements AuditLoggable, HasMedia
 
     protected $casts = [
         'event_start_at' => 'datetime',
+        'event_end_at' => 'datetime',
         'deadline_at' => 'datetime',
         'deadline_notification_sent_at' => 'datetime',
         'cancelled_at' => 'datetime',
@@ -151,6 +178,8 @@ class Project extends Model implements AuditLoggable, HasMedia
         'submitted_to_client_review_at' => 'datetime',
         'price' => 'float',
         'status' => ProjectStatus::class,
+        'is_calendar_project' => 'boolean',
+        'service_type' => ServiceType::class,
     ];
 
     public function institution(): BelongsTo
@@ -273,6 +302,11 @@ class Project extends Model implements AuditLoggable, HasMedia
     public function reviewRejections(): HasMany
     {
         return $this->hasMany(ProjectReviewRejection::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ProjectComment::class);
     }
 
     public function workflow(): ProjectWorkflowProcessInstance

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -21,13 +22,17 @@ use Illuminate\Support\Carbon;
  * @property string|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  * @property-read Assignment|null $assignment
  * @property-read Vendor|null $vendor
  *
  * @method static CandidateFactory factory($count = null, $state = [])
  * @method static Builder|Candidate newModelQuery()
  * @method static Builder|Candidate newQuery()
+ * @method static Builder|Candidate onlyTrashed()
  * @method static Builder|Candidate query()
+ * @method static Builder|Candidate withTrashed()
+ * @method static Builder|Candidate withoutTrashed()
  * @method static Builder|Candidate whereAssignmentId($value)
  * @method static Builder|Candidate whereCreatedAt($value)
  * @method static Builder|Candidate whereId($value)
@@ -40,11 +45,19 @@ class Candidate extends Model
 {
     use HasFactory;
     use HasUuids;
+    use SoftDeletes;
 
     protected $guarded = [];
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('ordered', fn (Builder $query) => $query->orderBy('position'));
+    }
+
     protected $casts = [
-        'status' => CandidateStatus::class
+        'status' => CandidateStatus::class,
+        'position' => 'integer',
+        'notified_at' => 'datetime',
     ];
 
     public function vendor(): BelongsTo

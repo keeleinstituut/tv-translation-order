@@ -171,7 +171,7 @@ class ProjectControllerIndexTest extends TestCase
                             $query->where('manager_institution_user_id', $actingUser->id)
                                 ->orWhere('client_institution_user_id', $actingUser->id);
                         })
-                        ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                        ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
                         ->pluck('projects.id')
                         ->all();
 

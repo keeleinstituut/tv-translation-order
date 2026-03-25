@@ -60,18 +60,22 @@ abstract class TestCase extends BaseTestCase
         AuthHelpers::fakeServiceValidationResponse();
 
         $camundaBaseUrl = env('CAMUNDA_API_URL', 'http://process-definition');
+        $camundaFakeResponse = Http::response([
+            'id' => fake()->uuid(),
+            'definitionId' => fake()->uuid(),
+            'businessKey' => fake()->uuid(),
+        ], 200);
         Http::fake([
-            rtrim($camundaBaseUrl, '/') . '/*' => Http::response([
+            rtrim($camundaBaseUrl, '/') . '/process-instance' => Http::response([[
                 'id' => fake()->uuid(),
                 'definitionId' => fake()->uuid(),
                 'businessKey' => fake()->uuid(),
-            ], 200),
-            // Also match any process-definition URL pattern
-            'process-definition/*' => Http::response([
-                'id' => fake()->uuid(),
-                'definitionId' => fake()->uuid(),
-                'businessKey' => fake()->uuid(),
-            ], 200),
+            ]], 200),
+            rtrim($camundaBaseUrl, '/') . '/task/count' => Http::response(['count' => 0], 200),
+            rtrim($camundaBaseUrl, '/') . '/task' => Http::response([], 200),
+            rtrim($camundaBaseUrl, '/') . '/variable-instance*' => Http::response([], 200),
+            rtrim($camundaBaseUrl, '/') . '/*' => $camundaFakeResponse,
+            'process-definition/*' => $camundaFakeResponse,
         ]);
     }
 

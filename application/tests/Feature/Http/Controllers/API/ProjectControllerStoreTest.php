@@ -56,7 +56,7 @@ class ProjectControllerStoreTest extends TestCase
                     ...static::createExampleValidPayload(),
                     'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
                         $query->select('id')
-                            ->from('entity_cache.cached_classifier_values')
+                            ->from('cached_classifier_values')
                             ->where('type', ClassifierValueType::ProjectType->value)
                             ->where('value', 'ORAL_TRANSLATION')
                             ->limit(1);
@@ -225,8 +225,8 @@ class ProjectControllerStoreTest extends TestCase
             $project->subProjects
         );
 
-        collect($project->subProjects)
-            ->zip($payload['destination_language_classifier_value_ids'])
+        collect($project->subProjects->sortBy('destination_language_classifier_value_id')->values())
+            ->zip(collect($payload['destination_language_classifier_value_ids'])->sort()->values())
             ->eachSpread(function (SubProject $subProject, string $destination_language_classifier_value_id) use ($payload) {
                 $this->assertEquals(
                     $payload['source_language_classifier_value_id'],
@@ -330,7 +330,7 @@ class ProjectControllerStoreTest extends TestCase
                 ...static::createExampleValidPayload(),
                 'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
                     $query->select('id')
-                        ->from('entity_cache.cached_classifier_values')
+                        ->from('cached_classifier_values')
                         ->where('type', ClassifierValueType::ProjectType->value)
                         ->where('value', 'ORAL_TRANSLATION')
                         ->limit(1);

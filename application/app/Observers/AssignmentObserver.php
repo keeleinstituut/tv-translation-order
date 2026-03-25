@@ -9,6 +9,7 @@ use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
+use App\Models\VendorCalendarEntry;
 use App\Models\Volume;
 use Illuminate\Support\Carbon;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
@@ -85,6 +86,8 @@ readonly class AssignmentObserver
      */
     public function deleted(Assignment $assignment): void
     {
+        VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
+
         $assignments = $assignment->getSameJobDefinitionAssignmentsQuery()
             ->orderBy('created_at')
             ->get();
