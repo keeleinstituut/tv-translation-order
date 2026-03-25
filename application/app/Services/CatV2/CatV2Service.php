@@ -40,14 +40,18 @@ class CatV2Service {
                 ]);
             });
 
-        $response = $request
+        return $request
             ->post("/api/translation-memories/import", [
                 'translation_memory_id' => $data['translation_memory_id'],
             ])
             ->throw()
             ->json();
-        return $response;
-    }    
+    }
+
+    public static function exportTranslationMemory($data) {
+        return static::client()
+            ->post("/api/translation-memories/export", $data);
+    }
 
     public static function getTranslationMemoryContentChecks() {
         return [];

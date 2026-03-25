@@ -147,6 +147,7 @@ Route::prefix('/catv2')
         Route::get('/translation-memories/{translation_memory_id}', 'translationMemoryShow')->name('translation-memory.tags.show');
         Route::put('/translation-memories/{translation_memory_id}', 'translationMemoryUpdate')->name('translation-memory.tags.update');
         Route::post('/translation-memories/import', 'translationMemoryImport')->name('translation-memory.tm.import');
+        Route::post('/translation-memories/export', 'translationMemoryExport')->name('translation-memory.tm.export');
         Route::get('/translation-memories/content-checks', 'translationMemoryContentCheckIndex')->name('translation-memory.content-checks.index');
     });
 
