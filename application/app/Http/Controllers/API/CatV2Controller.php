@@ -28,6 +28,7 @@ class CatV2Controller extends Controller
             'tv_domain' => 'array',
             'tv_domain.*' => 'uuid',
             'name' => 'string',
+            'with_segment_count' => 'boolean',
         ]));
 
         $typeParam = collect($params->get('type', ['private', 'shared', 'public']));
@@ -117,6 +118,7 @@ class CatV2Controller extends Controller
 
         $response = CatV2Service::getTranslationMemories([
             'filter' => $filter,
+            'with_segment_count' => $params->get('with_segment_count')
         ]);
 
         return CatV2TranslationMemoryResource::collection($response['data'])
