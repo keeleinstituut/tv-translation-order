@@ -559,6 +559,52 @@ class CalendarWeekControllerTest extends TestCase
         }
     }
 
+    public function test_week_project_manager_vendor_still_available_when_partially_booked_in_slot(): void
+    {
+        // GIVEN — vendor works 06:00–18:00 UTC and is booked for only 3h of the 12:00–18:00 slot
+        $monday = Carbon::today()->utc()->startOfWeek();
+        Carbon::setTestNow($monday->copy()->setTime(0, 0));
+        $institution = Institution::factory()->create([
+            'worktime_timezone' => 'UTC',
+            'monday_worktime_start' => '06:00',
+            'monday_worktime_end' => '18:00',
+        ]);
+        /** @var ClassifierValue $language */
+        $language = ClassifierValue::factory()->language()->create();
+        $vendor = $this->createVendorSetup($institution, $language, $monday, $monday->copy()->addDays(6));
+
+        // Book vendor for 12:00–15:00 — leaves 15:00–18:00 free (3h ≥ 1h)
+        $this->createAssignmentEntry(
+            institution: $institution,
+            vendor: $vendor,
+            language: $language,
+            startAt: $monday->copy()->setTime(12, 0),
+            endAt: $monday->copy()->setTime(15, 0),
+        );
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::ManageProject->value],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/calendar/week?date_from=' . $monday->toDateString() . '&date_to=' . $monday->copy()->addDays(6)->toDateString());
+
+        // THEN — vendor should still appear in the 12:00–18:00 slot
+        $response->assertStatus(200);
+
+        $availableSlots = collect($response->json('data.available_slots'));
+
+        $afternoonSlot = $availableSlots->first(fn($s) => str_contains($s['start_at'], 'T12:00:00')
+            && str_starts_with($s['start_at'], $monday->toDateString())
+            && $s['language_id'] === $language->id
+        );
+
+        $this->assertNotNull($afternoonSlot, 'Vendor should still be available in the 12:00–18:00 slot after partial booking');
+        $this->assertContains($vendor->id, $afternoonSlot['vendor_ids'], 'Partially booked vendor should still appear in slot vendor_ids');
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------

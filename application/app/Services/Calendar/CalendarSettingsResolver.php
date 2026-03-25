@@ -2,14 +2,17 @@
 
 namespace App\Services\Calendar;
 
+use App\Enums\ClassifierValueType;
+use App\Enums\ProjectTypeCode;
 use App\Enums\SkillCode;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CalendarSetting;
 use App\Models\JobDefinition;
 use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
 use RuntimeException;
 
-class CalendarSkillResolver
+class CalendarSettingsResolver
 {
     /**
      * @var array<string, string>
@@ -18,21 +21,8 @@ class CalendarSkillResolver
 
     public function getDefaultCalendarSkillId(string $institutionId): string
     {
-        if (isset($this->cache[$institutionId])) {
-            return $this->cache[$institutionId];
-        }
-
-        $calendarSetting = CalendarSetting::query()
-            ->where('institution_id', $institutionId)
-            ->first();
-
-        if (! $calendarSetting) {
-            $this->cache[$institutionId] = $this->getDefaultSkill()->id;
-            return $this->cache[$institutionId];
-        }
-
         $projectTypeConfig = ProjectTypeConfig::query()
-            ->where('type_classifier_value_id', $calendarSetting->default_project_type_id)
+            ->where('type_classifier_value_id', $this->getDefaultCalendarProjectTypeId($institutionId))
             ->first();
 
         if (! $projectTypeConfig) {
@@ -52,6 +42,26 @@ class CalendarSkillResolver
         }
 
         return $this->cache[$institutionId] = $jobDefinition->skill_id;
+    }
+
+    public function getDefaultCalendarProjectTypeId(string $institutionId): string
+    {
+        $calendarSetting = CalendarSetting::query()
+            ->where('institution_id', $institutionId)
+            ->first();
+
+        if (!$calendarSetting || !$calendarSetting->default_project_type_id) {
+            $projectType = ClassifierValue::where('type', ClassifierValueType::ProjectType)
+                ->where('value', ProjectTypeCode::OralTranslation)->first();
+
+            if (blank($projectType)) {
+                throw new RuntimeException('Failed to resolve default project type for calendar');
+            }
+
+            return $projectType->id;
+        }
+
+        return $calendarSetting->default_project_type_id;
     }
 
     private function getDefaultSkill(): Skill

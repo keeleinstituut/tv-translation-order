@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 readonly class SlotMatchingService
 {
     public function __construct(
-        private CalendarSkillResolver      $calendarSkillResolver,
+        private CalendarSettingsResolver   $calendarSettings,
         private VendorWorkingHoursResolver $workingHoursResolver,
         private CalendarVendorRepository   $vendorRepo,
         private WorktimeRepository         $worktimeRepo,
@@ -145,7 +145,7 @@ readonly class SlotMatchingService
             $institutionId,
         )->filter(fn(Vendor $v) => !$v->is_internal);
 
-        $skillId = $this->calendarSkillResolver->getDefaultCalendarSkillId($institutionId);
+        $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
 
         if ($externals->isEmpty()) {
             return $externals;

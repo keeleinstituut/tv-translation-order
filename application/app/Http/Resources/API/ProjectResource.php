@@ -3,6 +3,7 @@
 namespace App\Http\Resources\API;
 
 use App\Enums\ProjectStatus;
+use App\Enums\ServiceType;
 use App\Http\Resources\MediaResource;
 use App\Http\Resources\TagResource;
 use App\Models\Project;
@@ -48,6 +49,9 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'comments', type: 'string', nullable: true),
         new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'is_calendar_project', type: 'boolean'),
+        new OA\Property(property: 'service_type', type: 'string', enum: ServiceType::class, nullable: true),
         new OA\Property(property: 'corrected_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'accepted_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'cancelled_at', type: 'string', format: 'date-time', nullable: true),
@@ -66,7 +70,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'source_language_classifier_value', ref: ClassifierValueResource::class),
         new OA\Property(property: 'destination_languages_classifier_values', type: 'array', items: new OA\Items(ref: ClassifierValueResource::class)),
         new OA\Property(property: 'status', type: 'string', enum: ProjectStatus::class),
-        new OA\Property(property: 'cost', description: 'TODO (computation/enumeration of costs is unclear for now)', anyOf: [new OA\Schema(const: null)]),
+        new OA\Property(property: 'cost', anyOf: [new OA\Schema(const: null)]),
     ],
     type: 'object'
 )]
@@ -92,6 +96,9 @@ class ProjectResource extends JsonResource
                 'status',
                 'deadline_at',
                 'event_start_at',
+                'event_end_at',
+                'is_calendar_project',
+                'service_type',
                 'corrected_at',
                 'rejected_at',
                 'accepted_at',

@@ -4,14 +4,14 @@ namespace App\Repositories\Calendar;
 
 use App\Models\InstitutionMainLanguage;
 use App\Models\VendorLanguageCoverage;
-use App\Services\Calendar\CalendarSkillResolver;
+use App\Services\Calendar\CalendarSettingsResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 readonly class VendorLanguageCoverageRepository
 {
     public function __construct(
-        private CalendarSkillResolver $calendarSkillResolver,
+        private CalendarSettingsResolver $calendarSettings,
     ) {}
 
 
@@ -51,7 +51,7 @@ readonly class VendorLanguageCoverageRepository
         ?string $languageId = null,
         ?bool $isInternal = null,
     ): Builder {
-        $skillId = $this->calendarSkillResolver->getDefaultCalendarSkillId($institutionId);
+        $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
 
         $query = VendorLanguageCoverage::query()
             ->where('institution_id', $institutionId)
