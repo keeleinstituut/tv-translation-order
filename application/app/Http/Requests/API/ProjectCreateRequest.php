@@ -4,6 +4,7 @@ namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ServiceType;
 use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
@@ -126,6 +127,7 @@ use OpenApi\Attributes as OA;
                     property: 'service_type',
                     description: 'Required for calendar projects.',
                     type: 'string',
+                    enum: ['ON_SITE', 'REMOTE'],
                     nullable: true
                 ),
                 new OA\Property(property: 'location', type: 'string', nullable: true),
@@ -250,15 +252,17 @@ class ProjectCreateRequest extends FormRequest
             'service_type' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->isCalendarProject()),
-                'string',
+                Rule::in(ServiceType::cases()),
             ],
             'location' => [
                 'nullable',
-                'string'
+                'string',
+                Rule::requiredIf(fn () => $this->get('service_type') === ServiceType::OnSite->value),
             ],
             'meeting_link' => [
                 'nullable',
-                'string'
+                'string',
+                Rule::requiredIf(fn () => $this->get('service_type') === ServiceType::Remote->value),
             ],
             'use_external_vendor' => [
                 'nullable',

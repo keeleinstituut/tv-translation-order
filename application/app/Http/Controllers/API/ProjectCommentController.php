@@ -7,8 +7,10 @@ use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCommentCreateRequest;
 use App\Http\Requests\API\ProjectCommentUpdateRequest;
 use App\Http\Resources\API\ProjectCommentResource;
+use App\Models\Project;
 use App\Models\ProjectComment;
 use App\Policies\ProjectCommentPolicy;
+use App\Policies\ProjectPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +34,8 @@ class ProjectCommentController extends Controller
     #[OAH\ResourceResponse(dataRef: ProjectCommentResource::class, description: 'Created project comment', response: Response::HTTP_CREATED)]
     public function store(ProjectCommentCreateRequest $request): ProjectCommentResource
     {
-        $project = self::getBaseQuery()->findOrFail($request->route('project'));
+        $project = Project::withGlobalScope('policy', ProjectPolicy::scope())
+            ->findOrFail($request->route('project'));
 
         $this->authorize('create', ProjectComment::class);
 

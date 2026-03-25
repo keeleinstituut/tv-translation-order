@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Services\Calendar\CalendarSkillResolver;
+use App\Services\Calendar\CalendarSettingsResolver;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Sync\ApiClients\TvAuthorizationApiClient;
 use App\Sync\ApiClients\TvClassifierApiClient;
@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(CalendarSkillResolver::class);
+        $this->app->singleton(CalendarSettingsResolver::class);
     }
 
     /**

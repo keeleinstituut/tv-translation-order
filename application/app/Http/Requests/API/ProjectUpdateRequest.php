@@ -4,6 +4,7 @@ namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ServiceType;
 use App\Enums\TagType;
 use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
@@ -40,7 +41,7 @@ use Symfony\Component\HttpFoundation\Response;
             new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
             new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
             new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', example: '2020-12-31T14:00:00Z', nullable: true),
-            new OA\Property(property: 'service_type', type: 'string', nullable: true),
+            new OA\Property(property: 'service_type', type: 'string', enum: ['ON_SITE', 'REMOTE'], nullable: true),
             new OA\Property(property: 'location', type: 'string', nullable: true),
             new OA\Property(property: 'meeting_link', type: 'string', nullable: true),
             new OA\Property(property: 'candidate_vendor_id', type: 'string', format: 'uuid', nullable: true),
@@ -125,9 +126,19 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 'date_format:' . self::DATETIME_FORMAT,
                 Rule::prohibitedIf(fn() => !$this->isCalendarProject()),
             ],
-            'service_type' => ['sometimes', 'nullable', 'string'],
-            'location' => ['sometimes', 'nullable', 'string'],
-            'meeting_link' => ['sometimes', 'nullable', 'string'],
+            'service_type' => ['sometimes', 'nullable', Rule::in(ServiceType::cases())],
+            'location' => [
+                'sometimes',
+                'nullable',
+                'string',
+                Rule::requiredIf(fn () => ($this->get('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::OnSite->value),
+            ],
+            'meeting_link' => [
+                'sometimes',
+                'nullable',
+                'string',
+                Rule::requiredIf(fn () => ($this->get('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::Remote->value),
+            ],
             'candidate_vendor_id' => [
                 'sometimes',
                 'nullable',

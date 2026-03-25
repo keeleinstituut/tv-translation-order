@@ -27,6 +27,7 @@ use App\Models\VendorCalendarEntry;
 use App\Models\Volume;
 use App\Policies\ProjectPolicy;
 use App\Services\Calendar\CalendarRoleResolver;
+use App\Services\Calendar\CalendarSettingsResolver;
 use App\Services\Calendar\PrebookService;
 use App\Services\Calendar\SlotMatchingService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
@@ -53,10 +54,11 @@ use Throwable;
 class ProjectController extends Controller
 {
     public function __construct(
-        private readonly SlotMatchingService  $slotMatchingService,
-        private readonly PrebookService       $prebookService,
-        private readonly CalendarRoleResolver $calendarRoleResolver,
-        AuditLogPublisher  $auditLogPublisher,
+        private readonly SlotMatchingService      $slotMatchingService,
+        private readonly PrebookService           $prebookService,
+        private readonly CalendarRoleResolver     $calendarRoleResolver,
+        private readonly CalendarSettingsResolver $calendarSettings,
+        AuditLogPublisher                         $auditLogPublisher,
     )
     {
         parent::__construct($auditLogPublisher);
@@ -262,14 +264,17 @@ class ProjectController extends Controller
 
         return DB::transaction(function () use ($params) {
             $isCalendar = $params->get('is_calendar_project', false);
+            $institutionId = Auth::user()->institutionId;
+            $institutionUserId = Auth::user()->institutionUserId;
 
             $project = Project::make([
-                'institution_id' => Auth::user()->institutionId,
-                'type_classifier_value_id' => $params->get('type_classifier_value_id'),
+                'institution_id' => $institutionId,
+                'type_classifier_value_id' => $params->get('type_classifier_value_id') ?:
+                    ($isCalendar ? $this->calendarSettings->getDefaultCalendarProjectTypeId($institutionId) : null),
                 'translation_domain_classifier_value_id' => $params->get('translation_domain_classifier_value_id'),
                 'reference_number' => $params->get('reference_number'),
                 'manager_institution_user_id' => $params->get('manager_institution_user_id'),
-                'client_institution_user_id' => $params->get('client_institution_user_id', Auth::user()->institutionUserId),
+                'client_institution_user_id' => $params->get('client_institution_user_id', $institutionUserId),
                 'deadline_at' => $params->get('deadline_at'),
                 'comments' => $params->get('comments'),
                 'event_start_at' => $params->get('event_start_at'),
@@ -312,9 +317,9 @@ class ProjectController extends Controller
 
             $project->refresh();
 
-            $isCalendar && $this->handleCalendarProjectCreation($project, $params);
-
             $project->workflow()->start();
+
+            $isCalendar && $this->handleCalendarProjectCreation($project, $params);
 
             $this->auditLogPublisher->publishCreateObject($project);
 

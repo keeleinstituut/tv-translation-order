@@ -218,7 +218,7 @@ class CalendarWeekController extends Controller
             );
         }
 
-        $availableSlots = $results
+        $availableSlots = $results->filter(fn($item) => $item['available_vendors'] > 0)
             ->map(fn($item) => [
                 'language_id' => $item['language_id'],
                 'start_at' => $item['slot_start'],

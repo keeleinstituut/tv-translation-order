@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProjectStatus;
+use App\Enums\ServiceType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -178,6 +179,7 @@ class Project extends Model implements AuditLoggable, HasMedia
         'price' => 'float',
         'status' => ProjectStatus::class,
         'is_calendar_project' => 'boolean',
+        'service_type' => ServiceType::class,
     ];
 
     public function institution(): BelongsTo
