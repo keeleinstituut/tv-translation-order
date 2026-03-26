@@ -10,8 +10,10 @@ use App\Enums\SubProjectStatus;
 use App\Enums\VolumeUnits;
 use App\Helpers\DateUtil;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProjectDelayedCancelJob;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\ProjectCancelRequest;
+use App\Http\Requests\API\ProjectDeclineCancellationRequest;
 use App\Http\Requests\API\ProjectCreateRequest;
 use App\Http\Requests\API\ProjectListRequest;
 use App\Http\Requests\API\ProjectsExportRequest;
@@ -816,8 +818,29 @@ class ProjectController extends Controller
                 abort(Response::HTTP_BAD_REQUEST, 'Only projects with status `NEW` or `REGISTERED` can be cancelled.');
             }
 
+            if ($project->cancellation_pending_at) {
+                abort(Response::HTTP_CONFLICT, 'Cancellation is already pending.');
+            }
+
+            $isDelayed = $project->is_calendar_project && ($request->validated('is_delayed') ?? true);
+
+            if ($isDelayed) {
+                $project->cancellation_pending_at = now();
+                $project->cancellation_reason = $request->validated('cancellation_reason');
+                $project->cancellation_comment = $request->validated('cancellation_comment');
+                $project->saveOrFail();
+
+                ProjectDelayedCancelJob::dispatch($project->id)
+                    ->delay(now()->addSeconds(ProjectDelayedCancelJob::CANCELLATION_DELAY_SECONDS));
+
+                return ProjectResource::make($project->refresh());
+            }
+
             $project->status = ProjectStatus::Cancelled;
-            $project->fill($request->validated());
+            $project->fill([
+                'cancellation_reason' => $request->validated('cancellation_reason'),
+                'cancellation_comment' => $request->validated('cancellation_comment'),
+            ]);
             $project->saveOrFail();
 
             if ($project->workflow()->isStarted()) {
@@ -826,6 +849,37 @@ class ProjectController extends Controller
 
             return ProjectResource::make($project->refresh());
         });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/projects/{id}/cancel-decline',
+        description: 'Decline a pending cancellation of a calendar project within the grace period',
+        tags: ['Projects'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\NotFound, new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: ProjectResource::class, description: 'Project with cancellation declined')]
+    public function declineCancellation(ProjectDeclineCancellationRequest $request): ProjectResource
+    {
+        /** @var Project $project */
+        $project = self::getBaseQuery()
+            ->findOrFail($request->route('id'));
+
+        $this->authorize('cancel', $project);
+
+        if (! $project->cancellation_pending_at) {
+            abort(Response::HTTP_BAD_REQUEST, 'No pending cancellation to decline.');
+        }
+
+        $project->cancellation_pending_at = null;
+        $project->cancellation_reason = null;
+        $project->cancellation_comment = null;
+        $project->saveOrFail();
+
+        return ProjectResource::make($project->refresh());
     }
 
     /**

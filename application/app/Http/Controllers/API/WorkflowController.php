@@ -309,11 +309,20 @@ class WorkflowController extends Controller
         // For some reason tasks from camunda are missing project_id when assignment_id is set.
         // Project_id is directly derivable through one-to-one relations between assignment -> subProject -> project.
         $assignments = collect(Assignment::getModel()->with('subProject.project')->whereIn('id', $entities->pluck('var_assignment_id'))->get());
-        $entities = $entities->map(function ($entity) use ($assignments) {;
+        $entities = $entities->map(function ($entity) use ($assignments) {
+            /** @var Assignment $assignment */
             $assignment = $assignments->firstWhere('id', $entity['var_assignment_id']);
             if ($assignment) {
                 $entity['var_project_id'] = $assignment->subProject->project->id;
                 $entity['var_sub_project_id'] = $assignment->subProject->id;
+
+                /**
+                 * deadline_at is not set for calendar projects as it has logic behind it, and it doesn't make sense to apply it to calendar projects.
+                 * deadline_at used to send notifications, but for calendar projects it's not applicable as they have a strict time window when the work is happening
+                 */
+                if ($assignment->subProject->project->is_calendar_project) {
+                    $entity['var_deadline_at'] = $assignment->subProject->project->event_end_at;
+                }
             }
             return $entity;
         });

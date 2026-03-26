@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
+use App\Enums\SubProjectStatus;
 use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Models\Assignment;
 use App\Models\SubProject;
@@ -101,6 +102,14 @@ class SubProjectObserver
                 } elseif ($assignment->deadline_at > $subProject->deadline_at) {
                     $assignment->deadline_at = $subProject->deadline_at;
                     $assignment->saveOrFail();
+                }
+            });
+        }
+
+        if ($subProject->wasChanged('status') && $subProject->status === SubProjectStatus::Cancelled) {
+            $subProject->assignments->each(function (Assignment $assignment) {
+                if (filled($assignment->calendarEntry)) {
+                    $assignment->calendarEntry->delete();
                 }
             });
         }

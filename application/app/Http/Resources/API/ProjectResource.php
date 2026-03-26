@@ -104,6 +104,8 @@ class ProjectResource extends JsonResource
                 'rejected_at',
                 'accepted_at',
                 'cancelled_at',
+                'cancellation_pending_at',
+                'cancel_at',
                 'created_at',
                 'updated_at',
             ),

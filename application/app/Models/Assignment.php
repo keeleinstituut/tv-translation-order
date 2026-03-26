@@ -46,6 +46,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Volume> $volumes
  * @property-read int|null $volumes_count
  * @property-read Collection<int, CatToolJob> $catToolJobs
+ * @property-read VendorCalendarEntry|null $calendarEntry
  *
  * @method static AssignmentFactory factory($count = null, $state = [])
  * @method static Builder|Assignment newModelQuery()
