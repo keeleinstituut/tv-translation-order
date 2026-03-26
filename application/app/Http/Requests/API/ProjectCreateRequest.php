@@ -5,11 +5,13 @@ namespace App\Http\Requests\API;
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
 use App\Enums\ServiceType;
+use App\Enums\TagType;
 use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
+use App\Models\Tag;
 use App\Models\Vendor;
 use App\Rules\ModelBelongsToInstitutionRule;
 use App\Rules\ProjectFileValidator;
@@ -134,6 +136,12 @@ use OpenApi\Attributes as OA;
                 new OA\Property(property: 'location', type: 'string', nullable: true),
                 new OA\Property(property: 'meeting_link', type: 'string', nullable: true),
                 new OA\Property(property: 'use_external_vendor', type: 'boolean', nullable: true),
+                new OA\Property(
+                    property: 'tags',
+                    type: 'array',
+                    items: new OA\Items(type: 'string', format: 'uuid'),
+                    nullable: true
+                ),
             ],
             type: 'object'
         ),
@@ -158,6 +166,7 @@ use OpenApi\Attributes as OA;
             new OA\Encoding(property: 'location', contentType: 'application/json'),
             new OA\Encoding(property: 'meeting_link', contentType: 'application/json'),
             new OA\Encoding(property: 'use_external_vendor', contentType: 'application/json'),
+            new OA\Encoding(property: 'tags', contentType: 'application/json'),
         ]
     ),
 )]
@@ -270,6 +279,11 @@ class ProjectCreateRequest extends FormRequest
             'use_external_vendor' => [
                 'nullable',
                 'boolean'
+            ],
+            'tags' => ['sometimes', 'array'],
+            'tags.*' => [
+                'required',
+                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Order->value, TagType::Vendor->value]),
             ],
         ];
     }

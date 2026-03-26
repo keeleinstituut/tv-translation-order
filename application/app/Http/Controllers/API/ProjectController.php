@@ -294,6 +294,11 @@ class ProjectController extends Controller
 
             $project->saveOrFail();
 
+            $tagsInput = $params->get('tags', []);
+            if (filled($tagsInput)) {
+                $project->tags()->attach($tagsInput);
+            }
+
             if (filled($params->get('comment'))) {
                 (new ProjectComment)->fill([
                     'project_id' => $project->id,
@@ -340,6 +345,7 @@ class ProjectController extends Controller
                 'translationDomainClassifierValue',
                 'subProjects.assignments',
                 'projectComments',
+                'tags',
             ]);
 
             return new ProjectResource($project);
@@ -539,8 +545,8 @@ class ProjectController extends Controller
 
                     $project->save();
 
-                    $tagsInput = $params->get('tags');
-                    if (is_array($tagsInput)) {
+                    $tagsInput = $params->get('tags', []);
+                    if (filled($tagsInput)) {
                         $project->tags()->detach();
                         $project->tags()->attach($tagsInput);
                     }
