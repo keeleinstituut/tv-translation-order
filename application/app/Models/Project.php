@@ -304,9 +304,9 @@ class Project extends Model implements AuditLoggable, HasMedia
         return $this->hasMany(ProjectReviewRejection::class);
     }
 
-    public function comments(): HasMany
+    public function projectComments(): HasMany
     {
-        return $this->hasMany(ProjectComment::class);
+        return $this->hasMany(ProjectComment::class)->orderBy('created_at');
     }
 
     public function workflow(): ProjectWorkflowProcessInstance

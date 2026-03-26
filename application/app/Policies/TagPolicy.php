@@ -25,14 +25,14 @@ class TagPolicy
     {
         return Auth::hasPrivilege(PrivilegeKey::EditTag->value) &&
             $this->isFromSameInstitutionAsCurrentUser($tag) &&
-            $tag->type !== TagType::VendorSkill;
+            !in_array($tag->type, [TagType::VendorSkill, TagType::TranslationDomain]);
     }
 
     public function delete(JwtPayloadUser $jwtPayloadUser, Tag $tag)
     {
         return Auth::hasPrivilege(PrivilegeKey::DeleteTag->value) &&
             $this->isFromSameInstitutionAsCurrentUser($tag) &&
-            $tag->type !== TagType::VendorSkill;
+            !in_array($tag->type, [TagType::VendorSkill, TagType::TranslationDomain]);
     }
 
     public function isFromSameInstitutionAsCurrentUser(Tag $tag): bool

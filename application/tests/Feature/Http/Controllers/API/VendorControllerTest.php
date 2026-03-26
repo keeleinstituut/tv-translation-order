@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
+use App\Enums\TagType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -327,6 +328,88 @@ class VendorControllerTest extends TestCase
 
         $this->assertEqualsCanonicalizing($payload['tags'], $savedVendor->tags->pluck('id')->toArray());
         $this->assertEquals($payload['comment'], $savedVendor->comment);
+    }
+
+    public function test_update_with_translation_domain_tags(): void
+    {
+        $institution = Institution::factory()->create();
+        $institutionId = $institution->id;
+
+        $testIUser = InstitutionUser::factory()
+            ->has(Vendor::factory())
+            ->setInstitution([
+                'id' => $institutionId,
+            ])
+            ->create();
+        $testVendor = $testIUser->vendor;
+
+        $vendorTags = Tag::factory()
+            ->count(2)
+            ->typeVendor()
+            ->create(['institution_id' => $institutionId]);
+
+        $translationDomainTags = Tag::factory()
+            ->count(2)
+            ->translationDomain()
+            ->create();
+
+        $allTags = $vendorTags->merge($translationDomainTags);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => $institutionId,
+            ],
+        ]);
+
+        $payload = [
+            'tags' => $allTags->pluck('id')->toArray(),
+        ];
+
+        $response = $this->prepareAuthorizedRequest($accessToken)->putJson("/api/vendors/$testVendor->id", $payload);
+
+        $response->assertStatus(200);
+
+        $savedVendor = Vendor::find($testVendor->id)->load('tags');
+        $this->assertEqualsCanonicalizing($payload['tags'], $savedVendor->tags->pluck('id')->toArray());
+    }
+
+    public function test_update_with_vendor_skill_tags_returned_422(): void
+    {
+        $institution = Institution::factory()->create();
+        $institutionId = $institution->id;
+
+        $testIUser = InstitutionUser::factory()
+            ->has(Vendor::factory())
+            ->setInstitution([
+                'id' => $institutionId,
+            ])
+            ->create();
+        $testVendor = $testIUser->vendor;
+
+        $vendorSkillTags = Tag::factory()
+            ->count(2)
+            ->vendorSkills()
+            ->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [
+                'EDIT_VENDOR_DB',
+            ],
+            'selectedInstitution' => [
+                'id' => $institutionId,
+            ],
+        ]);
+
+        $payload = [
+            'tags' => $vendorSkillTags->pluck('id')->toArray(),
+        ];
+
+        $this->prepareAuthorizedRequest($accessToken)
+            ->putJson("/api/vendors/$testVendor->id", $payload)
+            ->assertUnprocessable();
     }
 
     public static function constructRepresentation($obj)

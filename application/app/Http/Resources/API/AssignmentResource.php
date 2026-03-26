@@ -39,12 +39,13 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'assignee_comments', type: 'string'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
-        new OA\Property(property: 'assignee', ref: VendorResource::class),
-        new OA\Property(property: 'job_definition', ref: JobDefinitionResource::class),
-        new OA\Property(property: 'candidates', type: 'array', items: new OA\Items(ref: VendorResource::class)),
+        new OA\Property(property: 'job_definition', ref: JobDefinitionResource::class, nullable: true),
+        new OA\Property(property: 'assignee', ref: VendorResource::class, nullable: true),
+        new OA\Property(property: 'candidates', type: 'array', items: new OA\Items(ref: CandidateResource::class), nullable: true),
+        new OA\Property(property: 'volumes', type: 'array', items: new OA\Items(ref: VolumeResource::class), nullable: true),
+        new OA\Property(property: 'cat_jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class), nullable: true),
+        new OA\Property(property: 'subProject', ref: SubProjectResource::class, nullable: true),
         new OA\Property(property: 'manager_candidates', type: 'array', items: new OA\Items(ref: ProjectManagerCandidateResource::class)),
-        new OA\Property(property: 'volumes', type: 'array', items: new OA\Items(ref: VolumeResource::class)),
-        new OA\Property(property: 'jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class)),
     ],
     type: 'object'
 )]

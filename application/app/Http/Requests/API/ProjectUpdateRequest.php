@@ -37,7 +37,7 @@ use Symfony\Component\HttpFoundation\Response;
             new OA\Property(property: 'manager_institution_user_id', type: 'string', format: 'uuid', nullable: true),
             new OA\Property(property: 'client_institution_user_id', type: 'string', format: 'uuid', nullable: true),
             new OA\Property(property: 'reference_number', type: 'string', nullable: true),
-            new OA\Property(property: 'comments', type: 'string', nullable: true),
+            new OA\Property(property: 'comments', type: 'string', nullable: true, deprecated: true),
             new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
             new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
             new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', example: '2020-12-31T14:00:00Z', nullable: true),
@@ -151,7 +151,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
             'tags' => 'sometimes|array',
             'tags.*' => [
                 'required',
-                Rule::exists(Tag::class, 'id')->where('type', TagType::Order->value),
+                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Order->value, TagType::TranslationDomain->value]),
             ],
         ];
     }
