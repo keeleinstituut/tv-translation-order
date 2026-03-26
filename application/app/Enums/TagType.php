@@ -8,6 +8,7 @@ enum TagType: string
     case Vendor = 'Teostaja';
     case Order = 'Tellimus';
     case VendorSkill = 'Oskused';
+    case TranslationDomain = 'Valdkond';
 
     public static function values(): array
     {

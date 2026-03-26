@@ -45,7 +45,7 @@ class StoreTagsRequest extends FormRequest
     {
         return [
             'tags' => ['required', 'array', 'min:1'],
-            'tags.*.type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
+            'tags.*.type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value, TagType::TranslationDomain->value])],
             'tags.*.name' => ['required', 'string', 'max:'. TagNameRule::MAX_LENGTH],
             'tags.*' => [
                 'required',

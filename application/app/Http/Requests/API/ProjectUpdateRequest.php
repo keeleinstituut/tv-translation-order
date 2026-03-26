@@ -151,7 +151,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
             'tags' => 'sometimes|array',
             'tags.*' => [
                 'required',
-                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Order->value, TagType::Vendor->value]),
+                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Order->value, TagType::TranslationDomain->value]),
             ],
         ];
     }

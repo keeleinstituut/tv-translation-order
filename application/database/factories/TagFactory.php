@@ -44,9 +44,14 @@ class TagFactory extends Factory
         return $this->withType(TagType::Order);
     }
 
+    public function translationDomain(): TagFactory
+    {
+        return $this->withType(TagType::TranslationDomain);
+    }
+
     public function withType(TagType $type): TagFactory
     {
-        if ($type === TagType::VendorSkill) {
+        if (in_array($type, [TagType::VendorSkill, TagType::TranslationDomain])) {
             return $this->state(fn () => [
                 'type' => $type,
                 'institution_id' => null,

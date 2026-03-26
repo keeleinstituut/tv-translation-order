@@ -68,6 +68,49 @@ class TagControllerIndexTest extends TestCase
         ));
     }
 
+    public function test_list_of_translation_domain_tags_returned(): void
+    {
+        $institution = Institution::factory()->create();
+        $translationDomainTags = Tag::factory(10)->translationDomain()->create();
+        $translationDomainTags->map(fn (Tag $tag) => $this->assertEmpty($tag->institution_id));
+
+        $response = $this->sendListRequestWithCustomHeaders(
+            AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]),
+            ['type' => TagType::TranslationDomain->value],
+        )->assertOk();
+
+        $translationDomainTags->each(fn (Tag $tag) => $response->assertJsonFragment(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
+    }
+
+    public function test_list_of_tags_filtered_by_multiple_types_returned(): void
+    {
+        $institution = Institution::factory()->create();
+        $orderTags = Tag::factory(5)->for($institution)
+            ->create(['type' => TagType::Order->value]);
+        $translationDomainTags = Tag::factory(5)->translationDomain()->create();
+        $vendorTags = Tag::factory(5)->for($institution)
+            ->create(['type' => TagType::Vendor->value]);
+
+        $response = $this->sendListRequestWithCustomHeaders(
+            AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]),
+            ['type' => [TagType::Order->value, TagType::TranslationDomain->value]],
+        )->assertOk();
+
+        $orderTags->each(fn (Tag $tag) => $response->assertJsonFragment(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
+
+        $translationDomainTags->each(fn (Tag $tag) => $response->assertJsonFragment(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
+
+        $vendorTags->each(fn (Tag $tag) => $response->assertJsonMissingExact(
+            RepresentationHelpers::createTagFlatRepresentation($tag)
+        ));
+    }
+
     public function test_list_of_tags_doesnt_contains_tags_from_another_institution(): void
     {
         $institution = Institution::factory()->create();

@@ -46,7 +46,7 @@ class UpdateTagsRequest extends FormRequest
     public function rules()
     {
         return [
-            'type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value])],
+            'type' => ['required', 'bail', new Enum(TagType::class), Rule::notIn([TagType::VendorSkill->value, TagType::TranslationDomain->value])],
             'tags' => ['present', 'array', 'max:10000'],
             'tags.*.name' => ['required', 'string', 'max:'. TagNameRule::MAX_LENGTH],
             'tags.*.id' => ['sometimes', 'nullable', 'uuid',

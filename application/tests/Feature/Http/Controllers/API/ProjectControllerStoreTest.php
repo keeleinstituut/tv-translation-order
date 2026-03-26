@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\ProjectComment;
 use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
+use App\Models\Tag;
 use Closure;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Testing\File;
@@ -458,6 +459,89 @@ class ProjectControllerStoreTest extends TestCase
         $this->assertDatabaseMissing(ProjectComment::class, [
             'project_id' => $project->id,
         ]);
+    }
+
+    /** @throws Throwable */
+    public function test_project_is_created_with_translation_domain_tags(): void
+    {
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $orderTags = Tag::factory()->count(2)->typeOrder()->create([
+            'institution_id' => $actingUser->institution['id'],
+        ]);
+        $translationDomainTags = Tag::factory()->count(2)->translationDomain()->create();
+        $allTags = $orderTags->merge($translationDomainTags);
+
+        $payload = [
+            ...static::createExampleValidPayload(),
+            'tags' => $allTags->pluck('id')->toArray(),
+        ];
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                $payload
+            );
+
+        $response->assertCreated();
+
+        $project = Project::find($response->json('data.id'));
+        $this->assertModelExists($project);
+        $this->assertEqualsCanonicalizing(
+            $allTags->pluck('id')->toArray(),
+            $project->tags->pluck('id')->toArray()
+        );
+    }
+
+    /** @throws Throwable */
+    public function test_project_creation_with_vendor_skill_tags_returns_422(): void
+    {
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $vendorSkillTags = Tag::factory()->count(2)->vendorSkills()->create();
+
+        $payload = [
+            ...static::createExampleValidPayload(),
+            'tags' => $vendorSkillTags->pluck('id')->toArray(),
+        ];
+
+        $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                $payload
+            )
+            ->assertUnprocessable();
+    }
+
+    /** @throws Throwable */
+    public function test_project_creation_with_vendor_type_tags_returns_422(): void
+    {
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $vendorTags = Tag::factory()->count(2)->typeVendor()->create([
+            'institution_id' => $actingUser->institution['id'],
+        ]);
+
+        $payload = [
+            ...static::createExampleValidPayload(),
+            'tags' => $vendorTags->pluck('id')->toArray(),
+        ];
+
+        $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                $payload
+            )
+            ->assertUnprocessable();
     }
 
     /** @throws Throwable */

@@ -67,6 +67,17 @@ class TagControllerStoreTest extends TestCase
             ->assertUnprocessable();
     }
 
+    public function test_storing_of_translation_domain_tags_returned_422(): void
+    {
+        $institution = Institution::factory()->create();
+        $this->sendStoreRequestWithCustomHeaders([
+            'tags' => [
+                ['name' => 'Some name', 'type' => TagType::TranslationDomain->value],
+            ],
+        ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [PrivilegeKey::AddTag]))
+            ->assertUnprocessable();
+    }
+
     public function test_storing_of_tags_with_empty_name_returned_422(): void
     {
         $institution = Institution::factory()->create();
