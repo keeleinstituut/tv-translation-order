@@ -39,7 +39,7 @@ use OpenApi\Attributes as OA;
         'source_language_classifier_value',
         'destination_language_classifier_values',
         'status',
-        'cost',
+        'price',
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
@@ -71,7 +71,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'source_language_classifier_value', ref: ClassifierValueResource::class),
         new OA\Property(property: 'destination_languages_classifier_values', type: 'array', items: new OA\Items(ref: ClassifierValueResource::class)),
         new OA\Property(property: 'status', type: 'string', enum: ProjectStatus::class),
-        new OA\Property(property: 'cost', anyOf: [new OA\Schema(const: null)]),
+        new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
     ],
     type: 'object'
 )]
