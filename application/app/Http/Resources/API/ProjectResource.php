@@ -46,7 +46,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'ext_id', type: 'string'),
         new OA\Property(property: 'reference_number', type: 'string', nullable: true),
         new OA\Property(property: 'institution_id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'comments', type: 'string', nullable: true),
+        new OA\Property(property: 'comments', type: 'string', nullable: true, deprecated: true),
+        new OA\Property(property: 'project_comments', type: 'array', items: new OA\Items(ref: ProjectCommentResource::class)),
         new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', nullable: true),
@@ -117,6 +118,7 @@ class ProjectResource extends JsonResource
             'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
+            'project_comments' => ProjectCommentResource::collection($this->whenLoaded('projectComments')),
             'workflow_started' => $this->workflow()->isStarted()
         ];
     }

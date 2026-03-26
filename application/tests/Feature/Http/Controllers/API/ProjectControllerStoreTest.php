@@ -10,6 +10,7 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Media;
 use App\Models\Project;
+use App\Models\ProjectComment;
 use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use Closure;
@@ -100,6 +101,21 @@ class ProjectControllerStoreTest extends TestCase
                         ->all(),
                 ],
                 function () {
+                },
+            ],
+            'Creating a project with a comment' => [
+                fn () => [
+                    ...static::createExampleValidPayload(),
+                    'comment' => 'Initial project comment',
+                ],
+                function (TestCase $testCase, TestResponse $testResponse) {
+                    $project = Project::findOrFail($testResponse->json('data.id'));
+                    $testCase->assertDatabaseHas(ProjectComment::class, [
+                        'project_id' => $project->id,
+                        'comment' => 'Initial project comment',
+                    ]);
+                    $testCase->assertCount(1, $testResponse->json('data.project_comments'));
+                    $testCase->assertEquals('Initial project comment', $testResponse->json('data.project_comments.0.comment'));
                 },
             ],
             'Creating a project with source files' => [
@@ -420,6 +436,28 @@ class ProjectControllerStoreTest extends TestCase
             Project::class,
             ['institution_id' => $actingUser->institution['id']]
         );
+    }
+
+    /** @throws Throwable */
+    public function test_no_project_comment_created_when_comment_not_provided(): void
+    {
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                static::createExampleValidPayload()
+            );
+
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertDatabaseMissing(ProjectComment::class, [
+            'project_id' => $project->id,
+        ]);
     }
 
     /** @throws Throwable */

@@ -50,7 +50,8 @@ use OpenApi\Attributes as OA;
                 new OA\Property(property: 'manager_institution_user_id', type: 'string', format: 'uuid', nullable: true),
                 new OA\Property(property: 'client_institution_user_id', type: 'string', format: 'uuid', nullable: true),
                 new OA\Property(property: 'reference_number', type: 'string', nullable: true),
-                new OA\Property(property: 'comments', type: 'string', nullable: true),
+                new OA\Property(property: 'comments', type: 'string', nullable: true, deprecated: true),
+                new OA\Property(property: 'comment', type: 'string', nullable: true),
                 new OA\Property(
                     property: 'deadline_at',
                     description: 'Required when is_calendar_project is false or omitted.',
@@ -142,6 +143,7 @@ use OpenApi\Attributes as OA;
             new OA\Encoding(property: 'reference_number', contentType: 'application/json'),
             new OA\Encoding(property: 'manager_institution_user_id', contentType: 'application/json'),
             new OA\Encoding(property: 'comments', contentType: 'application/json'),
+            new OA\Encoding(property: 'comment', contentType: 'application/json'),
             new OA\Encoding(property: 'deadline_at', contentType: 'application/json'),
             new OA\Encoding(property: 'event_start_at', contentType: 'application/json'),
             new OA\Encoding(property: 'event_end_at', contentType: 'application/json'),
@@ -202,6 +204,7 @@ class ProjectCreateRequest extends FormRequest
             ],
             'reference_number' => ['nullable', 'string'],
             'comments' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
+            'comment' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => [
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
                 Rule::requiredIf(fn () => !$this->isCalendarProject()),

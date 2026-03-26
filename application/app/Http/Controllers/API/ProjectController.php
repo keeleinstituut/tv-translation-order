@@ -21,6 +21,7 @@ use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\Candidate;
 use App\Models\Project;
+use App\Models\ProjectComment;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
@@ -293,6 +294,14 @@ class ProjectController extends Controller
 
             $project->saveOrFail();
 
+            if (filled($params->get('comment'))) {
+                (new ProjectComment)->fill([
+                    'project_id' => $project->id,
+                    'comment' => $params->get('comment'),
+                    'institution_user_id' => Auth::user()->institutionUserId,
+                ])->saveOrFail();
+            }
+
             collect($params->get('source_files', []))
                 ->each(function (UploadedFile $file) use ($project) {
                     $project->addMedia($file)->toMediaCollection(Project::SOURCE_FILES_COLLECTION);
@@ -329,7 +338,8 @@ class ProjectController extends Controller
                 'clientInstitutionUser',
                 'typeClassifierValue',
                 'translationDomainClassifierValue',
-                'subProjects.assignments'
+                'subProjects.assignments',
+                'projectComments',
             ]);
 
             return new ProjectResource($project);
@@ -460,7 +470,8 @@ class ProjectController extends Controller
             'helpFiles',
             'reviewFiles',
             'reviewRejections.files',
-            'tags'
+            'tags',
+            'projectComments',
         ])->findOrFail($id);
 
         $this->authorize('view', $project);
@@ -592,6 +603,7 @@ class ProjectController extends Controller
                 'finalFiles',
                 'helpFiles',
                 'tags',
+                'projectComments',
             ]);
 
             return new ProjectResource($project);
