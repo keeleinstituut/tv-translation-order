@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProjectStatus;
 use App\Enums\ServiceType;
+use App\Jobs\ProjectDelayedCancelJob;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -62,6 +63,8 @@ use Throwable;
  * @property string|null $translation_domain_classifier_value_id
  * @property string|null $cancellation_comment
  * @property string|null $cancellation_reason
+ * @property Carbon|null $cancellation_pending_at
+ * @property-read Carbon|null $cancel_at
  * @property ProjectStatus $status
  * @property-read Institution|null $institution
  * @property-read MediaCollection<int, Media> $media
@@ -176,6 +179,7 @@ class Project extends Model implements AuditLoggable, HasMedia
         'corrected_at' => 'datetime',
         'accepted_at' => 'datetime',
         'submitted_to_client_review_at' => 'datetime',
+        'cancellation_pending_at' => 'datetime',
         'price' => 'float',
         'status' => ProjectStatus::class,
         'is_calendar_project' => 'boolean',
@@ -417,5 +421,10 @@ class Project extends Model implements AuditLoggable, HasMedia
     public function getAuditLogObjectType(): AuditLogEventObjectType
     {
         return AuditLogEventObjectType::Project;
+    }
+
+    public function getCancelAtAttribute(): ?Carbon
+    {
+        return $this->cancellation_pending_at?->addSeconds(ProjectDelayedCancelJob::CANCELLATION_DELAY_SECONDS);
     }
 }

@@ -90,6 +90,7 @@ Route::prefix('/projects')
         Route::get('/{id}', [API\ProjectController::class, 'show'])->name('translation-order.projects.show');
         Route::put('/{id}', [API\ProjectController::class, 'update'])->name('translation-order.projects.update');
         Route::post('/{id}/cancel', [API\ProjectController::class, 'cancel'])->name('translation-order.projects.cancel');
+        Route::post('/{id}/cancel-decline', [API\ProjectController::class, 'declineCancellation'])->name('translation-order.projects.cancel-decline');
         Route::get('/export-csv', [API\ProjectController::class, 'exportCsv'])->name('translation-order.projects.exportCsv');
 
         Route::post('/{project}/comments', [API\ProjectCommentController::class, 'store'])
