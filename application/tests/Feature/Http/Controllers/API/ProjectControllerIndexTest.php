@@ -409,7 +409,7 @@ class ProjectControllerIndexTest extends TestCase
         collect($response->json('data'))->each(function (mixed $item) {
             $this->assertIsArray($item);
             Assertions::assertArraysEqualIgnoringOrder(
-                ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'ext_id', 'id', 'institution_id', 'price', 'reference_number', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'],
+                ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'event_end_at', 'ext_id', 'id', 'institution_id', 'is_calendar_project', 'price', 'reference_number', 'service_type', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'],
                 array_keys($item)
             );
 
