@@ -155,6 +155,10 @@ class ProjectControllerCancelTest extends TestCase
 
     public function test_delayed_cancel_job_cancels_project(): void
     {
+        // Auth::check() in ProjectObserver uses default 'web' guard which has
+        // no 'model' configured — switch to 'api' guard to avoid the error.
+        config(['auth.defaults.guard' => 'api']);
+
         $project = Project::factory()->create([
             'is_calendar_project' => true,
             'status' => ProjectStatus::New,

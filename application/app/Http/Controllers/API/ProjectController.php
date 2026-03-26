@@ -837,7 +837,10 @@ class ProjectController extends Controller
             }
 
             $project->status = ProjectStatus::Cancelled;
-            $project->fill($request->validated());
+            $project->fill([
+                'cancellation_reason' => $request->validated('cancellation_reason'),
+                'cancellation_comment' => $request->validated('cancellation_comment'),
+            ]);
             $project->saveOrFail();
 
             if ($project->workflow()->isStarted()) {
