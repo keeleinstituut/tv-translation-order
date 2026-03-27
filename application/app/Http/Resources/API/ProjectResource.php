@@ -100,6 +100,8 @@ class ProjectResource extends JsonResource
                 'event_end_at',
                 'is_calendar_project',
                 'service_type',
+                'meeting_link',
+                'location',
                 'corrected_at',
                 'rejected_at',
                 'accepted_at',
