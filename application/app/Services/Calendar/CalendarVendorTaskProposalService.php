@@ -10,6 +10,7 @@ use App\Models\Assignment;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
 use App\Models\VendorCalendarEntry;
+use Illuminate\Support\Collection;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -89,8 +90,7 @@ readonly class CalendarVendorTaskProposalService
         if (!$candidate->vendor?->is_internal) {
             $reactionTime = $this->getReactionTimeSeconds($candidate->assignment);
             AutoDeclineVendorTaskProposal::dispatch($candidate->id)
-                ->delay(now()->addSeconds($reactionTime))
-                ->onQueue('calendar');
+                ->delay(now()->addSeconds($reactionTime));
         }
     }
 
@@ -101,6 +101,7 @@ readonly class CalendarVendorTaskProposalService
      */
     private function handleNoCandidatesRemaining(Assignment $assignment): void
     {
+        /** @var Collection<int, Candidate> $declinedCandidates */
         $declinedCandidates = $assignment->candidates()
             ->where('status', CandidateStatus::Declined)
             ->get();
@@ -159,15 +160,16 @@ readonly class CalendarVendorTaskProposalService
     private function syncVendorCalendarEntry(Candidate $candidate): void
     {
         $assignment = $candidate->assignment;
-        $existingVce = VendorCalendarEntry::where('assignment_id', $assignment->id)->first();
+        $entry = VendorCalendarEntry::where('assignment_id', $assignment->id)->first();
 
-        if ($existingVce && $existingVce->vendor_id === $candidate->vendor_id) {
+        if ($entry && $entry->vendor_id === $candidate->vendor_id) {
             return;
         }
 
-        $existingVce?->delete();
+        $entry?->delete();
 
         $project = $assignment->subProject->project;
+
         VendorCalendarEntry::create([
             'vendor_id' => $candidate->vendor_id,
             'start_at' => $project->event_start_at,

@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $assignment_id
  * @property string|null $vendor_id
  * @property string|null $status
+ * @property Carbon|null $notified_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at

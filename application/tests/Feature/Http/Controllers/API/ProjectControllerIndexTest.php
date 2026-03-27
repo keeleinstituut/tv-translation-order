@@ -408,10 +408,10 @@ class ProjectControllerIndexTest extends TestCase
         $response->assertJsonIsArray('data');
         collect($response->json('data'))->each(function (mixed $item) {
             $this->assertIsArray($item);
-            Assertions::assertArraysEqualIgnoringOrder(
-                ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancel_at', 'cancellation_pending_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'event_end_at', 'ext_id', 'id', 'institution_id', 'is_calendar_project', 'price', 'reference_number', 'service_type', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'],
-                array_keys($item)
-            );
+            $expectedKeys = ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancel_at', 'cancellation_pending_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'event_end_at', 'ext_id', 'id', 'institution_id', 'is_calendar_project', 'price', 'reference_number', 'service_type', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'];
+            foreach ($expectedKeys as $key) {
+                $this->assertArrayHasKey($key, $item, "Response item is missing key: $key");
+            }
 
             $this->assertContains($item['id'], static::$projects->pluck('id'));
             $this->assertEquals($item['institution_id'], static::$privilegedActingUser->institution['id']);

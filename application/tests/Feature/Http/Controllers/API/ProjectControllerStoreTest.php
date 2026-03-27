@@ -117,6 +117,14 @@ class ProjectControllerStoreTest extends TestCase
                     ]);
                     $testCase->assertCount(1, $testResponse->json('data.project_comments'));
                     $testCase->assertEquals('Initial project comment', $testResponse->json('data.project_comments.0.comment'));
+                    $testCase->assertNotNull(
+                        $testResponse->json('data.project_comments.0.institution_user'),
+                        'project_comments should include institution_user'
+                    );
+                    $testCase->assertEquals(
+                        $testResponse->json('data.project_comments.0.institution_user_id'),
+                        $testResponse->json('data.project_comments.0.institution_user.id'),
+                    );
                 },
             ],
             'Creating a project with source files' => [

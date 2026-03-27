@@ -44,7 +44,8 @@ class ProjectCommentResource extends JsonResource
                 'created_at',
                 'updated_at',
             ), [
-            'project' => ProjectResource::make($this->whenLoaded('project'))
+            'project' => ProjectResource::make($this->whenLoaded('project')),
+            'institution_user' => InstitutionUserResource::make($this->whenLoaded('institutionUser')),
         ]);
     }
 }
