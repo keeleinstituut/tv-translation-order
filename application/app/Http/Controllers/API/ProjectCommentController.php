@@ -46,6 +46,8 @@ class ProjectCommentController extends Controller
         ]);
         $comment->saveOrFail();
 
+        $comment->load('institutionUser');
+
         return ProjectCommentResource::make($comment);
     }
 
@@ -71,6 +73,8 @@ class ProjectCommentController extends Controller
 
         $comment->fill($request->validated());
         $comment->saveOrFail();
+
+        $comment->load('institutionUser');
 
         return ProjectCommentResource::make($comment);
     }

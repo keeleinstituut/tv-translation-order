@@ -34,12 +34,15 @@ class ProjectCommentControllerTest extends TestCase
         // THEN
         $response
             ->assertStatus(201)
-            ->assertJsonStructure(['data' => ['id', 'project_id', 'institution_user_id', 'comment', 'created_at', 'updated_at']])
+            ->assertJsonStructure(['data' => ['id', 'project_id', 'institution_user_id', 'comment', 'created_at', 'updated_at', 'institution_user']])
             ->assertJson([
                 'data' => [
                     'project_id' => $project->id,
                     'institution_user_id' => $institutionUser->id,
                     'comment' => 'This is a test comment.',
+                    'institution_user' => [
+                        'id' => $institutionUser->id,
+                    ],
                 ],
             ]);
 
@@ -139,7 +142,13 @@ class ProjectCommentControllerTest extends TestCase
         // THEN
         $response
             ->assertStatus(200)
-            ->assertJson(['data' => ['id' => $comment->id, 'comment' => 'Updated comment.']]);
+            ->assertJson(['data' => [
+                'id' => $comment->id,
+                'comment' => 'Updated comment.',
+                'institution_user' => [
+                    'id' => $institutionUser->id,
+                ],
+            ]]);
 
         $this->assertDatabaseHas('project_comments', [
             'id' => $comment->id,

@@ -162,6 +162,10 @@ readonly class SlotMatchingService
             ->values();
     }
 
+    /**
+     * @param Project $project
+     * @return Collection<int, Vendor>
+     */
     public function rankExternalVendorCascadeForProject(Project $project): Collection
     {
         $subProject = $project->subProjects->first();

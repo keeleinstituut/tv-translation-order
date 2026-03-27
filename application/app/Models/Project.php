@@ -57,6 +57,7 @@ use Throwable;
  * @property Carbon|null $event_start_at
  * @property Carbon|null $event_end_at
  * @property bool $is_calendar_project
+ * @property bool $use_external_vendor
  * @property Carbon|null $deleted_at
  * @property string|null $manager_institution_user_id
  * @property string|null $client_institution_user_id
@@ -183,6 +184,7 @@ class Project extends Model implements AuditLoggable, HasMedia
         'price' => 'float',
         'status' => ProjectStatus::class,
         'is_calendar_project' => 'boolean',
+        'use_external_vendor' => 'boolean',
         'service_type' => ServiceType::class,
     ];
 
