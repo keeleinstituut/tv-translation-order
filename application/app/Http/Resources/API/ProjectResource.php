@@ -53,6 +53,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'is_calendar_project', type: 'boolean'),
         new OA\Property(property: 'service_type', type: 'string', enum: ServiceType::class, nullable: true),
+        new OA\Property(property: 'meeting_link', type: 'string', nullable: true),
+        new OA\Property(property: 'location', type: 'string', nullable: true),
         new OA\Property(property: 'corrected_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'accepted_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'cancelled_at', type: 'string', format: 'date-time', nullable: true),
