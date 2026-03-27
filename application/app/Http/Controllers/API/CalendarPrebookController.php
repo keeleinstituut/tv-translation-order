@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\CalendarSlotConflictException;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\PrebookRequest;
@@ -14,6 +15,7 @@ use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -57,31 +59,34 @@ class CalendarPrebookController extends Controller
             throw new HttpException(Response::HTTP_BAD_REQUEST, 'Only one prebook is allowed');
         }
 
-        $vendor = filled($vendorId) ?
-            Vendor::find($vendorId) :
-            $this->slotMatching->pickBestInternalVendor(
-                $languageId,
-                $slotStart,
-                $slotEnd,
-                $institutionId,
-                $tagIds,
+        return DB::transaction(function () use ($slotStart, $slotEnd, $languageId, $tagIds, $vendorId, $institutionUserId, $institutionId) {
+            $vendor = filled($vendorId) ?
+                Vendor::find($vendorId) :
+                $this->slotMatching->pickBestInternalVendor(
+                    $languageId,
+                    $slotStart,
+                    $slotEnd,
+                    $institutionId,
+                    $tagIds,
+                );
+
+            if (blank($vendor)) {
+                return response()->noContent();
+            }
+
+            if (!$this->slotMatching->isVendorAvailableForSlot($vendor->id, $slotStart, $slotEnd)) {
+                throw new CalendarSlotConflictException();
+            }
+
+            $calendarEntry = CalendarSlotConflictException::catchConstraintViolation(
+                fn () => $this->prebookService->create($vendor->id, $slotStart, $slotEnd, $institutionUserId)
             );
 
-        if (blank($vendor)) {
-            return response()->noContent();
-        }
-
-        $calendarEntry = $this->prebookService->create(
-            $vendor->id,
-            $slotStart,
-            $slotEnd,
-            $institutionUserId,
-        );
-
-        return PrebookResource::make([
-            'calendar_entry' => $calendarEntry,
-            'expires_at' => $this->prebookService->getExpiresAt($calendarEntry),
-        ]);
+            return PrebookResource::make([
+                'calendar_entry' => $calendarEntry,
+                'expires_at' => $this->prebookService->getExpiresAt($calendarEntry),
+            ]);
+        });
     }
 
     /**

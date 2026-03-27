@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\CalendarSlotConflictException;
 use App\Enums\CalendarRole;
 use App\Enums\CandidateStatus;
 use App\Enums\ClassifierValueType;
@@ -407,13 +408,19 @@ class ProjectController extends Controller
             ]);
 
             if (!$entryCreated) {
-                VendorCalendarEntry::create([
-                    'vendor_id' => $vendor->id,
-                    'start_at' => $project->event_start_at,
-                    'end_at' => $project->event_end_at,
-                    'assignment_id' => $assignment->id,
-                ]);
-                $entryCreated = true;
+                try {
+                    CalendarSlotConflictException::catchConstraintViolation(fn () =>
+                        VendorCalendarEntry::create([
+                            'vendor_id' => $vendor->id,
+                            'start_at' => $project->event_start_at,
+                            'end_at' => $project->event_end_at,
+                            'assignment_id' => $assignment->id,
+                        ])
+                    );
+                    $entryCreated = true;
+                } catch (CalendarSlotConflictException) {
+                    continue;
+                }
             }
         }
 
@@ -422,6 +429,12 @@ class ProjectController extends Controller
 
     private function assignVendorFromPrebook(Assignment $assignment, VendorCalendarEntry $prebook): bool
     {
+        $prebook = VendorCalendarEntry::lockForUpdate()->find($prebook->id);
+
+        if (!$prebook || filled($prebook->assignment_id)) {
+            throw new CalendarSlotConflictException();
+        }
+
         Candidate::create([
             'assignment_id' => $assignment->id,
             'vendor_id' => $prebook->vendor_id,
@@ -462,12 +475,14 @@ class ProjectController extends Controller
             'position' => 0,
             'status' => CandidateStatus::New,
         ]);
-        VendorCalendarEntry::create([
-            'vendor_id' => $candidateVendorId,
-            'start_at' => $project->event_start_at,
-            'end_at' => $project->event_end_at,
-            'assignment_id' => $assignment->id,
-        ]);
+        CalendarSlotConflictException::catchConstraintViolation(fn () =>
+            VendorCalendarEntry::create([
+                'vendor_id' => $candidateVendorId,
+                'start_at' => $project->event_start_at,
+                'end_at' => $project->event_end_at,
+                'assignment_id' => $assignment->id,
+            ])
+        );
 
         return true;
     }
@@ -482,32 +497,51 @@ class ProjectController extends Controller
         string     $actingUserId,
     ): bool
     {
-        $bestVendor = $this->slotMatchingService->pickBestInternalVendorForProject($project, $actingUserId);
+        $excludeVendorIds = collect();
+        $maxAttempts = 3;
 
-        if (!$bestVendor) {
-            if (!$isClient) {
-                throw ValidationException::withMessages([
-                    'event_start_at' => 'No vendors are available for the requested time slot and language.',
-                ]);
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            $bestVendor = $this->slotMatchingService->pickBestInternalVendorForProject(
+                $project,
+                $actingUserId,
+                excludeVendorIds: $excludeVendorIds,
+            );
+
+            if (!$bestVendor) {
+                if (!$isClient) {
+                    throw ValidationException::withMessages([
+                        'event_start_at' => 'No vendors are available for the requested time slot and language.',
+                    ]);
+                }
+
+                return false;
             }
 
-            return false;
+            $candidate = Candidate::create([
+                'assignment_id' => $assignment->id,
+                'vendor_id' => $bestVendor->id,
+                'position' => 0,
+                'status' => CandidateStatus::New,
+            ]);
+
+            try {
+                CalendarSlotConflictException::catchConstraintViolation(fn () =>
+                    VendorCalendarEntry::create([
+                        'vendor_id' => $bestVendor->id,
+                        'start_at' => $project->event_start_at,
+                        'end_at' => $project->event_end_at,
+                        'assignment_id' => $assignment->id,
+                    ])
+                );
+
+                return true;
+            } catch (CalendarSlotConflictException) {
+                $candidate->forceDelete();
+                $excludeVendorIds->push($bestVendor->id);
+            }
         }
 
-        Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $bestVendor->id,
-            'position' => 0,
-            'status' => CandidateStatus::New,
-        ]);
-        VendorCalendarEntry::create([
-            'vendor_id' => $bestVendor->id,
-            'start_at' => $project->event_start_at,
-            'end_at' => $project->event_end_at,
-            'assignment_id' => $assignment->id,
-        ]);
-
-        return true;
+        throw new CalendarSlotConflictException();
     }
 
     /**
