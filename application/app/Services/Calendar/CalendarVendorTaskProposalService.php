@@ -36,16 +36,18 @@ readonly class CalendarVendorTaskProposalService
      */
     public function proposeTaskToVendor(Assignment $assignment): void
     {
-        $candidate = $assignment->candidates()
-            ->where('status', CandidateStatus::New)
-            ->first();
+        DB::transaction(function () use ($assignment) {
+            $candidate = $assignment->candidates()
+                ->where('status', CandidateStatus::New)
+                ->first();
 
-        if ($candidate) {
-            $this->proposeTo($candidate);
-            return;
-        }
+            if ($candidate) {
+                $this->proposeTo($candidate);
+                return;
+            }
 
-        $this->handleNoCandidatesRemaining($assignment);
+            $this->handleNoCandidatesRemaining($assignment);
+        });
     }
 
     /**
@@ -157,18 +159,19 @@ readonly class CalendarVendorTaskProposalService
 
             $maxPosition = $assignment->candidates()->max('position') ?? -1;
 
-            $candidate = Candidate::create([
-                'assignment_id' => $assignment->id,
-                'vendor_id' => $nextVendor->id,
-                'position' => $maxPosition + 1,
-                'status' => CandidateStatus::New,
-            ]);
-
             try {
-                $this->proposeTo($candidate);
+                DB::transaction(function () use ($assignment, $nextVendor, $maxPosition) {
+                    $candidate = Candidate::create([
+                        'assignment_id' => $assignment->id,
+                        'vendor_id' => $nextVendor->id,
+                        'position' => $maxPosition + 1,
+                        'status' => CandidateStatus::New,
+                    ]);
+
+                    $this->proposeTo($candidate);
+                });
                 return;
             } catch (CalendarSlotConflictException) {
-                $candidate->forceDelete();
                 $excludeVendorIds->push($nextVendor->id);
             }
         }

@@ -371,45 +371,46 @@ class ProjectController extends Controller
         $assignment = $subProject->assignments->first();
         $isClient = $this->calendarRoleResolver->resolve() === CalendarRole::Client;
         $actingUserId = Auth::user()->institutionUserId;
+        $prebook = VendorCalendarEntry::where('prebook_institution_user_id', $actingUserId)
+            ->overlapping($project->event_start_at, $project->event_end_at)
+            ->first();
 
         if ($project->use_external_vendor) {
-            $shouldStart = $this->buildExternalVendorCascade($project, $assignment);
-        } elseif ($prebook = VendorCalendarEntry::where('prebook_institution_user_id', $actingUserId)
-            ->overlapping($project->event_start_at, $project->event_end_at)
-            ->first()) {
-            $shouldStart = $this->assignVendorFromPrebook($assignment, $prebook);
+            $this->buildExternalVendorCascade($project, $assignment);
+        } elseif (filled($prebook)) {
+            $this->assignVendorFromPrebook($assignment, $prebook);
         } elseif ($candidateVendorId = $params->get('candidate_vendor_id')) {
-            $shouldStart = $this->assignExplicitVendor($project, $assignment, $candidateVendorId, $actingUserId);
-        } else {
-            $shouldStart = $this->assignBestAvailableVendor($project, $assignment, $isClient, $actingUserId);
+            $this->assignExplicitVendor($project, $assignment, $candidateVendorId, $actingUserId);
+        } elseif ($isClient) {
+            $this->assignBestAvailableVendor($project, $assignment, $isClient, $actingUserId);
         }
 
-        if ($shouldStart) {
-            $subProject->workflow()->start();
-        }
+        $subProject->workflow()->start();
     }
 
-    private function buildExternalVendorCascade(Project $project, Assignment $assignment): bool
+    private function buildExternalVendorCascade(Project $project, Assignment $assignment): void
     {
         $externals = $this->slotMatchingService->rankExternalVendorCascadeForProject($project);
         $entryCreated = false;
 
         foreach ($externals as $idx => $vendor) {
-            if (!$this->slotMatchingService->isVendorAvailableForSlot(
+            $isAvailable = $this->slotMatchingService->isVendorAvailableForSlot(
                 $vendor->id, $project->event_start_at, $project->event_end_at
-            )) {
+            );
+
+            if (!$isAvailable) {
                 continue;
             }
 
-            Candidate::create([
-                'assignment_id' => $assignment->id,
-                'vendor_id' => $vendor->id,
-                'position' => $idx,
-                'status' => CandidateStatus::New,
-            ]);
+            try {
+                DB::transaction(function () use ($assignment, $vendor, $idx, $project, &$entryCreated) {
+                    Candidate::create([
+                        'assignment_id' => $assignment->id,
+                        'vendor_id' => $vendor->id,
+                        'position' => $idx,
+                        'status' => CandidateStatus::New,
+                    ]);
 
-            if (!$entryCreated) {
-                try {
                     VendorCalendarEntry::create([
                         'vendor_id' => $vendor->id,
                         'start_at' => $project->event_start_at,
@@ -417,19 +418,18 @@ class ProjectController extends Controller
                         'assignment_id' => $assignment->id,
                     ]);
                     $entryCreated = true;
-                } catch (QueryException $e) {
-                    if (in_array($e->getCode(), ['23P01', '23505'])) {
-                        continue;
-                    }
-                    throw $e;
+                });
+            } catch (QueryException $e) {
+                if (in_array($e->getCode(), ['23P01', '23505'])) {
+                    continue;
                 }
+
+                throw $e;
             }
         }
-
-        return true;
     }
 
-    private function assignVendorFromPrebook(Assignment $assignment, VendorCalendarEntry $prebook): bool
+    private function assignVendorFromPrebook(Assignment $assignment, VendorCalendarEntry $prebook): void
     {
         $prebook = VendorCalendarEntry::lockForUpdate()->find($prebook->id);
 
@@ -444,8 +444,6 @@ class ProjectController extends Controller
             'status' => CandidateStatus::New,
         ]);
         $this->prebookService->convert($prebook, $assignment);
-
-        return true;
     }
 
     /**
@@ -456,7 +454,7 @@ class ProjectController extends Controller
         Assignment $assignment,
         string     $candidateVendorId,
         string     $actingUserId,
-    ): bool
+    ): void
     {
         $isAvailable = $this->slotMatchingService->isVendorAvailableForSlot(
             $candidateVendorId,
@@ -471,27 +469,30 @@ class ProjectController extends Controller
             ]);
         }
 
-        Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $candidateVendorId,
-            'position' => 0,
-            'status' => CandidateStatus::New,
-        ]);
-        try {
-            VendorCalendarEntry::create([
-                'vendor_id' => $candidateVendorId,
-                'start_at' => $project->event_start_at,
-                'end_at' => $project->event_end_at,
+        DB::transaction(function () use ($assignment, $candidateVendorId, $project) {
+            Candidate::create([
                 'assignment_id' => $assignment->id,
+                'vendor_id' => $candidateVendorId,
+                'position' => 0,
+                'status' => CandidateStatus::New,
             ]);
-        } catch (QueryException $e) {
-            if (in_array($e->getCode(), ['23P01', '23505'])) {
-                throw new CalendarSlotConflictException();
-            }
-            throw $e;
-        }
 
-        return true;
+            try {
+                VendorCalendarEntry::create([
+                    'vendor_id' => $candidateVendorId,
+                    'start_at' => $project->event_start_at,
+                    'end_at' => $project->event_end_at,
+                    'assignment_id' => $assignment->id,
+                ]);
+            } catch (QueryException $e) {
+                if (in_array($e->getCode(), ['23P01', '23505'])) {
+                    throw ValidationException::withMessages([
+                        'candidate_vendor_id' => 'The selected vendor is not available for the requested time slot.',
+                    ]);
+                }
+                throw $e;
+            }
+        });
     }
 
     /**
@@ -502,7 +503,7 @@ class ProjectController extends Controller
         Assignment $assignment,
         bool       $isClient,
         string     $actingUserId,
-    ): bool
+    ): void
     {
         $excludeVendorIds = collect();
         $maxAttempts = 3;
@@ -521,35 +522,38 @@ class ProjectController extends Controller
                     ]);
                 }
 
-                return false;
+                return;
             }
 
-            $candidate = Candidate::create([
-                'assignment_id' => $assignment->id,
-                'vendor_id' => $bestVendor->id,
-                'position' => 0,
-                'status' => CandidateStatus::New,
-            ]);
-
             try {
-                VendorCalendarEntry::create([
-                    'vendor_id' => $bestVendor->id,
-                    'start_at' => $project->event_start_at,
-                    'end_at' => $project->event_end_at,
-                    'assignment_id' => $assignment->id,
-                ]);
+                DB::transaction(function () use ($assignment, $bestVendor, $project, $actingUserId, $excludeVendorIds) {
+                    Candidate::create([
+                        'assignment_id' => $assignment->id,
+                        'vendor_id' => $bestVendor->id,
+                        'position' => 0,
+                        'status' => CandidateStatus::New,
+                    ]);
 
-                return true;
+                    VendorCalendarEntry::create([
+                        'vendor_id' => $bestVendor->id,
+                        'start_at' => $project->event_start_at,
+                        'end_at' => $project->event_end_at,
+                        'assignment_id' => $assignment->id,
+                    ]);
+                });
             } catch (QueryException $e) {
-                if (!in_array($e->getCode(), ['23P01', '23505'])) {
-                    throw $e;
+                if (in_array($e->getCode(), ['23P01', '23505'])) {
+                    $excludeVendorIds->push($bestVendor->id);
+                    continue;
                 }
-                $candidate->forceDelete();
-                $excludeVendorIds->push($bestVendor->id);
+
+                throw $e;
             }
         }
 
-        throw new CalendarSlotConflictException();
+        throw ValidationException::withMessages([
+            'event_start_at' => 'No vendors are available for the requested time slot and language.',
+        ]);
     }
 
     /**
@@ -648,7 +652,7 @@ class ProjectController extends Controller
                     ])->filter()->toArray(), $project->fill(...));
 
                     if ($params->has('use_external_vendor')) {
-                        $project->use_external_vendor = (bool) $params->get('use_external_vendor');
+                        $project->use_external_vendor = (bool)$params->get('use_external_vendor');
                     }
 
                     $project->save();
@@ -766,119 +770,44 @@ class ProjectController extends Controller
         $calendarEntry = VendorCalendarEntry::where('assignment_id', $assignment->id)->first();
 
         if ($isClient && $calendarDataChanged) {
-            $this->reassignBestVendorForClient($project, $assignment, $calendarEntry);
+            $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
+            $this->assignBestAvailableVendor(
+                $project,
+                $assignment,
+                true,
+                Auth::user()->institutionUserId
+            );
             return;
         }
 
         $candidateVendorId = $params->get('candidate_vendor_id');
         if (filled($candidateVendorId) && $candidateVendorId !== $calendarEntry?->vendor_id) {
-            $this->reassignToExplicitVendor($project, $assignment, $candidateVendorId, $calendarEntry);
+            $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
+            $this->assignExplicitVendor($project, $assignment, $candidateVendorId, Auth::user()->institutionUserId);
             return;
         }
 
         if ($useExternalVendorChanged) {
-            $this->rebuildCandidatesForVendorTypeChange($project, $assignment, $calendarEntry);
+            $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
+            if ($project->use_external_vendor) {
+                $this->buildExternalVendorCascade($project, $assignment);
+                return;
+            }
+
+            if ($isClient) {
+                $this->assignBestAvailableVendor(
+                    $project,
+                    $assignment,
+                    false,
+                    Auth::user()->institutionUserId
+                );
+            }
+
             return;
         }
 
         if ($calendarDataChanged) {
             $this->syncExistingVendorToNewSlot($project, $assignment, $calendarEntry);
-        }
-    }
-
-    private function reassignBestVendorForClient(
-        Project              $project,
-        Assignment           $assignment,
-        ?VendorCalendarEntry $calendarEntry,
-    ): void
-    {
-        $this->rejectAllCandidates($assignment->id);
-        $calendarEntry?->delete();
-
-        $bestVendor = $this->slotMatchingService->pickBestInternalVendorForProject($project);
-        if ($bestVendor) {
-            Candidate::create([
-                'assignment_id' => $assignment->id,
-                'vendor_id' => $bestVendor->id,
-                'position' => 0,
-                'status' => CandidateStatus::New,
-            ]);
-            VendorCalendarEntry::create([
-                'vendor_id' => $bestVendor->id,
-                'start_at' => $project->event_start_at,
-                'end_at' => $project->event_end_at,
-                'assignment_id' => $assignment->id,
-            ]);
-        }
-    }
-
-    /**
-     * @throws ValidationException
-     */
-    private function reassignToExplicitVendor(
-        Project              $project,
-        Assignment           $assignment,
-        string               $candidateVendorId,
-        ?VendorCalendarEntry $calendarEntry,
-    ): void
-    {
-        $isAvailable = $this->slotMatchingService->isVendorAvailableForSlot(
-            $candidateVendorId,
-            $project->event_start_at,
-            $project->event_end_at,
-        );
-
-        if (!$isAvailable) {
-            throw ValidationException::withMessages([
-                'candidate_vendor_id' => 'The selected vendor is not available for the requested time slot.',
-            ]);
-        }
-
-        $this->rejectAllCandidates($assignment->id);
-        $calendarEntry?->delete();
-
-        Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $candidateVendorId,
-            'position' => 0,
-            'status' => CandidateStatus::New,
-        ]);
-        VendorCalendarEntry::create([
-            'vendor_id' => $candidateVendorId,
-            'start_at' => $project->event_start_at,
-            'end_at' => $project->event_end_at,
-            'assignment_id' => $assignment->id,
-        ]);
-    }
-
-    private function rebuildCandidatesForVendorTypeChange(
-        Project              $project,
-        Assignment           $assignment,
-        ?VendorCalendarEntry $calendarEntry,
-    ): void
-    {
-        $this->rejectAllCandidates($assignment->id);
-        $calendarEntry?->delete();
-
-        if ($project->use_external_vendor) {
-            $this->buildExternalVendorCascade($project, $assignment);
-            return;
-        }
-
-        $bestVendor = $this->slotMatchingService->pickBestInternalVendorForProject($project);
-        if ($bestVendor) {
-            Candidate::create([
-                'assignment_id' => $assignment->id,
-                'vendor_id' => $bestVendor->id,
-                'position' => 0,
-                'status' => CandidateStatus::New,
-            ]);
-            VendorCalendarEntry::create([
-                'vendor_id' => $bestVendor->id,
-                'start_at' => $project->event_start_at,
-                'end_at' => $project->event_end_at,
-                'assignment_id' => $assignment->id,
-            ]);
         }
     }
 
@@ -892,6 +821,7 @@ class ProjectController extends Controller
     ): void
     {
         $currentCandidate = Candidate::where('assignment_id', $assignment->id)
+            ->whereNot('status', [CandidateStatus::Declined])
             ->orderBy('position')
             ->first();
 
@@ -914,19 +844,31 @@ class ProjectController extends Controller
         }
 
         $calendarEntry->delete();
-        VendorCalendarEntry::create([
-            'vendor_id' => $currentCandidate->vendor_id,
-            'start_at' => $project->event_start_at,
-            'end_at' => $project->event_end_at,
-            'assignment_id' => $assignment->id,
-        ]);
+
+        try {
+            VendorCalendarEntry::create([
+                'vendor_id' => $currentCandidate->vendor_id,
+                'start_at' => $project->event_start_at,
+                'end_at' => $project->event_end_at,
+                'assignment_id' => $assignment->id,
+            ]);
+        } catch (QueryException $e) {
+            if (in_array($e->getCode(), ['23P01', '23505'])) {
+                throw ValidationException::withMessages([
+                    'event_start_at' => 'The assigned vendor is not available for the updated time slot.',
+                ]);
+            }
+            throw $e;
+        }
     }
 
-    private function rejectAllCandidates(string $assignmentId): void
+    private function clearCandidatesAndCalendarEntry(string $assignmentId, ?VendorCalendarEntry $calendarEntry = null): void
     {
         Candidate::where('assignment_id', $assignmentId)->each(function (Candidate $candidate) {
             $candidate->delete();
         });
+
+        $calendarEntry?->delete();
     }
 
 
