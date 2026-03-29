@@ -112,7 +112,7 @@ class VendorCalendarEntryControllerTest extends TestCase
         $clientB = InstitutionUser::factory()->setInstitution(['id' => $institution->id])->create();
 
         $entryA = $this->createAssignmentEntry($vendor, $institution, $language, $today, $clientA->id);
-        $this->createAssignmentEntry($vendor, $institution, $language, $today, $clientB->id);
+        $this->createAssignmentEntry($vendor, $institution, $language, $today, $clientB->id, startHour: 12);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $clientA->id,
@@ -385,6 +385,7 @@ class VendorCalendarEntryControllerTest extends TestCase
         ClassifierValue $language,
         Carbon $date,
         ?string $clientInstitutionUserId = null,
+        int $startHour = 10,
     ): VendorCalendarEntry {
         $sourceLanguage = ClassifierValue::factory()->language()->create();
         $attrs = ['institution_id' => $institution->id];
@@ -405,8 +406,8 @@ class VendorCalendarEntryControllerTest extends TestCase
         return VendorCalendarEntry::create([
             'vendor_id' => $vendor->id,
             'assignment_id' => $assignment->id,
-            'start_at' => $date->copy()->setHour(10),
-            'end_at' => $date->copy()->setHour(11),
+            'start_at' => $date->copy()->setHour($startHour),
+            'end_at' => $date->copy()->setHour($startHour + 1),
         ]);
     }
 }
