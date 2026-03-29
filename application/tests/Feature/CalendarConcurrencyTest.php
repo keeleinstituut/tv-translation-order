@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Exceptions\CalendarSlotConflictException;
 use App\Enums\CandidateStatus;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
@@ -148,28 +147,6 @@ class CalendarConcurrencyTest extends TestCase
             'prebook_institution_user_id' => $institutionUser->id,
             'prebook_at' => now(),
         ]);
-    }
-
-    public function test_catch_constraint_violation_helper_converts_exclusion_error_to_409(): void
-    {
-        $vendor = Vendor::factory()->create();
-        $today = Carbon::today()->utc();
-
-        VendorCalendarEntry::create([
-            'vendor_id' => $vendor->id,
-            'start_at' => $today->copy()->setHour(10),
-            'end_at' => $today->copy()->setHour(11),
-        ]);
-
-        $this->expectException(CalendarSlotConflictException::class);
-
-        CalendarSlotConflictException::catchConstraintViolation(fn () =>
-            VendorCalendarEntry::create([
-                'vendor_id' => $vendor->id,
-                'start_at' => $today->copy()->setHour(10),
-                'end_at' => $today->copy()->setHour(11),
-            ])
-        );
     }
 
     public function test_decline_cascade_is_atomic_with_transaction(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Exceptions\CalendarSlotConflictException;
+use Illuminate\Database\QueryException;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\PrebookRequest;
@@ -78,9 +79,14 @@ class CalendarPrebookController extends Controller
                 throw new CalendarSlotConflictException();
             }
 
-            $calendarEntry = CalendarSlotConflictException::catchConstraintViolation(
-                fn () => $this->prebookService->create($vendor->id, $slotStart, $slotEnd, $institutionUserId)
-            );
+            try {
+                $calendarEntry = $this->prebookService->create($vendor->id, $slotStart, $slotEnd, $institutionUserId);
+            } catch (QueryException $e) {
+                if (in_array($e->getCode(), ['23P01', '23505'])) {
+                    throw new CalendarSlotConflictException();
+                }
+                throw $e;
+            }
 
             return PrebookResource::make([
                 'calendar_entry' => $calendarEntry,

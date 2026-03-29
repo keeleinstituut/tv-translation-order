@@ -3,6 +3,7 @@
 namespace App\Services\Calendar;
 
 use App\Exceptions\CalendarSlotConflictException;
+use Illuminate\Database\QueryException;
 use App\Enums\CandidateStatus;
 use App\Jobs\AutoDeclineVendorTaskProposal;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
@@ -192,14 +193,19 @@ readonly class CalendarVendorTaskProposalService
 
         $project = $assignment->subProject->project;
 
-        CalendarSlotConflictException::catchConstraintViolation(fn () =>
+        try {
             VendorCalendarEntry::create([
                 'vendor_id' => $candidate->vendor_id,
                 'start_at' => $project->event_start_at,
                 'end_at' => $project->event_end_at,
                 'assignment_id' => $assignment->id,
-            ])
-        );
+            ]);
+        } catch (QueryException $e) {
+            if (in_array($e->getCode(), ['23P01', '23505'])) {
+                throw new CalendarSlotConflictException();
+            }
+            throw $e;
+        }
     }
 
     /**
