@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -12,7 +13,12 @@ class InstitutionMainLanguagePolicy
     {
         return Auth::hasPrivilege(PrivilegeKey::EditInstitution->value) ||
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value);
+            Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
+            filled(
+                Vendor::withGlobalScope('policy', VendorPolicy::scope())
+                    ->where('institution_user_id', $jwtPayloadUser->institutionUserId)
+                    ->exists()
+            );
     }
 
     public function sync(JwtPayloadUser $jwtPayloadUser): bool
