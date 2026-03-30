@@ -3,9 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Enums\CandidateStatus;
+use App\Jobs\AutoDeclineVendorTaskProposal;
+use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
-use App\Services\Calendar\CalendarVendorTaskProposalService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -18,7 +19,7 @@ class ExpireOverdueProposals extends Command
     /**
      * @throws \Throwable
      */
-    public function handle(CalendarVendorTaskProposalService $service): void
+    public function handle(): void
     {
         $reactionTimes = CalendarSetting::pluck('reaction_time_seconds', 'institution_id');
 
@@ -32,12 +33,11 @@ class ExpireOverdueProposals extends Command
 
         foreach ($candidates as $candidate) {
             $institutionId = $candidate->vendor?->institutionUser?->institution_id;
-            $reactionTime = $reactionTimes->get($institutionId, CalendarVendorTaskProposalService::DEFAULT_REACTION_TIME_SECONDS);
+            $reactionTime = $reactionTimes->get($institutionId, NotifyAssignmentCandidatesAboutNewTask::DEFAULT_REACTION_TIME_SECONDS);
             $expiresAt = $candidate->notified_at->addSeconds($reactionTime);
 
             if (Carbon::now()->greaterThan($expiresAt)) {
-                $service->handleDecline($candidate);
-                $this->info("Auto-declined candidate {$candidate->id} for assignment {$candidate->assignment_id}");
+                AutoDeclineVendorTaskProposal::dispatchSync($candidate->id);
             }
         }
     }

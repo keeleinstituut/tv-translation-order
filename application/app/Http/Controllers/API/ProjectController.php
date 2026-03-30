@@ -376,7 +376,7 @@ class ProjectController extends Controller
             ->first();
 
         if ($project->use_external_vendor) {
-            $this->buildExternalVendorCascade($project, $assignment);
+            $this->buildExternalVendorsCascade($project, $assignment);
         } elseif (filled($prebook)) {
             $this->assignVendorFromPrebook($assignment, $prebook);
         } elseif ($candidateVendorId = $params->get('candidate_vendor_id')) {
@@ -388,7 +388,7 @@ class ProjectController extends Controller
         $subProject->workflow()->start();
     }
 
-    private function buildExternalVendorCascade(Project $project, Assignment $assignment): void
+    private function buildExternalVendorsCascade(Project $project, Assignment $assignment): void
     {
         $externals = $this->slotMatchingService->rankExternalVendorCascadeForProject($project);
         $entryCreated = false;
@@ -411,13 +411,15 @@ class ProjectController extends Controller
                         'status' => CandidateStatus::New,
                     ]);
 
-                    VendorCalendarEntry::create([
-                        'vendor_id' => $vendor->id,
-                        'start_at' => $project->event_start_at,
-                        'end_at' => $project->event_end_at,
-                        'assignment_id' => $assignment->id,
-                    ]);
-                    $entryCreated = true;
+                    if (!$entryCreated) {
+                        VendorCalendarEntry::create([
+                            'vendor_id' => $vendor->id,
+                            'start_at' => $project->event_start_at,
+                            'end_at' => $project->event_end_at,
+                            'assignment_id' => $assignment->id,
+                        ]);
+                        $entryCreated = true;
+                    }
                 });
             } catch (QueryException $e) {
                 if (in_array($e->getCode(), ['23P01', '23505'])) {
@@ -790,7 +792,7 @@ class ProjectController extends Controller
         if ($useExternalVendorChanged) {
             $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
             if ($project->use_external_vendor) {
-                $this->buildExternalVendorCascade($project, $assignment);
+                $this->buildExternalVendorsCascade($project, $assignment);
                 return;
             }
 

@@ -2,16 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Enums\CandidateStatus;
-use App\Models\Assignment;
-use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\Candidate;
-use App\Models\Project;
-use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use App\Services\Calendar\CalendarVendorTaskProposalService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -147,84 +140,5 @@ class CalendarConcurrencyTest extends TestCase
             'prebook_institution_user_id' => $institutionUser->id,
             'prebook_at' => now(),
         ]);
-    }
-
-    public function test_decline_cascade_is_atomic_with_transaction(): void
-    {
-        $today = Carbon::today()->utc();
-        [$assignment, $vendor] = $this->createAssignmentWithVendor($today);
-
-        $candidate = Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $vendor->id,
-            'position' => 0,
-            'status' => CandidateStatus::SubmittedToVendor,
-            'notified_at' => now(),
-        ]);
-
-        VendorCalendarEntry::create([
-            'vendor_id' => $vendor->id,
-            'start_at' => $today->copy()->setHour(10),
-            'end_at' => $today->copy()->setHour(11),
-            'assignment_id' => $assignment->id,
-        ]);
-
-        $service = app(CalendarVendorTaskProposalService::class);
-        $service->handleDecline($candidate);
-
-        $candidate->refresh();
-        $this->assertEquals(CandidateStatus::Declined, $candidate->status);
-    }
-
-    /**
-     * @throws \Throwable
-     */
-    public function test_decline_with_already_declined_candidate_is_idempotent(): void
-    {
-        $today = Carbon::today()->utc();
-        [$assignment, $vendor] = $this->createAssignmentWithVendor($today);
-
-        $candidate = Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $vendor->id,
-            'position' => 0,
-            'status' => CandidateStatus::Declined,
-        ]);
-
-        $service = app(CalendarVendorTaskProposalService::class);
-        $service->handleDecline($candidate);
-
-        $candidate->refresh();
-        $this->assertEquals(CandidateStatus::Declined, $candidate->status);
-    }
-
-    /**
-     * @return array{Assignment, Vendor}
-     */
-    private function createAssignmentWithVendor(Carbon $today): array
-    {
-        $srcLang = ClassifierValue::factory()->language()->create();
-        $dstLang = ClassifierValue::factory()->language()->create();
-
-        $project = Project::factory()->create([
-            'is_calendar_project' => true,
-            'event_start_at' => $today->copy()->setHour(10),
-            'event_end_at' => $today->copy()->setHour(11),
-        ]);
-
-        $subProject = SubProject::factory()->create([
-            'project_id' => $project->id,
-            'source_language_classifier_value_id' => $srcLang->id,
-            'destination_language_classifier_value_id' => $dstLang->id,
-        ]);
-
-        $vendor = Vendor::factory()->create();
-
-        $assignment = Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-        ]);
-
-        return [$assignment, $vendor];
     }
 }

@@ -297,7 +297,7 @@ class AssignmentController extends Controller
                         ->unique(fn($data) => $data['vendor_id'])
                         ->map(Candidate::make(...));
 
-                    $assignment->candidates()->saveMany($newCandidates);
+                    $assignment->candidates()->saveManyQuietly($newCandidates);
 
                     $assignment->load('candidates.vendor.institutionUser');
 
