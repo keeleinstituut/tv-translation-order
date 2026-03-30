@@ -96,14 +96,18 @@ class ProjectPolicy
 
     public function editSourceFiles(JwtPayloadUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $this->isInSameInstitutionAsCurrentUser($project) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isClient($project)
+            );
     }
 
     public function editHelpFiles(JwtPayloadUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $this->isInSameInstitutionAsCurrentUser($project) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isClient($project)
+            );
     }
 
     public function downloadMedia(JwtPayloadUser $user, Project $project): bool

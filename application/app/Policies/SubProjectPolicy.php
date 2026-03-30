@@ -89,7 +89,7 @@ class SubProjectPolicy
 
     public function editSourceFiles(JwtPayloadUser $user, SubProject $subProject): bool
     {
-        return $this->hasManageProjectPrivilege($subProject);
+        return $this->hasManageProjectPrivilege($subProject) || $this->currentUserIsClient($subProject);
     }
 
     public function editFinalFiles(JwtPayloadUser $user, SubProject $subProject, ?string $assignmentId = null): bool
