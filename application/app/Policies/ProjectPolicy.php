@@ -46,6 +46,12 @@ class ProjectPolicy
             return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
         }
 
+        if ($project->is_calendar_project) {
+            if ($vendor = Vendor::query()->where('institution_user_id', $currentInstitutionUserId)->first()) {
+                return $project->calendarEntries()->where('vendor_id', $vendor->id)->exists();
+            }
+        }
+
         return false;
     }
 
