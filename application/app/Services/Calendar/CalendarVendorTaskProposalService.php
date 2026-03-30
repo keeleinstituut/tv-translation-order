@@ -2,6 +2,8 @@
 
 namespace App\Services\Calendar;
 
+use App\Exceptions\CalendarSlotConflictException;
+use Illuminate\Database\QueryException;
 use App\Enums\CandidateStatus;
 use App\Jobs\AutoDeclineVendorTaskProposal;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
@@ -11,6 +13,7 @@ use App\Models\CalendarSetting;
 use App\Models\Candidate;
 use App\Models\VendorCalendarEntry;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -33,16 +36,18 @@ readonly class CalendarVendorTaskProposalService
      */
     public function proposeTaskToVendor(Assignment $assignment): void
     {
-        $candidate = $assignment->candidates()
-            ->where('status', CandidateStatus::New)
-            ->first();
+        DB::transaction(function () use ($assignment) {
+            $candidate = $assignment->candidates()
+                ->where('status', CandidateStatus::New)
+                ->first();
 
-        if ($candidate) {
-            $this->proposeTo($candidate);
-            return;
-        }
+            if ($candidate) {
+                $this->proposeTo($candidate);
+                return;
+            }
 
-        $this->handleNoCandidatesRemaining($assignment);
+            $this->handleNoCandidatesRemaining($assignment);
+        });
     }
 
     /**
@@ -50,19 +55,27 @@ readonly class CalendarVendorTaskProposalService
      */
     public function handleDecline(Candidate $candidate): void
     {
-        $candidate->status = CandidateStatus::Declined;
-        $candidate->saveOrFail();
+        DB::transaction(function () use ($candidate) {
+            $candidate = Candidate::lockForUpdate()->find($candidate->id);
 
-        if (filled($candidate->vendor?->institution_user_id)) {
-            DeleteCandidatesFromWorkflow::dispatch(
-                $candidate->assignment,
-                [$candidate->vendor->institution_user_id]
-            );
-        }
+            if (!$candidate || $candidate->status !== CandidateStatus::SubmittedToVendor) {
+                return;
+            }
 
-        if ($candidate->assignment->subProject->project->is_calendar_project) {
-            $this->proposeTaskToVendor($candidate->assignment);
-        }
+            $candidate->status = CandidateStatus::Declined;
+            $candidate->saveOrFail();
+
+            if (filled($candidate->vendor?->institution_user_id)) {
+                DeleteCandidatesFromWorkflow::dispatch(
+                    $candidate->assignment,
+                    [$candidate->vendor->institution_user_id]
+                )->afterCommit();
+            }
+
+            if ($candidate->assignment->subProject->project->is_calendar_project) {
+                $this->proposeTaskToVendor($candidate->assignment);
+            }
+        });
     }
 
     /**
@@ -84,12 +97,13 @@ readonly class CalendarVendorTaskProposalService
             AddCandidatesToWorkflow::dispatch(
                 $candidate->assignment,
                 [$candidate->vendor->institution_user_id]
-            );
+            )->afterCommit();
         }
 
         if (!$candidate->vendor?->is_internal) {
             $reactionTime = $this->getReactionTimeSeconds($candidate->assignment);
             AutoDeclineVendorTaskProposal::dispatch($candidate->id)
+                ->afterCommit()
                 ->delay(now()->addSeconds($reactionTime));
         }
     }
@@ -122,35 +136,47 @@ readonly class CalendarVendorTaskProposalService
 
     /**
      * @param Assignment $assignment
-     * @param $declinedCandidates
+     * @param Collection<int, Candidate> $declinedCandidates
      * @return void
      * @throws Throwable
      */
-    private function tryNextInternalVendor(Assignment $assignment, $declinedCandidates): void
+    private function tryNextInternalVendor(Assignment $assignment, Collection $declinedCandidates): void
     {
         $excludeVendorIds = $declinedCandidates->pluck('vendor_id');
+        $maxAttempts = 3;
 
-        $project = $assignment->subProject->project;
-        $nextVendor = $this->slotMatchingService->pickBestInternalVendorForProject(
-            $project,
-            excludeVendorIds: $excludeVendorIds,
-        );
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            $project = $assignment->subProject->project;
+            $nextVendor = $this->slotMatchingService->pickBestInternalVendorForProject(
+                $project,
+                excludeVendorIds: $excludeVendorIds,
+            );
 
-        if (!$nextVendor) {
-            $this->notifyTpmCascadeExhausted($assignment);
-            return;
+            if (!$nextVendor) {
+                $this->notifyTpmCascadeExhausted($assignment);
+                return;
+            }
+
+            $maxPosition = $assignment->candidates()->max('position') ?? -1;
+
+            try {
+                DB::transaction(function () use ($assignment, $nextVendor, $maxPosition) {
+                    $candidate = Candidate::create([
+                        'assignment_id' => $assignment->id,
+                        'vendor_id' => $nextVendor->id,
+                        'position' => $maxPosition + 1,
+                        'status' => CandidateStatus::New,
+                    ]);
+
+                    $this->proposeTo($candidate);
+                });
+                return;
+            } catch (CalendarSlotConflictException) {
+                $excludeVendorIds->push($nextVendor->id);
+            }
         }
 
-        $maxPosition = $assignment->candidates()->max('position') ?? -1;
-
-        $candidate = Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $nextVendor->id,
-            'position' => $maxPosition + 1,
-            'status' => CandidateStatus::New,
-        ]);
-
-        $this->proposeTo($candidate);
+        $this->notifyTpmCascadeExhausted($assignment);
     }
 
     /**
@@ -170,12 +196,19 @@ readonly class CalendarVendorTaskProposalService
 
         $project = $assignment->subProject->project;
 
-        VendorCalendarEntry::create([
-            'vendor_id' => $candidate->vendor_id,
-            'start_at' => $project->event_start_at,
-            'end_at' => $project->event_end_at,
-            'assignment_id' => $assignment->id,
-        ]);
+        try {
+            VendorCalendarEntry::create([
+                'vendor_id' => $candidate->vendor_id,
+                'start_at' => $project->event_start_at,
+                'end_at' => $project->event_end_at,
+                'assignment_id' => $assignment->id,
+            ]);
+        } catch (QueryException $e) {
+            if (in_array($e->getCode(), ['23P01', '23505'])) {
+                throw new CalendarSlotConflictException();
+            }
+            throw $e;
+        }
     }
 
     /**

@@ -25,6 +25,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'comment', type: 'string'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, type: 'object', nullable: true),
+        new OA\Property(property: 'project', ref: ProjectResource::class, type: 'object', nullable: true),
     ],
     type: 'object'
 )]

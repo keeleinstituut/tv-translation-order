@@ -46,6 +46,12 @@ class ProjectPolicy
             return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
         }
 
+        if ($project->is_calendar_project) {
+            if ($vendor = Vendor::query()->where('institution_user_id', $currentInstitutionUserId)->first()) {
+                return $project->calendarEntries()->where('vendor_id', $vendor->id)->exists();
+            }
+        }
+
         return false;
     }
 
@@ -96,14 +102,18 @@ class ProjectPolicy
 
     public function editSourceFiles(JwtPayloadUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $this->isInSameInstitutionAsCurrentUser($project) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isClient($project)
+            );
     }
 
     public function editHelpFiles(JwtPayloadUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $this->isInSameInstitutionAsCurrentUser($project) && (
+                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+                $this->isClient($project)
+            );
     }
 
     public function downloadMedia(JwtPayloadUser $user, Project $project): bool

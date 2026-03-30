@@ -219,7 +219,8 @@ class VendorControllerTest extends TestCase
 
         $response = $this->prepareAuthorizedRequest($accessToken)->postJson('/api/vendors/bulk', $payload);
 
-        $savedVendors = Vendor::all();
+        $institutionUserIds = $testIUsers->pluck('id');
+        $savedVendors = Vendor::all()->sortBy(fn ($vendor) => $institutionUserIds->search($vendor->institution_user_id))->values();
 
         $response
             ->assertStatus(200)

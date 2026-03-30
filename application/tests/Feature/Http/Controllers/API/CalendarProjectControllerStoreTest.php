@@ -120,7 +120,6 @@ class CalendarProjectControllerStoreTest extends TestCase
             'selectedInstitution' => ['id' => $this->institution->id],
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
-                PrivilegeKey::ManageProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -380,35 +379,6 @@ class CalendarProjectControllerStoreTest extends TestCase
         // THEN
         $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['candidate_vendor_id']);
-        $this->assertDatabaseMissing('projects', ['institution_id' => $this->institution->id]);
-    }
-
-    public function test_tpm_gets_422_when_no_vendor_available_for_auto_matching(): void
-    {
-        // GIVEN
-        // No vendors with language coverage and calendar import set up
-        $actingUser = InstitutionUser::factory()
-            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
-            ->create();
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $actingUser->id,
-            'selectedInstitution' => ['id' => $this->institution->id],
-            'privileges' => [
-                PrivilegeKey::CreateProject->value,
-                PrivilegeKey::ManageProject->value,
-                PrivilegeKey::ChangeClient->value,
-                PrivilegeKey::ChangeProjectManager->value,
-            ],
-        ]);
-        $payload = $this->createCalendarPayload();
-
-        // WHEN
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->postJson('/api/projects', $payload);
-
-        // THEN
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['event_start_at']);
         $this->assertDatabaseMissing('projects', ['institution_id' => $this->institution->id]);
     }
 

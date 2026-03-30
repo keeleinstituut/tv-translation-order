@@ -59,7 +59,7 @@ class TrackSubProjectStatus implements ShouldQueue
                 return;
             }
 
-            if (in_array($this->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+            if (filled($jobDefinition) && in_array($this->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
                 $this->subProject->status = SubProjectStatus::TasksSubmittedToVendors;
                 $this->subProject->active_job_definition_id = $jobDefinition->id;
                 $this->subProject->saveOrFail();

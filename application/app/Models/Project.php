@@ -246,6 +246,14 @@ class Project extends Model implements AuditLoggable, HasMedia
         );
     }
 
+    public function calendarEntries(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            (new Assignment())->calendarEntry(),
+        );
+    }
+
     public function volumes(): HasManyDeep
     {
         return $this->hasManyDeepFromRelations(

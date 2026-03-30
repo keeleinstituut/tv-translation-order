@@ -26,6 +26,7 @@ class PrebookService
         ]);
 
         ExpirePrebookJob::dispatch($prebook->id)
+            ->afterCommit()
             ->delay(now()->plus(minutes: self::PREBOOK_DURATION_MINUTES));
 
         return $prebook;

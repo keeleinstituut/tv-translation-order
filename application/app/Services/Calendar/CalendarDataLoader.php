@@ -84,18 +84,12 @@ readonly class CalendarDataLoader
 
         $vendorIdsWithImport = $this->vendorRepo->getVendorIdsWithImportInPeriod($internalVendorIds, $start, $end);
 
-        $vendorLanguageCoverages = $vendorLanguageCoverages->filter(
-            fn($row) => $vendorIdsWithImport->contains($row->vendor_id)
-        );
-
-        if ($vendorLanguageCoverages->isEmpty()) {
-            return null;
-        }
-
         return [
             'vendorLanguageCoverages' => $vendorLanguageCoverages,
             'internalVendorIds' => $internalVendorIds,
-            'importedCalendarVendorIds' => $vendorLanguageCoverages->pluck('vendor_id')->unique()->values(),
+            'importedCalendarVendorIds' => $vendorLanguageCoverages->filter(
+                fn($row) => $vendorIdsWithImport->contains($row->vendor_id)
+            )->pluck('vendor_id')->unique()->values(),
             'institutionUserIds' => $vendorLanguageCoverages->pluck('institution_user_id')->unique(),
         ];
     }
