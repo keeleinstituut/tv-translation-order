@@ -142,12 +142,16 @@ class SubProjectObserver
     private function publishSubProjectSentToPmEmailNotification(SubProject $subProject): void
     {
         $manager = $subProject->project->managerInstitutionUser;
-        if (filled($manager?->email)) {
+        $institution = $subProject->project->institution;
+        $receiverEmail = $manager?->email ?: $institution->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution->name;
+
+        if (filled($receiverEmail)) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::SubProjectSentToPm,
-                    'receiver_email' => $manager->email,
-                    'receiver_name' => $manager->getUserFullName(),
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
                     'variables' => [
                         'sub_project' => $subProject->only([
                             'ext_id'

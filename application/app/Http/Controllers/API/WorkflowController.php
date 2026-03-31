@@ -13,6 +13,7 @@ use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
 use App\Http\Resources\TaskResource2;
+use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Jobs\NotifyAssignmentCandidatesAboutReviewRejection;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -31,14 +32,12 @@ use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
 use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
-use App\Services\Calendar\CalendarVendorTaskProposalService;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use BadMethodCallException;
-use DB;
 use Gate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Container;
@@ -51,6 +50,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use NotificationClient\Services\NotificationPublisher;
@@ -599,7 +599,7 @@ class WorkflowController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
-    public function declineTask(Request $request, CalendarVendorTaskProposalService $vendorTaskProposalService): TaskResource
+    public function declineTask(Request $request): TaskResource
     {
         $taskId = $request->route('id');
         $taskData = $this->getTaskDataOrFail($taskId);
@@ -635,7 +635,21 @@ class WorkflowController extends Controller
             abort(Response::HTTP_BAD_REQUEST, 'The vendor has no pending proposal for this task');
         }
 
-        $vendorTaskProposalService->handleDecline($candidate);
+        DB::transaction(function () use ($candidate) {
+            $candidate = Candidate::lockForUpdate()->find($candidate->id);
+
+            if (!$candidate || $candidate->status !== CandidateStatus::SubmittedToVendor) {
+                return;
+            }
+
+            $candidate->status = CandidateStatus::Declined;
+            $candidate->saveOrFail();
+
+            if ($candidate->assignment->subProject->project->is_calendar_project) {
+                NotifyAssignmentCandidatesAboutNewTask::dispatch($candidate->assignment)
+                    ->afterCommit();
+            }
+        });
 
         return TaskResource::make($taskData);
     }

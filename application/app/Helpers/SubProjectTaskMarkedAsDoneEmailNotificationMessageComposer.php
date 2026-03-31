@@ -4,16 +4,25 @@ namespace App\Helpers;
 
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 
 class SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer
 {
-    public static function compose(Assignment $assignment, InstitutionUser $receiver): ?EmailNotificationMessage
+    public static function compose(Assignment $assignment, ?InstitutionUser $receiver, bool $isManager = false): ?EmailNotificationMessage
     {
-        if (empty($receiver->email)) {
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $institution = $assignment->subProject->project->institution;
+            $receiverEmail = $receiver?->email ?: $institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $institution?->name;
+        }
+
+        if (empty($receiverEmail)) {
             return null;
         }
 
@@ -25,8 +34,8 @@ class SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer
 
         return EmailNotificationMessage::make([
             'notification_type' => NotificationType::SubProjectTaskMarkedAsDone,
-            'receiver_email' => $receiver->email,
-            'receiver_name' => $receiver->getUserFullName(),
+            'receiver_email' => $receiverEmail,
+            'receiver_name' => $receiverName,
             'variables' => [
                 'user' => ['name' => implode(' ', [$jwtPayloadUser->forename, $jwtPayloadUser->surname])],
                 'vendor' => isset($vendor) ? $vendor->only(['company_name']) : [],

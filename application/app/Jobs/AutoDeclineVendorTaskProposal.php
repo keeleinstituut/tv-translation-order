@@ -4,12 +4,12 @@ namespace App\Jobs;
 
 use App\Enums\CandidateStatus;
 use App\Models\Candidate;
-use App\Services\Calendar\CalendarVendorTaskProposalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class AutoDeclineVendorTaskProposal implements ShouldQueue
@@ -27,18 +27,26 @@ class AutoDeclineVendorTaskProposal implements ShouldQueue
     /**
      * @throws Throwable
      */
-    public function handle(CalendarVendorTaskProposalService $service): void
+    public function handle(): void
     {
-        $candidate = Candidate::find($this->candidateId);
+        DB::transaction(function () {
+            $candidate = Candidate::lockForUpdate()->find($this->candidateId);
 
-        if (!$candidate || $candidate->status !== CandidateStatus::SubmittedToVendor) {
-            return;
-        }
+            if (!$candidate || $candidate->status !== CandidateStatus::SubmittedToVendor) {
+                return;
+            }
 
-        if (filled($candidate->assignment?->assigned_vendor_id)) {
-            return;
-        }
+            if (filled($candidate->assignment?->assigned_vendor_id) && $candidate->assignment->assigned_vendor_id !== $candidate->vendor_id) {
+                return;
+            }
 
-        $service->handleDecline($candidate);
+            $candidate->delete();
+
+            if ($candidate->assignment->subProject->project->is_calendar_project) {
+                NotifyAssignmentCandidatesAboutNewTask::dispatch($candidate->assignment)
+                    ->afterCommit();
+            }
+        });
+
     }
 }

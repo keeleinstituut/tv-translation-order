@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\Project;
 use App\Models\ProjectComment;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
@@ -16,9 +17,11 @@ class ProjectCommentPolicy
             || Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
     }
 
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(JwtPayloadUser $jwtPayloadUser, Project $project): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+            Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
+            $project->assignees()->where('institution_user_id', $jwtPayloadUser->institutionUserId)->exists();
     }
 
     public function update(JwtPayloadUser $jwtPayloadUser, ProjectComment $projectComment): bool

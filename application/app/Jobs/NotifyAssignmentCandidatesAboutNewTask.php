@@ -4,8 +4,10 @@ namespace App\Jobs;
 
 use App\Enums\CandidateStatus;
 use App\Models\Assignment;
+use App\Models\CalendarSetting;
 use App\Models\Candidate;
-use App\Services\Calendar\CalendarVendorTaskProposalService;
+use App\Models\VendorCalendarEntry;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,6 +22,8 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public const int DEFAULT_REACTION_TIME_SECONDS = 1800; // 30min
+
     /**
      * Create a new job instance.
      */
@@ -30,7 +34,7 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
     /**
      * @throws Throwable
      */
-    public function handle(NotificationPublisher $notificationPublisher, CalendarVendorTaskProposalService $vendorTaskProposalService): void
+    public function handle(NotificationPublisher $notificationPublisher): void
     {
         if (filled($this->assignment->assigned_vendor_id)) {
             return;
@@ -45,33 +49,133 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
             return;
         }
 
-        if ($this->assignment->subProject->project->is_calendar_project) {
-            $vendorTaskProposalService->proposeTaskToVendor($this->assignment);
+        $project = $this->assignment->subProject->project;
+        if ($project->is_calendar_project) {
+            /** @var Candidate $candidate */
+            $candidate = $this->assignment->candidates()
+                ->where('status', CandidateStatus::New)
+                ->first();
+
+            if (blank($candidate)) {
+                $hasPendingCandidates = $this->assignment->candidates()->whereNot('status', CandidateStatus::Declined)->exists();
+                if (!$hasPendingCandidates) {
+                    $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
+                }
+                return;
+            }
+
+            if (blank($candidate->vendor)) {
+                $candidate->delete();
+                NotifyAssignmentCandidatesAboutNewTask::dispatch($this->assignment);
+                return;
+            }
+
+            $this->reassignCalendarEntry($candidate);
+
+            $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
+
+            if (!$candidate->vendor->is_internal) {
+                AutoDeclineVendorTaskProposal::dispatch($candidate->id)
+                    ->afterCommit()
+                    ->delay(now()->addSeconds($this->getReactionTimeSeconds()));
+            }
             return;
         }
 
         $this->assignment->candidates->each(function (Candidate $candidate) use ($notificationPublisher) {
             if ($candidate->status === CandidateStatus::New) {
-                $candidate->status = CandidateStatus::SubmittedToVendor;
-                $candidate->saveOrFail();
-
-                $institutionUser = $candidate->vendor?->institutionUser;
-                if (filled($institutionUser?->email) && filled($this->assignment->subProject?->project?->institution_id)) {
-                    $notificationPublisher->publishEmailNotification(
-                        EmailNotificationMessage::make([
-                            'notification_type' => NotificationType::TaskCreated,
-                            'receiver_email' => $institutionUser->email,
-                            'receiver_name' => $institutionUser->getUserFullName(),
-                            'variables' => [
-                                'assignment' => $this->assignment->only([
-                                    'ext_id'
-                                ]),
-                            ]
-                        ]),
-                        $this->assignment->subProject->project->institution_id
-                    );
-                }
+                $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
             }
         });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    private function notifyAssignmentCandidate(Candidate $candidate, NotificationPublisher $notificationPublisher): void
+    {
+        $candidate->status = CandidateStatus::SubmittedToVendor;
+        $candidate->notified_at = Carbon::now()->utc();
+        $candidate->saveOrFail();
+
+        $institutionUser = $candidate->vendor?->institutionUser;
+        if (filled($institutionUser?->email) && filled($this->assignment->subProject?->project?->institution_id)) {
+            $notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::TaskCreated,
+                    'receiver_email' => $institutionUser->email,
+                    'receiver_name' => $institutionUser->getUserFullName(),
+                    'variables' => [
+                        'assignment' => $this->assignment->only([
+                            'ext_id'
+                        ]),
+                    ]
+                ]),
+                $this->assignment->subProject->project->institution_id
+            );
+        }
+    }
+
+    private function reassignCalendarEntry(Candidate $candidate): void
+    {
+        $existingEntry = VendorCalendarEntry::where('assignment_id', $this->assignment->id)->first();
+
+        if (blank($existingEntry)) {
+            return;
+        }
+
+        $existingEntry->delete();
+
+        VendorCalendarEntry::create([
+            'vendor_id' => $candidate->vendor_id,
+            'start_at' => $existingEntry->start_at,
+            'end_at' => $existingEntry->end_at,
+            'assignment_id' => $this->assignment->id,
+        ]);
+    }
+
+    /**
+     * @return int
+     */
+    private function getReactionTimeSeconds(): int
+    {
+        $institutionId = $this->assignment->subProject?->project?->institution_id;
+
+        if (blank($institutionId)) {
+            return self::DEFAULT_REACTION_TIME_SECONDS;
+        }
+
+        return CalendarSetting::where('institution_id', $institutionId)
+            ->first()
+            ?->reaction_time_seconds ?? self::DEFAULT_REACTION_TIME_SECONDS;
+    }
+
+    /**
+     * @param Assignment $assignment
+     * @return void
+     * @throws Throwable
+     */
+    private function handleNoCandidatesRemaining(Assignment $assignment, NotificationPublisher $notificationPublisher): void
+    {
+        $manager = $assignment->subProject?->project?->managerInstitutionUser;
+        $institution = $assignment->subProject?->project?->institution;
+
+        $receiverEmail = $manager?->email ?: $institution?->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution?->name;
+
+        if (filled($receiverEmail) && filled($receiverName)) {
+            $notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::NoExternalVendorsAvailable,
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
+                    'variables' => [
+                        'assignment' => $assignment->only(['ext_id']),
+                        'job_definition' => $assignment->jobDefinition?->only(['job_short_name'])
+                    ]
+                ]),
+                $institution->id
+            );
+        }
     }
 }

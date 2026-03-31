@@ -297,7 +297,7 @@ class AssignmentController extends Controller
                         ->unique(fn($data) => $data['vendor_id'])
                         ->map(Candidate::make(...));
 
-                    $assignment->candidates()->saveMany($newCandidates);
+                    $assignment->candidates()->saveManyQuietly($newCandidates);
 
                     $assignment->load('candidates.vendor.institutionUser');
 
@@ -507,7 +507,7 @@ class AssignmentController extends Controller
                 }
 
                 $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
-                if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
+                if (filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager, true))) {
                     $this->notificationPublisher->publishEmailNotification($message);
                 }
             }
