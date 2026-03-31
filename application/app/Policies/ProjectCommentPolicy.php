@@ -12,9 +12,7 @@ class ProjectCommentPolicy
 {
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value)
-            || Auth::hasPrivilege(PrivilegeKey::ManageProject->value)
-            || Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+        return true;
     }
 
     public function create(JwtPayloadUser $jwtPayloadUser, Project $project): bool
