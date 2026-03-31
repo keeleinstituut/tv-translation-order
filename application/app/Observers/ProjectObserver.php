@@ -57,12 +57,17 @@ class ProjectObserver
         $seq->name = Sequence::PROJECT_SUBPROJECT_SEQ;
         $seq->saveOrFail();
 
-        if (filled($projectManager = $project->managerInstitutionUser) && filled($projectManager->email)) {
+        $manager = $project->managerInstitutionUser;
+        $institution = $project->institution;
+        $receiverEmail = $manager?->email ?: $institution->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution->name;
+
+        if (filled($receiverEmail)) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::ProjectCreated,
-                    'receiver_email' => $projectManager->email,
-                    'receiver_name' => $projectManager->getUserFullName(),
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
                     'variables' => [
                         'project' => $project->only(['ext_id'])
                     ]
@@ -165,14 +170,14 @@ class ProjectObserver
 
         if ($project->wasChanged('status')) {
             if ($project->status === ProjectStatus::Cancelled) {
-                filled($project->managerInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser);
+                $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser, true);
                 filled($project->clientInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->clientInstitutionUser);
                 $this->publishProjectCancelledEmailNotificationForVendors($project);
             } elseif ($project->status === ProjectStatus::SubmittedToClient || $project->status === ProjectStatus::Corrected) {
                 $this->publishProjectSubmittedToClientEmailNotification($project);
                 $this->publishProjectIsReadyForReviewEmailNotification($project);
             } elseif ($project->status === ProjectStatus::Accepted) {
-                filled($project->managerInstitutionUser) && $this->publishProjectAcceptedEmailNotification($project, $project->managerInstitutionUser);
+                $this->publishProjectAcceptedEmailNotification($project, $project->managerInstitutionUser, true);
                 filled($project->clientInstitutionUser) && $this->publishProjectAcceptedEmailNotification($project, $project->clientInstitutionUser);
             } elseif ($project->status === ProjectStatus::Registered) {
                 $this->publishProjectRegisteredEmailNotification($project);
@@ -206,15 +211,22 @@ class ProjectObserver
         //
     }
 
+    /**
+     * @throws Throwable
+     */
     private function publishProjectSubmittedToClientEmailNotification(Project $project): void
     {
         $manager = $project->managerInstitutionUser;
-        if (filled($manager?->email)) {
+        $institution = $project->institution;
+        $receiverEmail = $manager?->email ?: $institution->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution->name;
+
+        if (filled($receiverEmail)) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::ProjectSentToClient,
-                    'receiver_email' => $manager->email,
-                    'receiver_name' => $manager->getUserFullName(),
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
                     'variables' => [
                         'project' => $project->only(['ext_id']),
                     ]
@@ -259,14 +271,22 @@ class ProjectObserver
         }
     }
 
-    private function publishProjectCancelledEmailNotification(Project $project, InstitutionUser $receiver): void
+    private function publishProjectCancelledEmailNotification(Project $project, ?InstitutionUser $receiver, $isManager = false): void
     {
-        if (filled($receiver->email)) {
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $receiverEmail = $receiver?->email ?: $project->institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+        }
+
+        if (filled($receiverEmail)) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::ProjectCancelled,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
                     'variables' => [
                         'project' => $project->only([
                             'ext_id',
@@ -300,14 +320,25 @@ class ProjectObserver
         });
     }
 
-    private function publishProjectAcceptedEmailNotification(Project $project, InstitutionUser $receiver): void
+    /**
+     * @throws Throwable
+     */
+    private function publishProjectAcceptedEmailNotification(Project $project, ?InstitutionUser $receiver, bool $isManager = false): void
     {
-        if (filled($receiver->email)) {
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $receiverEmail = $receiver?->email ?: $project->institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+        }
+
+        if (filled($receiverEmail)) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::ProjectAccepted,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
                     'variables' => [
                         'project' => $project->only([
                             'ext_id'

@@ -507,7 +507,7 @@ class AssignmentController extends Controller
                 }
 
                 $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
-                if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
+                if (filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager, true))) {
                     $this->notificationPublisher->publishEmailNotification($message);
                 }
             }

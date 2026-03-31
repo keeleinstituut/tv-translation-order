@@ -72,13 +72,13 @@ class CandidateObserver
     private function publishTaskDeclinedEmailNotification(Assignment $assignment, Vendor $vendor): void
     {
         $project = $assignment->subProject?->project;
-        if (filled($project) && filled($project->institution_id)) {
+        if (filled($project)) {
             $manager = $project->managerInstitutionUser;
             $institution = $project->institution;
-            $receiverEmail = $manager?->email ?? $institution->email;
-            $receiverName = $manager?->getUserFullName() ?? $institution->name;
+            $receiverEmail = $manager?->email ?: $institution->email;
+            $receiverName = $manager?->getUserFullName() ?: $institution->name;
 
-            if (filled($receiverEmail) && filled($receiverName)) {
+            if (filled($receiverEmail)) {
                 $this->notificationPublisher->publishEmailNotification(
                     EmailNotificationMessage::make([
                         'notification_type' => NotificationType::TaskDeclinedByVendor,

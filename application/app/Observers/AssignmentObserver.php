@@ -66,9 +66,11 @@ readonly class AssignmentObserver
         }
 
         if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
-            if (filled($manager = $assignment->subProject?->project?->managerInstitutionUser)) {
-                $this->publishTaskAcceptedEmailNotification($assignment, $manager);
-            }
+            $this->publishTaskAcceptedEmailNotification(
+                $assignment,
+                $assignment->subProject?->project?->managerInstitutionUser,
+                true
+            );
 
             if (filled($vendorInstitutionUser = $assignment->assignee?->institutionUser)) {
                 $this->publishTaskAcceptedEmailNotification($assignment, $vendorInstitutionUser);
@@ -180,14 +182,23 @@ readonly class AssignmentObserver
             ->implode('');
     }
 
-    private function publishTaskAcceptedEmailNotification(Assignment $assignment, InstitutionUser $receiver): void
+    private function publishTaskAcceptedEmailNotification(Assignment $assignment, ?InstitutionUser $receiver, bool $isManager = false): void
     {
-        if (filled($receiver->email) && filled($assignment->subProject?->project?->institution_id)) {
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $institution = $assignment->subProject->project->institution;
+            $receiverEmail = $receiver?->email ?: $institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $institution?->name;
+        }
+
+        if (filled($receiverEmail) && filled($assignment->subProject?->project?->institution_id)) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::TaskAccepted,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
+                    'receiver_email' => $receiverEmail,
+                    'receiver_name' => $receiverName,
                     'variables' => [
                         'assignment' => $assignment->only('ext_id'),
                         'job_definition' => $assignment->jobDefinition?->only('job_short_name'),

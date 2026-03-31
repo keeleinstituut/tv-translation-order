@@ -41,12 +41,21 @@ class NotifyThatProjectDeadlineIsReached extends Command
                         $atLeastOneNotificationSent = true;
                     }
 
-                    if (filled($manager = $project->managerInstitutionUser) && filled($manager->email)) {
+                    $manager = $project->managerInstitutionUser;
+                    $receiverEmail = $manager?->email;
+                    $receiverName = $manager?->getUserFullName();
+
+                    if (empty($receiverEmail)) {
+                        $receiverEmail = $project->institution?->email;
+                        $receiverName = $project->institution?->name;
+                    }
+
+                    if (filled($receiverEmail)) {
                         $notificationPublisher->publishEmailNotification(
                             EmailNotificationMessage::make([
                                 'notification_type' => NotificationType::ProjectDeadlineReached,
-                                'receiver_email' => $manager->email,
-                                'receiver_name' => $manager->getUserFullName(),
+                                'receiver_email' => $receiverEmail,
+                                'receiver_name' => $receiverName,
                                 'variables' => [
                                     'project' => $project->only(['ext_id']),
                                 ]
