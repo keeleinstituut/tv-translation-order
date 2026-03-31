@@ -18,15 +18,17 @@ readonly class CalendarVendorRepository
      */
     public function getVendorIdsWithImportInPeriod(Collection $vendorIds, Carbon $start, Carbon $end): Collection
     {
-        if ($vendorIds->isEmpty()) {
-            return collect();
-        }
-
-        return VendorCalendarImport::whereIn('vendor_id', $vendorIds)
-            ->where('date_from', '<=', $end)
-            ->where('date_to', '>=', $start)
-            ->distinct()
-            ->pluck('vendor_id');
+        return $vendorIds;
+//        TODO: uncomment once calendar import is implemented on FE
+//        if ($vendorIds->isEmpty()) {
+//            return collect();
+//        }
+//
+//        return VendorCalendarImport::whereIn('vendor_id', $vendorIds)
+//            ->where('date_from', '<=', $end)
+//            ->where('date_to', '>=', $start)
+//            ->distinct()
+//            ->pluck('vendor_id');
     }
 
     /**
