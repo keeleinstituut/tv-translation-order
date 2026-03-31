@@ -351,18 +351,19 @@ class ProjectControllerStoreTest extends TestCase
                     ClassifierValue::where('type', ClassifierValueType::FileType)->firstOrFail()->id,
                 ],
             ]],
-            'Project type "Suuline tõlge" without event_start_at' => [fn () => [
-                ...static::createExampleValidPayload(),
-                'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
-                    $query->select('id')
-                        ->from('cached_classifier_values')
-                        ->where('type', ClassifierValueType::ProjectType->value)
-                        ->where('value', 'ORAL_TRANSLATION')
-                        ->limit(1);
-                })->firstOrFail()->type_classifier_value_id,
-                'reference_number' => '4321',
-                'comments' => "Project\n\n4321",
-            ]],
+            'Project type "Suuline tõlge" without event_start_at' => [fn () => collect(static::createExampleValidPayload())
+                ->except('event_start_at')
+                ->merge([
+                    'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
+                        $query->select('id')
+                            ->from('cached_classifier_values')
+                            ->where('type', ClassifierValueType::ProjectType->value)
+                            ->where('value', 'ORAL_TRANSLATION')
+                            ->limit(1);
+                    })->firstOrFail()->type_classifier_value_id,
+                    'reference_number' => '4321',
+                    'comments' => "Project\n\n4321",
+                ])->toArray()],
         ];
     }
 

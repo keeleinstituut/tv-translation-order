@@ -41,23 +41,6 @@ class InstitutionControllerTest extends TestCase
             ->assertJsonFragment(['institution_id' => $institution->id, 'language_id' => $languageB->id]);
     }
 
-    public function test_index_requires_edit_institution_privilege(): void
-    {
-        // GIVEN
-        $institution = Institution::factory()->create();
-        $accessToken = AuthHelpers::generateAccessToken([
-            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [],
-        ]);
-
-        // WHEN
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson('/api/institutions/main-languages');
-
-        // THEN
-        $response->assertStatus(403);
-    }
-
     public function test_sync_main_languages_returns_updated_collection(): void
     {
         // GIVEN

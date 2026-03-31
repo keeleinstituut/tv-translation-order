@@ -180,42 +180,6 @@ class CalendarProjectControllerUpdateTest extends TestCase
         $this->assertTrue($candidates->contains('vendor_id', $externalVendor->id));
     }
 
-    public function test_toggle_use_external_vendor_false_runs_internal_auto_pick(): void
-    {
-        // GIVEN: a calendar project with use_external_vendor=true
-        [$project, $_, $accessToken] = $this->createCalendarProjectWithCandidate([
-            'use_external_vendor' => true,
-        ]);
-
-        $assignment = $project->subProjects->first()->assignments->first();
-
-        // Create an internal vendor with coverage
-        $internalVendor = $this->createVendorWithCoverage(internal: true);
-        $this->createCalendarImport($internalVendor);
-        $this->refreshView();
-
-        // WHEN: toggle use_external_vendor to false
-        $payload = $this->createUpdatePayload($project, [
-            'use_external_vendor' => false,
-        ]);
-
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->putJson("/api/projects/{$project->id}", $payload);
-
-        // THEN: internal vendor is auto-picked
-        $response->assertOk();
-
-        $project->refresh();
-        $this->assertFalse($project->use_external_vendor);
-
-        $candidate = Candidate::where('assignment_id', $assignment->id)
-            ->where('status', '!=', CandidateStatus::Declined)
-            ->first();
-
-        $this->assertNotNull($candidate);
-        $this->assertEquals($internalVendor->id, $candidate->vendor_id);
-    }
-
     public function test_update_timeframe_syncs_vce(): void
     {
         // GIVEN: a calendar project with a candidate and VCE

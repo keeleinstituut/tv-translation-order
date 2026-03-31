@@ -6,6 +6,8 @@ use App\Enums\CandidateStatus;
 use App\Models\Assignment;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
+use App\Models\VendorCalendarEntry;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -65,8 +67,10 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
             if (blank($candidate->vendor)) {
                 $candidate->delete();
                 NotifyAssignmentCandidatesAboutNewTask::dispatch($this->assignment);
+                return;
             }
 
+            $this->reassignCalendarEntry($candidate);
 
             $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
 
@@ -85,9 +89,13 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
         });
     }
 
+    /**
+     * @throws Throwable
+     */
     private function notifyAssignmentCandidate(Candidate $candidate, NotificationPublisher $notificationPublisher): void
     {
         $candidate->status = CandidateStatus::SubmittedToVendor;
+        $candidate->notified_at = Carbon::now()->utc();
         $candidate->saveOrFail();
 
         $institutionUser = $candidate->vendor?->institutionUser;
@@ -106,6 +114,24 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                 $this->assignment->subProject->project->institution_id
             );
         }
+    }
+
+    private function reassignCalendarEntry(Candidate $candidate): void
+    {
+        $existingEntry = VendorCalendarEntry::where('assignment_id', $this->assignment->id)->first();
+
+        if (blank($existingEntry)) {
+            return;
+        }
+
+        $existingEntry->delete();
+
+        VendorCalendarEntry::create([
+            'vendor_id' => $candidate->vendor_id,
+            'start_at' => $existingEntry->start_at,
+            'end_at' => $existingEntry->end_at,
+            'assignment_id' => $this->assignment->id,
+        ]);
     }
 
     /**

@@ -37,7 +37,7 @@ class ProjectCommentController extends Controller
         $project = Project::withGlobalScope('policy', ProjectPolicy::scope())
             ->findOrFail($request->route('project'));
 
-        $this->authorize('create', ProjectComment::class);
+        $this->authorize('create', [ProjectComment::class, $project]);
 
         $comment = (new ProjectComment)->fill([
             'project_id' => $project->id,
