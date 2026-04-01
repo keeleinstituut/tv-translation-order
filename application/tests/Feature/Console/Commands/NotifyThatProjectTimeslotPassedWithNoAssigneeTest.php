@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Console\Commands;
 
+use App\Enums\JobKey;
 use App\Enums\ProjectStatus;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\JobDefinition;
 use App\Models\Project;
+use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use Illuminate\Support\Carbon;
@@ -42,10 +45,7 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
         $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
         $project = $this->createCalendarProject(ProjectStatus::New, Carbon::now()->subHour(), $manager);
         $subProject = $this->createSubProject($project);
-        $assignment = Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-        ]);
+        $assignment = $this->createTranslationAssignment($subProject);
 
         $this->runCommand();
 
@@ -64,29 +64,31 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
         $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
         $project = $this->createCalendarProject(ProjectStatus::Registered, Carbon::now()->subHour(), $manager);
         $subProject = $this->createSubProject($project);
-        Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-        ]);
+        $this->createTranslationAssignment($subProject);
 
         $this->runCommand();
 
         $this->assertCount(1, $this->publishedMessages);
     }
 
-    public function test_does_not_send_if_any_assignment_has_vendor(): void
+    public function test_does_not_send_if_translation_assignment_has_vendor(): void
     {
         $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
         $project = $this->createCalendarProject(ProjectStatus::New, Carbon::now()->subHour(), $manager);
         $subProject = $this->createSubProject($project);
-        Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-        ]);
-        Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => Vendor::factory(),
-        ]);
+        $this->createTranslationAssignment($subProject, assignedVendorId: Vendor::factory()->create()->id);
+
+        $this->runCommand();
+
+        $this->assertCount(0, $this->publishedMessages);
+    }
+
+    public function test_ignores_non_translation_assignments(): void
+    {
+        $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
+        $project = $this->createCalendarProject(ProjectStatus::New, Carbon::now()->subHour(), $manager);
+        $subProject = $this->createSubProject($project);
+        $this->createAssignmentWithJobKey($subProject, JobKey::JOB_OVERVIEW);
 
         $this->runCommand();
 
@@ -113,10 +115,7 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
         $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
         $project = $this->createCalendarProject(ProjectStatus::New, Carbon::now()->addHour(), $manager);
         $subProject = $this->createSubProject($project);
-        Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-        ]);
+        $this->createTranslationAssignment($subProject);
 
         $this->runCommand();
 
@@ -128,26 +127,21 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
         $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
         $project = $this->createCalendarProject(ProjectStatus::New, Carbon::now()->subHour(), $manager);
         $subProject = $this->createSubProject($project);
-        Assignment::factory()->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-            'timeslot_passed_notification_sent_at' => Carbon::now()->subMinutes(30),
-        ]);
+        $this->createTranslationAssignment($subProject, notifiedAt: Carbon::now()->subMinutes(30));
 
         $this->runCommand();
 
         $this->assertCount(0, $this->publishedMessages);
     }
 
-    public function test_sends_one_notification_per_unassigned_assignment(): void
+    public function test_sends_one_notification_per_unassigned_translation_assignment(): void
     {
         $manager = InstitutionUser::factory()->create(['email' => 'manager@test.com']);
         $project = $this->createCalendarProject(ProjectStatus::New, Carbon::now()->subHour(), $manager);
         $subProject = $this->createSubProject($project);
-        Assignment::factory()->count(3)->create([
-            'sub_project_id' => $subProject->id,
-            'assigned_vendor_id' => null,
-        ]);
+        $this->createTranslationAssignment($subProject);
+        $this->createTranslationAssignment($subProject);
+        $this->createTranslationAssignment($subProject);
 
         $this->runCommand();
 
@@ -162,15 +156,6 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
             ->assertExitCode(0);
     }
 
-    private function createSubProject(Project $project): SubProject
-    {
-        return SubProject::factory()->create([
-            'project_id' => $project->id,
-            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
-            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
-        ]);
-    }
-
     private function createCalendarProject(
         ProjectStatus $status,
         Carbon $eventEndAt,
@@ -181,6 +166,51 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
             'status' => $status,
             'event_end_at' => $eventEndAt,
             'manager_institution_user_id' => $manager->id,
+        ]);
+    }
+
+    private function createSubProject(Project $project): SubProject
+    {
+        return SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+    }
+
+    private function createTranslationAssignment(
+        SubProject $subProject,
+        ?string $assignedVendorId = null,
+        ?Carbon $notifiedAt = null,
+    ): Assignment {
+        return $this->createAssignmentWithJobKey(
+            $subProject,
+            JobKey::JOB_TRANSLATION,
+            $assignedVendorId,
+            $notifiedAt,
+        );
+    }
+
+    private function createAssignmentWithJobKey(
+        SubProject $subProject,
+        JobKey $jobKey,
+        ?string $assignedVendorId = null,
+        ?Carbon $notifiedAt = null,
+    ): Assignment {
+        $jobDefinition = JobDefinition::create([
+            'project_type_config_id' => ProjectTypeConfig::factory()->create()->id,
+            'job_key' => $jobKey,
+            'job_short_name' => $jobKey->value,
+            'multi_assignments_enabled' => false,
+            'linking_with_cat_tool_jobs_enabled' => false,
+            'sequence' => 1,
+        ]);
+
+        return Assignment::factory()->create([
+            'sub_project_id' => $subProject->id,
+            'job_definition_id' => $jobDefinition->id,
+            'assigned_vendor_id' => $assignedVendorId,
+            'timeslot_passed_notification_sent_at' => $notifiedAt,
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\JobKey;
 use App\Enums\ProjectStatus;
 use App\Models\Assignment;
 use App\Models\Project;
@@ -24,10 +25,16 @@ class NotifyThatProjectTimeslotPassedWithNoAssignee extends Command
             ->whereIn('status', [ProjectStatus::New, ProjectStatus::Registered])
             ->whereNotNull('event_end_at')
             ->where('event_end_at', '<', Carbon::now())
-            ->whereDoesntHave('assignments', fn ($q) => $q->whereNotNull('assigned_vendor_id'))
-            ->whereHas('assignments', fn ($q) => $q->whereNull('timeslot_passed_notification_sent_at'))
+            ->whereDoesntHave('assignments', fn ($q) => $q
+                ->whereHas('jobDefinition', fn ($jd) => $jd->where('job_key', JobKey::JOB_TRANSLATION))
+                ->whereNotNull('assigned_vendor_id'))
+            ->whereHas('assignments', fn ($q) => $q
+                ->whereHas('jobDefinition', fn ($jd) => $jd->where('job_key', JobKey::JOB_TRANSLATION))
+                ->whereNull('timeslot_passed_notification_sent_at'))
             ->with([
-                'assignments' => fn ($q) => $q->whereNull('timeslot_passed_notification_sent_at'),
+                'assignments' => fn ($q) => $q
+                    ->whereHas('jobDefinition', fn ($jd) => $jd->where('job_key', JobKey::JOB_TRANSLATION))
+                    ->whereNull('timeslot_passed_notification_sent_at'),
                 'assignments.jobDefinition',
                 'managerInstitutionUser',
                 'institution',

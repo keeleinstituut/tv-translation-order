@@ -38,6 +38,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
  * @property Carbon|null $completed_at
+ * @property Carbon|null $timeslot_passed_notification_sent_at
  * @property-read Vendor|null $assignee
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
