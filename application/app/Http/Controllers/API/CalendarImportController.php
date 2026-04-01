@@ -47,7 +47,7 @@ class CalendarImportController extends Controller
         $importEndDate = Carbon::parse($request->validated('import_end_date'))->endOfDay()->utc();
 
         $eventsSource = new ICal($request->file('file')->getRealPath(), [
-            'filterDaysBefore' => $now->toDateTime(),
+            'filterDaysBefore' => $now->startOfDay()->toDateTime(),
             'filterDaysAfter' => $importEndDate->toDateTime(),
         ]);
 

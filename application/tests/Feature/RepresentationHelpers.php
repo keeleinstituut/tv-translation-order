@@ -51,6 +51,7 @@ class RepresentationHelpers
             'id' => $obj->id,
             'institution_user_id' => $obj->institution_user_id,
             'company_name' => $obj->company_name,
+            'is_internal' => $obj->is_internal,
             'created_at' => $obj->created_at->toIsoString(),
             'updated_at' => $obj->updated_at->toIsoString(),
             'comment' => $obj->comment,
