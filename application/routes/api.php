@@ -33,6 +33,7 @@ Route::prefix('/tags')
 // Only GET endpoints are allowed for read-only access.
 Route::get('/classifier-values', [API\ClassifierValueController::class, 'index'])->name('translation-order.classifier_values.index');
 Route::get('/institution-users', [API\InstitutionUserController::class, 'index'])->name('translation-order.institution_users.index');
+Route::get('/institution-users/{institution_user_id}/vendor', [API\InstitutionUserController::class, 'vendor'])->whereUuid('institution_user_id')->name('translation-order.institution_users.vendor');
 
 Route::get('/institution-discounts', [API\InstitutionDiscountController::class, 'show'])->name('translation-order.institution_discounts.index');
 Route::put('/institution-discounts', [API\InstitutionDiscountController::class, 'store'])->name('translation-order.institution_discounts.store');

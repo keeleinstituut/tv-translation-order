@@ -48,6 +48,7 @@ class VendorResource extends JsonResource
             'id' => $this->id,
             'institution_user_id' => $this->institution_user_id,
             'company_name' => $this->company_name,
+            'is_internal' => $this->is_internal,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'comment' => $this->comment,

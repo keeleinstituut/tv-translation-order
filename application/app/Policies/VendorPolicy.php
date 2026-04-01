@@ -23,7 +23,8 @@ class VendorPolicy
      */
     public function view(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value);
+        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value) ||
+            $vendor->institution_user_id == Auth::user()->institutionUserId;
     }
 
     /**

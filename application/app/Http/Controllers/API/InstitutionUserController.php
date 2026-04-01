@@ -10,12 +10,16 @@ use App\Http\Requests\API\InstitutionUserListRequest;
 use App\Http\Requests\API\PinLanguageRequest;
 use App\Http\Resources\API\InstitutionUserPinnedLanguageResource;
 use App\Http\Resources\API\InstitutionUserResource;
+use App\Http\Resources\API\VendorResource;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionUserPinnedLanguage;
+use App\Models\Vendor;
 use App\Policies\InstitutionUserPinnedLanguagePolicy;
 use App\Policies\InstitutionUserPolicy;
+use App\Policies\VendorPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
@@ -128,6 +132,27 @@ class InstitutionUserController extends Controller
         $pinnedLanguage->deleteOrFail();
 
         return response()->json(null, 204);
+    }
+
+    #[OA\Get(
+        path: '/institution-users/{institution_user_id}/vendor',
+        summary: 'Get vendor by institution user ID',
+        tags: ['Vendor management'],
+        parameters: [new OAH\UuidPath('institution_user_id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\ResourceResponse(dataRef: VendorResource::class, description: 'Vendor resource')]
+    public function vendor(Request $request): VendorResource
+    {
+        $vendor = Vendor::getModel()
+            ->withGlobalScope('policy', VendorPolicy::scope())
+            ->with(['tags'])
+            ->where('institution_user_id', $request->route('institution_user_id'))
+            ->firstOrFail();
+
+        $this->authorize('view', $vendor);
+
+        return VendorResource::make($vendor);
     }
 
     private function getBaseQuery(): Builder
