@@ -89,8 +89,10 @@ class ProjectObserver
         if ($newProjectGotManager) {
             $project->status = ProjectStatus::Registered;
             $project->subProjects->each(function (SubProject $subProject) {
-                $subProject->status = SubProjectStatus::Registered;
-                $subProject->saveOrFail();
+                if ($subProject->status === SubProjectStatus::New) {
+                    $subProject->status = SubProjectStatus::Registered;
+                    $subProject->saveOrFail();
+                }
             });
         }
 
