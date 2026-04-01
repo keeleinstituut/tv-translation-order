@@ -170,6 +170,10 @@ class ProjectObserver
             });
         }
 
+        if ($project->wasChanged('event_end_at') && filled($project->event_end_at)) {
+            $project->assignments()->update(['timeslot_passed_notification_sent_at' => null]);
+        }
+
         if ($project->wasChanged('status')) {
             if ($project->status === ProjectStatus::Cancelled) {
                 $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser, true);

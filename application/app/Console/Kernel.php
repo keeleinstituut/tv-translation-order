@@ -4,6 +4,7 @@ namespace App\Console;
 
 use App\Console\Commands\ExpireOverdueProposals;
 use App\Console\Commands\NotifyThatProjectDeadlineIsReached;
+use App\Console\Commands\NotifyThatProjectTimeslotPassedWithNoAssignee;
 use App\Helpers\DateUtil;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -24,6 +25,12 @@ class Kernel extends ConsoleKernel
 
         $schedule
             ->command(NotifyThatProjectDeadlineIsReached::class)
+            ->timezone($timezone)
+            ->onOneServer()
+            ->hourly();
+
+        $schedule
+            ->command(NotifyThatProjectTimeslotPassedWithNoAssignee::class)
             ->timezone($timezone)
             ->onOneServer()
             ->hourly();

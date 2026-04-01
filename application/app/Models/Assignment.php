@@ -77,6 +77,7 @@ class Assignment extends Model implements AuditLoggable
         'event_start_at' => 'datetime',
         'completed_at' => 'datetime',
         'price' => 'float',
+        'timeslot_passed_notification_sent_at' => 'datetime',
     ];
 
     public function subProject(): BelongsTo
