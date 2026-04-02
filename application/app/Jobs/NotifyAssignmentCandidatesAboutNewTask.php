@@ -6,7 +6,7 @@ use App\Enums\CandidateStatus;
 use App\Models\Assignment;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
-use App\Models\VendorCalendarEntry;
+use App\Services\Calendar\VendorReservationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,7 +34,7 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
     /**
      * @throws Throwable
      */
-    public function handle(NotificationPublisher $notificationPublisher): void
+    public function handle(NotificationPublisher $notificationPublisher, VendorReservationService $vendorReservation): void
     {
         if (filled($this->assignment->assigned_vendor_id)) {
             return;
@@ -54,6 +54,7 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
             /** @var Candidate $candidate */
             $candidate = $this->assignment->candidates()
                 ->where('status', CandidateStatus::New)
+                ->ordered()
                 ->first();
 
             if (blank($candidate)) {
@@ -70,7 +71,12 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                 return;
             }
 
-            $this->reassignCalendarEntry($candidate);
+            $vendorReservation->rotate(
+                $this->assignment,
+                $candidate->vendor_id,
+                $project->event_start_at,
+                $project->event_end_at,
+            );
 
             $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
 
@@ -114,24 +120,6 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                 $this->assignment->subProject->project->institution_id
             );
         }
-    }
-
-    private function reassignCalendarEntry(Candidate $candidate): void
-    {
-        $existingEntry = VendorCalendarEntry::where('assignment_id', $this->assignment->id)->first();
-
-        if (blank($existingEntry)) {
-            return;
-        }
-
-        $existingEntry->delete();
-
-        VendorCalendarEntry::create([
-            'vendor_id' => $candidate->vendor_id,
-            'start_at' => $existingEntry->start_at,
-            'end_at' => $existingEntry->end_at,
-            'assignment_id' => $this->assignment->id,
-        ]);
     }
 
     /**

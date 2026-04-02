@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Exceptions\CalendarSlotConflictException;
-use Illuminate\Database\QueryException;
 use App\Enums\CalendarRole;
 use App\Enums\CandidateStatus;
 use App\Enums\ClassifierValueType;
@@ -33,8 +32,8 @@ use App\Models\Volume;
 use App\Policies\ProjectPolicy;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\CalendarSettingsResolver;
-use App\Services\Calendar\PrebookService;
 use App\Services\Calendar\SlotMatchingService;
+use App\Services\Calendar\VendorReservationService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -60,7 +59,7 @@ class ProjectController extends Controller
 {
     public function __construct(
         private readonly SlotMatchingService      $slotMatchingService,
-        private readonly PrebookService           $prebookService,
+        private readonly VendorReservationService $vendorReservation,
         private readonly CalendarRoleResolver     $calendarRoleResolver,
         private readonly CalendarSettingsResolver $calendarSettings,
         AuditLogPublisher                         $auditLogPublisher,
@@ -131,7 +130,7 @@ class ProjectController extends Controller
         $params = collect($request->validated());
 
         $showOnlyPersonalProjects = filter_var($params->get('only_show_personal_projects', false), FILTER_VALIDATE_BOOLEAN);
-        $showOnlyUnclaimedProjects  = $params->get('statuses', []) === [ProjectStatus::New->value];
+        $showOnlyUnclaimedProjects = $params->get('statuses', []) === [ProjectStatus::New->value];
         $this->authorize('viewAny', [Project::class, $showOnlyPersonalProjects, $showOnlyUnclaimedProjects]);
 
         $query = self::getBaseQuery()
@@ -378,7 +377,7 @@ class ProjectController extends Controller
         if ($project->use_external_vendor) {
             $this->buildExternalVendorsCascade($project, $assignment);
         } elseif (filled($prebook)) {
-            $this->assignVendorFromPrebook($assignment, $prebook);
+            $this->vendorReservation->reserveFromPrebook($assignment, $prebook);
         } elseif ($candidateVendorId = $params->get('candidate_vendor_id')) {
             $this->assignExplicitVendor($project, $assignment, $candidateVendorId, $actingUserId);
         } elseif ($isClient) {
@@ -393,7 +392,7 @@ class ProjectController extends Controller
         $externals = $this->slotMatchingService->rankExternalVendorCascadeForProject($project);
         $entryCreated = false;
 
-        foreach ($externals as $idx => $vendor) {
+        foreach ($externals as $vendor) {
             $isAvailable = $this->slotMatchingService->isVendorAvailableForSlot(
                 $vendor->id, $project->event_start_at, $project->event_end_at
             );
@@ -402,50 +401,26 @@ class ProjectController extends Controller
                 continue;
             }
 
-            try {
-                DB::transaction(function () use ($assignment, $vendor, $idx, $project, &$entryCreated) {
-                    Candidate::create([
-                        'assignment_id' => $assignment->id,
-                        'vendor_id' => $vendor->id,
-                        'position' => $idx,
-                        'status' => CandidateStatus::New,
-                    ]);
-
-                    if (!$entryCreated) {
-                        VendorCalendarEntry::create([
-                            'vendor_id' => $vendor->id,
-                            'start_at' => $project->event_start_at,
-                            'end_at' => $project->event_end_at,
-                            'assignment_id' => $assignment->id,
-                        ]);
-                        $entryCreated = true;
-                    }
-                });
-            } catch (QueryException $e) {
-                if (in_array($e->getCode(), ['23P01', '23505'])) {
+            if (!$entryCreated) {
+                try {
+                    $this->vendorReservation->reserve(
+                        $assignment,
+                        $vendor->id,
+                        $project->event_start_at,
+                        $project->event_end_at,
+                    );
+                    $entryCreated = true;
+                } catch (CalendarSlotConflictException) {
                     continue;
                 }
-
-                throw $e;
+            } else {
+                Candidate::create([
+                    'assignment_id' => $assignment->id,
+                    'vendor_id' => $vendor->id,
+                    'status' => CandidateStatus::New,
+                ]);
             }
         }
-    }
-
-    private function assignVendorFromPrebook(Assignment $assignment, VendorCalendarEntry $prebook): void
-    {
-        $prebook = VendorCalendarEntry::lockForUpdate()->find($prebook->id);
-
-        if (!$prebook || filled($prebook->assignment_id)) {
-            throw new CalendarSlotConflictException();
-        }
-
-        Candidate::create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $prebook->vendor_id,
-            'position' => 0,
-            'status' => CandidateStatus::New,
-        ]);
-        $this->prebookService->convert($prebook, $assignment);
     }
 
     /**
@@ -471,30 +446,18 @@ class ProjectController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($assignment, $candidateVendorId, $project) {
-            Candidate::create([
-                'assignment_id' => $assignment->id,
-                'vendor_id' => $candidateVendorId,
-                'position' => 0,
-                'status' => CandidateStatus::New,
+        try {
+            $this->vendorReservation->reserve(
+                $assignment,
+                $candidateVendorId,
+                $project->event_start_at,
+                $project->event_end_at,
+            );
+        } catch (CalendarSlotConflictException) {
+            throw ValidationException::withMessages([
+                'candidate_vendor_id' => 'The selected vendor is not available for the requested time slot.',
             ]);
-
-            try {
-                VendorCalendarEntry::create([
-                    'vendor_id' => $candidateVendorId,
-                    'start_at' => $project->event_start_at,
-                    'end_at' => $project->event_end_at,
-                    'assignment_id' => $assignment->id,
-                ]);
-            } catch (QueryException $e) {
-                if (in_array($e->getCode(), ['23P01', '23505'])) {
-                    throw ValidationException::withMessages([
-                        'candidate_vendor_id' => 'The selected vendor is not available for the requested time slot.',
-                    ]);
-                }
-                throw $e;
-            }
-        });
+        }
     }
 
     /**
@@ -528,28 +491,16 @@ class ProjectController extends Controller
             }
 
             try {
-                DB::transaction(function () use ($assignment, $bestVendor, $project, $actingUserId, $excludeVendorIds) {
-                    Candidate::create([
-                        'assignment_id' => $assignment->id,
-                        'vendor_id' => $bestVendor->id,
-                        'position' => 0,
-                        'status' => CandidateStatus::New,
-                    ]);
-
-                    VendorCalendarEntry::create([
-                        'vendor_id' => $bestVendor->id,
-                        'start_at' => $project->event_start_at,
-                        'end_at' => $project->event_end_at,
-                        'assignment_id' => $assignment->id,
-                    ]);
-                });
-            } catch (QueryException $e) {
-                if (in_array($e->getCode(), ['23P01', '23505'])) {
-                    $excludeVendorIds->push($bestVendor->id);
-                    continue;
-                }
-
-                throw $e;
+                $this->vendorReservation->reserve(
+                    $assignment,
+                    $bestVendor->id,
+                    $project->event_start_at,
+                    $project->event_end_at,
+                );
+                return;
+            } catch (CalendarSlotConflictException) {
+                $excludeVendorIds->push($bestVendor->id);
+                continue;
             }
         }
 
@@ -741,8 +692,8 @@ class ProjectController extends Controller
         if ($isClient) {
             $assignment = $project->subProjects->first()?->assignments->first();
             $hasAcceptedCandidate = $assignment && Candidate::where('assignment_id', $assignment->id)
-                ->where('status', CandidateStatus::Accepted)
-                ->exists();
+                    ->where('status', CandidateStatus::Accepted)
+                    ->exists();
             if ($hasAcceptedCandidate) {
                 throw ValidationException::withMessages([
                     'event_start_at' => 'Cannot modify project after the vendor has accepted the work.',
@@ -769,10 +720,9 @@ class ProjectController extends Controller
         $isClient = $this->calendarRoleResolver->resolve() === CalendarRole::Client;
         $assignment = $project->subProjects->first()->assignments->first();
         $calendarDataChanged = $timeframeChanged || $languageChanged;
-        $calendarEntry = VendorCalendarEntry::where('assignment_id', $assignment->id)->first();
 
         if ($isClient && $calendarDataChanged) {
-            $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
+            $this->vendorReservation->releaseAll($assignment);
             $this->assignBestAvailableVendor(
                 $project,
                 $assignment,
@@ -782,15 +732,16 @@ class ProjectController extends Controller
             return;
         }
 
+        $calendarEntry = VendorCalendarEntry::where('assignment_id', $assignment->id)->first();
         $candidateVendorId = $params->get('candidate_vendor_id');
         if (filled($candidateVendorId) && $candidateVendorId !== $calendarEntry?->vendor_id) {
-            $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
+            $this->vendorReservation->releaseAll($assignment);
             $this->assignExplicitVendor($project, $assignment, $candidateVendorId, Auth::user()->institutionUserId);
             return;
         }
 
         if ($useExternalVendorChanged) {
-            $this->clearCandidatesAndCalendarEntry($assignment->id, $calendarEntry);
+            $this->vendorReservation->releaseAll($assignment);
             if ($project->use_external_vendor) {
                 $this->buildExternalVendorsCascade($project, $assignment);
                 return;
@@ -809,7 +760,7 @@ class ProjectController extends Controller
         }
 
         if ($calendarDataChanged) {
-            $this->syncExistingVendorToNewSlot($project, $assignment, $calendarEntry);
+            $this->syncExistingVendorToNewSlot($project, $assignment);
         }
     }
 
@@ -817,9 +768,8 @@ class ProjectController extends Controller
      * @throws ValidationException
      */
     private function syncExistingVendorToNewSlot(
-        Project              $project,
-        Assignment           $assignment,
-        ?VendorCalendarEntry $calendarEntry,
+        Project    $project,
+        Assignment $assignment,
     ): void
     {
         $currentCandidate = Candidate::where('assignment_id', $assignment->id)
@@ -828,7 +778,7 @@ class ProjectController extends Controller
             ->first();
 
         if (blank($currentCandidate)) {
-            $calendarEntry?->delete();
+            VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
             return;
         }
 
@@ -845,32 +795,18 @@ class ProjectController extends Controller
             ]);
         }
 
-        $calendarEntry->delete();
-
         try {
-            VendorCalendarEntry::create([
-                'vendor_id' => $currentCandidate->vendor_id,
-                'start_at' => $project->event_start_at,
-                'end_at' => $project->event_end_at,
-                'assignment_id' => $assignment->id,
+            $this->vendorReservation->rotate(
+                $assignment,
+                $currentCandidate->vendor_id,
+                $project->event_start_at,
+                $project->event_end_at,
+            );
+        } catch (CalendarSlotConflictException) {
+            throw ValidationException::withMessages([
+                'event_start_at' => 'The assigned vendor is not available for the updated time slot.',
             ]);
-        } catch (QueryException $e) {
-            if (in_array($e->getCode(), ['23P01', '23505'])) {
-                throw ValidationException::withMessages([
-                    'event_start_at' => 'The assigned vendor is not available for the updated time slot.',
-                ]);
-            }
-            throw $e;
         }
-    }
-
-    private function clearCandidatesAndCalendarEntry(string $assignmentId, ?VendorCalendarEntry $calendarEntry = null): void
-    {
-        Candidate::where('assignment_id', $assignmentId)->each(function (Candidate $candidate) {
-            $candidate->delete();
-        });
-
-        $calendarEntry?->delete();
     }
 
 
@@ -952,7 +888,7 @@ class ProjectController extends Controller
 
         $this->authorize('cancel', $project);
 
-        if (! $project->cancellation_pending_at) {
+        if (!$project->cancellation_pending_at) {
             abort(Response::HTTP_BAD_REQUEST, 'No pending cancellation to decline.');
         }
 
@@ -1092,7 +1028,7 @@ class ProjectController extends Controller
                     is_null($assignment->price) ? '' : "$assignment->price €",
                     $this->getDateTimeWithTimezoneOrNull($assignment->event_start_at ?: $project->event_start_at, 'd/m/Y H:i'),
                     $this->getDateTimeWithTimezoneOrNull($assignment->deadline_at ?: $project->deadline_at, 'd/m/Y H:i'),
-                    $this->getDateTimeWithTimezoneOrNull($assignment->completed_at,'d/m/Y H:i'),
+                    $this->getDateTimeWithTimezoneOrNull($assignment->completed_at, 'd/m/Y H:i'),
                     $this->getDateTimeWithTimezoneOrNull($assignment->completed_at)?->locale('et_EE')->format('Y F'),
                     $project->clientInstitutionUser?->getDepartmentName(),
                     $project->tags?->pluck('name')->implode(', '),

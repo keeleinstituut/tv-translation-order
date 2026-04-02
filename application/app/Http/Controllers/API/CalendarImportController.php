@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Exceptions\CalendarSlotConflictException;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CalendarImportRequest;
 use App\Http\Resources\API\VendorCalendarImportResource;
 use App\Models\Vendor;
-use App\Models\VendorCalendarEntry;
 use App\Models\VendorCalendarImport;
 use App\Policies\VendorPolicy;
+use App\Services\Calendar\VendorReservationService;
+use AuditLogClient\Services\AuditLogPublisher;
 use ICal\ICal;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
@@ -20,6 +22,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CalendarImportController extends Controller
 {
+
+    public function __construct(
+        private readonly VendorReservationService $vendorReservation,
+        AuditLogPublisher                         $auditLogPublisher,
+    )
+    {
+        parent::__construct($auditLogPublisher);
+    }
+
     /**
      * @throws AuthorizationException
      */
@@ -62,16 +73,20 @@ class CalendarImportController extends Controller
 
             collect($events)
                 ->filter(fn($event) => !empty($event->dtstart) && !empty($event->dtend))
-                ->each(fn($event) => VendorCalendarEntry::create([
-                    'vendor_id' => $vendor->id,
-                    'start_at' => Carbon::parse($event->dtstart)->utc(),
-                    'end_at' => Carbon::parse($event->dtend)->utc(),
-                    'vendor_calendar_import_id' => $import->id,
-                    'metadata' => json_encode([
-                        'summary' => $event->summary ?? null,
-                        'description' => $event->description ?? null,
-                    ])
-                ]));
+                ->each(function ($event) use ($vendor, $import) {
+                    try {
+                        $this->vendorReservation->createCalendarEntryWithConflictHandling([
+                            'vendor_id' => $vendor->id,
+                            'start_at' => Carbon::parse($event->dtstart)->utc(),
+                            'end_at' => Carbon::parse($event->dtend)->utc(),
+                            'vendor_calendar_import_id' => $import->id,
+                            'metadata' => json_encode([
+                                'summary' => $event->summary ?? null,
+                                'description' => $event->description ?? null,
+                            ])
+                        ]);
+                    } catch (CalendarSlotConflictException) {}
+                });
 
             return $import;
         });

@@ -67,7 +67,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor->id,
             'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
+            'position' => 1,
             'notified_at' => now(),
         ]);
 
@@ -113,7 +113,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor->id,
             'status' => CandidateStatus::Declined,
-            'position' => 0,
+            'position' => 1,
         ]);
 
         $taskId = fake()->uuid();
@@ -192,7 +192,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor1->id,
             'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
+            'position' => 1,
             'notified_at' => now(),
         ]);
 
@@ -200,7 +200,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor2->id,
             'status' => CandidateStatus::New,
-            'position' => 1,
+            'position' => 2,
         ]);
 
         $taskId = fake()->uuid();
@@ -254,7 +254,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor1->id,
             'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
+            'position' => 1,
             'notified_at' => now(),
         ]);
 
@@ -262,7 +262,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor2->id,
             'status' => CandidateStatus::New,
-            'position' => 1,
+            'position' => 2,
         ]);
 
         $taskId = fake()->uuid();

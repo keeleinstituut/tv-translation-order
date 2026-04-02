@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\VendorCalendarEntry;
-use App\Services\Calendar\PrebookService;
+use App\Services\Calendar\VendorReservationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,17 +18,10 @@ class ExpirePrebookJob implements ShouldQueue
 
     public int $backoff = 30;
 
-    public function __construct(public readonly string $prebookId) {}
+    public function __construct(public readonly string $prebookInstitutionUserId) {}
 
-    public function handle(PrebookService $prebookService): void
+    public function handle(VendorReservationService $vendorReservation): void
     {
-        $prebook = VendorCalendarEntry::find($this->prebookId);
-
-        // Idempotent: already converted to an assignment or manually expired.
-        if (! $prebook || $prebook->assignment_id || $prebook->trashed()) {
-            return;
-        }
-
-        $prebookService->expire($this->prebookId);
+        $vendorReservation->releasePrebook($this->prebookInstitutionUserId);
     }
 }

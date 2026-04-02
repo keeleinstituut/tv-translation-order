@@ -15,8 +15,6 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Policies\ProjectPolicy;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Policies\VendorPolicy;
-use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotDiscretizationService;
@@ -178,11 +176,23 @@ class CalendarDayController extends Controller
 
         $vendorFreeIntervals = $this->availabilityService->computeFreeIntervals($data, $date);
         $availableSlots = $this->discretizationService->discretizeWithVendorIds($vendorFreeIntervals);
-        $vendors = $this->buildVendorsMap($data, $dayStart, $dayEnd);
+        $entriesByVendor = $data->internalVendorIds->isNotEmpty()
+            ? VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
+                ->whereIn('vendor_id', $data->internalVendorIds)
+                ->overlapping($dayStart, $dayEnd)
+                ->with([
+                    'assignment.subProject.sourceLanguageClassifierValue',
+                    'assignment.subProject.destinationLanguageClassifierValue',
+                    'assignment.subProject.project',
+                ])
+                ->orderBy('start_at')
+                ->get()
+                ->groupBy('vendor_id')
+            : collect();
 
         return CalendarDayProjectManagerResource::make([
             'available_slots' => $availableSlots,
-            'vendors' => $vendors,
+            'vendors' => $data->buildExpandedVendors($entriesByVendor),
         ]);
     }
 
@@ -198,37 +208,5 @@ class CalendarDayController extends Controller
             ->whereDoesntHave('subProjects.assignments.calendarEntry')
             ->with('subProjects')
             ->get();
-    }
-
-    /**
-     * @return array<int, array>
-     */
-    private function buildVendorsMap(CalendarData $data, Carbon $dayStart, Carbon $dayEnd): array
-    {
-        $vendors = $data->internalVendorIds->isNotEmpty() ?
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->whereIn('id', $data->internalVendorIds)
-                ->with('institutionUser')
-                ->get() : collect();
-
-        $entries = $data->internalVendorIds->isNotEmpty() ? VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->whereIn('vendor_id', $data->internalVendorIds)
-            ->overlapping($dayStart, $dayEnd)
-            ->with([
-                'assignment.subProject.sourceLanguageClassifierValue',
-                'assignment.subProject.destinationLanguageClassifierValue',
-                'assignment.subProject.project',
-            ])
-            ->orderBy('start_at')
-            ->get()
-            ->groupBy('vendor_id') : collect();
-
-        return $vendors->map(fn(Vendor $vendor) => [
-            'id' => $vendor->id,
-            'institutionUser' => $vendor->institutionUser,
-            'calendar_entries' => $entries->get($vendor->id, collect()),
-            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
-        ])->all();
     }
 }

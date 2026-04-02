@@ -11,8 +11,6 @@ use App\Http\Resources\API\CalendarMonthSlotsResource;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Policies\VendorPolicy;
-use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use AuditLogClient\Services\AuditLogPublisher;
@@ -183,7 +181,7 @@ class CalendarMonthController extends Controller
 
         return CalendarMonthProjectManagerResource::make([
             'available_slots' => $results->sortBy(['language_id', 'date'])->values()->all(),
-            'vendors' => $this->buildVendorsMap($data),
+            'vendors' => $data->buildExpandedVendors(),
         ]);
     }
 
@@ -277,24 +275,5 @@ class CalendarMonthController extends Controller
                 'sub_projects.destination_language_classifier_value_id',
             ])
             ->orderBy('vendor_calendar_entries.start_at');
-    }
-
-    /**
-     * @return array<int, array>
-     */
-    private function buildVendorsMap(CalendarData $data): array
-    {
-        $vendors = $data->internalVendorIds->isNotEmpty() ?
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->whereIn('id', $data->internalVendorIds)
-                ->with('institutionUser')
-                ->get() : collect();
-
-        return $vendors->map(fn(Vendor $vendor) => [
-            'id' => $vendor->id,
-            'institutionUser' => $vendor->institutionUser,
-            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
-        ])->all();
     }
 }

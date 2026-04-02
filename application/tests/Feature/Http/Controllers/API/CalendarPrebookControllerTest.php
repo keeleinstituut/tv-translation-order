@@ -173,25 +173,6 @@ class CalendarPrebookControllerTest extends TestCase
         $this->assertModelSoftDeleted($prebook);
     }
 
-    public function test_cancel_prebook_returns_400_when_no_active_prebook(): void
-    {
-        $institution = Institution::factory()->create();
-        $clientUser = InstitutionUser::factory()
-            ->setInstitution(['id' => $institution->id, 'name' => $institution->name])
-            ->create();
-
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $clientUser->id,
-            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::CreateProject->value],
-        ]);
-
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->deleteJson('/api/calendar/prebook');
-
-        $response->assertStatus(400);
-    }
-
     public function test_prebook_with_vendor_id_as_pm_uses_specified_vendor(): void
     {
         Queue::fake();

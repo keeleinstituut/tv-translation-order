@@ -95,7 +95,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->where('vendor_id', $vendor->id)
             ->first();
         $this->assertNotNull($candidate);
-        $this->assertEquals(0, $candidate->position);
+        $this->assertEquals(1, $candidate->position);
 
         // Calendar entry created
         $calendarEntry = VendorCalendarEntry::where('assignment_id', $assignment->id)

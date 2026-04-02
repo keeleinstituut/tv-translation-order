@@ -13,8 +13,6 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Http\Resources\API\VendorCalendarEntryResource;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Policies\VendorPolicy;
-use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotDiscretizationService;
@@ -230,26 +228,7 @@ class CalendarWeekController extends Controller
 
         return CalendarWeekProjectManagerResource::make([
             'available_slots' => $availableSlots,
-            'vendors' => $this->buildVendorsMap($data),
+            'vendors' => $data->buildExpandedVendors(),
         ]);
-    }
-
-    /**
-     * @return array<int, array>
-     */
-    private function buildVendorsMap(CalendarData $data): array
-    {
-        $vendors = $data->internalVendorIds->isNotEmpty() ?
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->whereIn('id', $data->internalVendorIds)
-                ->with('institutionUser')
-                ->get() : collect();
-
-        return $vendors->map(fn(Vendor $vendor) => [
-            'id' => $vendor->id,
-            'institutionUser' => $vendor->institutionUser,
-            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
-        ])->all();
     }
 }
