@@ -222,15 +222,13 @@ readonly class SlotMatchingService
      */
     private function filterInternalsByCalendarImport(Collection $internals, Carbon $startAt): Collection
     {
-        return $internals;
-//        TODO: uncomment once calendar import is implemented on FE
-//        $date = $startAt->copy()->startOfDay();
-//
-//        $vendorIdsWithImport = $this->vendorRepo->getVendorIdsWithImportInPeriod(
-//            $internals->pluck('id'), $date, $date
-//        );
-//
-//        return $internals->filter(fn(Vendor $v) => $vendorIdsWithImport->contains($v->id));
+        $date = $startAt->copy()->startOfDay();
+
+        $vendorIdsWithImport = $this->vendorRepo->getVendorIdsWithImportInPeriod(
+            $internals->pluck('id'), $date, $date
+        );
+
+        return $internals->filter(fn(Vendor $v) => $vendorIdsWithImport->contains($v->id));
     }
 
     /**

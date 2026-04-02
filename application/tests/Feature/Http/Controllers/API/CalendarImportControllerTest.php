@@ -7,6 +7,7 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 
@@ -48,15 +49,21 @@ class CalendarImportControllerTest extends TestCase
         // GIVEN
         [$vendor, $accessToken] = $this->createVendorWithAuth();
 
+        $firstEventStart = Carbon::now()->utc()->addDay()->setTime(9, 0)->format('Ymd\THis\Z');
+        $firstEventEnd = Carbon::now()->utc()->addDay()->setTime(10, 0)->format('Ymd\THis\Z');
+        $secondEventStart = Carbon::now()->utc()->addDays(2)->setTime(14, 0)->format('Ymd\THis\Z');
+        $secondEventEnd = Carbon::now()->utc()->addDays(2)->setTime(15, 0)->format('Ymd\THis\Z');
+        $importEndDate = Carbon::now()->utc()->addMonth()->toDateString();
+
         $file = $this->makeIcsFile([
-            ['dtstart' => '20260401T090000Z', 'dtend' => '20260401T100000Z', 'summary' => 'Meeting'],
-            ['dtstart' => '20260402T140000Z', 'dtend' => '20260402T150000Z', 'summary' => 'Call'],
+            ['dtstart' => $firstEventStart, 'dtend' => $firstEventEnd, 'summary' => 'Meeting'],
+            ['dtstart' => $secondEventStart, 'dtend' => $secondEventEnd, 'summary' => 'Call'],
         ]);
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->postJson('/api/calendar/import', [
-                'import_end_date' => '2026-06-01',
+                'import_end_date' => $importEndDate,
                 'file' => $file,
             ]);
 
