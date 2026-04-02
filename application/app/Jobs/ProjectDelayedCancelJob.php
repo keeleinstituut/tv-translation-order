@@ -15,7 +15,7 @@ class ProjectDelayedCancelJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public const int CANCELLATION_DELAY_SECONDS = 30;
+    public const int CANCELLATION_DELAY_SECONDS = 60;
 
     public int $tries = 3;
 
