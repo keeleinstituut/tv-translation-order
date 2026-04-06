@@ -32,6 +32,11 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'prices', type: 'array', items: new OA\Items(ref: PriceResource::class)),
         new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, type: 'object'),
         new OA\Property(property: 'tags', type: 'array', items: new OA\Items(ref: TagResource::class)),
+        new OA\Property(
+            property: 'emergency_schedules',
+            type: 'array',
+            items: new OA\Items(ref: VendorEmergencyScheduleResource::class)
+        ),
     ],
     type: 'object'
 )]
