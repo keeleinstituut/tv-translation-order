@@ -267,14 +267,18 @@ class ProjectController extends Controller
         $params = collect($request->validated());
 
         return DB::transaction(function () use ($params) {
-            $isCalendar = $params->get('is_calendar_project', false);
             $institutionId = Auth::user()->institutionId;
             $institutionUserId = Auth::user()->institutionUserId;
 
+            $typeId = $params->get('type_classifier_value_id')
+                ?: ($params->get('is_calendar_project', false)
+                    ? $this->calendarSettings->getDefaultCalendarProjectTypeId($institutionId)
+                    : null);
+            $isCalendar = ClassifierValue::isVerbalProjectType($typeId);
+
             $project = Project::make([
                 'institution_id' => $institutionId,
-                'type_classifier_value_id' => $params->get('type_classifier_value_id') ?:
-                    ($isCalendar ? $this->calendarSettings->getDefaultCalendarProjectTypeId($institutionId) : null),
+                'type_classifier_value_id' => $typeId,
                 'translation_domain_classifier_value_id' => $params->get('translation_domain_classifier_value_id'),
                 'reference_number' => $params->get('reference_number'),
                 'manager_institution_user_id' => $params->get('manager_institution_user_id'),

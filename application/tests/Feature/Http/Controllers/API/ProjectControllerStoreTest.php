@@ -53,23 +53,6 @@ class ProjectControllerStoreTest extends TestCase
                 function () {
                 },
             ],
-            'Project type "Suuline tõlge"' => [
-                fn () => [
-                    ...static::createExampleValidPayload(),
-                    'type_classifier_value_id' => ProjectTypeConfig::where('type_classifier_value_id', function ($query) {
-                        $query->select('id')
-                            ->from('cached_classifier_values')
-                            ->where('type', ClassifierValueType::ProjectType->value)
-                            ->where('value', 'ORAL_TRANSLATION')
-                            ->limit(1);
-                    })->firstOrFail()->type_classifier_value_id,
-                    'reference_number' => '4321',
-                    'comments' => "Project\n\n4321",
-                    'event_start_at' => '2020-12-31T12:00:00Z',
-                ],
-                function () {
-                },
-            ],
             'Assigning a project manager from same institution' => [
                 fn (InstitutionUser $actingUser) => [
                     ...static::createExampleValidPayload(),
@@ -562,7 +545,9 @@ class ProjectControllerStoreTest extends TestCase
 
         [$sourceLanguage, $destinationLanguage] = $languages;
 
-        $projectTypeConfig = ProjectTypeConfig::firstOrFail();
+        $projectTypeConfig = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('value', 'TRANSLATION');
+        })->firstOrFail();
 
         $payload = [
             'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,

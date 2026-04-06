@@ -311,6 +311,8 @@ class AssignmentController extends Controller
                     if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
                         AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
                     }
+
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
                 }
             );
 
@@ -358,6 +360,8 @@ class AssignmentController extends Controller
                     if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
                         DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
                     }
+
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
                 }
             );
 

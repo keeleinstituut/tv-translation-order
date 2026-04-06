@@ -6,7 +6,7 @@ use App\Enums\CalendarRole;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\SlotMatchingVendorsRequest;
-use App\Http\Resources\API\SlotMatchingVendorResource;
+use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotMatchingService;
@@ -43,7 +43,7 @@ class CalendarSlotMatchingController extends Controller
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: SlotMatchingVendorResource::class)]
+    #[OAH\CollectionResponse(itemsRef: VendorResource::class)]
     public function vendors(SlotMatchingVendorsRequest $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Vendor::class);
@@ -54,13 +54,21 @@ class CalendarSlotMatchingController extends Controller
             throw new HttpException(Response::HTTP_FORBIDDEN, 'Invalid role');
         }
 
+        $startAt = Carbon::parse($request->validated('start_at'))->utc();
+        $endAt = Carbon::parse($request->validated('end_at'))->utc();
+
         $vendors = $this->slotMatchingService->findAvailableVendorsForSlot(
             $request->validated('language_id'),
-            Carbon::parse($request->validated('start_at'))->utc(),
-            Carbon::parse($request->validated('end_at'))->utc(),
+            $startAt,
+            $endAt,
             $this->roleResolver->getInstitutionId(),
         );
 
-        return SlotMatchingVendorResource::collection($vendors);
+        $vendors->load(['emergencySchedules' => fn($q) => $q
+            ->where('start_date', '<=', $endAt->toDateString())
+            ->where('end_date', '>=', $startAt->toDateString())
+        ]);
+
+        return VendorResource::collection($vendors);
     }
 }

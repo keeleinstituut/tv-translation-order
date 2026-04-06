@@ -78,7 +78,9 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                 $project->event_end_at,
             );
 
-            $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
+            if (blank($candidate->notified_at)) {
+                $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
+            }
 
             if (!$candidate->vendor->is_internal) {
                 AutoDeclineVendorTaskProposal::dispatch($candidate->id)
@@ -89,7 +91,7 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
         }
 
         $this->assignment->candidates->each(function (Candidate $candidate) use ($notificationPublisher) {
-            if ($candidate->status === CandidateStatus::New) {
+            if ($candidate->status === CandidateStatus::New && blank($candidate->notified_at)) {
                 $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
             }
         });

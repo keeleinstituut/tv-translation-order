@@ -115,7 +115,7 @@ use Throwable;
  * @method static Builder|Project withTrashed()
  * @method static Builder|Project withoutTrashed()
  * @method static Builder|Project hasAnyOfLanguageDirections(array[] $languageDirections)
- * @property string|null $service_type
+ * @property ServiceType|null $service_type
  * @property string|null $location
  * @property string|null $meeting_link
  * @property-read int|null $comments_count

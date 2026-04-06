@@ -50,7 +50,7 @@ class TrackSubProjectStatus implements ShouldQueue
         $jobDefinition = $tasksSearchResult->getActiveJobDefinition();
         DB::transaction(function () use ($jobDefinition, $tasksSearchResult) {
             /** Empty job definition means that there are no tasks that have relation with assignments */
-            if (empty($jobDefinition) && $this->subProject->workflow()->isStarted()) {
+            if (empty($jobDefinition) && $this->subProject->workflow()->isStarted() && filled($this->subProject->active_job_definition_id)) {
                 $this->subProject->status = SubProjectStatus::Completed;
                 $this->subProject->active_job_definition_id = null;
                 $this->subProject->saveOrFail();
@@ -59,7 +59,7 @@ class TrackSubProjectStatus implements ShouldQueue
                 return;
             }
 
-            if (filled($jobDefinition) && in_array($this->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+            if (filled($jobDefinition) && in_array($this->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered]) && $this->hasAssignmentWithCandidates($jobDefinition)) {
                 $this->subProject->status = SubProjectStatus::TasksSubmittedToVendors;
                 $this->subProject->active_job_definition_id = $jobDefinition->id;
                 $this->subProject->saveOrFail();
@@ -118,6 +118,18 @@ class TrackSubProjectStatus implements ShouldQueue
         return $this->subProject->assignments()
             ->where('job_definition_id', $jobDefinition->id)
             ->whereDoesntHave('candidates')
+            ->exists();
+    }
+
+    private function hasAssignmentWithCandidates(JobDefinition $jobDefinition): bool
+    {
+        if ($jobDefinition->job_key === JobKey::JOB_OVERVIEW) {
+            return false;
+        }
+
+        return $this->subProject->assignments()
+            ->where('job_definition_id', $jobDefinition->id)
+            ->whereHas('candidates')
             ->exists();
     }
 

@@ -191,7 +191,7 @@ class ProjectCreateRequest extends FormRequest
                 'nullable',
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
                 'bail',
-                Rule::requiredIf(fn () => $this->isCalendarProject() || ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
+                Rule::requiredIf(fn () => $this->isCalendarProject()),
             ],
             'event_end_at' => [
                 'nullable',
@@ -269,12 +269,12 @@ class ProjectCreateRequest extends FormRequest
             'location' => [
                 'nullable',
                 'string',
-                Rule::requiredIf(fn () => $this->get('service_type') === ServiceType::OnSite->value),
+                Rule::requiredIf(fn () => $this->input('service_type') === ServiceType::OnSite->value),
             ],
             'meeting_link' => [
                 'nullable',
                 'string',
-                Rule::requiredIf(fn () => $this->get('service_type') === ServiceType::Remote->value),
+                Rule::requiredIf(fn () => $this->input('service_type') === ServiceType::Remote->value),
             ],
             'use_external_vendor' => [
                 'nullable',
@@ -365,12 +365,21 @@ class ProjectCreateRequest extends FormRequest
                         }
                     }
                 }
+
+                if ($this->input('is_calendar_project') === true
+                    && filled($this->input('type_classifier_value_id'))
+                    && !ClassifierValue::isVerbalProjectType($this->input('type_classifier_value_id'))) {
+                    $validator->errors()->add('is_calendar_project', 'The is_calendar_project flag contradicts the selected project type.');
+                }
             },
         ];
     }
 
+    private ?bool $isCalendarProjectCached = null;
+
     private function isCalendarProject(): bool
     {
-        return (bool) $this->get('is_calendar_project', false);
+        return $this->isCalendarProjectCached ??= ClassifierValue::isVerbalProjectType($this->input('type_classifier_value_id'))
+            || $this->input('is_calendar_project', false);
     }
 }

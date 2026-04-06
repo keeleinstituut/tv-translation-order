@@ -12,6 +12,7 @@ use App\Models\Price;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
+use App\Models\VendorEmergencySchedule;
 use Database\Seeders\CalendarSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -366,6 +367,83 @@ class CalendarSlotMatchingControllerTest extends TestCase
         // THEN
         $response->assertStatus(200)
             ->assertJson(['data' => []]);
+    }
+
+    public function test_vendors_includes_overlapping_emergency_schedule(): void
+    {
+        // GIVEN
+        $today = Carbon::today()->utc();
+        Carbon::setTestNow($today->copy()->setTime(0, 0));
+
+        $dayName = strtolower($today->format('l'));
+        [$institution, $language, $vendor] = $this->createInternalVendorWithCoverage($dayName);
+
+        $emergencySchedule = VendorEmergencySchedule::factory()->create([
+            'vendor_id' => $vendor->id,
+            'start_date' => $today->toDateString(),
+            'end_date' => $today->copy()->addDays(5)->toDateString(),
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+        ]);
+
+        $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
+        $endAt = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson(self::ENDPOINT . '?' . http_build_query([
+                'language_id' => $language->id,
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+            ]));
+
+        // THEN
+        $response->assertStatus(200);
+        $vendorData = collect($response->json('data'))->firstWhere('id', $vendor->id);
+        $this->assertNotNull($vendorData);
+        $this->assertCount(1, $vendorData['emergency_schedules']);
+        $this->assertEquals($emergencySchedule->id, $vendorData['emergency_schedules'][0]['id']);
+    }
+
+    public function test_vendors_excludes_non_overlapping_emergency_schedule(): void
+    {
+        // GIVEN
+        $today = Carbon::today()->utc();
+        Carbon::setTestNow($today->copy()->setTime(0, 0));
+
+        $dayName = strtolower($today->format('l'));
+        [$institution, $language, $vendor] = $this->createInternalVendorWithCoverage($dayName);
+
+        VendorEmergencySchedule::factory()->create([
+            'vendor_id' => $vendor->id,
+            'start_date' => $today->copy()->addDays(10)->toDateString(),
+            'end_date' => $today->copy()->addDays(20)->toDateString(),
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+        ]);
+
+        $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
+        $endAt = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson(self::ENDPOINT . '?' . http_build_query([
+                'language_id' => $language->id,
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+            ]));
+
+        // THEN
+        $response->assertStatus(200);
+        $vendorData = collect($response->json('data'))->firstWhere('id', $vendor->id);
+        $this->assertNotNull($vendorData);
+        $this->assertCount(0, $vendorData['emergency_schedules']);
     }
 
     /**
