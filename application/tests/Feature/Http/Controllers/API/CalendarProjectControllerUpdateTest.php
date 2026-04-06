@@ -343,6 +343,29 @@ class CalendarProjectControllerUpdateTest extends TestCase
         DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
     }
 
+    public function test_changing_calendar_project_type_to_non_calendar_type_rejected(): void
+    {
+        // GIVEN: a calendar project
+        [$project, $vendor, $accessToken] = $this->createCalendarProjectWithCandidate();
+
+        $nonCalendarTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('type', ClassifierValueType::ProjectType->value)
+                ->where('value', 'TRANSLATION');
+        })->firstOrFail()->type_classifier_value_id;
+
+        // WHEN: attempt to change type to a non-calendar type
+        $payload = $this->createUpdatePayload($project, [
+            'type_classifier_value_id' => $nonCalendarTypeId,
+        ]);
+
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->putJson("/api/projects/{$project->id}", $payload);
+
+        // THEN: rejected
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['type_classifier_value_id']);
+    }
+
     private function fakeCamundaWithActiveTasks(): void
     {
         $executionId = fake()->uuid();

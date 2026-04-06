@@ -115,7 +115,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 'sometimes',
                 'date_format:' . self::DATETIME_FORMAT,
                 Rule::prohibitedIf(fn() => !$this->isCalendarProject() && !ClassifierValue::isProjectTypeSupportingEventStartDate(
-                    $this->get(
+                    $this->input(
                         'type_classifier_value_id',
                         $this->getProject()->type_classifier_value_id
                     )
@@ -131,13 +131,13 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::requiredIf(fn () => ($this->get('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::OnSite->value),
+                Rule::requiredIf(fn () => ($this->input('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::OnSite->value),
             ],
             'meeting_link' => [
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::requiredIf(fn () => ($this->get('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::Remote->value),
+                Rule::requiredIf(fn () => ($this->input('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::Remote->value),
             ],
             'candidate_vendor_id' => [
                 'sometimes',
@@ -174,6 +174,18 @@ class ProjectUpdateRequest extends ProjectCreateRequest
 
             if (filled($eventStart) && filled($eventEnd) && $eventEnd <= $eventStart) {
                 $validator->errors()->add('event_end_at', 'Event end datetime should be greater than event start datetime');
+            }
+
+            if (filled($this->input('type_classifier_value_id'))) {
+                $currentIsCalendar = $this->getProject()->is_calendar_project;
+                $newIsCalendar = ClassifierValue::isVerbalProjectType($this->input('type_classifier_value_id'));
+
+                if ($currentIsCalendar !== $newIsCalendar) {
+                    $validator->errors()->add(
+                        'type_classifier_value_id',
+                        'Changing between calendar and non-calendar project types is not allowed.'
+                    );
+                }
             }
         });
     }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ProjectStatus;
 use App\Enums\ServiceType;
 use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
@@ -662,6 +663,124 @@ class CalendarProjectControllerStoreTest extends TestCase
 
         $subProject = $project->subProjects->first();
         $this->assertEquals($this->destinationLanguage->id, $subProject->destination_language_classifier_value_id);
+    }
+
+    public function test_calendar_project_derived_from_type_without_is_calendar_project_flag(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $vendor = $this->createVendorInInstitution();
+        $payload = $this->createCalendarPayload(['candidate_vendor_id' => $vendor->id]);
+        unset($payload['is_calendar_project']);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertTrue($project->is_calendar_project);
+    }
+
+    public function test_non_calendar_type_results_in_is_calendar_project_false(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $nonCalendarTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('type', ClassifierValueType::ProjectType->value)
+                ->where('value', 'TRANSLATION');
+        })->firstOrFail()->type_classifier_value_id;
+
+        $payload = [
+            'type_classifier_value_id' => $nonCalendarTypeId,
+            'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                ->firstOrFail()->id,
+            'client_institution_user_id' => InstitutionUser::factory()
+                ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+                ->createWithPrivileges(PrivilegeKey::CreateProject)->id,
+            'source_language_classifier_value_id' => $this->sourceLanguageET->id,
+            'destination_language_classifier_value_ids' => [$this->destinationLanguage->id],
+            'deadline_at' => Carbon::tomorrow()->toIso8601ZuluString(),
+        ];
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertFalse($project->is_calendar_project);
+    }
+
+    public function test_is_calendar_project_true_with_non_calendar_type_rejected(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $nonCalendarTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('type', ClassifierValueType::ProjectType->value)
+                ->where('value', 'TRANSLATION');
+        })->firstOrFail()->type_classifier_value_id;
+
+        $payload = [
+            'is_calendar_project' => true,
+            'type_classifier_value_id' => $nonCalendarTypeId,
+            'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                ->firstOrFail()->id,
+            'client_institution_user_id' => InstitutionUser::factory()
+                ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+                ->createWithPrivileges(PrivilegeKey::CreateProject)->id,
+            'destination_language_classifier_value_ids' => [$this->destinationLanguage->id],
+            'event_start_at' => Carbon::tomorrow()->setHour(10)->toIso8601ZuluString(),
+            'event_end_at' => Carbon::tomorrow()->setHour(11)->toIso8601ZuluString(),
+            'service_type' => ServiceType::OnSite->value,
+            'location' => 'Tallinn',
+        ];
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['is_calendar_project']);
     }
 
     public function test_use_external_vendor_skips_availability_check(): void

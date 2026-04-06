@@ -68,4 +68,13 @@ class ClassifierValue extends Model
             ?->where('is_start_date_supported', true)
             ?->exists() ?? false;
     }
+
+    public static function isVerbalProjectType(?string $typeClassifierValueId): bool
+    {
+        if (blank($typeClassifierValueId)) {
+            return false;
+        }
+
+        return self::isProjectTypeSupportingEventStartDate($typeClassifierValueId);
+    }
 }
