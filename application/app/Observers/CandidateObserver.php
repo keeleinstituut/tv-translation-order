@@ -3,8 +3,11 @@
 namespace App\Observers;
 
 use App\Enums\CandidateStatus;
+use App\Enums\SubProjectStatus;
+use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
+use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\Vendor;
@@ -31,6 +34,14 @@ class CandidateObserver
                 $candidate->assignment,
                 [$vendor->institution_user_id]
             );
+        }
+
+        if (in_array($candidate->assignment->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+            TrackSubProjectStatus::dispatchSync($candidate->assignment->subProject);
+        }
+
+        if ($candidate->assignment->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
+            NotifyAssignmentCandidatesAboutNewTask::dispatch($candidate->assignment);
         }
     }
 
