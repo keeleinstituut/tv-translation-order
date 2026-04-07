@@ -172,7 +172,7 @@ readonly class VendorReservationService
     public function createCalendarEntryWithConflictHandling(array $attributes): VendorCalendarEntry
     {
         try {
-            return VendorCalendarEntry::create($attributes);
+            return DB::transaction(fn () => VendorCalendarEntry::create($attributes));
         } catch (QueryException $e) {
             if (in_array($e->getCode(), ['23P01', '23505'])) {
                 throw new CalendarSlotConflictException();

@@ -82,6 +82,63 @@ class CalendarImportControllerTest extends TestCase
         $this->assertNotNull($entries->first()->vendor_calendar_import_id);
     }
 
+    public function test_store_reimport_skips_conflicting_entries_and_imports_new_ones(): void
+    {
+        // GIVEN — a vendor with an existing import
+        [$vendor, $accessToken] = $this->createVendorWithAuth();
+
+        $overlappingStart = Carbon::now()->utc()->addDay()->setTime(9, 0);
+        $overlappingEnd = Carbon::now()->utc()->addDay()->setTime(10, 0);
+        $importEndDate = Carbon::now()->utc()->addMonth()->toDateString();
+
+        $firstFile = $this->makeIcsFile([
+            [
+                'dtstart' => $overlappingStart->format('Ymd\THis\Z'),
+                'dtend' => $overlappingEnd->format('Ymd\THis\Z'),
+                'summary' => 'Original event',
+            ],
+        ]);
+
+        $firstResponse = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/calendar/import', [
+                'import_end_date' => $importEndDate,
+                'file' => $firstFile,
+            ]);
+
+        $firstResponse->assertStatus(201);
+        $this->assertDatabaseCount('vendor_calendar_entries', 1);
+
+        // WHEN — reimport with the same event (overlapping) plus a new non-overlapping event
+        $newEventStart = Carbon::now()->utc()->addDays(3)->setTime(14, 0);
+        $newEventEnd = Carbon::now()->utc()->addDays(3)->setTime(15, 0);
+
+        $secondFile = $this->makeIcsFile([
+            [
+                'dtstart' => $overlappingStart->format('Ymd\THis\Z'),
+                'dtend' => $overlappingEnd->format('Ymd\THis\Z'),
+                'summary' => 'Duplicate event',
+            ],
+            [
+                'dtstart' => $newEventStart->format('Ymd\THis\Z'),
+                'dtend' => $newEventEnd->format('Ymd\THis\Z'),
+                'summary' => 'New event',
+            ],
+        ]);
+
+        $secondResponse = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/calendar/import', [
+                'import_end_date' => $importEndDate,
+                'file' => $secondFile,
+            ]);
+
+        // THEN — the conflicting event is skipped, the new event is imported
+        $secondResponse->assertStatus(201)
+            ->assertJson(['data' => ['events_count' => 1]]);
+
+        $entries = VendorCalendarEntry::where('vendor_id', $vendor->id)->get();
+        $this->assertCount(2, $entries);
+    }
+
     public function test_store_rejects_non_vendor_user(): void
     {
         // GIVEN
