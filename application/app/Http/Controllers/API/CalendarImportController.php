@@ -64,32 +64,30 @@ class CalendarImportController extends Controller
 
         $events = $eventsSource->events();
 
-        $import = DB::transaction(function () use ($vendor, $now, $importEndDate, $events) {
-            $import = VendorCalendarImport::create([
-                'vendor_id' => $vendor->id,
-                'date_from' => $now,
-                'date_to' => $importEndDate,
-            ]);
+        $import = VendorCalendarImport::create([
+            'vendor_id' => $vendor->id,
+            'date_from' => $now,
+            'date_to' => $importEndDate,
+        ]);
 
-            collect($events)
-                ->filter(fn($event) => !empty($event->dtstart) && !empty($event->dtend))
-                ->each(function ($event) use ($vendor, $import) {
-                    try {
-                        $this->vendorReservation->createCalendarEntryWithConflictHandling([
-                            'vendor_id' => $vendor->id,
-                            'start_at' => Carbon::parse($event->dtstart)->utc(),
-                            'end_at' => Carbon::parse($event->dtend)->utc(),
-                            'vendor_calendar_import_id' => $import->id,
-                            'metadata' => json_encode([
-                                'summary' => $event->summary ?? null,
-                                'description' => $event->description ?? null,
-                            ])
-                        ]);
-                    } catch (CalendarSlotConflictException) {}
-                });
+        collect($events)
+            ->filter(fn($event) => !empty($event->dtstart) && !empty($event->dtend))
+            ->each(function ($event) use ($vendor, $import) {
+                try {
+                    $this->vendorReservation->createCalendarEntryWithConflictHandling([
+                        'vendor_id' => $vendor->id,
+                        'start_at' => Carbon::parse($event->dtstart)->utc(),
+                        'end_at' => Carbon::parse($event->dtend)->utc(),
+                        'vendor_calendar_import_id' => $import->id,
+                        'metadata' => json_encode([
+                            'summary' => $event->summary ?? null,
+                            'description' => $event->description ?? null,
+                        ])
+                    ]);
+                } catch (CalendarSlotConflictException) {
+                }
+            });
 
-            return $import;
-        });
 
         return VendorCalendarImportResource::make($import->loadCount('events'));
     }
