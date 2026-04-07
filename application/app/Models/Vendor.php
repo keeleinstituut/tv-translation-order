@@ -192,6 +192,17 @@ class Vendor extends Model implements AuditLoggable
         );
     }
 
+    /** Vendors who do NOT have an active emergency schedule covering the given date. */
+    public function scopeWithoutActiveEmergencySchedule(Builder $query, Carbon $date): Builder
+    {
+        return $query->whereDoesntHave(
+            'emergencySchedules',
+            fn (Builder $sub) => $sub
+                ->where('start_date', '<=', $date)
+                ->where('end_date', '>=', $date)
+        );
+    }
+
     public function getVolumeAnalysisDiscount(): VolumeAnalysisDiscount
     {
         $discountAttributes = [
