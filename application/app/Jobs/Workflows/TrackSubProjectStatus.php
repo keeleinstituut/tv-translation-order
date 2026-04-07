@@ -46,6 +46,10 @@ class TrackSubProjectStatus implements ShouldQueue
             return;
         }
 
+        if (!$this->subProject->workflow()->isStarted()) {
+            return;
+        }
+
         $tasksSearchResult = $this->subProject->workflow()->getTasksSearchResult();
         $jobDefinition = $tasksSearchResult->getActiveJobDefinition();
         DB::transaction(function () use ($jobDefinition, $tasksSearchResult) {

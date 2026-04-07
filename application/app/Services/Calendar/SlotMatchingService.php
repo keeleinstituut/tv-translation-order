@@ -285,6 +285,7 @@ readonly class SlotMatchingService
             ->servingLanguage($languageId, $institutionId)
             ->withCalendarImportFor($eventStartAt->copy()->startOfDay())
             ->availableForSlot($eventStartAt, $eventEndAt, $excludePrebookUserId)
+            ->withoutActiveEmergencySchedule($eventStartAt->copy()->startOfDay())
             ->with('institutionUser')
             ->get();
     }
