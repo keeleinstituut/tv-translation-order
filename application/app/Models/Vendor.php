@@ -172,8 +172,8 @@ class Vendor extends Model implements AuditLoggable
         return $query->whereHas(
             'calendarImports',
             fn (Builder $sub) => $sub
-                ->where('date_from', '<=', $date)
-                ->where('date_to', '>=', $date)
+                ->where('date_from', '<=', $date->copy()->endOfDay())
+                ->where('date_to', '>=', $date->copy()->startOfDay())
         );
     }
 

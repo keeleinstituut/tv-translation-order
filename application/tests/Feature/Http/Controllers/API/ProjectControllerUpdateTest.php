@@ -28,7 +28,7 @@ class ProjectControllerUpdateTest extends TestCase
 
         // Create project via store endpoint to get a fully initialized project
         $languages = ClassifierValue::where('type', ClassifierValueType::Language)->limit(2)->get();
-        $projectTypeConfig = ProjectTypeConfig::firstOrFail();
+        $projectTypeConfig = ProjectTypeConfig::where('is_start_date_supported', false)->firstOrFail();
 
         $storeResponse = $this
             ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))

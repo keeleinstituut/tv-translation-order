@@ -222,10 +222,11 @@ readonly class SlotMatchingService
      */
     private function filterInternalsByCalendarImport(Collection $internals, Carbon $startAt): Collection
     {
-        $date = $startAt->copy()->startOfDay();
+        $dayStart = $startAt->copy()->startOfDay();
+        $dayEnd = $startAt->copy()->endOfDay();
 
         $vendorIdsWithImport = $this->vendorRepo->getVendorIdsWithImportInPeriod(
-            $internals->pluck('id'), $date, $date
+            $internals->pluck('id'), $dayStart, $dayEnd
         );
 
         return $internals->filter(fn(Vendor $v) => $vendorIdsWithImport->contains($v->id));

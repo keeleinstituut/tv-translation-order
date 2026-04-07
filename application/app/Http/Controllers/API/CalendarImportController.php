@@ -54,20 +54,20 @@ class CalendarImportController extends Controller
             ->where('institution_user_id', Auth::user()->institutionUserId)
             ->firstOrFail();
 
-        $now = Carbon::now()->utc();
+        $importStartDate = Carbon::today()->utc();
         $importEndDate = Carbon::parse($request->validated('import_end_date'))->endOfDay()->utc();
 
         $eventsSource = new ICal($request->file('file')->getRealPath(), [
-            'filterDaysBefore' => $now->startOfDay()->toDateTime(),
+            'filterDaysBefore' => $importStartDate->toDateTime(),
             'filterDaysAfter' => $importEndDate->toDateTime(),
         ]);
 
         $events = $eventsSource->events();
 
-        $import = DB::transaction(function () use ($vendor, $now, $importEndDate, $events) {
+        $import = DB::transaction(function () use ($vendor, $importStartDate, $importEndDate, $events) {
             $import = VendorCalendarImport::create([
                 'vendor_id' => $vendor->id,
-                'date_from' => $now,
+                'date_from' => $importStartDate,
                 'date_to' => $importEndDate,
             ]);
 
