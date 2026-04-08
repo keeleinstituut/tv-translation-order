@@ -43,7 +43,7 @@ class AutoDeclineVendorTaskProposal implements ShouldQueue
             $candidate->delete();
 
             if ($candidate->assignment->subProject->project->is_calendar_project) {
-                NotifyAssignmentCandidatesAboutNewTask::dispatch($candidate->assignment)
+                ProcessCandidatesNotificationCycle::dispatch($candidate->assignment)
                     ->afterCommit();
             }
         });

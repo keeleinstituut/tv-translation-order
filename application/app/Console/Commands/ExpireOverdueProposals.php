@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\CandidateStatus;
 use App\Jobs\AutoDeclineVendorTaskProposal;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
 use Illuminate\Console\Command;
@@ -33,7 +33,7 @@ class ExpireOverdueProposals extends Command
 
         foreach ($candidates as $candidate) {
             $institutionId = $candidate->vendor?->institutionUser?->institution_id;
-            $reactionTime = $reactionTimes->get($institutionId, NotifyAssignmentCandidatesAboutNewTask::DEFAULT_REACTION_TIME_SECONDS);
+            $reactionTime = $reactionTimes->get($institutionId, ProcessCandidatesNotificationCycle::DEFAULT_REACTION_TIME_SECONDS);
             $expiresAt = $candidate->notified_at->addSeconds($reactionTime);
 
             if (Carbon::now()->greaterThan($expiresAt)) {

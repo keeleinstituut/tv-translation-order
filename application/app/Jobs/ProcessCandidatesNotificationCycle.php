@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\CandidateStatus;
+use App\Exceptions\CalendarSlotConflictException;
 use App\Models\Assignment;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
@@ -10,6 +11,7 @@ use App\Services\Calendar\VendorReservationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -18,7 +20,7 @@ use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
 use Throwable;
 
-class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
+class ProcessCandidatesNotificationCycle implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -51,43 +53,74 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
 
         $project = $this->assignment->subProject->project;
         if ($project->is_calendar_project) {
-            /** @var Candidate $candidate */
-            $candidate = $this->assignment->candidates()
-                ->where('status', CandidateStatus::New)
-                ->ordered()
-                ->first();
 
-            if (blank($candidate)) {
-                $hasPendingCandidates = $this->assignment->candidates()->whereNot('status', CandidateStatus::Declined)->exists();
-                if (!$hasPendingCandidates) {
-                    $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
+            if ($this->hasPendingNotifiedVendor()) {
+                /**
+                 * If there is a vendor who got notified, we will wait until acceptance or declining
+                 * In case if the vendor is external, the system will reject the pending proposal automatically after the delay
+                 * @see AutoDeclineVendorTaskProposal
+                 */
+                return;
+            }
+
+
+            /** @var Collection<Candidate> $candidates */
+            $candidates = $this->assignment->candidates()
+                ->whereHas('vendor')
+                ->where('status', CandidateStatus::New)
+                ->ordered();
+
+            if (blank($candidates)) {
+                $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
+                return;
+            }
+
+            [$internals, $externals] = $candidates->partition(fn(Candidate $candidate) => $candidate->vendor?->is_internal);
+            /** @var Candidate $candidate */
+            foreach ($internals as $candidate) {
+                try {
+                    $vendorReservation->rotate(
+                        $this->assignment,
+                        $candidate->vendor_id,
+                        $project->event_start_at,
+                        $project->event_end_at,
+                    );
+                } catch (CalendarSlotConflictException) {
+                    $candidate->status = CandidateStatus::Declined;
+                    $candidate->saveOrFail();
+                    continue;
+                }
+
+                if (blank($candidate->notified_at)) {
+                    $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
                 }
                 return;
             }
 
-            if (blank($candidate->vendor)) {
-                $candidate->delete();
-                NotifyAssignmentCandidatesAboutNewTask::dispatch($this->assignment);
+            foreach ($externals as $candidate) {
+                try {
+                    $vendorReservation->rotate(
+                        $this->assignment,
+                        $candidate->vendor_id,
+                        $project->event_start_at,
+                        $project->event_end_at,
+                    );
+                } catch (CalendarSlotConflictException) {
+                    $candidate->status = CandidateStatus::Declined;
+                    $candidate->saveOrFail();
+                    continue;
+                }
+
+                if (blank($candidate->notified_at)) {
+                    $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
+                    AutoDeclineVendorTaskProposal::dispatch($candidate->id)
+                        ->afterCommit()
+                        ->delay(now()->addSeconds($this->getReactionTimeSeconds()));
+                }
                 return;
             }
 
-            $vendorReservation->rotate(
-                $this->assignment,
-                $candidate->vendor_id,
-                $project->event_start_at,
-                $project->event_end_at,
-            );
-
-            if (blank($candidate->notified_at)) {
-                $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
-            }
-
-            if (!$candidate->vendor->is_internal) {
-                AutoDeclineVendorTaskProposal::dispatch($candidate->id)
-                    ->afterCommit()
-                    ->delay(now()->addSeconds($this->getReactionTimeSeconds()));
-            }
-            return;
+            $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
         }
 
         $this->assignment->candidates->each(function (Candidate $candidate) use ($notificationPublisher) {
@@ -167,5 +200,14 @@ class NotifyAssignmentCandidatesAboutNewTask implements ShouldQueue
                 $institution->id
             );
         }
+    }
+
+    private function hasPendingNotifiedVendor(): bool
+    {
+        return $this->assignment->candidates()
+            ->whereHas('vendor')
+            ->where('status', CandidateStatus::SubmittedToVendor)
+            ->whereNotNull('notified_at')
+            ->exists();
     }
 }

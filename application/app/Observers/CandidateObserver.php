@@ -4,7 +4,7 @@ namespace App\Observers;
 
 use App\Enums\CandidateStatus;
 use App\Enums\SubProjectStatus;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -41,7 +41,7 @@ class CandidateObserver
         }
 
         if ($candidate->assignment->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
-            NotifyAssignmentCandidatesAboutNewTask::dispatch($candidate->assignment);
+            ProcessCandidatesNotificationCycle::dispatch($candidate->assignment);
         }
     }
 
@@ -53,16 +53,26 @@ class CandidateObserver
     {
         if ($candidate->wasChanged('status') && $candidate->status === CandidateStatus::Declined) {
             $this->deleteCandidateFromWorkflow($candidate);
-            $this->publishTaskDeclinedEmailNotification($candidate->assignment, $candidate->vendor);
+            if (filled($candidate->notified_at)) {
+                $this->publishTaskDeclinedEmailNotification($candidate->assignment, $candidate->vendor);
+            }
         }
     }
 
     /**
      * Handle the Candidate "deleted" event.
+     * @throws Throwable
      */
     public function deleted(Candidate $candidate): void
     {
         $this->deleteCandidateFromWorkflow($candidate);
+        if (filled($candidate->notified_at)) {
+            $this->publishTaskDeclinedEmailNotification($candidate->assignment, $candidate->vendor);
+        }
+
+        if ($candidate->assignment->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
+            ProcessCandidatesNotificationCycle::dispatch($candidate->assignment);
+        }
     }
 
     private function deleteCandidateFromWorkflow(Candidate $candidate): void
