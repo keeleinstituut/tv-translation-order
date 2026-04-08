@@ -315,14 +315,6 @@ class WorkflowController extends Controller
             if ($assignment) {
                 $entity['var_project_id'] = $assignment->subProject->project->id;
                 $entity['var_sub_project_id'] = $assignment->subProject->id;
-
-                /**
-                 * deadline_at is not set for calendar projects as it has logic behind it, and it doesn't make sense to apply it to calendar projects.
-                 * deadline_at used to send notifications, but for calendar projects it's not applicable as they have a strict time window when the work is happening
-                 */
-                if ($assignment->subProject->project->is_calendar_project) {
-                    $entity['var_deadline_at'] = $assignment->subProject->project->event_end_at?->format(WorkflowService::DATETIME_FORMAT);
-                }
             }
             return $entity;
         });
