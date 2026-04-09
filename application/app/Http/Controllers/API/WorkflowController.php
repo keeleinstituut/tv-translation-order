@@ -13,7 +13,7 @@ use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
 use App\Http\Resources\TaskResource2;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Jobs\NotifyAssignmentCandidatesAboutReviewRejection;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -38,7 +38,6 @@ use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use BadMethodCallException;
-use Gate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,6 +50,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use NotificationClient\Services\NotificationPublisher;
@@ -638,7 +638,7 @@ class WorkflowController extends Controller
             $candidate->saveOrFail();
 
             if ($candidate->assignment->subProject->project->is_calendar_project) {
-                NotifyAssignmentCandidatesAboutNewTask::dispatch($candidate->assignment)
+                ProcessCandidatesNotificationCycle::dispatch($candidate->assignment)
                     ->afterCommit();
             }
         });

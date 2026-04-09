@@ -102,9 +102,10 @@ readonly class VendorReservationService
     public function reserveFromPrebook(
         Assignment          $assignment,
         VendorCalendarEntry $prebook,
+        ?TimeSlot           $timeSlot = null,
     ): Candidate
     {
-        return DB::transaction(function () use ($assignment, $prebook) {
+        return DB::transaction(function () use ($assignment, $prebook, $timeSlot) {
             $prebook = VendorCalendarEntry::lockForUpdate()->find($prebook->id);
 
             if (!$prebook || filled($prebook->assignment_id)) {
@@ -117,11 +118,25 @@ readonly class VendorReservationService
                 'status' => CandidateStatus::New,
             ]);
 
-            $prebook->update([
+            $updateData = [
                 'assignment_id' => $assignment->id,
                 'prebook_institution_user_id' => null,
                 'prebook_at' => null,
-            ]);
+            ];
+
+            if ($timeSlot) {
+                $updateData['start_at'] = $timeSlot->bufferedStartAt;
+                $updateData['end_at'] = $timeSlot->bufferedEndAt;
+            }
+
+            try {
+                $prebook->update($updateData);
+            } catch (QueryException $e) {
+                if (in_array($e->getCode(), ['23P01', '23505'])) {
+                    throw new CalendarSlotConflictException();
+                }
+                throw $e;
+            }
 
             return $candidate;
         });

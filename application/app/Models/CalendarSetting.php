@@ -15,7 +15,9 @@ use Illuminate\Support\Carbon;
  * @property string $id
  * @property string $institution_id
  * @property int $reaction_time_seconds
- * @property string $default_project_type_id
+ * @property int $buffer_before_minutes
+ * @property int $buffer_after_minutes
+ * @property string|null $default_project_type_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read ClassifierValue $defaultProjectType
@@ -42,6 +44,8 @@ class CalendarSetting extends Model
 
     protected $casts = [
         'reaction_time_seconds' => 'integer',
+        'buffer_before_minutes' => 'integer',
+        'buffer_after_minutes' => 'integer',
     ];
 
     public function institution(): BelongsTo

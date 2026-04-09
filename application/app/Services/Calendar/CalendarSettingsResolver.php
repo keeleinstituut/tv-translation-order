@@ -4,12 +4,15 @@ namespace App\Services\Calendar;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\ProjectTypeCode;
+use App\Enums\ServiceType;
 use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CalendarSetting;
 use App\Models\JobDefinition;
+use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
+use Illuminate\Support\Carbon;
 use RuntimeException;
 
 class CalendarSettingsResolver
@@ -62,6 +65,46 @@ class CalendarSettingsResolver
         }
 
         return $calendarSetting->default_project_type_id;
+    }
+
+    public function resolveTimeSlot(
+        Carbon       $startAt,
+        Carbon       $endAt,
+        ?ServiceType $serviceType,
+        string       $institutionId,
+    ): TimeSlot
+    {
+        if ($serviceType !== ServiceType::OnSite) {
+            return TimeSlot::forEvent($startAt, $endAt);
+        }
+
+        $setting = CalendarSetting::query()
+            ->where('institution_id', $institutionId)
+            ->first();
+
+        $before = $setting?->buffer_before_minutes ?? 0;
+        $after = $setting?->buffer_after_minutes ?? 0;
+
+        if ($before === 0 && $after === 0) {
+            return TimeSlot::forEvent($startAt, $endAt);
+        }
+
+        return new TimeSlot(
+            $startAt,
+            $endAt,
+            $startAt->copy()->subMinutes($before),
+            $endAt->copy()->addMinutes($after),
+        );
+    }
+
+    public function resolveTimeSlotForProject(Project $project): TimeSlot
+    {
+        return $this->resolveTimeSlot(
+            $project->event_start_at,
+            $project->event_end_at,
+            $project->service_type,
+            $project->institution_id,
+        );
     }
 
     private function getDefaultSkill(): Skill

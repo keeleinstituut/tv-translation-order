@@ -12,9 +12,7 @@ use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
-use App\Models\VendorCalendarEntry;
-use App\Jobs\AutoDeclineVendorTaskProposal;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\Http;
@@ -223,7 +221,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
         $candidate1->refresh();
         $this->assertEquals(CandidateStatus::Declined, $candidate1->status);
 
-        Queue::assertPushed(NotifyAssignmentCandidatesAboutNewTask::class);
+        Queue::assertPushed(ProcessCandidatesNotificationCycle::class);
     }
 
     public function test_decline_does_not_cascade_for_non_calendar_project(): void

@@ -57,6 +57,8 @@ Route::prefix('calendar')->group(function () {
     Route::post('import', [API\CalendarImportController::class, 'store'])->name('translation-order.calendar.import');
     Route::get('search', [API\CalendarSearchController::class, 'search'])->name('translation-order.calendar.search');
     Route::get('slot-matching/vendors', [API\CalendarSlotMatchingController::class, 'vendors'])->name('translation-order.calendar.slot-matching.vendors');
+    Route::get('settings', [API\CalendarSettingController::class, 'show'])->name('translation-order.calendar.settings.show');
+    Route::put('settings', [API\CalendarSettingController::class, 'store'])->name('translation-order.calendar.settings.store');
 });
 
 Route::get('/vendors', [API\VendorController::class, 'index'])->name('translation-order.vendors.index');

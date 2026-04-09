@@ -5,7 +5,7 @@ namespace App\Observers;
 use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Models\Assignment;
 use App\Models\SubProject;
 use AuditLogClient\Services\AuditLogMessageBuilder;
@@ -85,7 +85,7 @@ class SubProjectObserver
                         $assignment->status = AssignmentStatus::InProgress;
                         $assignment->saveOrFail();
 
-                        NotifyAssignmentCandidatesAboutNewTask::dispatch($assignment);
+                        ProcessCandidatesNotificationCycle::dispatch($assignment);
                     });
 
                 if ($subProject->activeJobDefinition->job_key === JobKey::JOB_OVERVIEW) {

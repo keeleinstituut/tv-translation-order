@@ -36,6 +36,8 @@ class CalendarSettingsSeeder extends Seeder
                 'id' => Str::orderedUuid()->toString(),
                 'institution_id' => $id,
                 'reaction_time_seconds' => 30,
+                'buffer_before_minutes' => 0,
+                'buffer_after_minutes' => 0,
                 'default_project_type_id' => $this->getCalendarSupportedProjectTypes()->random(),
                 'created_at' => $now,
                 'updated_at' => $now,
