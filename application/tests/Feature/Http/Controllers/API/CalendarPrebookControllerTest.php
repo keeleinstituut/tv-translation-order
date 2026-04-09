@@ -289,7 +289,16 @@ class CalendarPrebookControllerTest extends TestCase
         $today = Carbon::today()->utc();
         $skill = Skill::findByCode(SkillCode::OralInterpretation);
 
-        $institution ??= Institution::factory()->create(['worktime_timezone' => 'UTC']);
+        $institution ??= Institution::factory()->create([
+            'worktime_timezone' => 'UTC',
+            'monday_worktime_start' => '08:00', 'monday_worktime_end' => '18:00',
+            'tuesday_worktime_start' => '08:00', 'tuesday_worktime_end' => '18:00',
+            'wednesday_worktime_start' => '08:00', 'wednesday_worktime_end' => '18:00',
+            'thursday_worktime_start' => '08:00', 'thursday_worktime_end' => '18:00',
+            'friday_worktime_start' => '08:00', 'friday_worktime_end' => '18:00',
+            'saturday_worktime_start' => '08:00', 'saturday_worktime_end' => '18:00',
+            'sunday_worktime_start' => '08:00', 'sunday_worktime_end' => '18:00',
+        ]);
 
         $institutionUser = InstitutionUser::factory()
             ->setInstitution(['id' => $institution->id, 'name' => $institution->name])

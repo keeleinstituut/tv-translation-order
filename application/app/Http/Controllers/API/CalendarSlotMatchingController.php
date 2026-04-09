@@ -10,6 +10,7 @@ use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotMatchingService;
+use App\Services\Calendar\TimeSlot;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -59,8 +60,7 @@ class CalendarSlotMatchingController extends Controller
 
         $vendors = $this->slotMatchingService->findAvailableVendorsForSlot(
             $request->validated('language_id'),
-            $startAt,
-            $endAt,
+            TimeSlot::forEvent($startAt, $endAt),
             $this->roleResolver->getInstitutionId(),
         );
 

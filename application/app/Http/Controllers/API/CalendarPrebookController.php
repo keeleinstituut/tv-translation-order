@@ -10,6 +10,7 @@ use App\Http\Resources\API\PrebookResource;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Services\Calendar\SlotMatchingService;
+use App\Services\Calendar\TimeSlot;
 use App\Services\Calendar\VendorReservationService;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -74,7 +75,9 @@ class CalendarPrebookController extends Controller
                 return response()->noContent();
             }
 
-            if (!$this->slotMatching->isVendorAvailableForSlot($vendor->id, $slotStart, $slotEnd)) {
+            if (!$this->slotMatching->isVendorAvailableForSlot(
+                $vendor, TimeSlot::forEvent($slotStart, $slotEnd), $institutionId,
+            )) {
                 throw new CalendarSlotConflictException();
             }
 

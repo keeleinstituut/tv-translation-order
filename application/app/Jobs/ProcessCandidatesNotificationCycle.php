@@ -7,6 +7,7 @@ use App\Exceptions\CalendarSlotConflictException;
 use App\Models\Assignment;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
+use App\Services\Calendar\CalendarSettingsResolver;
 use App\Services\Calendar\VendorReservationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -36,7 +37,11 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
     /**
      * @throws Throwable
      */
-    public function handle(NotificationPublisher $notificationPublisher, VendorReservationService $vendorReservation): void
+    public function handle(
+        NotificationPublisher    $notificationPublisher,
+        VendorReservationService $vendorReservation,
+        CalendarSettingsResolver $calendarSettings,
+    ): void
     {
         if (filled($this->assignment->assigned_vendor_id)) {
             return;
@@ -63,6 +68,7 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
                 return;
             }
 
+            $timeSlot = $calendarSettings->resolveTimeSlotForProject($project);
 
             /** @var Collection<Candidate> $candidates */
             $candidates = $this->assignment->candidates()
@@ -82,8 +88,8 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
                     $vendorReservation->rotate(
                         $this->assignment,
                         $candidate->vendor_id,
-                        $project->event_start_at,
-                        $project->event_end_at,
+                        $timeSlot->bufferedStartAt,
+                        $timeSlot->bufferedEndAt,
                     );
                 } catch (CalendarSlotConflictException) {
                     $candidate->status = CandidateStatus::Declined;
@@ -102,8 +108,8 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
                     $vendorReservation->rotate(
                         $this->assignment,
                         $candidate->vendor_id,
-                        $project->event_start_at,
-                        $project->event_end_at,
+                        $timeSlot->bufferedStartAt,
+                        $timeSlot->bufferedEndAt,
                     );
                 } catch (CalendarSlotConflictException) {
                     $candidate->status = CandidateStatus::Declined;
