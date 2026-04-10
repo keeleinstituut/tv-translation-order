@@ -56,11 +56,13 @@ class CalendarPrebookController extends Controller
         $institutionUserId = Auth::user()->institutionUserId;
         $institutionId = Auth::user()->institutionId;
 
-        if (VendorCalendarEntry::where('prebook_institution_user_id', $institutionUserId)->exists()) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, 'Ainult üks eelbroneering on lubatud');
-        }
-
         return DB::transaction(function () use ($slotStart, $slotEnd, $languageId, $tagIds, $vendorId, $institutionUserId, $institutionId) {
+            $prebook = VendorCalendarEntry::where('prebook_institution_user_id', $institutionUserId)->first();
+
+            if (filled($prebook)) {
+                $prebook->forceDelete();
+            }
+
             $vendor = filled($vendorId) ?
                 Vendor::find($vendorId) :
                 $this->slotMatching->pickBestInternalVendor(
@@ -75,9 +77,8 @@ class CalendarPrebookController extends Controller
                 return response()->noContent();
             }
 
-            if (!$this->slotMatching->isVendorAvailableForSlot(
-                $vendor, TimeSlot::forEvent($slotStart, $slotEnd), $institutionId,
-            )) {
+            $slot = TimeSlot::forEvent($slotStart, $slotEnd);
+            if (!$this->slotMatching->isVendorAvailableForSlot($vendor, $slot, $institutionId)) {
                 throw new CalendarSlotConflictException();
             }
 
