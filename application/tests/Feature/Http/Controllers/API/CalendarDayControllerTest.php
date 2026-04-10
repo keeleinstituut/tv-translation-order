@@ -224,7 +224,7 @@ class CalendarDayControllerTest extends TestCase
         $this->assertNotContains($entry->start_at->utc()->toIso8601String(), $slotStarts);
     }
 
-    public function test_day_client_partial_hour_free_interval_not_emitted_as_available_slot(): void
+    public function test_day_client_partial_hour_free_interval_emitted_as_available_slot(): void
     {
         // GIVEN — vendor free only 10:00–10:30 (partial); no full hour available in that window
         $today = Carbon::today()->utc();
@@ -257,12 +257,13 @@ class CalendarDayControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->getJson('/api/calendar/day?date=' . $today->toDateString());
 
-        // THEN — 10:00–10:30 partial must not appear in available_slots
+        // THEN — 10:00–10:30 partial slot should appear in available_slots
         $response->assertStatus(200);
 
-        $slotStarts = array_column($response->json('data.available_slots') ?? [], 'start_at');
-        $partialSlotStart = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
-        $this->assertNotContains($partialSlotStart, $slotStarts);
+        $partialSlot = collect($response->json('data.available_slots') ?? [])
+            ->first(fn($s) => $s['start_at'] === $today->copy()->setTime(10, 0)->utc()->toIso8601String()
+                && $s['end_at'] === $today->copy()->setTime(10, 30)->utc()->toIso8601String());
+        $this->assertNotNull($partialSlot, 'Partial 10:00–10:30 slot should be present in available_slots');
     }
 
     public function test_day_client_all_vendors_busy_language_appears_in_booked_slots(): void
@@ -371,10 +372,10 @@ class CalendarDayControllerTest extends TestCase
         $this->assertContains($vendor->id, $slot['vendor_ids']);
     }
 
-    public function test_day_project_manager_excludes_vendor_from_slot_when_only_partial_hour_free(): void
+    public function test_day_project_manager_partial_hour_vendor_gets_own_slot(): void
     {
         // GIVEN — vendor A free 10:00–10:30 only; vendor B free 10:00–11:00 (full)
-        // The 10:00–11:00 slot must include vendor B but NOT vendor A
+        // Vendor B gets the full-hour 10:00–11:00 slot; vendor A gets a partial 10:00–10:30 slot
         $today = Carbon::today()->utc();
         $dayName = strtolower($today->format('l'));
 
@@ -448,14 +449,25 @@ class CalendarDayControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->getJson('/api/calendar/day?date=' . $today->toDateString());
 
-        // THEN — 10:00–11:00 slot must not include vendor A (only free 10:00–10:30)
+        // THEN — full-hour 10:00–11:00 slot has only vendor B;
+        //         partial 10:00–10:30 slot has only vendor A
         $response->assertStatus(200);
 
-        $tenOClockSlot = collect($response->json('data.available_slots') ?? [])
-            ->first(fn($s) => str_starts_with($s['start_at'], $today->toDateString() . 'T10:'));
-        $this->assertNotNull($tenOClockSlot);
-        $this->assertNotContains($vendorA->id, $tenOClockSlot['vendor_ids']);
-        $this->assertContains($vendorB->id, $tenOClockSlot['vendor_ids']);
+        $tenStart = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
+        $tenThirty = $today->copy()->setTime(10, 30)->utc()->toIso8601String();
+        $eleven = $today->copy()->setTime(11, 0)->utc()->toIso8601String();
+
+        $slots = collect($response->json('data.available_slots') ?? []);
+
+        $fullHourSlot = $slots->first(fn($s) => $s['start_at'] === $tenStart && $s['end_at'] === $eleven);
+        $this->assertNotNull($fullHourSlot, 'Full-hour 10:00–11:00 slot should exist');
+        $this->assertContains($vendorB->id, $fullHourSlot['vendor_ids']);
+        $this->assertNotContains($vendorA->id, $fullHourSlot['vendor_ids']);
+
+        $partialSlot = $slots->first(fn($s) => $s['start_at'] === $tenStart && $s['end_at'] === $tenThirty);
+        $this->assertNotNull($partialSlot, 'Partial 10:00–10:30 slot should exist');
+        $this->assertContains($vendorA->id, $partialSlot['vendor_ids']);
+        $this->assertNotContains($vendorB->id, $partialSlot['vendor_ids']);
     }
 
     public function test_day_project_manager_returns_vendors_map(): void

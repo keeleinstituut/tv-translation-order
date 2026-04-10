@@ -132,8 +132,14 @@ readonly class SlotDiscretizationService
     }
 
     /**
-     * Discretize language-tagged intervals into fixed 1-hour slots.
-     * Emits only full 60-minute slots; partial slots at interval boundaries are omitted.
+     * Discretize language-tagged intervals into slots clipped to hour boundaries.
+     *
+     * Full 1h slots are emitted for middle portions; shorter partial slots are
+     * emitted at interval boundaries. Since input intervals (from sweepLanguageIntervals)
+     * are already non-overlapping, the output is also non-overlapping.
+     *
+     * Because fanOutByLanguage merges per-language intervals before discretization,
+     * partial slots only appear when NO vendor covers the full hour for that language.
      *
      * Example:
      *   Input:  [
@@ -141,7 +147,7 @@ readonly class SlotDiscretizationService
      *   ]
      *   Output: [
      *     ['start_at' => '1970-01-01T00:00:00+00:00', 'end_at' => '1970-01-01T01:00:00+00:00', 'languages' => ['lang-en']],
-     *     // second partial slot (3600–5400, only 30min) is dropped
+     *     ['start_at' => '1970-01-01T01:00:00+00:00', 'end_at' => '1970-01-01T01:30:00+00:00', 'languages' => ['lang-en']],
      *   ]
      *
      * @param array<array{start_at_ts: int, end_at_ts: int, languages: string[]}> $slots
@@ -151,19 +157,38 @@ readonly class SlotDiscretizationService
     {
         $result = [];
         foreach ($slots as $slot) {
-            $cursor = $slot['start_at_ts'];
+            $start = $slot['start_at_ts'];
+            $end = $slot['end_at_ts'];
+            $cursor = intdiv($start, 3600) * 3600;
 
-            while ($cursor < $slot['end_at_ts']) {
-                $slotEnd = min($cursor + 3600, $slot['end_at_ts']);
-                $duration = $slotEnd - $cursor;
-                if ($duration >= 3600) {
-                    $result[] = [
-                        'start_at' => Carbon::createFromTimestamp($cursor)->utc()->toIso8601String(),
-                        'end_at' => Carbon::createFromTimestamp($slotEnd)->utc()->toIso8601String(),
-                        'languages' => $slot['languages'],
-                    ];
-                }
-                $cursor = $slotEnd;
+            // Partial slot at the start (interval starts mid-hour)
+            if ($cursor < $start) {
+                $slotEnd = min($cursor + 3600, $end);
+                $result[] = [
+                    'start_at' => Carbon::createFromTimestamp($start)->utc()->toIso8601String(),
+                    'end_at' => Carbon::createFromTimestamp($slotEnd)->utc()->toIso8601String(),
+                    'languages' => $slot['languages'],
+                ];
+                $cursor += 3600;
+            }
+
+            // Full hour slots in the middle
+            while ($cursor + 3600 <= $end) {
+                $result[] = [
+                    'start_at' => Carbon::createFromTimestamp($cursor)->utc()->toIso8601String(),
+                    'end_at' => Carbon::createFromTimestamp($cursor + 3600)->utc()->toIso8601String(),
+                    'languages' => $slot['languages'],
+                ];
+                $cursor += 3600;
+            }
+
+            // Partial slot at the end (interval ends mid-hour)
+            if ($cursor < $end) {
+                $result[] = [
+                    'start_at' => Carbon::createFromTimestamp($cursor)->utc()->toIso8601String(),
+                    'end_at' => Carbon::createFromTimestamp($end)->utc()->toIso8601String(),
+                    'languages' => $slot['languages'],
+                ];
             }
         }
 
@@ -171,12 +196,17 @@ readonly class SlotDiscretizationService
     }
 
     /**
-     * Discretize per-vendor free intervals into 1h slots with vendor UUIDs.
+     * Discretize per-vendor free intervals into slots with vendor UUIDs.
+     *
+     * Clips each vendor's free intervals to hour boundaries, emitting full 1h slots
+     * for middle portions and shorter partial slots at interval boundaries.
+     * Slots from different vendors may overlap when their available ranges differ.
      *
      * Example:
-     *   Input:  ['v1' => [[0, 7200]], 'v2' => [[3600, 7200]]]
+     *   Input:  ['v1' => [[0, 7200]], 'v2' => [[1800, 7200]]]
      *   Output: [
      *     ['start_at' => '1970-01-01T00:00:00+00:00', 'end_at' => '1970-01-01T01:00:00+00:00', 'vendor_ids' => ['v1']],
+     *     ['start_at' => '1970-01-01T00:30:00+00:00', 'end_at' => '1970-01-01T01:00:00+00:00', 'vendor_ids' => ['v2']],
      *     ['start_at' => '1970-01-01T01:00:00+00:00', 'end_at' => '1970-01-01T02:00:00+00:00', 'vendor_ids' => ['v1', 'v2']],
      *   ]
      *
@@ -190,24 +220,44 @@ readonly class SlotDiscretizationService
         foreach ($vendorFreeIntervals as $vendorId => $intervals) {
             foreach ($intervals as [$start, $end]) {
                 $cursor = intdiv($start, 3600) * 3600;
-                while ($cursor < $end) {
-                    $slotEnd = $cursor + 3600;
-                    if ($start <= $cursor && $end >= $slotEnd) {
-                        $slots[$cursor][] = $vendorId;
-                    }
+
+                // Partial slot at the start (interval starts mid-hour)
+                if ($cursor < $start) {
+                    $slotEnd = min($cursor + 3600, $end);
+                    $key = $start . ':' . $slotEnd;
+                    $slots[$key]['start'] = $start;
+                    $slots[$key]['end'] = $slotEnd;
+                    $slots[$key]['vendor_ids'][] = $vendorId;
                     $cursor += 3600;
+                }
+
+                // Full hour slots in the middle
+                while ($cursor + 3600 <= $end) {
+                    $key = $cursor . ':' . ($cursor + 3600);
+                    $slots[$key]['start'] = $cursor;
+                    $slots[$key]['end'] = $cursor + 3600;
+                    $slots[$key]['vendor_ids'][] = $vendorId;
+                    $cursor += 3600;
+                }
+
+                // Partial slot at the end (interval ends mid-hour)
+                if ($cursor < $end) {
+                    $key = $cursor . ':' . $end;
+                    $slots[$key]['start'] = $cursor;
+                    $slots[$key]['end'] = $end;
+                    $slots[$key]['vendor_ids'][] = $vendorId;
                 }
             }
         }
 
-        ksort($slots);
+        uasort($slots, fn($a, $b) => $a['start'] <=> $b['start'] ?: $a['end'] <=> $b['end']);
 
         $result = [];
-        foreach ($slots as $slotStart => $vendorIds) {
+        foreach ($slots as $slot) {
             $result[] = [
-                'start_at' => Carbon::createFromTimestamp($slotStart)->utc()->toIso8601String(),
-                'end_at' => Carbon::createFromTimestamp($slotStart + 3600)->utc()->toIso8601String(),
-                'vendor_ids' => array_values(array_unique($vendorIds)),
+                'start_at' => Carbon::createFromTimestamp($slot['start'])->utc()->toIso8601String(),
+                'end_at' => Carbon::createFromTimestamp($slot['end'])->utc()->toIso8601String(),
+                'vendor_ids' => array_values(array_unique($slot['vendor_ids'])),
             ];
         }
 
