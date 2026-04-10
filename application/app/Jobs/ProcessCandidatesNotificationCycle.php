@@ -74,7 +74,8 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
             $candidates = $this->assignment->candidates()
                 ->whereHas('vendor')
                 ->where('status', CandidateStatus::New)
-                ->ordered();
+                ->ordered()
+                ->get();
 
             if (blank($candidates)) {
                 $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
