@@ -23,7 +23,7 @@ use AuditLogClient\Services\AuditLogPublisher;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+
 
 class CalendarWeekController extends Controller
 {
@@ -75,8 +75,7 @@ class CalendarWeekController extends Controller
         return match ($this->roleResolver->resolve()) {
             CalendarRole::ProjectManager => $this->projectManagerView($this->roleResolver->getInstitutionId(), $startAt, $endAt),
             CalendarRole::Vendor => $this->vendorView($this->roleResolver->getVendor(), $startAt, $endAt),
-            CalendarRole::Client => $this->clientView($this->roleResolver->getInstitutionId(), $startAt, $endAt),
-            CalendarRole::Unknown => throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid role')
+            CalendarRole::Client => $this->clientView($this->roleResolver->getInstitutionId(), $startAt, $endAt)
         };
     }
 

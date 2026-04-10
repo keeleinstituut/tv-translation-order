@@ -57,7 +57,7 @@ class CalendarPrebookController extends Controller
         $institutionId = Auth::user()->institutionId;
 
         if (VendorCalendarEntry::where('prebook_institution_user_id', $institutionUserId)->exists()) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, 'Only one prebook is allowed');
+            throw new HttpException(Response::HTTP_BAD_REQUEST, 'Ainult üks eelbroneering on lubatud');
         }
 
         return DB::transaction(function () use ($slotStart, $slotEnd, $languageId, $tagIds, $vendorId, $institutionUserId, $institutionId) {

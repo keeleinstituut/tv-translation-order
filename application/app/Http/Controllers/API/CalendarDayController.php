@@ -26,7 +26,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+
 
 class CalendarDayController extends Controller
 {
@@ -89,8 +89,7 @@ class CalendarDayController extends Controller
             CalendarRole::Vendor => $this->vendorView(
                 $this->roleResolver->getVendor(),
                 $date
-            ),
-            CalendarRole::Unknown => throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid role')
+            )
         };
     }
 

@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CalendarSlotConflictException extends \RuntimeException
 {
-    public function __construct(string $message = 'The selected time slot is no longer available.')
+    public function __construct(string $message = 'Valitud ajavahemik ei ole enam saadaval.')
     {
         parent::__construct($message);
     }
