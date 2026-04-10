@@ -52,7 +52,7 @@ class CalendarSlotMatchingController extends Controller
         $role = $this->roleResolver->resolve();
 
         if ($role !== CalendarRole::ProjectManager) {
-            throw new HttpException(Response::HTTP_FORBIDDEN, 'Invalid role');
+            throw new HttpException(Response::HTTP_FORBIDDEN, 'Teie rollil puudub ligipääs sellele funktsioonile');
         }
 
         $startAt = Carbon::parse($request->validated('start_at'))->utc();

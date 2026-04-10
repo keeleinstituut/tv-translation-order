@@ -64,7 +64,7 @@ class CalendarSearchController extends Controller
         $role = $this->roleResolver->resolve();
 
         if (!in_array($role, [CalendarRole::Client, CalendarRole::ProjectManager], true)) {
-            throw new HttpException(Response::HTTP_FORBIDDEN, 'Invalid role');
+            throw new HttpException(Response::HTTP_FORBIDDEN, 'Teie rollil puudub ligipääs sellele funktsioonile');
         }
 
         $languageId = $request->validated('language_id');

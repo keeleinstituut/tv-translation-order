@@ -22,7 +22,7 @@ use Illuminate\Support\LazyCollection;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+
 
 class CalendarMonthController extends Controller
 {
@@ -83,8 +83,7 @@ class CalendarMonthController extends Controller
                 $this->roleResolver->getInstitutionUserId(),
                 $startAt,
                 $endAt
-            ),
-            CalendarRole::Unknown => throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid role')
+            )
         };
     }
 

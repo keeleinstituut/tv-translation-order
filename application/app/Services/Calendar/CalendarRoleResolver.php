@@ -6,6 +6,7 @@ use App\Enums\CalendarRole;
 use App\Enums\PrivilegeKey;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 
 class CalendarRoleResolver
@@ -67,6 +68,6 @@ class CalendarRoleResolver
             return;
         }
 
-        $this->role = CalendarRole::Unknown;
+        throw new AuthorizationException();
     }
 }
