@@ -61,7 +61,7 @@ readonly class VendorReservationService
             return;
         }
 
-        $prebook->delete();
+        $prebook->forceDelete();
     }
 
     /**
