@@ -128,6 +128,7 @@ readonly class SlotMatchingService
             TimeSlot::forEvent($eventStartAt, $eventEndAt),
             $institutionId,
             $excludePrebookUserId,
+            excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => $v->is_internal);
 
         if ($excludeVendorIds?->isNotEmpty()) {
@@ -197,6 +198,7 @@ readonly class SlotMatchingService
             $destinationLanguageId,
             TimeSlot::forEvent($eventStartAt, $eventEndAt),
             $institutionId,
+            excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => !$v->is_internal);
 
         $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
@@ -247,12 +249,15 @@ readonly class SlotMatchingService
         TimeSlot $timeSlot,
         string   $institutionId,
         ?string  $excludePrebookUserId = null,
+        bool     $excludeWithActiveEmergencySchedule = false,
     ): Collection
     {
         $vendors = Vendor::query()
             ->servingLanguage($languageId, $institutionId)
             ->availableForSlot($timeSlot->bufferedStartAt, $timeSlot->bufferedEndAt, $excludePrebookUserId)
-            ->withoutActiveEmergencySchedule($timeSlot->startAt->copy()->startOfDay())
+            ->when($excludeWithActiveEmergencySchedule, fn($q) => $q
+                ->withoutActiveEmergencySchedule($timeSlot->startAt->copy()->startOfDay())
+            )
             ->with('institutionUser')
             ->get();
 

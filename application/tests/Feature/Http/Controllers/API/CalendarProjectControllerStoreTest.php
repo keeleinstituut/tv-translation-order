@@ -116,6 +116,13 @@ class CalendarProjectControllerStoreTest extends TestCase
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
         $this->refreshView();
+
+        $dayName = strtolower(Carbon::tomorrow()->utc()->format('l'));
+        $this->institution->forceFill([
+            'worktime_timezone' => 'UTC',
+            "{$dayName}_worktime_start" => '09:00',
+            "{$dayName}_worktime_end" => '18:00',
+        ])->save();
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $actingUser->id,
             'selectedInstitution' => ['id' => $this->institution->id],
@@ -423,11 +430,11 @@ class CalendarProjectControllerStoreTest extends TestCase
 
         // Institution defines working hours 09:00-18:00 UTC for the event day
         // (this is the resolver's fallback when the vendor's own worktime is empty).
-        $this->institution->update([
+        $this->institution->forceFill([
             'worktime_timezone' => 'UTC',
             "{$dayName}_worktime_start" => '09:00',
             "{$dayName}_worktime_end" => '18:00',
-        ]);
+        ])->save();
 
         // Vendor matches every other matching criterion: internal, language coverage,
         // calendar imported, no conflicting entries, no emergency schedule.

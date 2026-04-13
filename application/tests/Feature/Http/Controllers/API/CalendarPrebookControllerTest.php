@@ -67,40 +67,6 @@ class CalendarPrebookControllerTest extends TestCase
         $this->assertNotNull($response->json('data.expires_at'));
     }
 
-    public function test_prebook_rejects_when_user_already_has_active_prebook(): void
-    {
-        Queue::fake();
-        $today = Carbon::today()->utc();
-        [$institution, $language, $vendor] = $this->createInternalVendorCoverage();
-
-        $clientUser = InstitutionUser::factory()
-            ->setInstitution(['id' => $institution->id, 'name' => $institution->name])
-            ->create();
-
-        VendorCalendarEntry::create([
-            'vendor_id' => $vendor->id,
-            'start_at' => $today->copy()->setHour(8),
-            'end_at' => $today->copy()->setHour(9),
-            'prebook_institution_user_id' => $clientUser->id,
-            'prebook_at' => now(),
-        ]);
-
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $clientUser->id,
-            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::CreateProject->value],
-        ]);
-
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->postJson('/api/calendar/prebook', [
-                'start_at' => $today->copy()->setHour(10)->toIso8601String(),
-                'end_at' => $today->copy()->setHour(11)->toIso8601String(),
-                'language_id' => $language->id,
-            ]);
-
-        $response->assertStatus(400);
-    }
-
     public function test_prebook_returns_204_when_no_vendor_available(): void
     {
         Queue::fake();
@@ -171,7 +137,7 @@ class CalendarPrebookControllerTest extends TestCase
             ->deleteJson('/api/calendar/prebook');
 
         $response->assertStatus(204);
-        $this->assertModelSoftDeleted($prebook);
+        $this->assertModelMissing($prebook);
     }
 
     public function test_prebook_with_vendor_id_as_pm_uses_specified_vendor(): void

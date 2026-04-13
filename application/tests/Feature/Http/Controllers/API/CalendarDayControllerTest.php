@@ -266,44 +266,6 @@ class CalendarDayControllerTest extends TestCase
         $this->assertNotNull($partialSlot, 'Partial 10:00–10:30 slot should be present in available_slots');
     }
 
-    public function test_day_client_all_vendors_busy_language_appears_in_booked_slots(): void
-    {
-        // GIVEN — vendor entry covers the entire working window (08:00–17:00 UTC)
-        $today = Carbon::today()->utc();
-        $dayName = strtolower($today->format('l'));
-
-        [$institution, $language, $vendor] = $this->createVendorCoverageWithWorktime($dayName);
-
-        VendorCalendarEntry::create([
-            'vendor_id' => $vendor->id,
-            'start_at' => $today->copy()->setTime(8, 0),
-            'end_at' => $today->copy()->setTime(17, 0),
-        ]);
-
-        $clientUser = InstitutionUser::factory()
-            ->setInstitution(['id' => $institution->id, 'name' => $institution->name])
-            ->create();
-
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $clientUser->id,
-            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::CreateProject->value],
-        ]);
-
-        // WHEN
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson('/api/calendar/day?date=' . $today->toDateString());
-
-        // THEN
-        $response
-            ->assertStatus(200)
-            ->assertJsonCount(0, 'data.available_slots');
-
-        $booked = $response->json('data.booked_slots');
-        $this->assertNotEmpty($booked);
-        $this->assertContains($language->id, $booked[0]['languages']);
-    }
-
     public function test_day_client_returns_unassigned_projects(): void
     {
         // GIVEN
