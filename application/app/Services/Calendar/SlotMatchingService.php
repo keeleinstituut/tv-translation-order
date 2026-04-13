@@ -123,12 +123,12 @@ readonly class SlotMatchingService
         ?Collection $excludeVendorIds = null,
     ): ?Vendor
     {
-        $internals = $this->findAvailableVendors(
+        $internals = $this->findAvailableVendorsForSlot(
             $languageId,
-            $eventStartAt,
-            $eventEndAt,
+            TimeSlot::forEvent($eventStartAt, $eventEndAt),
             $institutionId,
             $excludePrebookUserId,
+            excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => $v->is_internal);
 
         if ($excludeVendorIds?->isNotEmpty()) {
@@ -194,11 +194,11 @@ readonly class SlotMatchingService
     ): Collection
     {
         /** @var \Illuminate\Database\Eloquent\Collection $externals */
-        $externals = $this->findAvailableVendors(
+        $externals = $this->findAvailableVendorsForSlot(
             $destinationLanguageId,
-            $eventStartAt,
-            $eventEndAt,
+            TimeSlot::forEvent($eventStartAt, $eventEndAt),
             $institutionId,
+            excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => !$v->is_internal);
 
         $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
@@ -248,11 +248,16 @@ readonly class SlotMatchingService
         string   $languageId,
         TimeSlot $timeSlot,
         string   $institutionId,
+        ?string  $excludePrebookUserId = null,
+        bool     $excludeWithActiveEmergencySchedule = false,
     ): Collection
     {
         $vendors = Vendor::query()
             ->servingLanguage($languageId, $institutionId)
-            ->availableForSlot($timeSlot->bufferedStartAt, $timeSlot->bufferedEndAt)
+            ->availableForSlot($timeSlot->bufferedStartAt, $timeSlot->bufferedEndAt, $excludePrebookUserId)
+            ->when($excludeWithActiveEmergencySchedule, fn($q) => $q
+                ->withoutActiveEmergencySchedule($timeSlot->startAt->copy()->startOfDay())
+            )
             ->with('institutionUser')
             ->get();
 
@@ -322,28 +327,6 @@ readonly class SlotMatchingService
                 && $window[0] <= $timeSlot->startAt->timestamp
                 && $window[1] >= $timeSlot->endAt->timestamp;
         });
-    }
-
-    /**
-     * Algorithm 1: Find all vendors available for a given time slot and language.
-     *
-     * @return Collection<int, Vendor>
-     */
-    private function findAvailableVendors(
-        string  $languageId,
-        Carbon  $eventStartAt,
-        Carbon  $eventEndAt,
-        string  $institutionId,
-        ?string $excludePrebookUserId = null,
-    ): Collection
-    {
-        return Vendor::whereRelation('institutionUser', 'institution->id', $institutionId)
-            ->servingLanguage($languageId, $institutionId)
-            ->withCalendarImportFor($eventStartAt->copy()->startOfDay())
-            ->availableForSlot($eventStartAt, $eventEndAt, $excludePrebookUserId)
-            ->withoutActiveEmergencySchedule($eventStartAt->copy()->startOfDay())
-            ->with('institutionUser')
-            ->get();
     }
 
     /**

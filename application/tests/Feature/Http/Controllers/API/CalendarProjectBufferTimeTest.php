@@ -259,7 +259,7 @@ class CalendarProjectBufferTimeTest extends TestCase
 
         $response->assertCreated();
 
-        $this->assertSoftDeleted('vendor_calendar_entries', ['id' => $prebook->id]);
+        $this->assertDatabaseMissing('vendor_calendar_entries', ['id' => $prebook->id]);
     }
 
     public function test_on_site_buffer_extends_before_working_hours(): void
