@@ -42,7 +42,7 @@ class CalendarClientDayResource extends JsonResource
     {
         return [
             'available_slots' => $this->resource['available_slots'] ?? [],
-            'booked_slots' => $this->resource['booked_slots'] ?? [],
+            //'booked_slots' => $this->resource['booked_slots'] ?? [],
             'calendar_entries' => VendorCalendarEntryResource::collection(
                 collect($this->resource['calendar_entries'] ?? [])
             ),
