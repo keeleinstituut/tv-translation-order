@@ -878,7 +878,7 @@ class ProjectController extends Controller
         } catch (CalendarSlotConflictException) {
             if (!$isClient) {
                 throw ValidationException::withMessages([
-                    'event_start_at' => 'The prebooked slot cannot accommodate the required buffer time.',
+                    'event_start_at' => 'Teostaja ei ole saadaval valitud ajavahemikul.',
                 ]);
             }
         }
@@ -945,7 +945,7 @@ class ProjectController extends Controller
 
         if (!$isAvailable) {
             throw ValidationException::withMessages([
-                'candidate_vendor_id' => 'The selected vendor is not available for the requested time slot.',
+                'candidate_vendor_id' => 'Valitud teostaja ei ole saadaval soovitud ajavahemikul.',
             ]);
         }
 
@@ -958,7 +958,7 @@ class ProjectController extends Controller
             );
         } catch (CalendarSlotConflictException) {
             throw ValidationException::withMessages([
-                'candidate_vendor_id' => 'The selected vendor is not available for the requested time slot.',
+                'candidate_vendor_id' => 'Valitud teostaja ei ole saadaval soovitud ajavahemikul.',
             ]);
         }
     }
@@ -991,7 +991,7 @@ class ProjectController extends Controller
                      * if the acting user is a client. For TPM, we show a validation error
                      */
                     throw ValidationException::withMessages([
-                        'event_start_at' => 'No vendors are available for the requested time slot and language.',
+                        'event_start_at' => 'Soovitud ajavahemikul ja keelesuunal ei ole ühtegi teostajat saadaval.',
                     ]);
                 }
 
@@ -1013,7 +1013,7 @@ class ProjectController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'event_start_at' => 'No vendors are available for the requested time slot and language.',
+            'event_start_at' => 'Soovitud ajavahemikul ja keelesuunal ei ole ühtegi teostajat saadaval.',
         ]);
     }
 
@@ -1047,7 +1047,7 @@ class ProjectController extends Controller
 
         if (!$isAvailable) {
             throw ValidationException::withMessages([
-                'event_start_at' => 'The assigned vendor is not available for the updated time slot.',
+                'event_start_at' => 'Määratud teostaja ei ole saadaval uuendatud ajavahemikul.',
             ]);
         }
 
@@ -1060,7 +1060,7 @@ class ProjectController extends Controller
             );
         } catch (CalendarSlotConflictException) {
             throw ValidationException::withMessages([
-                'event_start_at' => 'The assigned vendor is not available for the updated time slot.',
+                'event_start_at' => 'Määratud teostaja ei ole saadaval uuendatud ajavahemikul.',
             ]);
         }
     }
@@ -1078,12 +1078,12 @@ class ProjectController extends Controller
 
             if ($hasAcceptedCandidate) {
                 throw ValidationException::withMessages([
-                    'event_start_at' => 'Cannot modify project after the vendor has accepted the work.',
+                    'event_start_at' => 'Projekti ei saa muuta pärast seda, kui teostaja on töö vastu võtnud.',
                 ]);
             }
         } elseif ($project->status === ProjectStatus::Accepted) {
             throw ValidationException::withMessages([
-                'event_start_at' => 'Cannot modify a completed project.',
+                'event_start_at' => 'Lõpetatud projekti ei saa muuta.',
             ]);
         }
     }
