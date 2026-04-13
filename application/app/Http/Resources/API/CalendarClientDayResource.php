@@ -13,7 +13,6 @@ use OpenApi\Attributes as OA;
  * Input structure (array-based resource):
  * [
  *     'available_slots' => array<array{start_at: string, end_at: string, languages: string[]}>,
- *     'booked_slots' => array<array{start_at: string, end_at: string, languages: string[]}>,
  *     'calendar_entries' => Collection<VendorCalendarEntry>,
  *     'unassigned_projects' => Collection<Project>,
  * ]
@@ -22,11 +21,6 @@ use OpenApi\Attributes as OA;
     title: 'Client Calendar Day',
     properties: [
         new OA\Property(property: 'available_slots', type: 'array', items: new OA\Items(properties: [
-            new OA\Property(property: 'start_at', type: 'string', format: 'date-time'),
-            new OA\Property(property: 'end_at', type: 'string', format: 'date-time'),
-            new OA\Property(property: 'languages', type: 'array', items: new OA\Items(type: 'string', format: 'uuid')),
-        ])),
-        new OA\Property(property: 'booked_slots', type: 'array', items: new OA\Items(properties: [
             new OA\Property(property: 'start_at', type: 'string', format: 'date-time'),
             new OA\Property(property: 'end_at', type: 'string', format: 'date-time'),
             new OA\Property(property: 'languages', type: 'array', items: new OA\Items(type: 'string', format: 'uuid')),
@@ -42,7 +36,6 @@ class CalendarClientDayResource extends JsonResource
     {
         return [
             'available_slots' => $this->resource['available_slots'] ?? [],
-            //'booked_slots' => $this->resource['booked_slots'] ?? [],
             'calendar_entries' => VendorCalendarEntryResource::collection(
                 collect($this->resource['calendar_entries'] ?? [])
             ),
