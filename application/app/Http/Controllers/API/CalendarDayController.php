@@ -138,7 +138,6 @@ class CalendarDayController extends Controller
         $vendorFreeIntervals = $this->availabilityService->computeFreeIntervals($data, $date, $vendorWindows, $excludeVendorIds);
         $perLanguageIntervals = $this->discretizationService->fanOutByLanguage($vendorFreeIntervals, $data);
         $availableSlots = $this->discretizationService->discretizeLanguageSlots($perLanguageIntervals);
-        //$bookedSlots = $this->discretizationService->computeFullyBookedSlots($availableSlots, $data->coverageByLanguage, $vendorWindows);
 
         $entries = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
             ->whereIn('vendor_id', $data->importedCalendarVendorIds)
@@ -154,7 +153,6 @@ class CalendarDayController extends Controller
 
         return CalendarClientDayResource::make([
             'available_slots' => $availableSlots,
-            //'booked_slots' => $bookedSlots,
             'calendar_entries' => $entries,
             'unassigned_projects' => $unassignedProjects,
         ]);
