@@ -414,6 +414,64 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->assertDatabaseMissing('vendor_calendar_entries', ['assignment_id' => $assignment->id]);
     }
 
+    public function test_client_creates_calendar_project_without_vendor_when_event_is_outside_vendor_working_hours(): void
+    {
+        // GIVEN
+        // A future weekday is chosen deterministically so the day-of-week worktime fields apply.
+        $eventDate = Carbon::parse('next monday')->utc();
+        $dayName = strtolower($eventDate->format('l'));
+
+        // Institution defines working hours 09:00-18:00 UTC for the event day
+        // (this is the resolver's fallback when the vendor's own worktime is empty).
+        $this->institution->update([
+            'worktime_timezone' => 'UTC',
+            "{$dayName}_worktime_start" => '09:00',
+            "{$dayName}_worktime_end" => '18:00',
+        ]);
+
+        // Vendor matches every other matching criterion: internal, language coverage,
+        // calendar imported, no conflicting entries, no emergency schedule.
+        $vendor = $this->createVendorWithCoverage(internal: true);
+        $this->createCalendarImport($vendor, $eventDate);
+        $this->refreshView();
+
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+
+        // Event is 30 minutes long at 19:00 — outside the 09:00-18:00 window.
+        $payload = $this->createCalendarPayload([
+            'event_start_at' => $eventDate->copy()->setTime(19, 0)->toIso8601ZuluString(),
+            'event_end_at' => $eventDate->copy()->setTime(19, 30)->toIso8601ZuluString(),
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        // Project is still created — the client request succeeds.
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertTrue($project->is_calendar_project);
+
+        $assignment = $project->subProjects->first()->assignments->first();
+        $this->assertNotNull($assignment, 'Assignment must exist even when no vendor is matched');
+
+        // No vendor was auto-assigned because the only matching vendor is outside working hours.
+        $this->assertDatabaseMissing('candidates', ['assignment_id' => $assignment->id]);
+        $this->assertDatabaseMissing('vendor_calendar_entries', ['assignment_id' => $assignment->id]);
+    }
+
     public function test_client_creates_project_without_candidates_when_candidate_vendor_not_available(): void
     {
         // GIVEN
