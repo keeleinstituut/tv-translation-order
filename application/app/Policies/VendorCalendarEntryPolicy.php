@@ -20,6 +20,12 @@ class VendorCalendarEntryPolicy
                 ->exists();
     }
 
+    public function create(JwtPayloadUser $user): bool
+    {
+        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value)
+            || Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value);
+    }
+
     public function delete(JwtPayloadUser $user, VendorCalendarEntry $entry): bool
     {
         if (Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {

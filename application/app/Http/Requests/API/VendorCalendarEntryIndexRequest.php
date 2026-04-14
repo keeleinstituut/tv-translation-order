@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\API;
 
+use App\Enums\VendorCalendarEntryType;
 use App\Rules\MaxDateRange;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class VendorCalendarEntryIndexRequest extends FormRequest
 {
@@ -19,9 +21,10 @@ class VendorCalendarEntryIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date_from'        => ['required', 'date_format:Y-m-d'],
-            'date_to'          => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from', new MaxDateRange('date_from', 93)],
+            'date_from' => ['required', 'date_format:Y-m-d'],
+            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from', new MaxDateRange('date_from', 93)],
             'assignments_only' => ['sometimes', 'boolean'],
+            'type' => ['sometimes', 'string', Rule::enum(VendorCalendarEntryType::class)],
         ];
     }
 }

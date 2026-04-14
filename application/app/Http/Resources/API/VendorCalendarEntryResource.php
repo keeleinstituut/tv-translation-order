@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\VendorCalendarEntryType;
 use App\Models\VendorCalendarEntry;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -17,10 +18,10 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'vendor_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'start_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'end_at', type: 'string', format: 'date-time'),
-        new OA\Property(property: 'type', type: 'string',
-            enum: ['assignment', 'prebook', 'external_calendar', 'vacation']),
+        new OA\Property(property: 'type', type: 'string', enum: VendorCalendarEntryType::class),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid', nullable: true),
         new OA\Property(property: 'assignment', ref: AssignmentResource::class, nullable: true),
+        new OA\Property(property: 'metadata', type: 'object', nullable: true),
     ],
     type: 'object'
 )]
@@ -36,6 +37,7 @@ class VendorCalendarEntryResource extends JsonResource
             'type' => $this->type,
             'assignment_id' => $this->assignment_id,
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
+            'metadata' => $this->metadata,
         ];
     }
 }

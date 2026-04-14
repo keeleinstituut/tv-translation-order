@@ -51,6 +51,7 @@ Route::prefix('calendar')->group(function () {
     Route::get('week', [API\CalendarWeekController::class, 'index'])->name('translation-order.calendar.week');
     Route::get('month', [API\CalendarMonthController::class, 'index'])->name('translation-order.calendar.month');
     Route::get('vendor-entries', [API\VendorCalendarEntryController::class, 'index'])->name('translation-order.calendar.vendor_entries.index');
+    Route::post('vendor-entries', [API\VendorCalendarEntryController::class, 'store'])->name('translation-order.calendar.vendor_entries.store');
     Route::delete('vendor-entries/{entry}', [API\VendorCalendarEntryController::class, 'destroy'])->whereUuid('entry')->name('translation-order.calendar.vendor_entries.destroy');
     Route::post('prebook', [API\CalendarPrebookController::class, 'prebook'])->name('translation-order.calendar.prebook');
     Route::delete('prebook', [API\CalendarPrebookController::class, 'cancelPrebook'])->name('translation-order.calendar.prebook.cancel');

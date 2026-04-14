@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\PrivilegeKey;
+use App\Enums\VendorCalendarEntryType;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\VendorCalendarEntryIndexRequest;
+use App\Http\Requests\API\VendorCalendarEntryStoreRequest;
 use App\Http\Resources\API\VendorCalendarEntryResource;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
@@ -45,6 +47,7 @@ class VendorCalendarEntryController extends Controller
             new OA\QueryParameter(name: 'date_from', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\QueryParameter(name: 'date_to', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\QueryParameter(name: 'assignments_only', required: false, schema: new OA\Schema(type: 'boolean')),
+            new OA\QueryParameter(name: 'type', required: false, schema: new OA\Schema(type: 'string', enum: VendorCalendarEntryType::class, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -62,7 +65,17 @@ class VendorCalendarEntryController extends Controller
         $query = $this->getBaseQuery($institutionUserId, $institutionId)
             ->overlapping($dateFrom, $dateTo);
 
-        if ($request->boolean('assignments_only', true)) {
+        if ($type = $request->validated('type')) {
+            $query->where(function (Builder $q) use ($type) {
+                match (VendorCalendarEntryType::from($type)) {
+                    VendorCalendarEntryType::Assignment => $q->whereNotNull('assignment_id'),
+                    VendorCalendarEntryType::Prebook => $q->whereNotNull('prebook_institution_user_id'),
+                    VendorCalendarEntryType::ExternalCalendar => $q->whereNotNull('vendor_calendar_import_id'),
+                    VendorCalendarEntryType::Absence => $q->whereNotNull('absence_creator_institution_user_id'),
+                    VendorCalendarEntryType::Vacation => $q->whereNotNull('institution_user_vacation_id')->orWhereNotNull('institution_vacation_id'),
+                };
+            });
+        } elseif ($request->boolean('assignments_only', true)) {
             $query->assignmentsOnly();
         }
 
@@ -82,6 +95,35 @@ class VendorCalendarEntryController extends Controller
     /**
      * @throws AuthorizationException
      */
+    #[OA\Post(
+        path: '/calendar/vendor-entries',
+        summary: 'Create a vendor absence entry (out-of-office)',
+        requestBody: new OAH\RequestBody(VendorCalendarEntryStoreRequest::class),
+        tags: ['Calendar'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: VendorCalendarEntryResource::class, description: 'Created absence entry', response: Response::HTTP_CREATED)]
+    public function store(VendorCalendarEntryStoreRequest $request): VendorCalendarEntryResource
+    {
+        $this->authorize('create', VendorCalendarEntry::class);
+
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->findOrFail($request->validated('vendor_id'));
+
+        $entry = VendorCalendarEntry::create([
+            'vendor_id' => $vendor->id,
+            'start_at' => Carbon::parse($request->validated('start_at'))->utc(),
+            'end_at' => Carbon::parse($request->validated('end_at'))->utc(),
+            'absence_creator_institution_user_id' => Auth::user()->institutionUserId,
+            'metadata' => $request->validated('comment') ? ['comment' => $request->validated('comment')] : null,
+        ]);
+
+        return VendorCalendarEntryResource::make($entry);
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Delete(
         path: '/calendar/vendor-entries/{entry}',
         summary: 'Delete a vendor calendar entry',
@@ -90,7 +132,7 @@ class VendorCalendarEntryController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Entry deleted')]
-    #[OA\Response(response: Response::HTTP_BAD_REQUEST, description: 'Only external calendar entries can be deleted')]
+    #[OA\Response(response: Response::HTTP_BAD_REQUEST, description: 'Only external calendar or absence entries can be deleted')]
     public function destroy(Request $request): Response
     {
         $entry = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
@@ -98,8 +140,8 @@ class VendorCalendarEntryController extends Controller
 
         $this->authorize('delete', $entry);
 
-        if ($entry->type !== VendorCalendarEntry::TYPE_EXTERNAL_CALENDAR) {
-            abort(Response::HTTP_BAD_REQUEST, 'Kustutada saab ainult väliseid kalendrikirjeid');
+        if (! in_array($entry->type, [VendorCalendarEntryType::ExternalCalendar, VendorCalendarEntryType::Absence])) {
+            abort(Response::HTTP_BAD_REQUEST, 'Kustutada saab ainult väliseid kalendrikirjeid ja eemalolekuaegu');
         }
 
         $entry->delete();

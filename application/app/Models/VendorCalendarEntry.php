@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VendorCalendarEntryType;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -23,13 +24,15 @@ use Illuminate\Support\Carbon;
  * @property string|null $vendor_calendar_import_id
  * @property string|null $institution_user_vacation_id
  * @property string|null $institution_vacation_id
+ * @property string|null $absence_creator_institution_user_id
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read \App\Models\Assignment|null $assignment
- * @property-read string $type
+ * @property-read VendorCalendarEntryType $type
  * @property-read \App\Models\VendorCalendarImport|null $import
  * @property-read \App\Models\Vendor $vendor
+ * @method static Builder<static>|VendorCalendarEntry absencesOnly()
  * @method static Builder<static>|VendorCalendarEntry assignmentsOnly()
  * @method static Builder<static>|VendorCalendarEntry vacationsOnly()
  * @method static Builder<static>|VendorCalendarEntry forClient(string $institutionUserId)
@@ -61,14 +64,6 @@ class VendorCalendarEntry extends Model
     use HasUuids;
     use SoftDeletes;
 
-    public const TYPE_ASSIGNMENT = 'assignment';
-
-    public const TYPE_EXTERNAL_CALENDAR = 'external_calendar';
-
-    public const TYPE_VACATION = 'vacation';
-
-    public const TYPE_PREBOOK = 'prebook';
-
     protected $table = 'vendor_calendar_entries';
 
     protected $guarded = [];
@@ -81,13 +76,14 @@ class VendorCalendarEntry extends Model
     ];
 
     /** Derived from nullable FK state — no extra column needed. */
-    public function getTypeAttribute(): string
+    public function getTypeAttribute(): VendorCalendarEntryType
     {
         return match (true) {
-            ! is_null($this->assignment_id) => self::TYPE_ASSIGNMENT,
-            ! is_null($this->prebook_institution_user_id) => self::TYPE_PREBOOK,
-            ! is_null($this->vendor_calendar_import_id) => self::TYPE_EXTERNAL_CALENDAR,
-            default => self::TYPE_VACATION,
+            ! is_null($this->assignment_id) => VendorCalendarEntryType::Assignment,
+            ! is_null($this->prebook_institution_user_id) => VendorCalendarEntryType::Prebook,
+            ! is_null($this->vendor_calendar_import_id) => VendorCalendarEntryType::ExternalCalendar,
+            ! is_null($this->absence_creator_institution_user_id) => VendorCalendarEntryType::Absence,
+            default => VendorCalendarEntryType::Vacation,
         };
     }
 
@@ -112,6 +108,12 @@ class VendorCalendarEntry extends Model
         return $query->where('start_at', '<', $to)
             ->where('end_at', '>', $from)
             ->whereNull('deleted_at');
+    }
+
+    /** Only absence-type entries (TPM-created vendor out-of-office). */
+    public function scopeAbsencesOnly(Builder $query): Builder
+    {
+        return $query->whereNotNull('absence_creator_institution_user_id');
     }
 
     /** Only assignment-type bookings. */

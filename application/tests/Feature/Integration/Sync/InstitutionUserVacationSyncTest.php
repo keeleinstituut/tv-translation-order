@@ -2,6 +2,7 @@
 
 namespace tests\Feature\Integration\Sync;
 
+use App\Enums\VendorCalendarEntryType;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
@@ -56,7 +57,7 @@ class InstitutionUserVacationSyncTest extends TestCase
         $this->assertNotNull($entry);
         $this->assertEquals($vacationId, $entry->institution_user_vacation_id);
         $this->assertNull($entry->institution_vacation_id);
-        $this->assertEquals(VendorCalendarEntry::TYPE_VACATION, $entry->type);
+        $this->assertEquals(VendorCalendarEntryType::Vacation, $entry->type);
     }
 
     public function test_institution_vacation_creates_vce_with_institution_vacation_id(): void
