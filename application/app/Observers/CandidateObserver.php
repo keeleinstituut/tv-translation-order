@@ -11,6 +11,7 @@ use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\Vendor;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -100,19 +101,21 @@ class CandidateObserver
             $receiverName = $manager?->getUserFullName() ?: $institution->name;
 
             if (filled($receiverEmail)) {
-                $this->notificationPublisher->publishEmailNotification(
-                    EmailNotificationMessage::make([
-                        'notification_type' => NotificationType::TaskDeclinedByVendor,
-                        'receiver_email' => $receiverEmail,
-                        'receiver_name' => $receiverName,
-                        'variables' => [
-                            'assignment' => $assignment->only('ext_id'),
-                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
-                            'user' => ['name' => $vendor->institutionUser?->getUserFullName()],
-                        ]
-                    ]),
-                    $project->institution_id
-                );
+                DB::afterCommit(function () use ($assignment, $vendor, $project, $receiverEmail, $receiverName) {
+                    $this->notificationPublisher->publishEmailNotification(
+                        EmailNotificationMessage::make([
+                            'notification_type' => NotificationType::TaskDeclinedByVendor,
+                            'receiver_email' => $receiverEmail,
+                            'receiver_name' => $receiverName,
+                            'variables' => [
+                                'assignment' => $assignment->only('ext_id'),
+                                'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                                'user' => ['name' => $vendor->institutionUser?->getUserFullName()],
+                            ]
+                        ]),
+                        $project->institution_id
+                    );
+                });
             }
         }
     }
