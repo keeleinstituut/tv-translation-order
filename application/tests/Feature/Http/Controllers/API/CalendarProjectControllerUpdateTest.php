@@ -343,6 +343,56 @@ class CalendarProjectControllerUpdateTest extends TestCase
         DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
     }
 
+    public function test_update_auto_assigns_manager_when_null_and_acting_user_has_receive_project(): void
+    {
+        // GIVEN: a calendar project with no manager
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+
+        // Create project without manager (no ReceiveProject in store call so it stays null)
+        $storePayload = $this->createCalendarStorePayload();
+        $storeAccessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+        $storeResponse = $this->prepareAuthorizedRequest($storeAccessToken)
+            ->postJson('/api/projects', $storePayload);
+        $storeResponse->assertCreated();
+
+        $project = Project::findOrFail($storeResponse->json('data.id'));
+        $this->assertNull($project->manager_institution_user_id);
+
+        // WHEN: update the project with a user that has ReceiveProject
+        $payload = [
+            'comments' => 'Updated comments',
+        ];
+
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->putJson("/api/projects/{$project->id}", $payload);
+
+        // THEN: manager auto-assigned
+        $response->assertOk();
+
+        $project->refresh();
+        $this->assertEquals($actingUser->id, $project->manager_institution_user_id);
+    }
+
     public function test_changing_calendar_project_type_to_non_calendar_type_rejected(): void
     {
         // GIVEN: a calendar project

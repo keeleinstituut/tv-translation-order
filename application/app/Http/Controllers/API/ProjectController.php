@@ -6,6 +6,7 @@ use App\Exceptions\CalendarSlotConflictException;
 use App\Enums\CalendarRole;
 use App\Enums\CandidateStatus;
 use App\Enums\ClassifierValueType;
+use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
 use App\Enums\SubProjectStatus;
 use App\Enums\VolumeUnits;
@@ -276,17 +277,22 @@ class ProjectController extends Controller
                     : null);
             $isCalendar = ClassifierValue::isVerbalProjectType($typeId);
 
+            $managerUserId = $params->get('manager_institution_user_id');
+            if ($isCalendar && blank($managerUserId) && Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {
+                $managerUserId = $institutionUserId;
+            }
+
             $project = Project::make([
                 'institution_id' => $institutionId,
                 'type_classifier_value_id' => $typeId,
                 'translation_domain_classifier_value_id' => $params->get('translation_domain_classifier_value_id'),
                 'reference_number' => $params->get('reference_number'),
-                'manager_institution_user_id' => $params->get('manager_institution_user_id'),
+                'manager_institution_user_id' => $managerUserId,
                 'client_institution_user_id' => $params->get('client_institution_user_id', $institutionUserId),
                 'deadline_at' => $params->get('deadline_at'),
                 'comments' => $params->get('comments'),
                 'event_start_at' => $params->get('event_start_at'),
-                'status' => filled($params->get('manager_institution_user_id'))
+                'status' => filled($managerUserId)
                     ? ProjectStatus::Registered
                     : ProjectStatus::New,
                 'workflow_template_id' => Config::get('app.workflows.process_definitions.project'),
@@ -488,6 +494,10 @@ class ProjectController extends Controller
                         'location',
                         'meeting_link',
                     ])->filter()->toArray(), $project->fill(...));
+
+                    if ($project->is_calendar_project && blank($project->manager_institution_user_id) && Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {
+                        $project->manager_institution_user_id = Auth::user()->institutionUserId;
+                    }
 
                     if ($params->has('use_external_vendor')) {
                         $project->use_external_vendor = (bool)$params->get('use_external_vendor');

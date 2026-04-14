@@ -876,6 +876,98 @@ class CalendarProjectControllerStoreTest extends TestCase
         $response->assertCreated();
     }
 
+    public function test_calendar_project_auto_assigns_manager_when_acting_user_has_receive_project_privilege(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload();
+        // No manager_institution_user_id in payload
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertEquals($actingUser->id, $project->manager_institution_user_id);
+        $this->assertEquals(ProjectStatus::Registered, $project->status);
+    }
+
+    public function test_calendar_project_does_not_override_explicit_manager_when_acting_user_has_receive_project(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $explicitManager = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->createWithPrivileges(PrivilegeKey::ReceiveProject);
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload([
+            'manager_institution_user_id' => $explicitManager->id,
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertEquals($explicitManager->id, $project->manager_institution_user_id);
+    }
+
+    public function test_calendar_project_does_not_auto_assign_manager_without_receive_project_privilege(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload();
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertNull($project->manager_institution_user_id);
+        $this->assertEquals(ProjectStatus::New, $project->status);
+    }
+
     private function createCalendarPayload(array $overrides = []): array
     {
         $eventStart = Carbon::tomorrow()->setHour(10)->utc();

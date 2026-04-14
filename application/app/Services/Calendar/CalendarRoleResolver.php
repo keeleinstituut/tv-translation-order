@@ -49,7 +49,7 @@ class CalendarRoleResolver
     {
         $this->resolved = true;
 
-        if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {
             $this->role = CalendarRole::ProjectManager;
             return;
         }

@@ -90,12 +90,17 @@ class VendorCalendarEntryController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized]
     )]
     #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'Entry deleted')]
+    #[OA\Response(response: Response::HTTP_BAD_REQUEST, description: 'Only external calendar entries can be deleted')]
     public function destroy(Request $request): Response
     {
         $entry = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
             ->findOrFail($request->route('entry'));
 
         $this->authorize('delete', $entry);
+
+        if ($entry->type !== VendorCalendarEntry::TYPE_EXTERNAL_CALENDAR) {
+            abort(Response::HTTP_BAD_REQUEST, 'Kustutada saab ainult väliseid kalendrikirjeid');
+        }
 
         $entry->delete();
 
