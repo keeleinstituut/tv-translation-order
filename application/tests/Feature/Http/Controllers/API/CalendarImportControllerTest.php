@@ -201,6 +201,63 @@ class CalendarImportControllerTest extends TestCase
             ->assertJsonValidationErrors(['import_end_date']);
     }
 
+    public function test_store_correctly_handles_timezone_in_ics_events(): void
+    {
+        // GIVEN — an ICS file with Europe/Tallinn timezone (UTC+3 in summer)
+        [$vendor, $accessToken] = $this->createVendorWithAuth();
+
+        $importEndDate = Carbon::now()->utc()->addYear()->toDateString();
+
+        // Event at 11:30-12:30 Tallinn time on a summer date (UTC+3)
+        // Should be stored as 08:30-09:30 UTC
+        $content = "BEGIN:VCALENDAR\r\n"
+            . "VERSION:2.0\r\n"
+            . "PRODID:-//Test//Test//EN\r\n"
+            . "X-WR-TIMEZONE:Europe/Tallinn\r\n"
+            . "BEGIN:VTIMEZONE\r\n"
+            . "TZID:Europe/Tallinn\r\n"
+            . "BEGIN:DAYLIGHT\r\n"
+            . "TZOFFSETFROM:+0200\r\n"
+            . "TZOFFSETTO:+0300\r\n"
+            . "DTSTART:19700329T030000\r\n"
+            . "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU\r\n"
+            . "END:DAYLIGHT\r\n"
+            . "BEGIN:STANDARD\r\n"
+            . "TZOFFSETFROM:+0300\r\n"
+            . "TZOFFSETTO:+0200\r\n"
+            . "DTSTART:19701025T040000\r\n"
+            . "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\r\n"
+            . "END:STANDARD\r\n"
+            . "END:VTIMEZONE\r\n"
+            . "BEGIN:VEVENT\r\n"
+            . "DTSTART;TZID=Europe/Tallinn:20260615T113000\r\n"
+            . "DTEND;TZID=Europe/Tallinn:20260615T123000\r\n"
+            . "SUMMARY:Morning meeting\r\n"
+            . "END:VEVENT\r\n"
+            . "END:VCALENDAR\r\n";
+
+        $file = UploadedFile::fake()->createWithContent('calendar.ics', $content)->mimeType('text/calendar');
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/calendar/import', [
+                'import_end_date' => $importEndDate,
+                'file' => $file,
+            ]);
+
+        // THEN
+        $response->assertStatus(201)
+            ->assertJson(['data' => ['events_count' => 1]]);
+
+        $entry = VendorCalendarEntry::where('vendor_id', $vendor->id)->first();
+        $this->assertNotNull($entry);
+
+        // 11:30 Tallinn (UTC+3) = 08:30 UTC
+        $this->assertEquals('2026-06-15 08:30:00', $entry->start_at->format('Y-m-d H:i:s'));
+        // 12:30 Tallinn (UTC+3) = 09:30 UTC
+        $this->assertEquals('2026-06-15 09:30:00', $entry->end_at->format('Y-m-d H:i:s'));
+    }
+
     public function test_store_rejects_non_ics_file(): void
     {
         // GIVEN
