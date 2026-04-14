@@ -77,8 +77,8 @@ class CalendarImportController extends Controller
                     try {
                         $this->vendorReservation->createCalendarEntryWithConflictHandling([
                             'vendor_id' => $vendor->id,
-                            'start_at' => Carbon::parse($event->dtstart)->utc(),
-                            'end_at' => Carbon::parse($event->dtend)->utc(),
+                            'start_at' => Carbon::createFromTimestamp($event->dtstart_array[2]),
+                            'end_at' => Carbon::createFromTimestamp($event->dtend_array[2]),
                             'vendor_calendar_import_id' => $import->id,
                             'metadata' => json_encode([
                                 'summary' => $event->summary ?? null,
