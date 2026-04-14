@@ -226,6 +226,7 @@ class CalendarProjectControllerUpdateTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -350,17 +351,6 @@ class CalendarProjectControllerUpdateTest extends TestCase
             ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
             ->create();
 
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $actingUser->id,
-            'selectedInstitution' => ['id' => $this->institution->id],
-            'privileges' => [
-                PrivilegeKey::CreateProject->value,
-                PrivilegeKey::ManageProject->value,
-                PrivilegeKey::ReceiveProject->value,
-                PrivilegeKey::ChangeClient->value,
-            ],
-        ]);
-
         // Create project without manager (no ReceiveProject in store call so it stays null)
         $storePayload = $this->createCalendarStorePayload();
         $storeAccessToken = AuthHelpers::generateAccessToken([
@@ -377,6 +367,20 @@ class CalendarProjectControllerUpdateTest extends TestCase
 
         $project = Project::findOrFail($storeResponse->json('data.id'));
         $this->assertNull($project->manager_institution_user_id);
+
+        // Reset auth guard so the next request authenticates with the new token
+        $this->app['auth']->forgetGuards();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
 
         // WHEN: update the project with a user that has ReceiveProject
         $payload = [

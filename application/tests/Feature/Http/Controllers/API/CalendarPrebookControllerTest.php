@@ -153,7 +153,7 @@ class CalendarPrebookControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $clientUser->id,
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $response = $this->prepareAuthorizedRequest($accessToken)
@@ -181,7 +181,7 @@ class CalendarPrebookControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $clientUser->id,
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $response = $this->prepareAuthorizedRequest($accessToken)
@@ -234,7 +234,7 @@ class CalendarPrebookControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $clientUser->id,
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $response = $this->prepareAuthorizedRequest($accessToken)
@@ -304,7 +304,7 @@ class CalendarPrebookControllerTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $pmUser->id,
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $this->withoutExceptionHandling();

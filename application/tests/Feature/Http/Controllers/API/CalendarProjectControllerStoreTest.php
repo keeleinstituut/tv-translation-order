@@ -68,6 +68,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -162,6 +163,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -194,6 +196,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -227,6 +230,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -256,6 +260,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -285,6 +290,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -312,6 +318,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -374,6 +381,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -596,6 +604,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -634,6 +643,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -742,6 +752,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -861,6 +872,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],

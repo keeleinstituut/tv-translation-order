@@ -72,6 +72,7 @@ class ProjectPolicy
                 || Auth::hasPrivilege(PrivilegeKey::ChangeClient->value)
             ) && (
                 $project->manager_institution_user_id === null
+                || $project->manager_institution_user_id === $currentInstitutionUserId
                 || Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value)
             );
     }
@@ -91,13 +92,13 @@ class ProjectPolicy
     public function changeClient(JwtPayloadUser $user, Project $project): bool
     {
         return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ChangeClient->value);
+            (Auth::hasPrivilege(PrivilegeKey::ChangeClient->value) || empty($project->client_institution_user_id));
     }
 
     public function changeProjectManager(JwtPayloadUser $user, Project $project): bool
     {
         return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value);
+            (Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value) || empty($project->manager_institution_user_id));
     }
 
     public function editSourceFiles(JwtPayloadUser $user, Project $project): bool

@@ -114,7 +114,8 @@ class VendorCalendarEntryController extends Controller
     {
         $query = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope());
 
-        if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
             $vendorIds = $this->languageCoverage
                 ->getCoverageForInstitution($institutionId)
                 ->pluck('vendor_id')

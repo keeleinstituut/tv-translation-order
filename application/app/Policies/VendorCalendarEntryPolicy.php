@@ -12,7 +12,8 @@ class VendorCalendarEntryPolicy
 {
     public function viewAny(JwtPayloadUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+        return Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
             Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
             Vendor::withGlobalScope('policy', VendorPolicy::scope())
                 ->where('institution_user_id', $user->institutionUserId)
@@ -21,7 +22,7 @@ class VendorCalendarEntryPolicy
 
     public function delete(JwtPayloadUser $user, VendorCalendarEntry $entry): bool
     {
-        if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {
             return true;
         }
 
@@ -32,7 +33,7 @@ class VendorCalendarEntryPolicy
 
     public function prebook(JwtPayloadUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
+        return Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value) ||
             Auth::hasPrivilege(PrivilegeKey::CreateProject->value);
     }
 
