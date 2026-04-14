@@ -12,6 +12,7 @@ use App\Models\Candidate;
 use App\Models\VendorCalendarEntry;
 use App\Models\Volume;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -194,20 +195,22 @@ readonly class AssignmentObserver
         }
 
         if (filled($receiverEmail) && filled($assignment->subProject?->project?->institution_id)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::TaskAccepted,
-                    'receiver_email' => $receiverEmail,
-                    'receiver_name' => $receiverName,
-                    'variables' => [
-                        'assignment' => $assignment->only('ext_id'),
-                        'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
-                        'vendor' => $assignment->assignee?->only(['company_name']),
-                        'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
-                    ]
-                ]),
-                $assignment->subProject->project->institution_id
-            );
+            DB::afterCommit(function () use ($assignment, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::TaskAccepted,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'assignment' => $assignment->only('ext_id'),
+                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                            'vendor' => $assignment->assignee?->only(['company_name']),
+                            'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
+                        ]
+                    ]),
+                    $assignment->subProject->project->institution_id
+                );
+            });
         }
     }
 }

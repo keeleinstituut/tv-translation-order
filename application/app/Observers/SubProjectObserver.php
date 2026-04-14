@@ -11,6 +11,7 @@ use App\Models\SubProject;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -147,19 +148,21 @@ class SubProjectObserver
         $receiverName = $manager?->getUserFullName() ?: $institution->name;
 
         if (filled($receiverEmail)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::SubProjectSentToPm,
-                    'receiver_email' => $receiverEmail,
-                    'receiver_name' => $receiverName,
-                    'variables' => [
-                        'sub_project' => $subProject->only([
-                            'ext_id'
-                        ]),
-                    ]
-                ]),
-                $subProject->project->institution_id
-            );
+            DB::afterCommit(function () use ($subProject, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::SubProjectSentToPm,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'sub_project' => $subProject->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $subProject->project->institution_id
+                );
+            });
         }
     }
 }

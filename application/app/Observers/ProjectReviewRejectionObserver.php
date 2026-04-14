@@ -6,6 +6,7 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
@@ -93,22 +94,24 @@ class ProjectReviewRejectionObserver
         }
 
         if (filled($receiverEmail)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectRejected,
-                    'receiver_email' => $receiverEmail,
-                    'receiver_name' => $receiverName,
-                    'variables' => [
-                        'project' => $project->only(['ext_id']),
-                        'project_review_rejection' => [
-                            ...$projectReviewRejection->only(['description']),
-                            'sub_projects' => $projectReviewRejection->getSubProjects()
-                                ->each(fn(SubProject $subProject) => $subProject->only(['ext_id']))
+            DB::afterCommit(function () use ($project, $projectReviewRejection, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectRejected,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only(['ext_id']),
+                            'project_review_rejection' => [
+                                ...$projectReviewRejection->only(['description']),
+                                'sub_projects' => $projectReviewRejection->getSubProjects()
+                                    ->each(fn(SubProject $subProject) => $subProject->only(['ext_id']))
+                            ]
                         ]
-                    ]
-                ]),
-                $project->institution_id
-            );
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 }
