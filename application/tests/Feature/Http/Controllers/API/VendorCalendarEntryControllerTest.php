@@ -40,7 +40,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -65,7 +65,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -147,7 +147,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN — no assignments_only param (defaults to true)
@@ -177,7 +177,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -199,7 +199,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -230,8 +230,8 @@ class VendorCalendarEntryControllerTest extends TestCase
     {
         // GIVEN
         $today = Carbon::today()->utc();
-        [$institution, $language, $vendor] = $this->createVendorCoverage();
-        $entry = $this->createAssignmentEntry($vendor, $institution, $language, $today);
+        [$institution, $language, $vendor, $importId] = $this->createVendorCoverage();
+        $entry = $this->createExternalCalendarEntry($vendor, $importId, $today);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $vendor->institutionUser->id,
@@ -274,12 +274,12 @@ class VendorCalendarEntryControllerTest extends TestCase
     {
         // GIVEN
         $today = Carbon::today()->utc();
-        [$institution, $language, $vendor] = $this->createVendorCoverage();
-        $entry = $this->createAssignmentEntry($vendor, $institution, $language, $today);
+        [$institution, $language, $vendor, $importId] = $this->createVendorCoverage();
+        $entry = $this->createExternalCalendarEntry($vendor, $importId, $today);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -301,7 +301,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -337,7 +337,7 @@ class VendorCalendarEntryControllerTest extends TestCase
     /**
      * Create a vendor with coverage in v_vendor_language_coverage, optionally within an existing institution.
      *
-     * @return array{Institution, ClassifierValue, Vendor}
+     * @return array{Institution, ClassifierValue, Vendor, string}
      */
     private function createVendorCoverage(?Institution $institution = null): array
     {
@@ -365,8 +365,9 @@ class VendorCalendarEntryControllerTest extends TestCase
             'language_id' => $language->id,
         ]);
 
+        $importId = Str::orderedUuid()->toString();
         DB::table('vendor_calendar_imports')->insert([
-            'id' => Str::orderedUuid()->toString(),
+            'id' => $importId,
             'vendor_id' => $vendor->id,
             'date_from' => $today->copy()->startOfMonth(),
             'date_to' => $today->copy()->endOfMonth(),
@@ -376,7 +377,7 @@ class VendorCalendarEntryControllerTest extends TestCase
 
         DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
-        return [$institution, $language, $vendor];
+        return [$institution, $language, $vendor, $importId];
     }
 
     private function createAssignmentEntry(
@@ -406,6 +407,20 @@ class VendorCalendarEntryControllerTest extends TestCase
         return VendorCalendarEntry::create([
             'vendor_id' => $vendor->id,
             'assignment_id' => $assignment->id,
+            'start_at' => $date->copy()->setHour($startHour),
+            'end_at' => $date->copy()->setHour($startHour + 1),
+        ]);
+    }
+
+    private function createExternalCalendarEntry(
+        Vendor $vendor,
+        string $importId,
+        Carbon $date,
+        int $startHour = 10,
+    ): VendorCalendarEntry {
+        return VendorCalendarEntry::create([
+            'vendor_id' => $vendor->id,
+            'vendor_calendar_import_id' => $importId,
             'start_at' => $date->copy()->setHour($startHour),
             'end_at' => $date->copy()->setHour($startHour + 1),
         ]);

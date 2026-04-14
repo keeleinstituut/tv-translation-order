@@ -193,6 +193,7 @@ class CalendarProjectBufferTimeTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -245,6 +246,7 @@ class CalendarProjectBufferTimeTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -348,6 +350,7 @@ class CalendarProjectBufferTimeTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],

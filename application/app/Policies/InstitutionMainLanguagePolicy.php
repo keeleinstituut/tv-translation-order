@@ -12,6 +12,7 @@ class InstitutionMainLanguagePolicy
     public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
     {
         return Auth::hasPrivilege(PrivilegeKey::EditInstitution->value) ||
+            Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value) ||
             Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
             Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
             filled(

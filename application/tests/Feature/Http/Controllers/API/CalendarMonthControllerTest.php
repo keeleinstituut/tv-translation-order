@@ -306,7 +306,7 @@ class CalendarMonthControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges'          => [PrivilegeKey::ManageProject->value],
+            'privileges'          => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $today = Carbon::today()->utc();
@@ -332,7 +332,7 @@ class CalendarMonthControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges'          => [PrivilegeKey::ManageProject->value],
+            'privileges'          => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -370,7 +370,7 @@ class CalendarMonthControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges'          => [PrivilegeKey::ManageProject->value],
+            'privileges'          => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -425,7 +425,7 @@ class CalendarMonthControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges'          => [PrivilegeKey::ManageProject->value],
+            'privileges'          => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -455,7 +455,7 @@ class CalendarMonthControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges'          => [PrivilegeKey::ManageProject->value],
+            'privileges'          => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN

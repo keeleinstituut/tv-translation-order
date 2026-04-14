@@ -86,7 +86,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         $institution = Institution::factory()->create();
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -105,7 +105,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         $language = ClassifierValue::factory()->language()->create();
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $now = now();
@@ -134,7 +134,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -194,7 +194,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -225,7 +225,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(18, 0)->utc()->toIso8601String();
@@ -262,7 +262,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
@@ -318,7 +318,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -350,7 +350,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = now()->toIso8601String();
@@ -386,7 +386,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -425,7 +425,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
