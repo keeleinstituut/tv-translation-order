@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Vendor;
+use App\Models\VendorCalendarImport;
 use Illuminate\Support\Facades\Auth;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -12,6 +13,14 @@ class VendorCalendarImportPolicy
     {
         return Vendor::withGlobalScope('policy', VendorPolicy::scope())
             ->where('institution_user_id', $jwtPayloadUser->institutionUserId)
+            ->exists();
+    }
+
+    public function delete(JwtPayloadUser $jwtPayloadUser, VendorCalendarImport $import): bool
+    {
+        return Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', $jwtPayloadUser->institutionUserId)
+            ->where('id', $import->vendor_id)
             ->exists();
     }
 
