@@ -22,7 +22,7 @@ class VendorCalendarEntryIndexRequest extends FormRequest
     {
         return [
             'date_from' => ['required', 'date_format:Y-m-d'],
-            'date_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:date_from', new MaxDateRange('date_from', 93)],
+            'date_to' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after_or_equal:date_from', new MaxDateRange('date_from', 93)],
             'assignments_only' => ['sometimes', 'boolean'],
             'type' => ['sometimes', 'string', Rule::enum(VendorCalendarEntryType::class)],
         ];

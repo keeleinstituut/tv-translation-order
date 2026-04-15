@@ -210,6 +210,35 @@ class VendorCalendarEntryControllerTest extends TestCase
         $response->assertStatus(200)->assertJsonCount(0, 'data');
     }
 
+    public function test_index_without_date_to_returns_entries_from_date_from_onward(): void
+    {
+        // GIVEN — three entries: expired (yesterday), current (today), far-future (next year)
+        $today = Carbon::today()->utc();
+        $yesterday = $today->copy()->subDay();
+        $nextYear = $today->copy()->addYear();
+        [$institution, $language, $vendor] = $this->createVendorCoverage();
+
+        $this->createAssignmentEntry($vendor, $institution, $language, $yesterday);
+        $todayEntry = $this->createAssignmentEntry($vendor, $institution, $language, $today);
+        $futureEntry = $this->createAssignmentEntry($vendor, $institution, $language, $nextYear);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
+        ]);
+
+        // WHEN — date_to omitted
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/calendar/vendor-entries?date_from=' . $today->toDateString());
+
+        // THEN — yesterday's expired entry is excluded, today + future are returned
+        $response
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['id' => $todayEntry->id])
+            ->assertJsonFragment(['id' => $futureEntry->id]);
+    }
+
     public function test_index_requires_date_range_parameters(): void
     {
         // GIVEN
