@@ -6,6 +6,7 @@ use App\Exceptions\CalendarSlotConflictException;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\CalendarImportRequest;
+use App\Http\Requests\API\VendorCalendarImportIndexRequest;
 use App\Http\Resources\API\VendorCalendarImportResource;
 use App\Models\Vendor;
 use App\Models\VendorCalendarImport;
@@ -14,6 +15,7 @@ use App\Services\Calendar\VendorReservationService;
 use AuditLogClient\Services\AuditLogPublisher;
 use ICal\ICal;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,7 @@ use Throwable;
 
 class CalendarImportController extends Controller
 {
+    const int DEFAULT_PAGE_SIZE = 100;
 
     public function __construct(
         private readonly VendorReservationService $vendorReservation,
@@ -30,6 +33,44 @@ class CalendarImportController extends Controller
     )
     {
         parent::__construct($auditLogPublisher);
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Get(
+        path: '/calendar/import',
+        summary: 'List the authenticated vendor\'s calendar imports, optionally filtered to those overlapping a date range',
+        tags: ['Calendar'],
+        parameters: [
+            new OA\QueryParameter(name: 'date_from', required: false, schema: new OA\Schema(type: 'string', format: 'date', nullable: true)),
+            new OA\QueryParameter(name: 'date_to', required: false, schema: new OA\Schema(type: 'string', format: 'date', nullable: true)),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: VendorCalendarImportResource::class, description: 'Vendor calendar imports')]
+    public function index(VendorCalendarImportIndexRequest $request): AnonymousResourceCollection
+    {
+        $this->authorize('viewAny', VendorCalendarImport::class);
+
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->firstOrFail();
+
+        $query = VendorCalendarImport::query()
+            ->where('vendor_id', $vendor->id)
+            ->withCount('events')
+            ->orderByDesc('date_to');
+
+        if ($dateFrom = $request->validated('date_from')) {
+            $query->where('date_to', '>=', Carbon::parse($dateFrom)->startOfDay()->utc());
+        }
+
+        if ($dateTo = $request->validated('date_to')) {
+            $query->where('date_from', '<=', Carbon::parse($dateTo)->endOfDay()->utc());
+        }
+
+        return VendorCalendarImportResource::collection($query->paginate(self::DEFAULT_PAGE_SIZE));
     }
 
     /**

@@ -9,6 +9,13 @@ use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class VendorCalendarImportPolicy
 {
+    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    {
+        return Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', $jwtPayloadUser->institutionUserId)
+            ->exists();
+    }
+
     public function create(JwtPayloadUser $jwtPayloadUser): bool
     {
         return Vendor::withGlobalScope('policy', VendorPolicy::scope())
