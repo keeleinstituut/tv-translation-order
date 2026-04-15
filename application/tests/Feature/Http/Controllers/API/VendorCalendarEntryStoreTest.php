@@ -113,7 +113,7 @@ class VendorCalendarEntryStoreTest extends TestCase
             ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.comment', 'Vendor is on sick leave');
+            ->assertJsonPath('data.metadata.comment', 'Vendor is on sick leave');
 
         $entry = VendorCalendarEntry::where('vendor_id', $vendor->id)->absencesOnly()->first();
         $this->assertEquals(['comment' => 'Vendor is on sick leave'], $entry->metadata);

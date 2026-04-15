@@ -15,7 +15,7 @@ use OpenApi\Attributes as OA;
             new OA\Property(property: 'vendor_id', type: 'string', format: 'uuid'),
             new OA\Property(property: 'start_at', type: 'string', format: 'date-time', example: '2026-04-15T09:00:00Z'),
             new OA\Property(property: 'end_at', type: 'string', format: 'date-time', example: '2026-04-15T17:00:00Z'),
-            new OA\Property(property: 'comment', type: 'string', nullable: true, example: 'Vendor is on sick leave'),
+            new OA\Property(property: 'comment', type: 'string', example: 'Vendor is on sick leave', nullable: true),
         ]
     )
 )]

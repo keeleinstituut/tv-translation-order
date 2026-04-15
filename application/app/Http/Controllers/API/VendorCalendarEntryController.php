@@ -45,8 +45,8 @@ class VendorCalendarEntryController extends Controller
         tags: ['Calendar'],
         parameters: [
             new OA\QueryParameter(name: 'date_from', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
-            new OA\QueryParameter(name: 'date_to', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
-            new OA\QueryParameter(name: 'assignments_only', required: false, schema: new OA\Schema(type: 'boolean')),
+            new OA\QueryParameter(name: 'date_to', required: false, schema: new OA\Schema(type: 'string', format: 'date', nullable: true)),
+            new OA\QueryParameter(name: 'assignments_only', required: false, deprecated: true, schema: new OA\Schema(type: 'boolean')),
             new OA\QueryParameter(name: 'type', required: false, schema: new OA\Schema(type: 'string', enum: VendorCalendarEntryType::class, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -60,10 +60,16 @@ class VendorCalendarEntryController extends Controller
         $institutionId = Auth::user()->institutionId;
 
         $dateFrom = Carbon::parse($request->validated('date_from'))->startOfDay()->utc();
-        $dateTo = Carbon::parse($request->validated('date_to'))->endOfDay()->utc();
+        $dateTo = $request->validated('date_to')
+            ? Carbon::parse($request->validated('date_to'))->endOfDay()->utc()
+            : null;
 
-        $query = $this->getBaseQuery($institutionUserId, $institutionId)
-            ->overlapping($dateFrom, $dateTo);
+        $query = $this->getBaseQuery($institutionUserId, $institutionId);
+        if ($dateTo !== null) {
+            $query->overlapping($dateFrom, $dateTo);
+        } else {
+            $query->where('end_at', '>', $dateFrom);
+        }
 
         if ($type = $request->validated('type')) {
             $query->where(function (Builder $q) use ($type) {
