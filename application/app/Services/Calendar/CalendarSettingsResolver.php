@@ -82,8 +82,8 @@ class CalendarSettingsResolver
             ->where('institution_id', $institutionId)
             ->first();
 
-        $before = $setting?->buffer_before_minutes ?? 0;
-        $after = $setting?->buffer_after_minutes ?? 0;
+        $before = $setting?->buffer_before_minutes ?? 30;
+        $after = $setting?->buffer_after_minutes ?? 30;
 
         if ($before === 0 && $after === 0) {
             return TimeSlot::forEvent($startAt, $endAt);

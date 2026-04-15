@@ -10,6 +10,7 @@ use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\CalendarSetting;
 use App\Models\Candidate;
 use App\Models\Price;
 use App\Models\Project;
@@ -42,6 +43,13 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->seed(CalendarSettingsSeeder::class);
 
         $this->institution = Institution::factory()->create();
+        CalendarSetting::create([
+            'institution_id' => $this->institution->id,
+            'reaction_time_seconds' => 30,
+            'buffer_before_minutes' => 0,
+            'buffer_after_minutes' => 0,
+            'default_project_type_id' => null,
+        ]);
         $this->destinationLanguage = ClassifierValue::where('type', ClassifierValueType::Language)
             ->whereNot('value', 'et-EE')
             ->firstOrFail();
