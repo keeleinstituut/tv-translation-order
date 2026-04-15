@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class CalendarImportController extends Controller
 {
@@ -92,5 +93,37 @@ class CalendarImportController extends Controller
         });
 
         return VendorCalendarImportResource::make($import->loadCount('events'));
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Delete(
+        path: '/calendar/import/bulk',
+        summary: 'Delete all of the authenticated vendor\'s calendar imports with end date in the future, along with their entries',
+        tags: ['Calendar'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized]
+    )]
+    #[OAH\CollectionResponse(itemsRef: VendorCalendarImportResource::class, description: 'Deleted vendor calendar imports')]
+    public function bulkDestroy(): \Illuminate\Http\Response
+    {
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->firstOrFail();
+
+        DB::transaction(function () use ($vendor) {
+            $imports = VendorCalendarImport::query()
+                ->where('vendor_id', $vendor->id)
+                ->where('date_to', '>', Carbon::now()->utc())
+                ->withCount('events')
+                ->get();
+
+            $imports->each(function (VendorCalendarImport $import): void {
+                $this->authorize('delete', $import);
+                $import->deleteOrFail();
+            });
+        });
+
+        return response()->noContent();
     }
 }

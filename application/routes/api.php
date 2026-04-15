@@ -56,6 +56,7 @@ Route::prefix('calendar')->group(function () {
     Route::post('prebook', [API\CalendarPrebookController::class, 'prebook'])->name('translation-order.calendar.prebook');
     Route::delete('prebook', [API\CalendarPrebookController::class, 'cancelPrebook'])->name('translation-order.calendar.prebook.cancel');
     Route::post('import', [API\CalendarImportController::class, 'store'])->name('translation-order.calendar.import');
+    Route::delete('import/bulk', [API\CalendarImportController::class, 'bulkDestroy'])->name('translation-order.calendar.import.bulkDestroy');
     Route::get('search', [API\CalendarSearchController::class, 'search'])->name('translation-order.calendar.search');
     Route::get('slot-matching/vendors', [API\CalendarSlotMatchingController::class, 'vendors'])->name('translation-order.calendar.slot-matching.vendors');
     Route::get('settings', [API\CalendarSettingController::class, 'show'])->name('translation-order.calendar.settings.show');
