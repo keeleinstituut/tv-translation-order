@@ -259,6 +259,110 @@ class CalendarImportControllerTest extends TestCase
         $this->assertEquals('2026-06-15 09:30:00', $entry->end_at->format('Y-m-d H:i:s'));
     }
 
+    public function test_bulk_destroy_deletes_future_imports_with_their_entries_and_preserves_past(): void
+    {
+        // GIVEN — vendor with one past import, one ongoing, and one fully-future import, each with entries
+        [$vendor, $accessToken] = $this->createVendorWithAuth();
+        $now = Carbon::now()->utc();
+
+        $pastImport = $this->createImportWithEntry($vendor, $now->copy()->subMonths(2), $now->copy()->subMonth());
+        $ongoingImport = $this->createImportWithEntry($vendor, $now->copy()->subDays(2), $now->copy()->addMonth());
+        $futureImport = $this->createImportWithEntry($vendor, $now->copy()->addMonth(), $now->copy()->addMonths(2));
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->deleteJson('/api/calendar/import/bulk');
+
+        // THEN
+        $response->assertStatus(204);
+
+        // Past import + its entries preserved
+        $this->assertDatabaseHas('vendor_calendar_imports', ['id' => $pastImport->id]);
+        $this->assertDatabaseHas('vendor_calendar_entries', ['vendor_calendar_import_id' => $pastImport->id]);
+
+        // Ongoing and future imports + all their entries are gone (cascade hard-delete)
+        $this->assertDatabaseMissing('vendor_calendar_imports', ['id' => $ongoingImport->id]);
+        $this->assertDatabaseMissing('vendor_calendar_imports', ['id' => $futureImport->id]);
+        $this->assertDatabaseMissing('vendor_calendar_entries', ['vendor_calendar_import_id' => $ongoingImport->id]);
+        $this->assertDatabaseMissing('vendor_calendar_entries', ['vendor_calendar_import_id' => $futureImport->id]);
+    }
+
+    public function test_bulk_destroy_does_not_touch_other_vendors_imports(): void
+    {
+        // GIVEN — two vendors, each with a future import
+        [$vendorA, $accessTokenA] = $this->createVendorWithAuth();
+        [$vendorB] = $this->createVendorWithAuth();
+        $now = Carbon::now()->utc();
+
+        $vendorAImport = $this->createImportWithEntry($vendorA, $now->copy()->addDay(), $now->copy()->addMonth());
+        $vendorBImport = $this->createImportWithEntry($vendorB, $now->copy()->addDay(), $now->copy()->addMonth());
+
+        // WHEN — vendor A calls the endpoint
+        $response = $this->prepareAuthorizedRequest($accessTokenA)
+            ->deleteJson('/api/calendar/import/bulk');
+
+        // THEN — only vendor A's import is deleted
+        $response->assertStatus(204);
+        $this->assertDatabaseMissing('vendor_calendar_imports', ['id' => $vendorAImport->id]);
+        $this->assertDatabaseHas('vendor_calendar_imports', ['id' => $vendorBImport->id]);
+        $this->assertDatabaseHas('vendor_calendar_entries', ['vendor_calendar_import_id' => $vendorBImport->id]);
+    }
+
+    public function test_bulk_destroy_is_a_noop_when_vendor_has_no_future_imports(): void
+    {
+        // GIVEN — vendor with only a past import
+        [$vendor, $accessToken] = $this->createVendorWithAuth();
+        $now = Carbon::now()->utc();
+        $pastImport = $this->createImportWithEntry($vendor, $now->copy()->subMonths(2), $now->copy()->subMonth());
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->deleteJson('/api/calendar/import/bulk');
+
+        // THEN
+        $response->assertStatus(204);
+        $this->assertDatabaseHas('vendor_calendar_imports', ['id' => $pastImport->id]);
+        $this->assertDatabaseHas('vendor_calendar_entries', ['vendor_calendar_import_id' => $pastImport->id]);
+    }
+
+    public function test_bulk_destroy_rejects_non_vendor_user(): void
+    {
+        // GIVEN — institution user without a vendor row
+        $institution = Institution::factory()->create();
+        $institutionUser = InstitutionUser::factory()->setInstitution(['id' => $institution->id])->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $institutionUser->id,
+            'selectedInstitution' => ['id' => $institution->id],
+            'privileges' => [],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->deleteJson('/api/calendar/import/bulk');
+
+        // THEN — firstOrFail on vendor lookup returns 404
+        $response->assertStatus(404);
+    }
+
+    private function createImportWithEntry(Vendor $vendor, Carbon $dateFrom, Carbon $dateTo): VendorCalendarImport
+    {
+        $import = VendorCalendarImport::create([
+            'vendor_id' => $vendor->id,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+        ]);
+
+        VendorCalendarEntry::create([
+            'vendor_id' => $vendor->id,
+            'start_at' => $dateFrom->copy()->addHour(),
+            'end_at' => $dateFrom->copy()->addHours(2),
+            'vendor_calendar_import_id' => $import->id,
+        ]);
+
+        return $import;
+    }
+
     public function test_index_returns_vendor_imports_newest_first_with_events_count(): void
     {
         // GIVEN — three imports with different date_from values and different numbers of entries
