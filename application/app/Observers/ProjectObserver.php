@@ -117,7 +117,7 @@ class ProjectObserver
                 $project->submitted_to_client_review_at = Carbon::now();
             }
 
-            if (Auth::check()) {
+            if (Auth::guard('api')->check()) {
                 $this->auditLogPublisher->publish(
                     AuditLogMessageBuilder::makeUsingJWT()
                         ->toModifyObjectEventComputingDiff(

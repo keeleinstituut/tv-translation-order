@@ -50,7 +50,7 @@ class SubProjectObserver
     public function updating(SubProject $subProject): void
     {
         if ($subProject->isDirty('status')) {
-            if (Auth::check()) {
+            if (Auth::guard('api')->check()) {
                 $this->auditLogPublisher->publish(
                     AuditLogMessageBuilder::makeUsingJWT()
                         ->toModifyObjectEventComputingDiff(
