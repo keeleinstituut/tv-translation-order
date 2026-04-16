@@ -77,8 +77,8 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
                 ->ordered()
                 ->get();
 
-            if (blank($candidates)) {
-                $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
+            if (blank($candidates) && $project->use_external_vendor) {
+                $this->handleNoExternalCandidatesRemaining($this->assignment, $notificationPublisher);
                 return;
             }
 
@@ -127,7 +127,7 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
                 return;
             }
 
-            $this->handleNoCandidatesRemaining($this->assignment, $notificationPublisher);
+            $this->handleNoExternalCandidatesRemaining($this->assignment, $notificationPublisher);
         }
 
         $this->assignment->candidates->each(function (Candidate $candidate) use ($notificationPublisher) {
@@ -185,7 +185,7 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
      * @return void
      * @throws Throwable
      */
-    private function handleNoCandidatesRemaining(Assignment $assignment, NotificationPublisher $notificationPublisher): void
+    private function handleNoExternalCandidatesRemaining(Assignment $assignment, NotificationPublisher $notificationPublisher): void
     {
         $manager = $assignment->subProject?->project?->managerInstitutionUser;
         $institution = $assignment->subProject?->project?->institution;
