@@ -26,7 +26,28 @@ class AssignmentPolicy
      */
     public function view(JwtPayloadUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('view', $assignment->subProject->project);
+        if (Gate::allows('view', $assignment->subProject->project)) {
+            return true;
+        }
+
+        if (! self::isInSameInstitutionAsCurrentUser($assignment)) {
+            return false;
+        }
+
+        if (empty(Auth::user()?->institutionUserId)) {
+            return false;
+        }
+
+        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->first();
+
+        if (empty($vendor)) {
+            return false;
+        }
+
+        return $assignment->assigned_vendor_id === $vendor->id
+            || $assignment->candidates()->where('vendor_id', $vendor->id)->exists();
     }
 
     /**

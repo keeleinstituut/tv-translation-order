@@ -94,6 +94,45 @@ class AssignmentController extends Controller
     }
 
     /**
+     * @throws AuthorizationException
+     * The URL contains /details at the end because we have another endpoint that will conflict without the suffix (GET /assignments/{sub_project_id})
+     */
+    #[OA\Get(
+        path: '/assignments/{id}/details',
+        summary: 'Get assignment details for the assigned vendor or candidate',
+        tags: ['Assignment management'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Assignment details')]
+    public function show(string $id): AssignmentResource
+    {
+        $assignment = Assignment::getModel()
+            ->withGlobalScope('policy', AssignmentPolicy::scope())
+            ->with([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
+                'jobDefinition',
+                'subProject.sourceLanguageClassifierValue',
+                'subProject.destinationLanguageClassifierValue',
+                'subProject.project.tags',
+                'subProject.project.clientInstitutionUser',
+                'subProject.project.typeClassifierValue',
+                'subProject.project.translationDomainClassifierValue',
+                'subProject.project.managerInstitutionUser',
+                'subProject.project.projectComments',
+                'subProject.project.helpFiles',
+            ])
+            ->findOrFail($id);
+
+        $this->authorize('view', $assignment);
+
+        return AssignmentResource::make($assignment);
+    }
+
+    /**
      * @throws Throwable
      */
     #[OA\Post(

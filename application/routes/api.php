@@ -171,6 +171,7 @@ Route::prefix('/volumes')
 Route::prefix('/assignments')
     ->controller(API\AssignmentController::class)
     ->whereUuid('id')->group(function (): void {
+        Route::get('/{id}/details', 'show')->name('translation-order.assignments.show');
         Route::get('/{sub_project_id}', 'index')->name('translation-order.assignments.index');
         Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs')->name('translation-order.assignments.linkToCatToolJobs');
         Route::post('/', 'store')->name('translation-order.assignments.store');
