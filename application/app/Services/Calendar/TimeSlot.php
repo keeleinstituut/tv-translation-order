@@ -17,4 +17,9 @@ readonly class TimeSlot
     {
         return new self($startAt, $endAt, $startAt, $endAt);
     }
+
+    public function isBuffered(): bool
+    {
+        return $this->startAt !== $this->bufferedStartAt || $this->endAt !== $this->bufferedEndAt;
+    }
 }

@@ -888,7 +888,9 @@ class ProjectController extends Controller
         } catch (CalendarSlotConflictException) {
             if (!$isClient) {
                 throw ValidationException::withMessages([
-                    'event_start_at' => 'Teostaja ei ole saadaval valitud ajavahemikul.',
+                    'event_start_at' => $timeSlot->isBuffered() ?
+                        'Teostaja ei ole saadaval soovitavas ajavahemikus, kuna kontakttõlkeks vajalik puhveraeg kattub teiste tellimustega.':
+                        'Teostaja ei ole saadaval valitud ajavahemikul.',
                 ]);
             }
         }
@@ -955,7 +957,9 @@ class ProjectController extends Controller
 
         if (!$isAvailable) {
             throw ValidationException::withMessages([
-                'candidate_vendor_id' => 'Valitud teostaja ei ole saadaval soovitud ajavahemikul.',
+                'candidate_vendor_id' => $timeSlot->isBuffered() ?
+                    'Teostaja ei ole saadaval soovitavas ajavahemikus, kuna kontakttõlkeks vajalik puhveraeg kattub teiste tellimustega.' :
+                    'Valitud teostaja ei ole saadaval valitud ajavahemikul.',
             ]);
         }
 
@@ -968,7 +972,9 @@ class ProjectController extends Controller
             );
         } catch (CalendarSlotConflictException) {
             throw ValidationException::withMessages([
-                'candidate_vendor_id' => 'Valitud teostaja ei ole saadaval soovitud ajavahemikul.',
+                'candidate_vendor_id' => $timeSlot->isBuffered() ?
+                    'Teostaja ei ole saadaval soovitavas ajavahemikus, kuna kontakttõlkeks vajalik puhveraeg kattub teiste tellimustega.' :
+                    'Valitud teostaja ei ole saadaval soovitud ajavahemikul.',
             ]);
         }
     }
