@@ -50,7 +50,7 @@ class AssignmentControllerShowTest extends TestCase
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson("/api/assignments/{$assignment->id}/details");
+            ->getJson("/api/assignments/{$assignment->id}");
 
         // THEN
         $response
@@ -113,7 +113,7 @@ class AssignmentControllerShowTest extends TestCase
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson("/api/assignments/{$assignment->id}/details");
+            ->getJson("/api/assignments/{$assignment->id}");
 
         // THEN
         $response->assertOk()
@@ -151,7 +151,7 @@ class AssignmentControllerShowTest extends TestCase
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson("/api/assignments/{$assignment->id}/details");
+            ->getJson("/api/assignments/{$assignment->id}");
 
         // THEN
         $response->assertForbidden();
@@ -185,7 +185,7 @@ class AssignmentControllerShowTest extends TestCase
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson("/api/assignments/{$assignment->id}/details");
+            ->getJson("/api/assignments/{$assignment->id}");
 
         // THEN
         $response->assertNotFound();
@@ -218,7 +218,7 @@ class AssignmentControllerShowTest extends TestCase
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson("/api/assignments/{$assignment->id}/details");
+            ->getJson("/api/assignments/{$assignment->id}");
 
         // THEN
         $response
