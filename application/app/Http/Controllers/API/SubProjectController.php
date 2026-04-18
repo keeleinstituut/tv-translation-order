@@ -6,25 +6,26 @@ use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\SetProjectFinalFilesRequest;
 use App\Http\Requests\API\SubProjectListRequest;
 use App\Http\Requests\SubProjectUpdateRequest;
+use App\Http\Resources\API\AssignmentResource;
 use App\Http\Resources\API\SubProjectResource;
-use App\Http\Resources\API\VolumeResource;
 use App\Models\Assignment;
-use App\Models\Media;
 use App\Models\SubProject;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Policies\AssignmentPolicy;
 use App\Policies\SubProjectPolicy;
 use DB;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Contracts\Service\Attribute\Required;
 use Throwable;
 
 class SubProjectController extends Controller
@@ -170,7 +171,7 @@ class SubProjectController extends Controller
         if ($param = $params->get('event_start_at')) {
             $query = $query->whereDate('projects.event_start_at', $param);
         }
-        
+
         $query = $query
             ->join('projects', 'projects.id', '=', 'sub_projects.project_id')
             ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
@@ -212,7 +213,7 @@ class SubProjectController extends Controller
             case 'clientInstitutionUser.name':
                 $query = $query->orderBy('project_client_institution_user_name', $sortOrder);
                 break;
-            
+
             default:
                 $query = $query->orderBy('sub_projects.created_at', $sortOrder);
                 break;
@@ -397,6 +398,52 @@ class SubProjectController extends Controller
             ->map(fn($subProject) => $subProject->source_language_classifier_value_id . ':' . $subProject->destination_language_classifier_value_id);
 
         return response()->json(['data' => $languageCombinations]);
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Get(
+        path: '/subprojects/{id}/assignments',
+        description: 'Endpoint that returns list of assignments of the sub-project with filtering by `feature`',
+        summary: 'list of assignments of the sub-project with filtering by `feature`',
+        tags: ['Assignment management'],
+        parameters: [
+            new OAH\UuidPath('sub_project_id'),
+            new OA\QueryParameter(name: 'job_key', schema: new OA\Schema(type: 'string', enum: JobKey::class)),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'Filtered assignments of current sub-project')]
+    public function assignments(AssignmentListRequest $request): ResourceCollection
+    {
+        $subProject = self::getBaseQuery()->findOrFail($request->route('sub_project_id'));
+
+        $this->authorize('viewAny', [
+            Assignment::class,
+            $subProject,
+        ]);
+
+        $data = Assignment::getModel()->withGlobalScope('policy', AssignmentPolicy::scope())
+            ->where(
+                'sub_project_id',
+                $request->route('sub_project_id')
+            )->when(
+                $request->validated('job_key'),
+                fn(Builder $query, string $feature) => $query->whereRelation(
+                    'jobDefinition',
+                    'job_key',
+                    $request->validated('job_key')
+                )
+            )->with([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes.institutionDiscount',
+                'catToolJobs',
+                'jobDefinition',
+            ])->get();
+
+        return AssignmentResource::collection($data);
     }
 
     private static function getBaseQuery(): Builder

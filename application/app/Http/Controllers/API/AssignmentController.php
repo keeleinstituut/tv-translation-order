@@ -54,43 +54,37 @@ class AssignmentController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/assignments/{sub_project_id}',
-        description: 'Endpoint that returns list of assignments of the sub-project with filtering by `feature`',
-        summary: 'list of assignments of the sub-project with filtering by `feature`',
+        path: '/assignments/{id}',
+        summary: 'Get assignment details for the assigned vendor or candidate',
         tags: ['Assignment management'],
-        parameters: [
-            new OAH\UuidPath('sub_project_id'),
-            new OA\QueryParameter(name: 'job_key', schema: new OA\Schema(type: 'string', enum: JobKey::class)),
-        ],
+        parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'Filtered assignments of current sub-project')]
-    public function index(AssignmentListRequest $request): ResourceCollection
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Assignment details')]
+    public function show(string $id): AssignmentResource
     {
-        $this->authorize('viewAny', [
-            Assignment::class,
-            self::getSubProjectOrFail($request->route('sub_project_id')),
-        ]);
-
-        $data = static::getBaseQuery()->where(
-            'sub_project_id',
-            $request->route('sub_project_id')
-        )->when(
-            $request->validated('job_key'),
-            fn(Builder $query, string $feature) => $query->whereRelation(
+        $assignment = Assignment::getModel()
+            ->withGlobalScope('policy', AssignmentPolicy::scope())
+            ->with([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
                 'jobDefinition',
-                'job_key',
-                $request->validated('job_key')
-            )
-        )->with(
-            'candidates.vendor.institutionUser',
-            'assignee.institutionUser',
-            'volumes',
-            'catToolJobs',
-            'jobDefinition'
-        )->get();
+                'subProject.sourceLanguageClassifierValue',
+                'subProject.destinationLanguageClassifierValue',
+                'subProject.project.tags',
+                'subProject.project.clientInstitutionUser',
+                'subProject.project.typeClassifierValue',
+                'subProject.project.translationDomainClassifierValue',
+                'subProject.project.managerInstitutionUser',
+                'subProject.project.projectComments',
+                'subProject.project.helpFiles',
+            ])->findOrFail($id);
 
-        return AssignmentResource::collection($data);
+        $this->authorize('view', $assignment);
+
+        return AssignmentResource::make($assignment);
     }
 
     /**
@@ -542,15 +536,6 @@ class AssignmentController extends Controller
         }
 
         return $taskData;
-    }
-
-    private static function getSubProjectOrFail(string $id): SubProject
-    {
-        /** @var SubProject $subProject */
-        $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-            ->findOrFail($id);
-
-        return $subProject;
     }
 
     private static function getBaseQuery(): Builder
