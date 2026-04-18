@@ -3,26 +3,24 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\Price;
 use BadMethodCallException;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class PricePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value) ||
-            Auth::hasPrivilege(PrivilegeKey::ViewGeneralPricelist->value);
+        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ViewVendorDatabase, PrivilegeKey::ViewGeneralPricelist]);
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $jwtPayloadUser, Price $price): bool
+    public function view(AuthUser $user, Price $price): bool
     {
         throw new BadMethodCallException();
     }
@@ -30,37 +28,37 @@ class PricePolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $jwtPayloadUser, Price $price): bool
+    public function create(AuthUser $user, Price $price): bool
     {
-        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($price);
+        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($user, $price);
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $jwtPayloadUser, Price $price): bool
+    public function update(AuthUser $user, Price $price): bool
     {
-        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($price);
+        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($user, $price);
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $jwtPayloadUser, Price $price): bool
+    public function delete(AuthUser $user, Price $price): bool
     {
-        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($price);
+        return $this->isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege($user, $price);
     }
 
-    private function isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege(Price $price): bool
+    private function isInSameInstitutionAsCurrentUserAndHasEditVendorDbPrivilege(AuthUser $user, Price $price): bool
     {
         return $price
-            && $price->vendor->institutionUser->institution['id'] == Auth::user()->institutionId
-            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+            && $price->vendor->institutionUser->institution['id'] == $user->institutionId
+            && $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $jwtPayloadUser, Price $price): bool
+    public function restore(AuthUser $user, Price $price): bool
     {
         throw new BadMethodCallException();
     }
@@ -68,7 +66,7 @@ class PricePolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $jwtPayloadUser, Price $price): bool
+    public function forceDelete(AuthUser $user, Price $price): bool
     {
         throw new BadMethodCallException();
     }

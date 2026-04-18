@@ -3,38 +3,33 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\CachedEntities\InstitutionUser;
 use BadMethodCallException;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class InstitutionUserPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser, ?string $projectRole = null): bool
+    public function viewAny(AuthUser $user, ?string $projectRole = null): bool
     {
         if ($projectRole === 'manager') {
-            return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-                Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
-                Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+            return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::CreateProject, PrivilegeKey::EditVendorDatabase]);
         }
 
         if ($projectRole === 'client') {
-            return Auth::hasPrivilege(PrivilegeKey::ChangeClient->value) ||
-                Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value) ||
-                Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+            return $user->hasAtLeastOnePrivilege([PrivilegeKey::ChangeClient, PrivilegeKey::ChangeProjectManager, PrivilegeKey::EditVendorDatabase]);
         }
 
 
-        return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    public function view(AuthUser $user, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
     }
@@ -42,7 +37,7 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user): bool
     {
         throw new BadMethodCallException();
     }
@@ -50,7 +45,7 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    public function update(AuthUser $user, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
     }
@@ -58,7 +53,7 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    public function delete(AuthUser $user, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
     }
@@ -66,7 +61,7 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    public function restore(AuthUser $user, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
     }
@@ -74,14 +69,14 @@ class InstitutionUserPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    public function forceDelete(AuthUser $user, InstitutionUser $institutionUser): bool
     {
         throw new BadMethodCallException();
     }
 
-    public function viewActiveTasks(JwtPayloadUser $jwtPayloadUser, InstitutionUser $institutionUser): bool
+    public function viewActiveTasks(AuthUser $user, InstitutionUser $institutionUser): bool
     {
-        if (Auth::hasPrivilege(PrivilegeKey::ViewVendorTask->value)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewVendorTask)) {
             return filled($institutionUser->vendor);
         }
         return false;

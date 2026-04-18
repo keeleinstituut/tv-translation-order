@@ -3,11 +3,10 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
-use Auth;
 use Illuminate\Support\Facades\Gate;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class CatToolTmKeyPolicy
 {
@@ -15,7 +14,7 @@ class CatToolTmKeyPolicy
      * Determine whether the user can view any models.
      * TODO: set correct permission check
      */
-    public function viewAny(JwtPayloadUser $user, SubProject $subProject): bool
+    public function viewAny(AuthUser $user, SubProject $subProject): bool
     {
         return Gate::allows('update', [$subProject->project]);
     }
@@ -23,7 +22,7 @@ class CatToolTmKeyPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
+    public function view(AuthUser $user, CatToolTmKey $catToolTm): bool
     {
         return false;
     }
@@ -31,16 +30,16 @@ class CatToolTmKeyPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $user): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can create models.
      * TODO: set correct permission check
      */
-    public function sync(JwtPayloadUser $user, SubProject $subProject): bool
+    public function sync(AuthUser $user, SubProject $subProject): bool
     {
         return Gate::allows('update', [$subProject->project]);
     }
@@ -50,7 +49,7 @@ class CatToolTmKeyPolicy
      *
      * TODO: set correct permission check
      */
-    public function toggleWritable(JwtPayloadUser $user, CatToolTmKey $tmKey): bool
+    public function toggleWritable(AuthUser $user, CatToolTmKey $tmKey): bool
     {
         return Gate::allows('update', [$tmKey->subProject->project]);
     }
@@ -58,7 +57,7 @@ class CatToolTmKeyPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
+    public function update(AuthUser $user, CatToolTmKey $catToolTm): bool
     {
         return false;
     }
@@ -66,7 +65,7 @@ class CatToolTmKeyPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
+    public function delete(AuthUser $user, CatToolTmKey $catToolTm): bool
     {
         return false;
     }
@@ -74,7 +73,7 @@ class CatToolTmKeyPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
+    public function restore(AuthUser $user, CatToolTmKey $catToolTm): bool
     {
         return false;
     }
@@ -82,7 +81,7 @@ class CatToolTmKeyPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, CatToolTmKey $catToolTm): bool
+    public function forceDelete(AuthUser $user, CatToolTmKey $catToolTm): bool
     {
         return false;
     }
