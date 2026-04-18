@@ -54,51 +54,7 @@ class AssignmentController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/assignments/{sub_project_id}',
-        description: 'Endpoint that returns list of assignments of the sub-project with filtering by `feature`',
-        summary: 'list of assignments of the sub-project with filtering by `feature`',
-        tags: ['Assignment management'],
-        parameters: [
-            new OAH\UuidPath('sub_project_id'),
-            new OA\QueryParameter(name: 'job_key', schema: new OA\Schema(type: 'string', enum: JobKey::class)),
-        ],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'Filtered assignments of current sub-project')]
-    public function index(AssignmentListRequest $request): ResourceCollection
-    {
-        $this->authorize('viewAny', [
-            Assignment::class,
-            self::getSubProjectOrFail($request->route('sub_project_id')),
-        ]);
-
-        $data = static::getBaseQuery()->where(
-            'sub_project_id',
-            $request->route('sub_project_id')
-        )->when(
-            $request->validated('job_key'),
-            fn(Builder $query, string $feature) => $query->whereRelation(
-                'jobDefinition',
-                'job_key',
-                $request->validated('job_key')
-            )
-        )->with(
-            'candidates.vendor.institutionUser',
-            'assignee.institutionUser',
-            'volumes',
-            'catToolJobs',
-            'jobDefinition'
-        )->get();
-
-        return AssignmentResource::collection($data);
-    }
-
-    /**
-     * @throws AuthorizationException
-     * The URL contains /details at the end because we have another endpoint that will conflict without the suffix (GET /assignments/{sub_project_id})
-     */
-    #[OA\Get(
-        path: '/assignments/{id}/details',
+        path: '/assignments/{id}',
         summary: 'Get assignment details for the assigned vendor or candidate',
         tags: ['Assignment management'],
         parameters: [new OAH\UuidPath('id')],
@@ -124,8 +80,7 @@ class AssignmentController extends Controller
                 'subProject.project.managerInstitutionUser',
                 'subProject.project.projectComments',
                 'subProject.project.helpFiles',
-            ])
-            ->findOrFail($id);
+            ])->findOrFail($id);
 
         $this->authorize('view', $assignment);
 
@@ -581,15 +536,6 @@ class AssignmentController extends Controller
         }
 
         return $taskData;
-    }
-
-    private static function getSubProjectOrFail(string $id): SubProject
-    {
-        /** @var SubProject $subProject */
-        $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-            ->findOrFail($id);
-
-        return $subProject;
     }
 
     private static function getBaseQuery(): Builder

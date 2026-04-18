@@ -119,6 +119,7 @@ Route::prefix('/subprojects')
         Route::put('/{id}', 'update')->name('translation-order.subprojects.update');
         Route::post('/{id}/set-project-final-files', 'setProjectFinalFiles')->name('translation-order.subprojects.setProjectFinalFiles');
         Route::get('/languages', 'getLanguageCombinations')->name('translation-order.subprojects.getLanguageCombinations');
+        Route::get('/{id}/assignments', 'assignments')->name('translation-order.assignments.index');
     });
 
 Route::prefix('/cat-tool')
@@ -171,8 +172,7 @@ Route::prefix('/volumes')
 Route::prefix('/assignments')
     ->controller(API\AssignmentController::class)
     ->whereUuid('id')->group(function (): void {
-        Route::get('/{id}/details', 'show')->name('translation-order.assignments.show');
-        Route::get('/{sub_project_id}', 'index')->name('translation-order.assignments.index');
+        Route::get('/{id}', 'show')->name('translation-order.assignments.show');
         Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs')->name('translation-order.assignments.linkToCatToolJobs');
         Route::post('/', 'store')->name('translation-order.assignments.store');
         Route::put('/{id}', 'update')->name('translation-order.assignments.update');
