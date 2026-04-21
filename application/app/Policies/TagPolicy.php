@@ -4,41 +4,40 @@ namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
 use App\Enums\TagType;
+use App\Models\AuthUser;
 use App\Models\Tag;
 use App\Policies\Scope\TagScope;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class TagPolicy
 {
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
         return true;
     }
 
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::AddTag->value);
+        return $user->hasPrivilege(PrivilegeKey::AddTag);
     }
 
-    public function update(JwtPayloadUser $jwtPayloadUser, Tag $tag): bool
+    public function update(AuthUser $user, Tag $tag): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditTag->value) &&
-            $this->isFromSameInstitutionAsCurrentUser($tag) &&
+        return $user->hasPrivilege(PrivilegeKey::EditTag) &&
+            $this->isFromSameInstitutionAsCurrentUser($user, $tag) &&
             !in_array($tag->type, [TagType::VendorSkill, TagType::TranslationDomain]);
     }
 
-    public function delete(JwtPayloadUser $jwtPayloadUser, Tag $tag)
+    public function delete(AuthUser $user, Tag $tag)
     {
-        return Auth::hasPrivilege(PrivilegeKey::DeleteTag->value) &&
-            $this->isFromSameInstitutionAsCurrentUser($tag) &&
+        return $user->hasPrivilege(PrivilegeKey::DeleteTag) &&
+            $this->isFromSameInstitutionAsCurrentUser($user, $tag) &&
             !in_array($tag->type, [TagType::VendorSkill, TagType::TranslationDomain]);
     }
 
-    public function isFromSameInstitutionAsCurrentUser(Tag $tag): bool
+    public function isFromSameInstitutionAsCurrentUser(AuthUser $user, Tag $tag): bool
     {
-        return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && (empty($tag->institution_id) || $currentInstitutionId === $tag->institution_id);
+        return filled($user->institutionId)
+            && (empty($tag->institution_id) || $user->institutionId === $tag->institution_id);
     }
 
     // Should serve as a query enhancement to Eloquent queries

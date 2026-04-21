@@ -3,19 +3,18 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
+use App\Models\AuthUser;
 
 class CalendarSettingPolicy
 {
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditInstitution->value);
+        return $user->hasPrivilege(PrivilegeKey::EditInstitution);
     }
 
-    public function update(JwtPayloadUser $jwtPayloadUser): bool
+    public function update(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditInstitution->value);
+        return $user->hasPrivilege(PrivilegeKey::EditInstitution);
     }
 
     public static function scope(): Scope\CalendarSettingScope

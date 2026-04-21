@@ -2,16 +2,15 @@
 
 namespace App\Policies;
 
+use App\Models\AuthUser;
 use App\Models\CatToolJob;
-use App\Models\User;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class CatToolJobPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
         return false;
     }
@@ -19,7 +18,7 @@ class CatToolJobPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
+    public function view(AuthUser $user, CatToolJob $catToolJob): bool
     {
         return false;
     }
@@ -27,7 +26,7 @@ class CatToolJobPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user): bool
     {
         return false;
     }
@@ -35,7 +34,7 @@ class CatToolJobPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
+    public function update(AuthUser $user, CatToolJob $catToolJob): bool
     {
         return false;
     }
@@ -43,7 +42,7 @@ class CatToolJobPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
+    public function delete(AuthUser $user, CatToolJob $catToolJob): bool
     {
         return false;
     }
@@ -51,7 +50,7 @@ class CatToolJobPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
+    public function restore(AuthUser $user, CatToolJob $catToolJob): bool
     {
         return false;
     }
@@ -59,7 +58,7 @@ class CatToolJobPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $jwtPayloadUser, CatToolJob $catToolJob): bool
+    public function forceDelete(AuthUser $user, CatToolJob $catToolJob): bool
     {
         return false;
     }
