@@ -258,7 +258,7 @@ class ProjectCreateRequest extends FormRequest
                 'nullable',
                 'uuid',
                 'bail',
-                Rule::prohibitedIf(fn () => !$this->isCalendarProject() || !Auth::hasPrivilege(PrivilegeKey::ManageProject->value)),
+                Rule::prohibitedIf(fn () => !$this->isCalendarProject() || !Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)),
                 Rule::exists(Vendor::class, 'id'),
             ],
             'service_type' => [
