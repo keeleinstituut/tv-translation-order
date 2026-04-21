@@ -119,12 +119,10 @@ class ProjectResource extends JsonResource
             'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
             'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
-            $this->mergeWhen(!$request->user()?->isVendor(), [
-                'price' => $this->price,
-                'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
-                'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
-                'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
-            ]),
+            'price' => $this->price,
+            'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
+            'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
+            'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
             'project_comments' => ProjectCommentResource::collection($this->whenLoaded('projectComments')),
             'workflow_started' => $this->workflow()->isStarted()
