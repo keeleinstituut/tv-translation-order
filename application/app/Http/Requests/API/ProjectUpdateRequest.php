@@ -144,7 +144,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 'nullable',
                 'uuid',
                 'bail',
-                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ManageProject->value)),
+                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)),
                 Rule::exists(Vendor::class, 'id'),
             ],
             'use_external_vendor' => ['sometimes', 'nullable', 'boolean'],
