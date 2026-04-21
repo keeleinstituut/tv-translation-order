@@ -54,7 +54,7 @@ class AuthUser extends JwtPayloadUser
         }
 
         $privilegeKey = is_string($privilege) ? PrivilegeKey::tryFrom($privilege) : $privilege;
-        return in_array($privilegeKey, $this->privileges);
+        return in_array($privilegeKey->value, $this->privileges);
     }
 
     /**
