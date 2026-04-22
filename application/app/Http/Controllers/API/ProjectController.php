@@ -23,6 +23,7 @@ use App\Http\Requests\API\ProjectUpdateRequest;
 use App\Http\Resources\API\ProjectResource;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\ProjectComment;
@@ -51,6 +52,9 @@ use League\Csv\CannotInsertRecord;
 use League\Csv\Exception;
 use League\Csv\InvalidArgument;
 use League\Csv\Writer;
+use NotificationClient\DataTransferObjects\EmailNotificationMessage;
+use NotificationClient\Enums\NotificationType;
+use NotificationClient\Services\NotificationPublisher;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
@@ -63,6 +67,7 @@ class ProjectController extends Controller
         private readonly VendorReservationService $vendorReservation,
         private readonly CalendarRoleResolver     $calendarRoleResolver,
         private readonly CalendarSettingsResolver $calendarSettings,
+        private readonly NotificationPublisher    $notificationPublisher,
         AuditLogPublisher                         $auditLogPublisher,
     )
     {
@@ -594,6 +599,7 @@ class ProjectController extends Controller
 
         if ($isClient && $calendarDataChanged) {
             $this->vendorReservation->releaseAll($assignment);
+
             $this->assignBestAvailableVendor(
                 $project,
                 $assignment,
@@ -658,11 +664,11 @@ class ProjectController extends Controller
             $this->authorize('cancel', $project);
 
             if (!in_array($project->status, [ProjectStatus::New, ProjectStatus::Registered])) {
-                abort(Response::HTTP_BAD_REQUEST, 'Only projects with status `NEW` or `REGISTERED` can be cancelled.');
+                abort(Response::HTTP_BAD_REQUEST, 'Ainult `NEW` või `REGISTERED` staatusega projekte saab tühistada.');
             }
 
             if ($project->cancellation_pending_at) {
-                abort(Response::HTTP_CONFLICT, 'Cancellation is already pending.');
+                abort(Response::HTTP_CONFLICT, 'Tühistamine on ootel.');
             }
 
             $isDelayed = $project->is_calendar_project && ($request->validated('is_delayed') ?? true);
@@ -714,7 +720,7 @@ class ProjectController extends Controller
         $this->authorize('cancel', $project);
 
         if (!$project->cancellation_pending_at) {
-            abort(Response::HTTP_BAD_REQUEST, 'No pending cancellation to decline.');
+            abort(Response::HTTP_BAD_REQUEST, 'Tühistamise taotlus puudub.');
         }
 
         $project->cancellation_pending_at = null;
@@ -1028,9 +1034,13 @@ class ProjectController extends Controller
             }
         }
 
-        throw ValidationException::withMessages([
-            'event_start_at' => 'Soovitud ajavahemikul ja keelesuunal ei ole ühtegi teostajat saadaval.',
-        ]);
+        $this->publishVendorWasNotAssignedAutomaticallyEmailNotification($project);
+
+        if (!$isClient) {
+            throw ValidationException::withMessages([
+                'event_start_at' => 'Soovitud ajavahemikul ja keelesuunal ei ole ühtegi teostajat saadaval.',
+            ]);
+        }
     }
 
     /**
@@ -1101,6 +1111,34 @@ class ProjectController extends Controller
             throw ValidationException::withMessages([
                 'event_start_at' => 'Lõpetatud projekti ei saa muuta.',
             ]);
+        }
+    }
+
+    public function publishVendorWasNotAssignedAutomaticallyEmailNotification(Project $project): void
+    {
+        $receiver = $project->managerInstitutionUser;
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if (empty($receiverEmail)) {
+            $receiverEmail = $receiver?->email ?: $project->institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+        }
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::VendorWasNotAssignedAutomatically,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only(['ext_id']),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 

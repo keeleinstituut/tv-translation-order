@@ -157,7 +157,8 @@ class InstitutionUser extends Model
             ->filter(fn(array $role) => empty($role['deleted_at']))
             ->flatMap(fn(array $role) => $role['privileges'])
             ->map(fn(array $privilege) => $privilege['key'])
-            ->map(PrivilegeKey::from(...));
+            ->map(fn(string $key) => PrivilegeKey::tryFrom($key))
+            ->filter();
 
         return collect($expectedPrivileges)
             ->every(fn(PrivilegeKey $expectedPrivilege) => $actualPrivileges->contains($expectedPrivilege));
