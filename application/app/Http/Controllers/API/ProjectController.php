@@ -1017,6 +1017,7 @@ class ProjectController extends Controller
                     ]);
                 }
 
+                $this->publishVendorWasNotAssignedAutomaticallyEmailNotification($project);
                 return;
             }
 
