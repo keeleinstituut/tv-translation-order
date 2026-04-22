@@ -3,44 +3,35 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
-use App\Models\Vendor;
+use App\Models\AuthUser;
 use App\Models\VendorCalendarEntry;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class VendorCalendarEntryPolicy
 {
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->where('institution_user_id', $user->institutionUserId)
-                ->exists();
+        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ReceiveProject, PrivilegeKey::ManageProject, PrivilegeKey::CreateProject]) ||
+            $user->isVendor();
     }
 
-    public function create(JwtPayloadUser $user): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value)
-            || Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value);
+        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::ReceiveProject]);
     }
 
-    public function delete(JwtPayloadUser $user, VendorCalendarEntry $entry): bool
+    public function delete(AuthUser $user, VendorCalendarEntry $entry): bool
     {
-        if (Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {
+        if ($user->hasPrivilege(PrivilegeKey::ReceiveProject)) {
             return true;
         }
 
-        return Vendor::where('institution_user_id', $user->institutionUserId)
-            ->where('id', $entry->vendor_id)
-            ->exists();
+        $vendor = $user->vendor();
+        return $vendor && $vendor->id === $entry->vendor_id;
     }
 
-    public function prebook(JwtPayloadUser $user): bool
+    public function prebook(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value);
+        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ReceiveProject, PrivilegeKey::CreateProject]);
     }
 
     public static function scope(): Scope\VendorCalendarEntryScope

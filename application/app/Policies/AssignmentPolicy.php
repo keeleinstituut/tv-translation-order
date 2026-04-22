@@ -4,18 +4,17 @@ namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
+use App\Models\AuthUser;
 use App\Models\SubProject;
-use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class AssignmentPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $user, SubProject $subProject): bool
+    public function viewAny(AuthUser $user, SubProject $subProject): bool
     {
         return Gate::allows('view', $subProject->project);
 
@@ -24,36 +23,23 @@ class AssignmentPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $user, Assignment $assignment): bool
+    public function view(AuthUser $user, Assignment $assignment): bool
     {
         if (Gate::allows('view', $assignment->subProject->project)) {
             return true;
         }
 
-        if (! self::isInSameInstitutionAsCurrentUser($assignment)) {
+        if (!$user->isInSameInstitutionAs($assignment->subProject->project)) {
             return false;
         }
 
-        if (empty(Auth::user()?->institutionUserId)) {
-            return false;
-        }
-
-        $vendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
-            ->where('institution_user_id', Auth::user()->institutionUserId)
-            ->first();
-
-        if (empty($vendor)) {
-            return false;
-        }
-
-        return $assignment->assigned_vendor_id === $vendor->id
-            || $assignment->candidates()->where('vendor_id', $vendor->id)->exists();
+        return $user->isAssignedTo($assignment) || $user->isCandidateOf($assignment);
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $user, Assignment $assignment): bool
+    public function create(AuthUser $user, Assignment $assignment): bool
     {
         return Gate::allows('update', [$assignment->subProject->project]);
     }
@@ -61,7 +47,7 @@ class AssignmentPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $user, Assignment $assignment): bool
+    public function update(AuthUser $user, Assignment $assignment): bool
     {
         return Gate::allows('update', [$assignment->subProject->project]);
     }
@@ -69,26 +55,26 @@ class AssignmentPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function updateAssigneeComment(JwtPayloadUser $user, Assignment $assignment): bool
+    public function updateAssigneeComment(AuthUser $user, Assignment $assignment): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($assignment) && (
-                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-                $this->isAssigned($assignment)
+        return $user->isInSameInstitutionAs($assignment->subProject->project) && (
+                $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+                $user->isAssignedTo($assignment)
             );
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $user, Assignment $assignment): bool
+    public function delete(AuthUser $user, Assignment $assignment): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $user, Assignment $assignment): bool
+    public function restore(AuthUser $user, Assignment $assignment): bool
     {
         return false;
     }
@@ -96,31 +82,17 @@ class AssignmentPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $user, Assignment $assignment): bool
+    public function forceDelete(AuthUser $user, Assignment $assignment): bool
     {
         return false;
     }
 
-    public function markAsCompleted(JwtPayloadUser $user, Assignment $assignment): bool
+    public function markAsCompleted(AuthUser $user, Assignment $assignment): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($assignment) && (
-                Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-                $this->isAssigned($assignment)
+        return $user->isInSameInstitutionAs($assignment->subProject->project) && (
+                $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+                $user->isAssignedTo($assignment)
             );
-    }
-
-    private function isAssigned(Assignment $assignment): bool
-    {
-        return filled($assignment->assigned_vendor_id) &&
-            filled($currentInstitutionUserId = Auth::user()?->institutionUserId) &&
-            filled($vendor = Vendor::where('institution_user_id', $currentInstitutionUserId)->first()) &&
-            $assignment->assigned_vendor_id === $vendor->id;
-    }
-
-    public static function isInSameInstitutionAsCurrentUser(Assignment $assignment): bool
-    {
-        return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && $currentInstitutionId === $assignment->subProject->project->institution_id;
     }
 
     // Should serve as an query enhancement to Eloquent queries

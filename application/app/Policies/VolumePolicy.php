@@ -3,16 +3,15 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\Volume;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class VolumePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
         return true;
     }
@@ -20,7 +19,7 @@ class VolumePolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
+    public function view(AuthUser $user, Volume $volume): bool
     {
         return true;
     }
@@ -28,31 +27,31 @@ class VolumePolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
+    public function update(AuthUser $user, Volume $volume): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
+    public function delete(AuthUser $user, Volume $volume): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
+    public function restore(AuthUser $user, Volume $volume): bool
     {
         return false;
     }
@@ -60,7 +59,7 @@ class VolumePolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $jwtPayloadUser, Volume $volume): bool
+    public function forceDelete(AuthUser $user, Volume $volume): bool
     {
         return false;
     }
