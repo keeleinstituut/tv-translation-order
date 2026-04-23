@@ -9,6 +9,7 @@ use App\Models\Price;
 use App\Models\Skill;
 use App\Models\Tag;
 use App\Models\Vendor;
+use App\Models\VendorSkillLanguagePair;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Support\Arr;
@@ -42,6 +43,23 @@ class RepresentationHelpers
             'source_language_classifier_value' => self::transformRelation($obj, 'sourceLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
             'destination_language_classifier_value' => self::transformRelation($obj, 'destinationLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
             'skill' => self::transformRelation($obj, 'skill', self::createSkillRepresentation(...)),
+        ]);
+    }
+
+    public static function createVendorSkillLanguagePairRepresentation(VendorSkillLanguagePair $obj): array
+    {
+        return self::clean([
+            'id' => $obj->id,
+            'vendor_id' => $obj->vendor_id,
+            'skill_id' => $obj->skill_id,
+            'src_lang_classifier_value_id' => $obj->src_lang_classifier_value_id,
+            'dst_lang_classifier_value_id' => $obj->dst_lang_classifier_value_id,
+            'created_at' => $obj->created_at->toIsoString(),
+            'updated_at' => $obj->updated_at->toIsoString(),
+            'source_language_classifier_value' => self::transformRelation($obj, 'sourceLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
+            'destination_language_classifier_value' => self::transformRelation($obj, 'destinationLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
+            'skill' => self::transformRelation($obj, 'skill', self::createSkillRepresentation(...)),
+            'vendor' => self::transformRelation($obj, 'vendor', self::createVendorRepresentation(...)),
         ]);
     }
 
