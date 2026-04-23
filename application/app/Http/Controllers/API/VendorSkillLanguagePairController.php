@@ -156,7 +156,7 @@ class VendorSkillLanguagePairController extends Controller
             ->with('sourceLanguageClassifierValue')
             ->with('destinationLanguageClassifierValue')
             ->with('skill')
-            ->with('vendor')
+            ->with('vendor.institutionUser')
             ->orderBy('created_at', 'asc')
             ->get();
 

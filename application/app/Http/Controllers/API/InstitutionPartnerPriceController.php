@@ -11,6 +11,7 @@ use App\Http\Requests\API\InstitutionPartnerPriceCreateRequest;
 use App\Http\Requests\API\InstitutionPartnerPriceListRequest;
 use App\Http\Resources\API\InstitutionPartnerPriceResource;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\InstitutionPartner;
 use App\Models\InstitutionPartnerPrice;
 use App\Policies\InstitutionPartnerPricePolicy;
 use Illuminate\Database\Eloquent\Builder;
@@ -139,10 +140,16 @@ class InstitutionPartnerPriceController extends Controller
     {
         $inputData = collect($request->validated('data'));
 
-        return DB::transaction(function () use ($inputData): AnonymousResourceCollection {
-            $created = $inputData->map(function (array $input): InstitutionPartnerPrice {
+        $institutionPartners = InstitutionPartner::query()
+            ->whereIn('id', $inputData->pluck('institution_partner_id')->unique())
+            ->get()
+            ->keyBy('id');
+
+        return DB::transaction(function () use ($inputData, $institutionPartners): AnonymousResourceCollection {
+            $created = $inputData->map(function (array $input) use ($institutionPartners): InstitutionPartnerPrice {
                 $price = new InstitutionPartnerPrice();
                 $price->fill($input);
+                $price->setRelation('institutionPartner', $institutionPartners->get($input['institution_partner_id']));
                 $this->authorize('create', $price);
                 $price->saveOrFail();
 
@@ -179,6 +186,7 @@ class InstitutionPartnerPriceController extends Controller
             ->with('sourceLanguageClassifierValue')
             ->with('destinationLanguageClassifierValue')
             ->with('skill')
+            ->with('institutionPartner')
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -213,6 +221,7 @@ class InstitutionPartnerPriceController extends Controller
             ->with('sourceLanguageClassifierValue')
             ->with('destinationLanguageClassifierValue')
             ->with('skill')
+            ->with('institutionPartner')
             ->orderBy('created_at', 'asc')
             ->get();
 
