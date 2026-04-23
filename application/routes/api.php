@@ -88,6 +88,11 @@ Route::post('/prices/bulk', [API\PriceController::class, 'bulkStore'])->name('tr
 Route::put('/prices/bulk', [API\PriceController::class, 'bulkUpdate'])->name('translation-order.prices.bulkUpdate');
 Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy'])->name('translation-order.prices.bulkDestroy');
 
+Route::get('/institution-prices', [API\InstitutionPriceController::class, 'index'])->name('translation-order.institution_prices.index');
+Route::post('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkStore'])->name('translation-order.institution_prices.bulkStore');
+Route::put('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkUpdate'])->name('translation-order.institution_prices.bulkUpdate');
+Route::delete('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkDestroy'])->name('translation-order.institution_prices.bulkDestroy');
+
 Route::prefix('/projects')
     ->controller(API\ProjectController::class)
     ->whereUuid('id')->group(function (): void {

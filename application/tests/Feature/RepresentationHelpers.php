@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\InstitutionPrice;
 use App\Models\Price;
 use App\Models\Skill;
 use App\Models\Tag;
@@ -20,6 +21,28 @@ class RepresentationHelpers
             $tag->toArray(),
             ['id', 'institution_id', 'name', 'type', 'created_at', 'updated_at']
         );
+    }
+
+    public static function createInstitutionPriceRepresentation(InstitutionPrice $obj): array
+    {
+        return self::clean([
+            'id' => $obj->id,
+            'institution_id' => $obj->institution_id,
+            'skill_id' => $obj->skill_id,
+            'src_lang_classifier_value_id' => $obj->src_lang_classifier_value_id,
+            'dst_lang_classifier_value_id' => $obj->dst_lang_classifier_value_id,
+            'created_at' => $obj->created_at->toIsoString(),
+            'updated_at' => $obj->updated_at->toIsoString(),
+            'character_fee' => $obj->character_fee,
+            'word_fee' => $obj->word_fee,
+            'page_fee' => $obj->page_fee,
+            'minute_fee' => $obj->minute_fee,
+            'hour_fee' => $obj->hour_fee,
+            'minimal_fee' => $obj->minimal_fee,
+            'source_language_classifier_value' => self::transformRelation($obj, 'sourceLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
+            'destination_language_classifier_value' => self::transformRelation($obj, 'destinationLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
+            'skill' => self::transformRelation($obj, 'skill', self::createSkillRepresentation(...)),
+        ]);
     }
 
     public static function createPriceRepresentation(Price $obj): array

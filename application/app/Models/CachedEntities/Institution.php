@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Models\InstitutionDiscount;
+use App\Models\InstitutionPrice;
 use App\Models\Sequence;
 use Database\Factories\CachedEntities\InstitutionFactory;
 use Eloquent;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -92,5 +94,10 @@ class Institution extends Model
     public function institutionDiscount(): HasOne
     {
         return $this->hasOne(InstitutionDiscount::class);
+    }
+
+    public function prices(): HasMany
+    {
+        return $this->hasMany(InstitutionPrice::class);
     }
 }
