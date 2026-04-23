@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Http\Controllers\API;
+
+use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\InstitutionPartnerCreateRequest;
+use App\Http\Requests\API\InstitutionPartnerListRequest;
+use App\Http\Requests\API\InstitutionPartnerUpdateRequest;
+use App\Http\Resources\API\InstitutionPartnerResource;
+use App\Models\InstitutionPartner;
+use App\Policies\InstitutionPartnerPolicy;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\Response;
+
+class InstitutionPartnerController extends Controller
+{
+    #[OA\Get(
+        path: '/institution-partners',
+        summary: 'List institution partners of current institution (institution inferred from JWT)',
+        tags: ['External partners'],
+        parameters: [
+            new OA\QueryParameter(name: 'partner_institution_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at'])),
+            new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: InstitutionPartnerResource::class)]
+    public function index(InstitutionPartnerListRequest $request): AnonymousResourceCollection
+    {
+        $this->authorize('viewAny', InstitutionPartner::class);
+
+        $params = collect($request->validated());
+
+        $query = $this->getBaseQuery();
+
+        if ($param = $params->get('partner_institution_id')) {
+            $query->whereIn('partner_institution_id', $param);
+        }
+
+        $sortBy = $params->get('sort_by', 'created_at');
+        $sortOrder = $params->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        $data = $query->paginate($params->get('per_page', 10));
+
+        return InstitutionPartnerResource::collection($data);
+    }
+
+    #[OA\Get(
+        path: '/institution-partners/{id}',
+        summary: 'Show an institution partner',
+        tags: ['External partners'],
+        parameters: [
+            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class)]
+    public function show(string $id): InstitutionPartnerResource
+    {
+        $this->authorize('viewAny', InstitutionPartner::class);
+
+        $partner = $this->getBaseQuery()->findOrFail($id);
+
+        return InstitutionPartnerResource::make($partner);
+    }
+
+    #[OA\Post(
+        path: '/institution-partners',
+        summary: 'Create an institution partner',
+        requestBody: new OAH\RequestBody(InstitutionPartnerCreateRequest::class),
+        tags: ['External partners'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class, response: Response::HTTP_CREATED)]
+    public function store(InstitutionPartnerCreateRequest $request): InstitutionPartnerResource
+    {
+        $partner = new InstitutionPartner();
+        $partner->fill(array_merge($request->validated(), ['institution_id' => Auth::user()->institutionId]));
+        $this->authorize('create', $partner);
+        $partner->saveOrFail();
+
+        return InstitutionPartnerResource::make($partner);
+    }
+
+    #[OA\Put(
+        path: '/institution-partners/{id}',
+        summary: 'Update an institution partner',
+        requestBody: new OAH\RequestBody(InstitutionPartnerUpdateRequest::class),
+        tags: ['External partners'],
+        parameters: [
+            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class)]
+    public function update(InstitutionPartnerUpdateRequest $request, string $id): InstitutionPartnerResource
+    {
+        $partner = $this->getBaseQuery()->findOrFail($id);
+        $this->authorize('update', $partner);
+        $partner->fill($request->validated());
+        $partner->saveOrFail();
+
+        return InstitutionPartnerResource::make($partner);
+    }
+
+    #[OA\Delete(
+        path: '/institution-partners/{id}',
+        summary: 'Delete an institution partner',
+        tags: ['External partners'],
+        parameters: [
+            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class)]
+    public function destroy(string $id): InstitutionPartnerResource
+    {
+        $partner = $this->getBaseQuery()->findOrFail($id);
+        $this->authorize('delete', $partner);
+        $partner->delete();
+
+        return InstitutionPartnerResource::make($partner);
+    }
+
+    private function getBaseQuery(): Builder
+    {
+        return InstitutionPartner::query()->withGlobalScope('policy', InstitutionPartnerPolicy::scope());
+    }
+}

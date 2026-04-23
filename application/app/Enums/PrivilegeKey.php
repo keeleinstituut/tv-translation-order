@@ -54,6 +54,8 @@ enum PrivilegeKey: string
     case ExportInstitutionGeneralReport = 'EXPORT_INSTITUTION_GENERAL_REPORT';
     case EditAuditLogSettings = 'EDIT_AUDIT_LOG_SETTINGS';
     case ChangeProjectManager = 'CHANGE_PROJECT_MANAGER';
+    case ViewExternalPartner = 'VIEW_EXTERNAL_PARTNER';
+    case ManageExternalPartner = 'MANAGE_EXTERNAL_PARTNER';
 
     public static function values(): array
     {

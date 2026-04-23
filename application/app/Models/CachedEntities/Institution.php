@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Models\InstitutionDiscount;
+use App\Models\InstitutionPartner;
 use App\Models\InstitutionPrice;
 use App\Models\Sequence;
 use Database\Factories\CachedEntities\InstitutionFactory;
@@ -99,5 +100,15 @@ class Institution extends Model
     public function prices(): HasMany
     {
         return $this->hasMany(InstitutionPrice::class);
+    }
+
+    public function partners(): HasMany
+    {
+        return $this->hasMany(InstitutionPartner::class);
+    }
+
+    public function partnerOf(): HasMany
+    {
+        return $this->hasMany(InstitutionPartner::class, 'partner_institution_id');
     }
 }

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\InstitutionPartner;
+use App\Models\InstitutionPartnerPrice;
 use App\Models\InstitutionPrice;
 use App\Models\Price;
 use App\Models\Skill;
@@ -22,6 +24,47 @@ class RepresentationHelpers
             $tag->toArray(),
             ['id', 'institution_id', 'name', 'type', 'created_at', 'updated_at']
         );
+    }
+
+    public static function createInstitutionPartnerRepresentation(InstitutionPartner $obj): array
+    {
+        return self::clean([
+            'id' => $obj->id,
+            'institution_id' => $obj->institution_id,
+            'partner_institution_id' => $obj->partner_institution_id,
+            'discount_percentage_101' => $obj->discount_percentage_101,
+            'discount_percentage_repetitions' => $obj->discount_percentage_repetitions,
+            'discount_percentage_100' => $obj->discount_percentage_100,
+            'discount_percentage_95_99' => $obj->discount_percentage_95_99,
+            'discount_percentage_85_94' => $obj->discount_percentage_85_94,
+            'discount_percentage_75_84' => $obj->discount_percentage_75_84,
+            'discount_percentage_50_74' => $obj->discount_percentage_50_74,
+            'discount_percentage_0_49' => $obj->discount_percentage_0_49,
+            'created_at' => $obj->created_at->toIsoString(),
+            'updated_at' => $obj->updated_at->toIsoString(),
+        ]);
+    }
+
+    public static function createInstitutionPartnerPriceRepresentation(InstitutionPartnerPrice $obj): array
+    {
+        return self::clean([
+            'id' => $obj->id,
+            'institution_partner_id' => $obj->institution_partner_id,
+            'skill_id' => $obj->skill_id,
+            'src_lang_classifier_value_id' => $obj->src_lang_classifier_value_id,
+            'dst_lang_classifier_value_id' => $obj->dst_lang_classifier_value_id,
+            'created_at' => $obj->created_at->toIsoString(),
+            'updated_at' => $obj->updated_at->toIsoString(),
+            'character_fee' => $obj->character_fee,
+            'word_fee' => $obj->word_fee,
+            'page_fee' => $obj->page_fee,
+            'minute_fee' => $obj->minute_fee,
+            'hour_fee' => $obj->hour_fee,
+            'minimal_fee' => $obj->minimal_fee,
+            'source_language_classifier_value' => self::transformRelation($obj, 'sourceLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
+            'destination_language_classifier_value' => self::transformRelation($obj, 'destinationLanguageClassifierValue', self::createClassifierValueRepresentation(...)),
+            'skill' => self::transformRelation($obj, 'skill', self::createSkillRepresentation(...)),
+        ]);
     }
 
     public static function createInstitutionPriceRepresentation(InstitutionPrice $obj): array

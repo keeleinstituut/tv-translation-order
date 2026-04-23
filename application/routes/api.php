@@ -97,6 +97,26 @@ Route::post('/institution-prices/bulk', [API\InstitutionPriceController::class, 
 Route::put('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkUpdate'])->name('translation-order.institution_prices.bulkUpdate');
 Route::delete('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkDestroy'])->name('translation-order.institution_prices.bulkDestroy');
 
+Route::prefix('/institution-partners')
+    ->controller(API\InstitutionPartnerController::class)
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.institution_partners.index');
+        Route::post('/', 'store')->name('translation-order.institution_partners.store');
+        Route::get('/{id}', 'show')->whereUuid('id')->name('translation-order.institution_partners.show');
+        Route::put('/{id}', 'update')->whereUuid('id')->name('translation-order.institution_partners.update');
+        Route::delete('/{id}', 'destroy')->whereUuid('id')->name('translation-order.institution_partners.destroy');
+    });
+
+Route::prefix('/institution-partner-prices')
+    ->controller(API\InstitutionPartnerPriceController::class)
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.institution_partner_prices.index');
+        Route::post('/', 'store')->name('translation-order.institution_partner_prices.store');
+        Route::post('/bulk', 'bulkStore')->name('translation-order.institution_partner_prices.bulkStore');
+        Route::put('/bulk', 'bulkUpdate')->name('translation-order.institution_partner_prices.bulkUpdate');
+        Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partner_prices.bulkDestroy');
+    });
+
 Route::prefix('/projects')
     ->controller(API\ProjectController::class)
     ->whereUuid('id')->group(function (): void {
