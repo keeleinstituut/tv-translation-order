@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\VendorSkillLanguagePairBulkCreateRequest;
 use App\Http\Requests\API\VendorSkillLanguagePairBulkDeleteRequest;
 use App\Http\Requests\API\VendorSkillLanguagePairListRequest;
@@ -13,9 +14,39 @@ use App\Policies\VendorSkillLanguagePairPolicy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use OpenApi\Attributes as OA;
 
 class VendorSkillLanguagePairController extends Controller
 {
+    #[OA\Get(
+        path: '/vendor-skill-language-pairs',
+        summary: 'List vendor skill language pairs of current institution (institution inferred from JWT)',
+        tags: ['Vendor management'],
+        parameters: [
+            new OA\QueryParameter(name: 'vendor_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'skill_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(
+                name: 'lang_pair[]',
+                schema: new OA\Schema(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'src', type: 'string', format: 'uuid'),
+                            new OA\Property(property: 'dst', type: 'string', format: 'uuid'),
+                        ]
+                    ),
+                    nullable: true
+                )
+            ),
+            new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at', 'lang_pair'])),
+            new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: VendorSkillLanguagePairResource::class)]
     public function index(VendorSkillLanguagePairListRequest $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', VendorSkillLanguagePair::class);
@@ -74,6 +105,14 @@ class VendorSkillLanguagePairController extends Controller
         return VendorSkillLanguagePairResource::collection($data);
     }
 
+    #[OA\Post(
+        path: '/vendor-skill-language-pairs/bulk',
+        summary: 'Bulk create vendor skill language pairs',
+        requestBody: new OAH\RequestBody(VendorSkillLanguagePairBulkCreateRequest::class),
+        tags: ['Vendor management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: VendorSkillLanguagePairResource::class, description: 'Created vendor skill language pairs')]
     public function bulkStore(VendorSkillLanguagePairBulkCreateRequest $request): AnonymousResourceCollection
     {
         $inputData = collect($request->validated('data'));
@@ -100,6 +139,14 @@ class VendorSkillLanguagePairController extends Controller
         });
     }
 
+    #[OA\Delete(
+        path: '/vendor-skill-language-pairs/bulk',
+        summary: 'Bulk delete vendor skill language pairs',
+        requestBody: new OAH\RequestBody(VendorSkillLanguagePairBulkDeleteRequest::class),
+        tags: ['Vendor management'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: VendorSkillLanguagePairResource::class, description: 'Deleted vendor skill language pairs')]
     public function bulkDestroy(VendorSkillLanguagePairBulkDeleteRequest $request): AnonymousResourceCollection
     {
         $ids = collect($request->validated('id'));

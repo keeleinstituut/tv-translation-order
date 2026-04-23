@@ -5,7 +5,23 @@ namespace App\Http\Requests\API;
 use App\Models\VendorSkillLanguagePair;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: ['id'],
+        properties: [
+            new OA\Property(
+                property: 'id',
+                type: 'array',
+                items: new OA\Items(type: 'string', format: 'uuid'),
+                minItems: 1
+            ),
+        ]
+    )
+)]
 class VendorSkillLanguagePairBulkDeleteRequest extends FormRequest
 {
     public function rules(): array
