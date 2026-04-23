@@ -188,7 +188,7 @@ class InstitutionPartnerPriceControllerTest extends TestCase
             ->postJson('/api/institution-partner-prices/bulk', $payload);
 
         // THEN
-        $response->assertStatus(201);
+        $response->assertStatus(200);
 
         $saved = InstitutionPartnerPrice::query()
             ->where('institution_partner_id', $partner->id)

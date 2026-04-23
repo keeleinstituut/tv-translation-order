@@ -10,7 +10,31 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: [
+            'institution_partner_id', 'skill_id',
+            'src_lang_classifier_value_id', 'dst_lang_classifier_value_id',
+            'character_fee', 'word_fee', 'page_fee', 'minute_fee', 'hour_fee', 'minimal_fee',
+        ],
+        properties: [
+            new OA\Property(property: 'institution_partner_id', type: 'string', format: 'uuid'),
+            new OA\Property(property: 'skill_id', type: 'string', format: 'uuid'),
+            new OA\Property(property: 'src_lang_classifier_value_id', type: 'string', format: 'uuid'),
+            new OA\Property(property: 'dst_lang_classifier_value_id', type: 'string', format: 'uuid'),
+            new OA\Property(property: 'character_fee', type: 'number', format: 'double'),
+            new OA\Property(property: 'word_fee', type: 'number', format: 'double'),
+            new OA\Property(property: 'page_fee', type: 'number', format: 'double'),
+            new OA\Property(property: 'minute_fee', type: 'number', format: 'double'),
+            new OA\Property(property: 'hour_fee', type: 'number', format: 'double'),
+            new OA\Property(property: 'minimal_fee', type: 'number', format: 'double'),
+        ]
+    )
+)]
 class InstitutionPartnerPriceCreateRequest extends FormRequest
 {
     public function rules(): array

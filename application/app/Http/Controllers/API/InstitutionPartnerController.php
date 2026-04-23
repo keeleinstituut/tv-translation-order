@@ -61,7 +61,7 @@ class InstitutionPartnerController extends Controller
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class)]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class, description: 'Institution partner')]
     public function show(string $id): InstitutionPartnerResource
     {
         $this->authorize('viewAny', InstitutionPartner::class);
@@ -78,7 +78,7 @@ class InstitutionPartnerController extends Controller
         tags: ['External partners'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class, response: Response::HTTP_CREATED)]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class, description: 'Created institution partner', response: Response::HTTP_CREATED)]
     public function store(InstitutionPartnerCreateRequest $request): InstitutionPartnerResource
     {
         $partner = new InstitutionPartner();
@@ -99,7 +99,7 @@ class InstitutionPartnerController extends Controller
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class)]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class, description: 'Updated institution partner')]
     public function update(InstitutionPartnerUpdateRequest $request, string $id): InstitutionPartnerResource
     {
         $partner = $this->getBaseQuery()->findOrFail($id);
@@ -119,7 +119,7 @@ class InstitutionPartnerController extends Controller
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class)]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerResource::class, description: 'Deleted institution partner')]
     public function destroy(string $id): InstitutionPartnerResource
     {
         $partner = $this->getBaseQuery()->findOrFail($id);

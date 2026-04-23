@@ -114,7 +114,7 @@ class InstitutionPartnerPriceController extends Controller
         tags: ['External partners'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\ResourceResponse(dataRef: InstitutionPartnerPriceResource::class, response: Response::HTTP_CREATED)]
+    #[OAH\ResourceResponse(dataRef: InstitutionPartnerPriceResource::class, description: 'Created institution partner price', response: Response::HTTP_CREATED)]
     public function store(InstitutionPartnerPriceCreateRequest $request): InstitutionPartnerPriceResource
     {
         $price = new InstitutionPartnerPrice();
@@ -134,7 +134,7 @@ class InstitutionPartnerPriceController extends Controller
         tags: ['External partners'],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: InstitutionPartnerPriceResource::class, description: 'Created institution partner prices', response: Response::HTTP_CREATED)]
+    #[OAH\CollectionResponse(itemsRef: InstitutionPartnerPriceResource::class, description: 'Created institution partner prices')]
     public function bulkStore(InstitutionPartnerPriceBulkCreateRequest $request): AnonymousResourceCollection
     {
         $inputData = collect($request->validated('data'));
