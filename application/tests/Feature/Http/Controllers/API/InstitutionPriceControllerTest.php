@@ -54,8 +54,13 @@ class InstitutionPriceControllerTest extends TestCase
         $institutionId = Str::orderedUuid();
         Institution::factory()->create(['id' => $institutionId]);
         $targetSkillId = Skill::query()->inRandomOrder()->first()->id;
+        $otherSkillId = Skill::query()->where('id', '!=', $targetSkillId)->value('id');
+        if ($otherSkillId === null) {
+            $this->markTestSkipped('This test requires at least two skills.');
+        }
+
         InstitutionPrice::factory(2)->create(['institution_id' => $institutionId, 'skill_id' => $targetSkillId]);
-        InstitutionPrice::factory(3)->create(['institution_id' => $institutionId]);
+        InstitutionPrice::factory(3)->create(['institution_id' => $institutionId, 'skill_id' => $otherSkillId]);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'privileges' => [PrivilegeKey::ViewInstitutionPricelist->value],
