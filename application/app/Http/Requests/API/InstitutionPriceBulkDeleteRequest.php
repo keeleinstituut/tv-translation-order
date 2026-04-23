@@ -4,6 +4,7 @@ namespace App\Http\Requests\API;
 
 use App\Models\InstitutionPrice;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 
@@ -31,7 +32,8 @@ class InstitutionPriceBulkDeleteRequest extends FormRequest
             'id.*' => [
                 'uuid',
                 'distinct',
-                Rule::exists(InstitutionPrice::class, 'id'),
+                Rule::exists(InstitutionPrice::class, 'id')
+                    ->where('institution_id', Auth::user()->institutionId),
             ],
         ];
     }

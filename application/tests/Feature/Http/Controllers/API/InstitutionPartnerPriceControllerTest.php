@@ -461,7 +461,9 @@ class InstitutionPartnerPriceControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->deleteJson('/api/institution-partner-prices/bulk?id[]='.$otherPrice->id);
 
-        // THEN — row not visible via scope; untouched
+        // THEN
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['id.0']);
         $this->assertDatabaseHas('institution_partner_prices', ['id' => $otherPrice->id, 'deleted_at' => null]);
     }
 }

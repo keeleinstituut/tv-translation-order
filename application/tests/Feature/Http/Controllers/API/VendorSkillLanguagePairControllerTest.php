@@ -262,8 +262,9 @@ class VendorSkillLanguagePairControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->deleteJson('/api/vendor-skill-language-pairs/bulk?id[]='.$otherPair->id);
 
-        // THEN — policy scope means the row won't load; returns 200 with empty data
-        $response->assertStatus(200)->assertJsonCount(0, 'data');
+        // THEN
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['id.0']);
         $this->assertDatabaseHas('vendor_skill_language_pairs', ['id' => $otherPair->id, 'deleted_at' => null]);
     }
 }

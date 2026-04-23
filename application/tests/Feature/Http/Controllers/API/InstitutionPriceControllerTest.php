@@ -402,9 +402,9 @@ class InstitutionPriceControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->deleteJson('/api/institution-prices/bulk?id[]='.$otherPrice->id);
 
-        // THEN — policy scope means the row won't load; deleteOrFail won't reach it
-        // The policy's 'delete' check will fire a 403 if it somehow reaches the row
-        // More practically: the row isn't in the scoped query, so bulkDestroy returns 200 with empty data
+        // THEN
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['id.0']);
         $this->assertDatabaseHas('institution_prices', ['id' => $otherPrice->id, 'deleted_at' => null]);
     }
 
