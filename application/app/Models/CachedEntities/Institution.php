@@ -2,6 +2,7 @@
 
 namespace App\Models\CachedEntities;
 
+use App\Enums\InstitutionType;
 use App\Models\InstitutionDiscount;
 use App\Models\InstitutionPartner;
 use App\Models\InstitutionPrice;
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $phone
  * @property string|null $logo_url
  * @property string|null $synced_at
+ * @property InstitutionType $institution_type
  * @property Carbon|null $deleted_at
  * @property-read Sequence|null $institutionProjectSequence
  * @property-read InstitutionDiscount|null $institutionDiscount
@@ -85,6 +87,10 @@ class Institution extends Model
     protected $table = 'cached_institutions';
 
     public $timestamps = false;
+
+    protected $casts = [
+        'institution_type' => InstitutionType::class,
+    ];
 
     public function institutionProjectSequence()
     {

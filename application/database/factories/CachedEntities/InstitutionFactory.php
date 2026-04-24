@@ -2,6 +2,7 @@
 
 namespace database\factories\CachedEntities;
 
+use App\Enums\InstitutionType;
 use App\Models\CachedEntities\Institution;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -31,6 +32,7 @@ class InstitutionFactory extends Factory
             'phone' => null,
             'email' => fake()->companyEmail(),
             'logo_url' => fake()->url(),
+            'institution_type' => InstitutionType::Institution,
         ];
     }
 }

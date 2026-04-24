@@ -114,13 +114,4 @@ class AuthUser extends JwtPayloadUser
     {
         return $vendor->institution_user_id === $this->institutionUserId;
     }
-
-    public function isSharedProjectFromExternalInstitution(Project $project): bool
-    {
-        // Example of how to implement checks that will be needed for sharing projects with external translation agencies
-        if ($project->institution_id !== $this->institutionId) {
-            // check that it's a shared project via lookup of relation.
-        }
-        return false;
-    }
 }
