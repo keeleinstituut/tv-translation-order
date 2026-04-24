@@ -50,7 +50,7 @@ class ProjectPolicy
         }
 
         if ($user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest)) {
-            return $user->hasActivePartnerAccessToProject($project);
+            return $user->hasPartnerAccessToProject($project);
         }
 
         return false;
@@ -120,7 +120,8 @@ class ProjectPolicy
 
     public function downloadMedia(AuthUser $user, Project $project): bool
     {
-        if ($user->hasActivePartnerAccessToProject($project)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&
+            $user->hasActivePartnerAccessToProject($project, true)) {
             return true;
         }
 

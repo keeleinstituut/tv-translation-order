@@ -93,7 +93,8 @@ class SubProjectPolicy
 
     public function downloadMedia(AuthUser $user, SubProject $subProject): bool
     {
-        if ($user->hasActivePartnerAccessToProject($subProject->project)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&
+            $user->hasActivePartnerAccessToProject($subProject->project, true)) {
             return true;
         }
 

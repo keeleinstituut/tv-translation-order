@@ -103,8 +103,8 @@ class AssignmentPolicy
                 $user->isAssignedTo($assignment);
         }
 
-        return $user->hasPrivilege(PrivilegeKey::RespondExternalTranslationRequest) &&
-            $user->isInPartnerInstitutionOfAssignment($assignment);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
+            $assignment->external_institution_id === $user->institutionId;
     }
 
     // Should serve as an query enhancement to Eloquent queries

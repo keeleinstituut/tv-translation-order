@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\ExternalRequestRecipientStatus;
+use App\Enums\ExternalRequestStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -126,9 +127,14 @@ class Assignment extends Model implements AuditLoggable
             return;
         }
 
-        $query->whereHas('externalTranslationRequests.recipients', function (Builder $q) use ($institutionId) {
-            $q->where('institution_id', $institutionId)
-                ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner());
+        $query->where(function (Builder $sharedQuery) use ($institutionId) {
+            $sharedQuery->where('external_institution_id', $institutionId)
+                ->orWhereHas('externalTranslationRequests.recipients', function (Builder $q) use ($institutionId) {
+                    $q->where('institution_id', $institutionId)
+                        ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
+                        ->whereHas('externalTranslationRequest',
+                            fn (Builder $requestQuery) => $requestQuery->where('status', ExternalRequestStatus::Active));
+                });
         });
     }
 

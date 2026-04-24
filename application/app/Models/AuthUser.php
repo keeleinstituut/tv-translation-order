@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ExternalRequestRecipientStatus;
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
+use App\Enums\ExternalRequestStatus;
 use App\Models\ExternalTranslationRequestRecipient;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -124,29 +125,50 @@ class AuthUser extends JwtPayloadUser
             return false;
         }
 
+        if ($assignment->external_institution_id === $this->institutionId) {
+            return true;
+        }
+
         return ExternalTranslationRequestRecipient::query()
             ->where('institution_id', $this->institutionId)
             ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
             ->whereHas('externalTranslationRequest',
-                fn ($q) => $q->where('assignment_id', $assignment->getKey()))
+                fn ($q) => $q
+                    ->where('assignment_id', $assignment->getKey())
+                    ->where('status', ExternalRequestStatus::Active))
             ->exists();
     }
 
-    public function hasActivePartnerAccessToProject(Project $project): bool
+    public function hasPartnerAccessToProject(Project $project, bool $requireSourceFiles = false): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return Assignment::query()
+            ->where('external_institution_id', $this->institutionId)
+            ->whereHas('subProject', fn ($q) => $q->where('project_id', $project->getKey()))
+            ->exists() || ExternalTranslationRequestRecipient::query()
+            ->where('institution_id', $this->institutionId)
+            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
+            ->whereHas('externalTranslationRequest.assignment.subProject',
+                fn ($q) => $q->where('project_id', $project->getKey()))
+            ->whereHas('externalTranslationRequest', function ($q) use ($requireSourceFiles) {
+                $q->where('status', ExternalRequestStatus::Active);
+
+                if ($requireSourceFiles) {
+                    $q->where('include_source_files', true);
+                }
+            })
+            ->exists();
+    }
+
+    public function hasActivePartnerAccessToProject(Project $project, bool $requireSourceFiles = false): bool
     {
         if ($project->status === ProjectStatus::Accepted) {
             return false;
         }
 
-        if (empty($this->institutionId)) {
-            return false;
-        }
-
-        return ExternalTranslationRequestRecipient::query()
-            ->where('institution_id', $this->institutionId)
-            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
-            ->whereHas('externalTranslationRequest.assignment.subProject',
-                fn ($q) => $q->where('project_id', $project->getKey()))
-            ->exists();
+        return $this->hasPartnerAccessToProject($project, $requireSourceFiles);
     }
 }

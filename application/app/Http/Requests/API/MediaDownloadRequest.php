@@ -3,6 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Models\Media;
+use App\Models\ExternalTranslationRequest;
 use App\Models\Project;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,9 +20,15 @@ class MediaDownloadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'collection' => ['required', 'string', Rule::in([Project::SOURCE_FILES_COLLECTION, Project::FINAL_FILES_COLLECTION, Project::HELP_FILES_COLLECTION, Project::REVIEW_FILES_COLLECTION_PREFIX])],
+            'collection' => ['required', 'string', Rule::in([
+                Project::SOURCE_FILES_COLLECTION,
+                Project::FINAL_FILES_COLLECTION,
+                Project::HELP_FILES_COLLECTION,
+                Project::REVIEW_FILES_COLLECTION_PREFIX,
+                ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+            ])],
             'reference_object_id' => 'required|uuid',
-            'reference_object_type' => ['required', 'string', Rule::in(['project', 'subproject', 'review'])],
+            'reference_object_type' => ['required', 'string', Rule::in(['project', 'subproject', 'review', 'external_translation_request'])],
             'id' => [
                 'required',
                 'integer',
