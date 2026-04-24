@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\CachedEntities\Institution;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +40,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $event_start_at
  * @property Carbon|null $completed_at
  * @property Carbon|null $timeslot_passed_notification_sent_at
+ * @property string|null $external_institution_id
  * @property-read Vendor|null $assignee
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
@@ -115,6 +117,16 @@ class Assignment extends Model implements AuditLoggable
     public function jobDefinition(): BelongsTo
     {
         return $this->belongsTo(JobDefinition::class);
+    }
+
+    public function externalTranslationRequests(): HasMany
+    {
+        return $this->hasMany(ExternalTranslationRequest::class);
+    }
+
+    public function externalInstitution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class, 'external_institution_id');
     }
 
     public function getPriceCalculator(): PriceCalculator
