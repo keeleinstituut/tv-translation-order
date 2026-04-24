@@ -25,19 +25,23 @@ class AssignmentPolicy
      */
     public function view(AuthUser $user, Assignment $assignment): bool
     {
-        if (Gate::allows('view', $assignment->subProject->project)) {
-            return true;
+        $project = $assignment->subProject->project;
+
+        if ($user->isInSameInstitutionAs($project)) {
+            if (Gate::allows('view', $project)) {
+                return true;
+            }
+
+            return $user->isAssignedTo($assignment) || $user->isCandidateOf($assignment);
         }
 
-        if (!$user->isInSameInstitutionAs($assignment->subProject->project)) {
-            return false;
-        }
-
-        return $user->isAssignedTo($assignment) || $user->isCandidateOf($assignment);
+        return $user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&
+            $user->isInPartnerInstitutionOfAssignment($assignment);
     }
 
     /**
      * Determine whether the user can create models.
+     * partner access deliberately excluded
      */
     public function create(AuthUser $user, Assignment $assignment): bool
     {
@@ -46,6 +50,7 @@ class AssignmentPolicy
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function update(AuthUser $user, Assignment $assignment): bool
     {
@@ -54,6 +59,7 @@ class AssignmentPolicy
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function updateAssigneeComment(AuthUser $user, Assignment $assignment): bool
     {
@@ -65,6 +71,7 @@ class AssignmentPolicy
 
     /**
      * Determine whether the user can delete the model.
+     * partner access deliberately excluded
      */
     public function delete(AuthUser $user, Assignment $assignment): bool
     {
@@ -89,10 +96,15 @@ class AssignmentPolicy
 
     public function markAsCompleted(AuthUser $user, Assignment $assignment): bool
     {
-        return $user->isInSameInstitutionAs($assignment->subProject->project) && (
-                $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isAssignedTo($assignment)
-            );
+        $project = $assignment->subProject->project;
+
+        if ($user->isInSameInstitutionAs($project)) {
+            return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+                $user->isAssignedTo($assignment);
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::RespondExternalTranslationRequest) &&
+            $user->isInPartnerInstitutionOfAssignment($assignment);
     }
 
     // Should serve as an query enhancement to Eloquent queries
@@ -109,7 +121,7 @@ class AssignmentPolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope()
+    public static function scope(): Scope\AssignmentScope
     {
         return new Scope\AssignmentScope();
     }
@@ -131,10 +143,11 @@ class AssignmentScope implements IScope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->whereHas('subProject', function (Builder $subProjectQuery) {
-            $subProjectQuery->whereHas('project', function (Builder $projectQuery) {
-                $projectQuery->where('institution_id', Auth::user()->institutionId);
-            });
+        $institutionId = Auth::user()->institutionId;
+        $builder->where(function (Builder $outer) use ($institutionId) {
+            $outer->whereHas('subProject.project',
+                    fn (Builder $p) => $p->where('institution_id', $institutionId))
+                ->orWhere(fn (Builder $self) => $self->sharedWithInstitution($institutionId));
         });
     }
 }

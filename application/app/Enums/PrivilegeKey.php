@@ -56,6 +56,9 @@ enum PrivilegeKey: string
     case ChangeProjectManager = 'CHANGE_PROJECT_MANAGER';
     case ViewExternalPartner = 'VIEW_EXTERNAL_PARTNER';
     case ManageExternalPartner = 'MANAGE_EXTERNAL_PARTNER';
+    case ViewExternalTranslationRequest = 'VIEW_EXTERNAL_TRANSLATION_REQUEST';
+    case RespondExternalTranslationRequest = 'RESPOND_EXTERNAL_TRANSLATION_REQUEST';
+    case ManageExternalTranslationRequest = 'MANAGE_EXTERNAL_TRANSLATION_REQUEST';
 
     public static function values(): array
     {

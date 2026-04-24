@@ -8,6 +8,7 @@ use App\Http\Requests\API\MediaDeleteRequest;
 use App\Http\Requests\API\MediaDownloadRequest;
 use App\Http\Requests\MediaUpdateRequest;
 use App\Http\Resources\MediaResource;
+use App\Models\ExternalTranslationRequest;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\ProjectReviewRejection;
@@ -245,6 +246,7 @@ class MediaController extends Controller
             'project', Project::class => Project::class,
             'subproject', SubProject::class => SubProject::class,
             'review', ProjectReviewRejection::class => ProjectReviewRejection::class,
+            'external_translation_request', ExternalTranslationRequest::class => ExternalTranslationRequest::class,
             default => null,
         };
 
@@ -262,6 +264,7 @@ class MediaController extends Controller
             [Project::class, 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
             [ProjectReviewRejection::class, 'review'], [SubProject::class, 'source'] => [$entity, $entity->project, $entity->file_collection],
             [SubProject::class, 'final'] => [$entity, $entity->project, $entity->file_collection_final],
+            [ExternalTranslationRequest::class, ExternalTranslationRequest::REQUEST_FILES_COLLECTION] => [$entity, $entity, ExternalTranslationRequest::REQUEST_FILES_COLLECTION],
             default => null,
         };
     }
@@ -272,6 +275,7 @@ class MediaController extends Controller
             [Project::class, 'source'], [SubProject::class, 'source'] => 'editSourceFiles',
             [Project::class, 'help'] => 'editHelpFiles',
             [SubProject::class, 'final'] => 'editFinalFiles',
+            [ExternalTranslationRequest::class, ExternalTranslationRequest::REQUEST_FILES_COLLECTION] => 'downloadMedia',
             default => null,
         };
     }

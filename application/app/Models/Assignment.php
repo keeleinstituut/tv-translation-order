@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\ExternalRequestRecipientStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -117,6 +118,18 @@ class Assignment extends Model implements AuditLoggable
     public function jobDefinition(): BelongsTo
     {
         return $this->belongsTo(JobDefinition::class);
+    }
+
+    public function scopeSharedWithInstitution(Builder $query, ?string $institutionId): void
+    {
+        if (empty($institutionId)) {
+            return;
+        }
+
+        $query->whereHas('externalTranslationRequests.recipients', function (Builder $q) use ($institutionId) {
+            $q->where('institution_id', $institutionId)
+                ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner());
+        });
     }
 
     public function externalTranslationRequests(): HasMany

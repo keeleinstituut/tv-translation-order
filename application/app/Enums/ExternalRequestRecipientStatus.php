@@ -10,4 +10,10 @@ enum ExternalRequestRecipientStatus: string
     case Declined = 'DECLINED';
     case Expired = 'EXPIRED';
     case Selected = 'SELECTED';
+
+    /** @return array<self> */
+    public static function activeForPartner(): array
+    {
+        return [self::Notified, self::Accepted, self::Selected];
+    }
 }

@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\ExternalRequestRecipientStatus;
 use App\Enums\PrivilegeKey;
+use App\Enums\ProjectStatus;
+use App\Models\ExternalTranslationRequestRecipient;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class AuthUser extends JwtPayloadUser
@@ -113,5 +116,37 @@ class AuthUser extends JwtPayloadUser
     public function ownsVendor(Vendor $vendor): bool
     {
         return $vendor->institution_user_id === $this->institutionUserId;
+    }
+
+    public function isInPartnerInstitutionOfAssignment(Assignment $assignment): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return ExternalTranslationRequestRecipient::query()
+            ->where('institution_id', $this->institutionId)
+            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
+            ->whereHas('externalTranslationRequest',
+                fn ($q) => $q->where('assignment_id', $assignment->getKey()))
+            ->exists();
+    }
+
+    public function hasActivePartnerAccessToProject(Project $project): bool
+    {
+        if ($project->status === ProjectStatus::Accepted) {
+            return false;
+        }
+
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return ExternalTranslationRequestRecipient::query()
+            ->where('institution_id', $this->institutionId)
+            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
+            ->whereHas('externalTranslationRequest.assignment.subProject',
+                fn ($q) => $q->where('project_id', $project->getKey()))
+            ->exists();
     }
 }
