@@ -2,10 +2,14 @@
 
 namespace App\Http\Resources\API;
 
+use App\Models\VendorSkillLanguagePair;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
+/**
+ * @mixin VendorSkillLanguagePair
+ */
 #[OA\Schema(
     title: 'VendorSkillLanguagePair',
     required: [
@@ -40,10 +44,10 @@ class VendorSkillLanguagePairResource extends JsonResource
             'dst_lang_classifier_value_id' => $this->dst_lang_classifier_value_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'source_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('sourceLanguageClassifierValue')),
-            'destination_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('destinationLanguageClassifierValue')),
-            'skill' => new SkillResource($this->whenLoaded('skill')),
-            'vendor' => new VendorResource($this->whenLoaded('vendor')),
+            'source_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('sourceLanguageClassifierValue')),
+            'destination_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('destinationLanguageClassifierValue')),
+            'skill' => SkillResource::make($this->whenLoaded('skill')),
+            'vendor' => VendorResource::make($this->whenLoaded('vendor')),
         ];
     }
 }

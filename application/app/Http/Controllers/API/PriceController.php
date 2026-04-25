@@ -162,7 +162,7 @@ class PriceController extends Controller
                 ->load('destinationLanguageClassifierValue')
                 ->load('skill');
 
-            return new PriceResource($obj);
+            return PriceResource::make($obj);
         });
     }
 

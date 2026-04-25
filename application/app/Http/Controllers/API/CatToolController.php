@@ -170,7 +170,7 @@ class CatToolController extends Controller
         $subProject = $this->getSubProject($request->route('sub_project_id'));
         $this->authorize('manageCatTool', $subProject);
 
-        return new SubProjectVolumeAnalysisResource($subProject);
+        return SubProjectVolumeAnalysisResource::make($subProject);
     }
 
     /**

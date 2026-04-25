@@ -257,7 +257,7 @@ class SubProjectController extends Controller
 
         $this->authorize('view', $subProject);
 
-        return new SubProjectResource($subProject);
+        return SubProjectResource::make($subProject);
     }
 
     /**

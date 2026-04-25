@@ -32,7 +32,7 @@ class AssignmentPolicy
                 return true;
             }
 
-            return $user->isAssignedTo($assignment) || $user->isCandidateOf($assignment);
+            return $user->isAssignedTo($assignment) || $this->isCandidateOf($user, $assignment);
         }
 
         return $user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&
@@ -65,7 +65,7 @@ class AssignmentPolicy
     {
         return $user->isInSameInstitutionAs($assignment->subProject->project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isAssignedTo($assignment)
+                $this->isAssignedTo($user, $assignment)
             );
     }
 
@@ -100,11 +100,24 @@ class AssignmentPolicy
 
         if ($user->isInSameInstitutionAs($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isAssignedTo($assignment);
+                $this->isAssignedTo($user, $assignment);
         }
 
         return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
             $assignment->external_institution_id === $user->institutionId;
+    }
+
+    public function isCandidateOf(AuthUser $user, Assignment $assignment): bool
+    {
+        return $user->isVendor() && filled($vendor = $user->vendor()) &&
+            $assignment->candidates()->where('vendor_id', $vendor->id)->exists();
+    }
+
+    public function isAssignedTo(AuthUser $user, Assignment $assignment): bool
+    {
+        return filled($assignment->assigned_vendor_id)
+            && $user->isVendor()
+            && $assignment->assigned_vendor_id === $user->vendor()?->id;
     }
 
     // Should serve as an query enhancement to Eloquent queries

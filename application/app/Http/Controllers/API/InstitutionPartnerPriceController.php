@@ -14,14 +14,19 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\InstitutionPartner;
 use App\Models\InstitutionPartnerPrice;
 use App\Policies\InstitutionPartnerPricePolicy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class InstitutionPartnerPriceController extends Controller
 {
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/institution-partner-prices',
         summary: 'List institution partner prices (institution inferred from JWT)',
@@ -58,9 +63,11 @@ class InstitutionPartnerPriceController extends Controller
         $params = collect($request->validated());
 
         $query = $this->getBaseQuery()
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill');
+            ->with([
+                'sourceLanguageClassifierValue',
+                'destinationLanguageClassifierValue',
+                'skill'
+            ]);
 
         if ($param = $params->get('institution_partner_id')) {
             $query->whereIn('institution_partner_id', $param);
@@ -108,6 +115,10 @@ class InstitutionPartnerPriceController extends Controller
         return InstitutionPartnerPriceResource::collection($data);
     }
 
+    /**
+     * @throws Throwable
+     * @throws AuthorizationException
+     */
     #[OA\Post(
         path: '/institution-partner-prices',
         summary: 'Create an institution partner price',
@@ -123,7 +134,11 @@ class InstitutionPartnerPriceController extends Controller
         $this->authorize('create', $price);
         $price->saveOrFail();
 
-        $price->load('sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill');
+        $price->load([
+            'sourceLanguageClassifierValue',
+            'destinationLanguageClassifierValue',
+            'skill'
+        ]);
 
         return InstitutionPartnerPriceResource::make($price);
     }
@@ -158,10 +173,11 @@ class InstitutionPartnerPriceController extends Controller
 
             $data = InstitutionPartnerPrice::query()
                 ->whereIn('id', $created->pluck('id'))
-                ->with('sourceLanguageClassifierValue')
-                ->with('destinationLanguageClassifierValue')
-                ->with('skill')
-                ->get();
+                ->with([
+                    'sourceLanguageClassifierValue',
+                    'destinationLanguageClassifierValue',
+                    'skill'
+                ])->get();
 
             return InstitutionPartnerPriceResource::collection($data);
         });
@@ -183,10 +199,7 @@ class InstitutionPartnerPriceController extends Controller
 
         $prices = $this->getBaseQuery()
             ->whereIn('id', $ids)
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill')
-            ->with('institutionPartner')
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill', 'institutionPartner'])
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -218,10 +231,7 @@ class InstitutionPartnerPriceController extends Controller
 
         $data = $this->getBaseQuery()
             ->whereIn('id', $ids)
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill')
-            ->with('institutionPartner')
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill', 'institutionPartner'])
             ->orderBy('created_at', 'asc')
             ->get();
 

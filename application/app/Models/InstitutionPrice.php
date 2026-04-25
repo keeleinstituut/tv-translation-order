@@ -81,7 +81,7 @@ class InstitutionPrice extends Model
 
     public function getUnitFee(VolumeUnits|string $unit): ?float
     {
-        is_string($unit) && $unit = VolumeUnits::from($unit);
+        is_string($unit) && $unit = VolumeUnits::tryFrom($unit);
 
         return match ($unit) {
             VolumeUnits::Characters => $this->character_fee,
@@ -90,6 +90,7 @@ class InstitutionPrice extends Model
             VolumeUnits::Minutes => $this->minute_fee,
             VolumeUnits::Hours => $this->hour_fee,
             VolumeUnits::MinimalFee => $this->minimal_fee,
+            default => null,
         };
     }
 }

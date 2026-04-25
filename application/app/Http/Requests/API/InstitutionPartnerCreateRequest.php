@@ -55,13 +55,13 @@ class InstitutionPartnerCreateRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                if ($this->partner_institution_id === Auth::user()->institutionId) {
+                if ($this->input('partner_institution_id') === Auth::user()->institutionId) {
                     $validator->errors()->add('partner_institution_id', 'An institution cannot partner with itself');
                 }
 
                 $existing = InstitutionPartner::query()
                     ->where('institution_id', Auth::user()->institutionId)
-                    ->where('partner_institution_id', $this->partner_institution_id)
+                    ->where('partner_institution_id', $this->input('partner_institution_id'))
                     ->exists();
 
                 if ($existing) {

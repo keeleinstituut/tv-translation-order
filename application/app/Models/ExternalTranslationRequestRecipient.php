@@ -74,12 +74,4 @@ class ExternalTranslationRequestRecipient extends Model implements Sortable
     {
         return $this->belongsTo(Institution::class);
     }
-
-    public function ownerInstitutionPartner(): ?InstitutionPartner
-    {
-        return InstitutionPartner::query()
-            ->where('institution_id', $this->externalTranslationRequest->ownerInstitutionId())
-            ->where('partner_institution_id', $this->institution_id)
-            ->first();
-    }
 }

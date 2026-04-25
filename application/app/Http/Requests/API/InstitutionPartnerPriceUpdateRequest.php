@@ -38,7 +38,7 @@ class InstitutionPartnerPriceUpdateRequest extends FormRequest
                 }
 
                 $belongsToInstitution = InstitutionPartnerPrice::query()
-                    ->where('id', $this->id)
+                    ->where('id', $this->input('id'))
                     ->whereRelation('institutionPartner', 'institution_id', Auth::user()->institutionId)
                     ->exists();
 

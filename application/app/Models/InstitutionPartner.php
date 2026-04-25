@@ -7,6 +7,7 @@ use App\Models\CachedEntities\Institution;
 use App\Models\Dto\VolumeAnalysisDiscount;
 use Database\Factories\InstitutionPartnerFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,7 +33,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read Institution|null $institution
  * @property-read Institution|null $partnerInstitution
- * @property-read \Illuminate\Database\Eloquent\Collection<int, InstitutionPartnerPrice> $prices
+ * @property-read Collection<int, InstitutionPartnerPrice> $prices
  *
  * @method static InstitutionPartnerFactory factory($count = null, $state = [])
  * @method static Builder|InstitutionPartner newModelQuery()
@@ -92,6 +93,7 @@ class InstitutionPartner extends Model
 
     public function resolveFee(string $srcLangId, string $dstLangId, string $skillId, VolumeUnits $unit): ?float
     {
+        /** @var InstitutionPartnerPrice $price */
         $price = $this->prices()
             ->where('src_lang_classifier_value_id', $srcLangId)
             ->where('dst_lang_classifier_value_id', $dstLangId)

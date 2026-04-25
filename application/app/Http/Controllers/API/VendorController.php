@@ -178,7 +178,7 @@ class VendorController extends Controller
 
             $vendor->load('institutionUser.institutionDiscount', 'tags');
 
-            return new VendorResource($vendor);
+            return VendorResource::make($vendor);
         });
     }
 
@@ -200,7 +200,7 @@ class VendorController extends Controller
 
         $vendor->load('institutionUser.institutionDiscount', 'tags');
 
-        return new VendorResource($vendor);
+        return VendorResource::make($vendor);
     }
 
     /**

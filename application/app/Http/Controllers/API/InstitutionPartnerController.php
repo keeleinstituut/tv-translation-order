@@ -10,14 +10,19 @@ use App\Http\Requests\API\InstitutionPartnerUpdateRequest;
 use App\Http\Resources\API\InstitutionPartnerResource;
 use App\Models\InstitutionPartner;
 use App\Policies\InstitutionPartnerPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class InstitutionPartnerController extends Controller
 {
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/institution-partners',
         summary: 'List institution partners of current institution (institution inferred from JWT)',
@@ -52,6 +57,9 @@ class InstitutionPartnerController extends Controller
         return InstitutionPartnerResource::collection($data);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Get(
         path: '/institution-partners/{id}',
         summary: 'Show an institution partner',
@@ -71,6 +79,10 @@ class InstitutionPartnerController extends Controller
         return InstitutionPartnerResource::make($partner);
     }
 
+    /**
+     * @throws Throwable
+     * @throws AuthorizationException
+     */
     #[OA\Post(
         path: '/institution-partners',
         summary: 'Create an institution partner',
@@ -89,6 +101,10 @@ class InstitutionPartnerController extends Controller
         return InstitutionPartnerResource::make($partner);
     }
 
+    /**
+     * @throws AuthorizationException
+     * @throws Throwable
+     */
     #[OA\Put(
         path: '/institution-partners/{id}',
         summary: 'Update an institution partner',
@@ -110,6 +126,9 @@ class InstitutionPartnerController extends Controller
         return InstitutionPartnerResource::make($partner);
     }
 
+    /**
+     * @throws AuthorizationException
+     */
     #[OA\Delete(
         path: '/institution-partners/{id}',
         summary: 'Delete an institution partner',
@@ -131,6 +150,7 @@ class InstitutionPartnerController extends Controller
 
     private function getBaseQuery(): Builder
     {
-        return InstitutionPartner::query()->withGlobalScope('policy', InstitutionPartnerPolicy::scope());
+        return InstitutionPartner::query()->withGlobalScope('policy', InstitutionPartnerPolicy::scope())
+            ->with(['partnerInstitution']);
     }
 }

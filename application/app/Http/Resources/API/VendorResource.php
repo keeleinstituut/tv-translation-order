@@ -59,7 +59,7 @@ class VendorResource extends JsonResource
             'comment' => $this->comment,
             ...$this->discounts(),
             'prices' => PriceResource::collection($this->whenLoaded('prices')),
-            'institution_user' => new InstitutionUserResource($this->whenLoaded('institutionUser')),
+            'institution_user' => InstitutionUserResource::make($this->whenLoaded('institutionUser')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'emergency_schedules' => VendorEmergencyScheduleResource::collection($this->whenLoaded('emergencySchedules')),
         ];

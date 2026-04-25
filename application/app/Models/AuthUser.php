@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\ExternalRequestRecipientStatus;
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
 use App\Enums\ExternalRequestStatus;
@@ -101,24 +100,6 @@ class AuthUser extends JwtPayloadUser
             && $project->manager_institution_user_id === $this->institutionUserId;
     }
 
-    public function isAssignedTo(Assignment $assignment): bool
-    {
-        return filled($assignment->assigned_vendor_id)
-            && $this->isVendor()
-            && $assignment->assigned_vendor_id === $this->vendor()?->id;
-    }
-
-    public function isCandidateOf(Assignment $assignment)
-    {
-        return $this->isVendor() && filled($vendor = $this->vendor()) &&
-            $assignment->candidates()->where('vendor_id', $vendor->id)->exists();
-    }
-
-    public function ownsVendor(Vendor $vendor): bool
-    {
-        return $vendor->institution_user_id === $this->institutionUserId;
-    }
-
     public function isInPartnerInstitutionOfAssignment(Assignment $assignment): bool
     {
         if (empty($this->institutionId)) {
@@ -131,7 +112,6 @@ class AuthUser extends JwtPayloadUser
 
         return ExternalTranslationRequestRecipient::query()
             ->where('institution_id', $this->institutionId)
-            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
             ->whereHas('externalTranslationRequest',
                 fn ($q) => $q
                     ->where('assignment_id', $assignment->getKey())
@@ -150,7 +130,6 @@ class AuthUser extends JwtPayloadUser
             ->whereHas('subProject', fn ($q) => $q->where('project_id', $project->getKey()))
             ->exists() || ExternalTranslationRequestRecipient::query()
             ->where('institution_id', $this->institutionId)
-            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
             ->whereHas('externalTranslationRequest.assignment.subProject',
                 fn ($q) => $q->where('project_id', $project->getKey()))
             ->whereHas('externalTranslationRequest', function ($q) use ($requireSourceFiles) {
@@ -159,8 +138,7 @@ class AuthUser extends JwtPayloadUser
                 if ($requireSourceFiles) {
                     $q->where('include_source_files', true);
                 }
-            })
-            ->exists();
+            })->exists();
     }
 
     public function hasActivePartnerAccessToProject(Project $project, bool $requireSourceFiles = false): bool

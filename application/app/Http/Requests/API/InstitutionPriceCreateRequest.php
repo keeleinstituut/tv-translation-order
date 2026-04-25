@@ -48,9 +48,9 @@ class InstitutionPriceCreateRequest extends FormRequest
             function (Validator $validator) {
                 $existing = InstitutionPrice::query()
                     ->where('institution_id', Auth::user()->institutionId)
-                    ->where('skill_id', $this->skill_id)
-                    ->where('src_lang_classifier_value_id', $this->src_lang_classifier_value_id)
-                    ->where('dst_lang_classifier_value_id', $this->dst_lang_classifier_value_id)
+                    ->where('skill_id', $this->input('skill_id'))
+                    ->where('src_lang_classifier_value_id', $this->input('src_lang_classifier_value_id'))
+                    ->where('dst_lang_classifier_value_id', $this->input('dst_lang_classifier_value_id'))
                     ->exists();
 
                 if ($existing) {

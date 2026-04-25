@@ -90,7 +90,11 @@ class ExternalTranslationRequestPolicy
         return ExternalTranslationRequestRecipient::query()
             ->where('external_translation_request_id', $request->getKey())
             ->where('institution_id', $user->institutionId)
-            ->whereIn('status', ExternalRequestRecipientStatus::activeForPartner())
+            ->whereIn('status', [
+                ExternalRequestRecipientStatus::Notified,
+                ExternalRequestRecipientStatus::Accepted,
+                ExternalRequestRecipientStatus::Selected
+            ])
             ->exists();
     }
 

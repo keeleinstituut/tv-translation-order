@@ -56,9 +56,7 @@ class InstitutionPriceController extends Controller
         $params = collect($request->validated());
 
         $query = $this->getBaseQuery()
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill');
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill']);
 
         if ($param = $params->get('src_lang_classifier_value_id')) {
             $query->whereIn('src_lang_classifier_value_id', $param);
@@ -127,10 +125,11 @@ class InstitutionPriceController extends Controller
 
             $data = InstitutionPrice::query()
                 ->whereIn('id', $created->pluck('id'))
-                ->with('sourceLanguageClassifierValue')
-                ->with('destinationLanguageClassifierValue')
-                ->with('skill')
-                ->get();
+                ->with([
+                    'sourceLanguageClassifierValue',
+                    'destinationLanguageClassifierValue',
+                    'skill'
+                ])->get();
 
             return InstitutionPriceResource::collection($data);
         });
@@ -152,9 +151,7 @@ class InstitutionPriceController extends Controller
 
         $prices = $this->getBaseQuery()
             ->whereIn('id', $ids)
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill')
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill'])
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -186,9 +183,7 @@ class InstitutionPriceController extends Controller
 
         $data = $this->getBaseQuery()
             ->whereIn('id', $ids)
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill')
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill'])
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -204,6 +199,7 @@ class InstitutionPriceController extends Controller
 
     private function getBaseQuery(): Builder
     {
-        return InstitutionPrice::query()->withGlobalScope('policy', InstitutionPricePolicy::scope());
+        return InstitutionPrice::query()->withGlobalScope('policy', InstitutionPricePolicy::scope())
+            ->with(['institution']);
     }
 }

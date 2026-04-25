@@ -54,10 +54,7 @@ class VendorSkillLanguagePairController extends Controller
         $params = collect($request->validated());
 
         $query = $this->getBaseQuery()
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill')
-            ->with('vendor');
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill', 'vendor']);
 
         if ($param = $params->get('vendor_id')) {
             $query->whereIn('vendor_id', $param);
@@ -129,10 +126,7 @@ class VendorSkillLanguagePairController extends Controller
 
             $data = VendorSkillLanguagePair::query()
                 ->whereIn('id', $created->pluck('id'))
-                ->with('sourceLanguageClassifierValue')
-                ->with('destinationLanguageClassifierValue')
-                ->with('skill')
-                ->with('vendor')
+                ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill', 'vendor'])
                 ->get();
 
             return VendorSkillLanguagePairResource::collection($data);
@@ -153,10 +147,7 @@ class VendorSkillLanguagePairController extends Controller
 
         $data = $this->getBaseQuery()
             ->whereIn('id', $ids)
-            ->with('sourceLanguageClassifierValue')
-            ->with('destinationLanguageClassifierValue')
-            ->with('skill')
-            ->with('vendor.institutionUser')
+            ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue', 'skill', 'vendor.institutionUser'])
             ->orderBy('created_at', 'asc')
             ->get();
 
