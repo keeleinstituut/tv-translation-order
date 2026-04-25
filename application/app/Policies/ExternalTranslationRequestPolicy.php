@@ -2,7 +2,9 @@
 
 namespace App\Policies;
 
+use App\Enums\ExternalRequestMode;
 use App\Enums\ExternalRequestRecipientStatus;
+use App\Enums\ExternalRequestStatus;
 use App\Enums\InstitutionType;
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
@@ -58,7 +60,12 @@ class ExternalTranslationRequestPolicy
 
     public function update(AuthUser $user, ExternalTranslationRequest $request): bool
     {
-        return $this->isOwnerWithManagePrivilege($user, $request);
+        if (! $this->isOwnerWithManagePrivilege($user, $request)) {
+            return false;
+        }
+
+        return $request->status === ExternalRequestStatus::Active
+            && $request->mode === ExternalRequestMode::Cascade;
     }
 
     public function cancel(AuthUser $user, ExternalTranslationRequest $request): bool
@@ -80,6 +87,10 @@ class ExternalTranslationRequestPolicy
         }
 
         if ($project->status === ProjectStatus::Accepted) {
+            return false;
+        }
+
+        if (! $request->include_source_files) {
             return false;
         }
 

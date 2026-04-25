@@ -91,8 +91,12 @@ class InstitutionPartner extends Model
         ]);
     }
 
-    public function resolveFee(string $srcLangId, string $dstLangId, string $skillId, VolumeUnits $unit): ?float
+    public function resolveFee(string $srcLangId, string $dstLangId, ?string $skillId, VolumeUnits $unit): ?float
     {
+        if (empty($skillId)) {
+            return null;
+        }
+
         /** @var InstitutionPartnerPrice $price */
         $price = $this->prices()
             ->where('src_lang_classifier_value_id', $srcLangId)
@@ -103,8 +107,12 @@ class InstitutionPartner extends Model
         return $price?->getUnitFee($unit);
     }
 
-    public function resolveMinimalFee(string $srcLangId, string $dstLangId, string $skillId): ?float
+    public function resolveMinimalFee(string $srcLangId, string $dstLangId, ?string $skillId): ?float
     {
+        if (empty($skillId)) {
+            return null;
+        }
+
         return $this->prices()
             ->where('src_lang_classifier_value_id', $srcLangId)
             ->where('dst_lang_classifier_value_id', $dstLangId)

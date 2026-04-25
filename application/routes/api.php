@@ -117,6 +117,28 @@ Route::prefix('/institution-partner-prices')
         Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partner_prices.bulkDestroy');
     });
 
+Route::prefix('/external-translation-requests')
+    ->controller(API\ExternalTranslationRequestController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.external_translation_requests.index');
+        Route::post('/', 'store')->name('translation-order.external_translation_requests.store');
+        Route::get('/{id}', 'show')->name('translation-order.external_translation_requests.show');
+        Route::put('/{id}', 'update')->name('translation-order.external_translation_requests.update');
+        Route::post('/{id}/cancel', 'cancel')->name('translation-order.external_translation_requests.cancel');
+        Route::post('/{id}/select', 'select')->name('translation-order.external_translation_requests.select');
+    });
+
+Route::prefix('/external-translation-request-recipients')
+    ->controller(API\ExternalTranslationRequestRecipientController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.external_translation_request_recipients.index');
+        Route::get('/{id}', 'show')->name('translation-order.external_translation_request_recipients.show');
+        Route::post('/{id}/accept', 'accept')->name('translation-order.external_translation_request_recipients.accept');
+        Route::post('/{id}/decline', 'decline')->name('translation-order.external_translation_request_recipients.decline');
+    });
+
 Route::prefix('/projects')
     ->controller(API\ProjectController::class)
     ->whereUuid('id')->group(function (): void {
