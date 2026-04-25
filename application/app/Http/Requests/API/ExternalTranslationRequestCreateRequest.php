@@ -45,7 +45,7 @@ class ExternalTranslationRequestCreateRequest extends FormRequest
                     return;
                 }
 
-                if ($assignment->assignee_id !== null) {
+                if ($assignment->assigned_vendor_id !== null) {
                     $validator->errors()->add('assignment_id', 'Assignment already has a vendor assigned.');
                 }
 
