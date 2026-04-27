@@ -8,25 +8,6 @@ use App\Models\ExternalTranslationRequestRecipient;
 
 class ExternalTranslationRequestRecipientPolicy
 {
-    public function viewAny(AuthUser $user): bool
-    {
-        return $user->hasAtLeastOnePrivilege([
-            PrivilegeKey::ManageExternalTranslationRequest,
-            PrivilegeKey::ViewExternalTranslationRequest,
-            PrivilegeKey::RespondExternalTranslationRequest,
-        ]);
-    }
-
-    public function view(AuthUser $user, ExternalTranslationRequestRecipient $recipient): bool
-    {
-        if ($recipient->institution_id === $user->institutionId) {
-            return $user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest);
-        }
-
-        return $user->isInSameInstitutionAs($recipient->externalTranslationRequest->assignment->subProject->project) &&
-            $user->hasPrivilege(PrivilegeKey::ManageExternalTranslationRequest);
-    }
-
     public function accept(AuthUser $user, ExternalTranslationRequestRecipient $recipient): bool
     {
         return $recipient->institution_id === $user->institutionId &&

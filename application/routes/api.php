@@ -129,8 +129,6 @@ Route::prefix('/external-translation-request-recipients')
     ->controller(API\ExternalTranslationRequestRecipientController::class)
     ->whereUuid('id')
     ->group(function (): void {
-        Route::get('/', 'index')->name('translation-order.external_translation_request_recipients.index');
-        Route::get('/{id}', 'show')->name('translation-order.external_translation_request_recipients.show');
         Route::post('/{id}/accept', 'accept')->name('translation-order.external_translation_request_recipients.accept');
         Route::post('/{id}/decline', 'decline')->name('translation-order.external_translation_request_recipients.decline');
     });

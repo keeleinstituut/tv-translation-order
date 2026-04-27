@@ -8,6 +8,7 @@ use App\Jobs\ExpireExternalTranslationRequestRecipientJob;
 use App\Models\ExternalTranslationRequest;
 use App\Models\ExternalTranslationRequestRecipient;
 use DomainException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -100,6 +101,7 @@ readonly class ExternalTranslationRequestStateMachine
                 throw new DomainException("Request is not ACTIVE.");
             }
 
+            /** @var ExternalTranslationRequestRecipient $lockedRecipient */
             $lockedRecipient = $lockedRequest->recipients()
                 ->where('id', $recipient->id)
                 ->lockForUpdate()
@@ -109,6 +111,7 @@ readonly class ExternalTranslationRequestStateMachine
                 throw new DomainException("Recipient is not in ACCEPTED state.");
             }
 
+            /** @var Collection<ExternalTranslationRequestRecipient> $rejectedRecipients */
             $rejectedRecipients = $lockedRequest->recipients()
                 ->whereIn('id', array_keys($rejectionComments))
                 ->whereIn('status', [
@@ -172,6 +175,7 @@ readonly class ExternalTranslationRequestStateMachine
             return;
         }
 
+        /** @var ExternalTranslationRequestRecipient $next */
         $next = $request->recipients()
             ->where('status', ExternalRequestRecipientStatus::Pending)
             ->orderBy('position')
@@ -179,7 +183,7 @@ readonly class ExternalTranslationRequestStateMachine
             ->first();
 
         if (!$next) {
-            return; // D17: queue exhausted — stays ACTIVE, is_cascade_exhausted flag exposed in resource
+            return;
         }
 
         $next->update([
