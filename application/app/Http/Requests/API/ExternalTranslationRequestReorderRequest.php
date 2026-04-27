@@ -6,7 +6,29 @@ use App\Enums\ExternalRequestRecipientStatus;
 use App\Models\ExternalTranslationRequestRecipient;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: ['recipients'],
+        properties: [
+            new OA\Property(
+                property: 'recipients',
+                type: 'array',
+                items: new OA\Items(
+                    required: ['id', 'position'],
+                    properties: [
+                        new OA\Property(property: 'id', type: 'string', format: 'uuid'),
+                        new OA\Property(property: 'position', type: 'integer', minimum: 1),
+                    ],
+                    type: 'object',
+                )
+            ),
+        ]
+    )
+)]
 class ExternalTranslationRequestReorderRequest extends FormRequest
 {
     public function rules(): array

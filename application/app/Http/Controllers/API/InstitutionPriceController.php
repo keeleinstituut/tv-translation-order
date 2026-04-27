@@ -199,7 +199,6 @@ class InstitutionPriceController extends Controller
 
     private function getBaseQuery(): Builder
     {
-        return InstitutionPrice::query()->withGlobalScope('policy', InstitutionPricePolicy::scope())
-            ->with(['institution']);
+        return InstitutionPrice::query()->withGlobalScope('policy', InstitutionPricePolicy::scope());
     }
 }

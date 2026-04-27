@@ -88,6 +88,8 @@ class Institution extends Model
 
     public $timestamps = false;
 
+    protected $guarded = [];
+
     protected $casts = [
         'institution_type' => InstitutionType::class,
     ];

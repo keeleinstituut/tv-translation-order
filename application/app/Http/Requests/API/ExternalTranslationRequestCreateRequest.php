@@ -13,7 +13,35 @@ use App\Rules\ScannedRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Validator;
+use OpenApi\Attributes as OA;
 
+#[OA\RequestBody(
+    request: self::class,
+    required: true,
+    content: new OA\JsonContent(
+        required: ['assignment_id', 'mode', 'recipients'],
+        properties: [
+            new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
+            new OA\Property(property: 'mode', type: 'string', enum: ['CASCADE', 'PARALLEL']),
+            new OA\Property(property: 'reaction_time_minutes', type: 'integer', enum: [15, 30, 60, 120, 180, 240], nullable: true),
+            new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', nullable: true),
+            new OA\Property(
+                property: 'recipients',
+                type: 'array',
+                items: new OA\Items(
+                    required: ['institution_id'],
+                    properties: [new OA\Property(property: 'institution_id', type: 'string', format: 'uuid')],
+                    type: 'object',
+                )
+            ),
+            new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
+            new OA\Property(property: 'include_source_files', type: 'boolean', nullable: true),
+            new OA\Property(property: 'include_price', type: 'boolean', nullable: true),
+            new OA\Property(property: 'override_price', type: 'number', format: 'double', nullable: true),
+            new OA\Property(property: 'request_files', type: 'array', nullable: true, items: new OA\Items(type: 'string', format: 'binary')),
+        ]
+    )
+)]
 class ExternalTranslationRequestCreateRequest extends FormRequest
 {
     public function rules(): array

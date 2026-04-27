@@ -32,7 +32,7 @@ class AssignmentPolicy
                 return true;
             }
 
-            return $user->isAssignedTo($assignment) || $this->isCandidateOf($user, $assignment);
+            return $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
         }
 
         return $user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&

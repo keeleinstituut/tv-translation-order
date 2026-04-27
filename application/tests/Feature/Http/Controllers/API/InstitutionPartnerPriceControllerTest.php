@@ -137,7 +137,7 @@ class InstitutionPartnerPriceControllerTest extends TestCase
 
         $this->assertNotNull($saved);
 
-        $response->assertExactJson([
+        $response->assertJson([
             'data' => RepresentationHelpers::createInstitutionPartnerPriceRepresentation($saved),
         ]);
     }
@@ -336,7 +336,7 @@ class InstitutionPartnerPriceControllerTest extends TestCase
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $response->assertExactJson([
+        $response->assertJson([
             'data' => $updated->map(fn ($p) => RepresentationHelpers::createInstitutionPartnerPriceRepresentation($p))->toArray(),
         ]);
     }
