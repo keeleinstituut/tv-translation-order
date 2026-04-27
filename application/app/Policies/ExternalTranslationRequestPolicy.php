@@ -33,7 +33,10 @@ class ExternalTranslationRequestPolicy
             return $user->hasPrivilege(PrivilegeKey::ManageExternalTranslationRequest);
         }
 
-        if (! $user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest)) {
+        if (! $user->hasAtLeastOnePrivilege([
+            PrivilegeKey::ViewExternalTranslationRequest,
+            PrivilegeKey::RespondExternalTranslationRequest,
+        ])) {
             return false;
         }
 

@@ -4,9 +4,11 @@ namespace App\Http\Resources\API;
 
 use App\Enums\ExternalRequestRecipientStatus;
 use App\Http\Resources\MediaResource;
+use App\Models\AuthUser;
 use App\Models\ExternalTranslationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 use OpenApi\Attributes as OA;
 
 /**
@@ -49,13 +51,32 @@ class ExternalTranslationRequestResource extends JsonResource
             'include_source_files' => $this->include_source_files,
             'status' => $this->status,
             'is_cascade_exhausted' => $this->computeIsCascadeExhausted(),
-            'recipients' => ExternalTranslationRequestRecipientResource::collection(
-                $this->whenLoaded('recipients')
-            ),
+            'recipients' => $this->whenLoaded('recipients', fn() => ExternalTranslationRequestRecipientResource::collection(
+                $this->visibleRecipients($request)
+            )),
             'media' => $this->whenLoaded('media', fn() => MediaResource::collection($this->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION))),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
+    }
+
+    /**
+     * Owner institution sees all recipients; everyone else (i.e. partner/recipient
+     * institutions) sees only their own institution's row to avoid leaking
+     * competitors' bids and comments.
+     */
+    private function visibleRecipients(Request $request): Collection
+    {
+        /** @var AuthUser|null $user */
+        $user = $request->user();
+
+        if ($this->ownerInstitution->id === $user?->institutionId) {
+            return $this->recipients;
+        }
+
+        return $this->recipients
+            ->where('institution_id', $user?->institutionId)
+            ->values();
     }
 
     private function computeIsCascadeExhausted(): bool

@@ -94,9 +94,9 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $response->assertNotFound();
     }
 
-    public function test_partner_without_view_privilege_cannot_view_even_as_recipient(): void
+    public function test_partner_with_only_respond_privilege_can_view_request_when_they_are_a_recipient(): void
     {
-        // GIVEN — partner has only RespondETR, not ViewETR
+        // GIVEN — partner has only RespondETR (no ViewETR / ManageETR)
         $ownerUser = $this->createOwnerUser();
         $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
@@ -107,8 +107,96 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson("/api/external-translation-requests/{$translationRequest->id}");
 
-        // THEN
-        $response->assertForbidden();
+        // THEN — Respond privilege is sufficient for the partner branch of view()
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $translationRequest->id]);
+    }
+
+    public function test_user_with_no_etr_privilege_cannot_view_or_list(): void
+    {
+        // GIVEN — user has an unrelated privilege only
+        $ownerUser = $this->createOwnerUser();
+        $strangerUser = $this->createPartnerUser(PrivilegeKey::ViewVendorDatabase);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        // WHEN
+        $listResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($strangerUser))
+            ->getJson('/api/external-translation-requests');
+        $showResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($strangerUser))
+            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+
+        // THEN — viewAny rejects them
+        $listResponse->assertForbidden();
+        $showResponse->assertForbidden();
+    }
+
+    // --- recipients[] filtering ---
+
+    public function test_owner_sees_all_recipients_in_show_response(): void
+    {
+        // GIVEN — request with two partners
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $recipientA = $this->createNotifiedRecipient($translationRequest, $partnerA);
+        $recipientB = $this->createNotifiedRecipient($translationRequest, $partnerB);
+
+        // WHEN owner reads the request
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+
+        // THEN owner sees both recipient rows
+        $response->assertOk()
+            ->assertJsonPath('data.recipients.0.id', fn($id) => in_array($id, [$recipientA->id, $recipientB->id]))
+            ->assertJsonPath('data.recipients.1.id', fn($id) => in_array($id, [$recipientA->id, $recipientB->id]));
+        $this->assertCount(2, $response->json('data.recipients'));
+    }
+
+    public function test_partner_sees_only_their_own_recipient_row_in_show_response(): void
+    {
+        // GIVEN — request with two partners
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $recipientA = $this->createNotifiedRecipient($translationRequest, $partnerA);
+        $recipientB = $this->createNotifiedRecipient($translationRequest, $partnerB);
+
+        // WHEN partner A reads the request
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerA))
+            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+
+        // THEN partner A sees only their own recipient row, not the competitor's
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $recipientA->id])
+            ->assertJsonMissing(['id' => $recipientB->id]);
+        $this->assertCount(1, $response->json('data.recipients'));
+    }
+
+    public function test_partner_sees_only_their_own_recipient_row_in_index_response(): void
+    {
+        // GIVEN — request with two partners
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $recipientA = $this->createNotifiedRecipient($translationRequest, $partnerA);
+        $recipientB = $this->createNotifiedRecipient($translationRequest, $partnerB);
+
+        // WHEN partner A lists requests
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerA))
+            ->getJson('/api/external-translation-requests');
+
+        // THEN the embedded recipients[] for the request contains only partner A's row
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $recipientA->id])
+            ->assertJsonMissing(['id' => $recipientB->id]);
+        $this->assertCount(1, $response->json('data.0.recipients'));
     }
 
     // --- downloadMedia ---
