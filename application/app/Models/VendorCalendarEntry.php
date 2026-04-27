@@ -135,7 +135,7 @@ class VendorCalendarEntry extends Model
     public function scopeForClient(Builder $query, string $institutionUserId): Builder
     {
         return $query->whereHas(
-            'assignment.subProject.project',
+            'assignment.project',
             fn (Builder $sub) => $sub->where('client_institution_user_id', $institutionUserId)
         );
     }

@@ -6,7 +6,9 @@ use App\Enums\ExternalRequestRecipientStatus;
 use App\Enums\ExternalRequestStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\ExternalTranslationRequestAcceptRequest;
 use App\Http\Requests\API\ExternalTranslationRequestCreateRequest;
+use App\Http\Requests\API\ExternalTranslationRequestDeclineRequest;
 use App\Http\Requests\API\ExternalTranslationRequestListRequest;
 use App\Http\Requests\API\ExternalTranslationRequestReorderRequest;
 use App\Http\Requests\API\ExternalTranslationRequestSelectRequest;
@@ -133,13 +135,13 @@ class ExternalTranslationRequestController extends Controller
     {
         $validated = $request->validated();
         $assignment = Assignment::findOrFail($validated['assignment_id']);
-
+        $institutionId = Auth::user()->institutionUserId;
         $this->authorize('create', [ExternalTranslationRequest::class, $assignment]);
 
-        $translationRequest = DB::transaction(function () use ($validated, $assignment) {
+        $translationRequest = DB::transaction(function () use ($validated, $assignment, $institutionId) {
             $translationRequest = ExternalTranslationRequest::create([
                 'assignment_id' => $assignment->id,
-                'created_by_institution_user_id' => Auth::user()->institutionUserId,
+                'created_by_institution_user_id' => $institutionId,
                 'mode' => $validated['mode'],
                 'reaction_time_minutes' => $validated['reaction_time_minutes'] ?? null,
                 'deadline_at' => $validated['deadline_at'] ?? null,
@@ -152,7 +154,7 @@ class ExternalTranslationRequestController extends Controller
 
             $recipientInstitutionIds = collect($validated['recipients'])->pluck('institution_id');
             $partnersByInstitutionId = InstitutionPartner::query()
-                ->where('institution_id', Auth::user()->institutionId)
+                ->where('institution_id', $institutionId)
                 ->whereIn('partner_institution_id', $recipientInstitutionIds)
                 ->get()
                 ->keyBy('partner_institution_id');
@@ -306,6 +308,81 @@ class ExternalTranslationRequestController extends Controller
 
         try {
             $this->stateMachine->selectRecipient($translationRequest, $recipient, $rejectionComments);
+        } catch (DomainException $exception) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
+        }
+
+        return ExternalTranslationRequestResource::make(
+            $translationRequest->fresh()->load(['recipients.institution'])
+        );
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Post(
+        path: '/external-translation-requests/{id}/accept',
+        summary: 'Accept an external translation request',
+        requestBody: new OAH\RequestBody(ExternalTranslationRequestAcceptRequest::class),
+        tags: ['External translation requests'],
+        parameters: [
+            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: ExternalTranslationRequestResource::class, description: 'Accepted external translation request')]
+    public function accept(ExternalTranslationRequestAcceptRequest $request, string $id): ExternalTranslationRequestResource
+    {
+        /** @var ExternalTranslationRequest $translationRequest */
+        $translationRequest = $this->getBaseQuery()->findOrFail($id);
+        $this->authorize('accept', $translationRequest);
+
+        /** @var ExternalTranslationRequestRecipient $recipient */
+        $recipient = $translationRequest->recipients
+            ->firstWhere('institution_id', Auth::user()->institutionId);
+
+        $validated = $request->validated();
+        try {
+            $this->stateMachine->acceptRecipient(
+                $recipient,
+                isset($validated['proposed_price']) ? (float)$validated['proposed_price'] : null,
+                $validated['response_comment'] ?? null,
+            );
+        } catch (DomainException $exception) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
+        }
+
+        return ExternalTranslationRequestResource::make(
+            $translationRequest->fresh()->load(['recipients.institution'])
+        );
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Post(
+        path: '/external-translation-requests/{id}/decline',
+        summary: 'Decline an external translation request',
+        requestBody: new OAH\RequestBody(ExternalTranslationRequestDeclineRequest::class),
+        tags: ['External translation requests'],
+        parameters: [
+            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
+        ],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: ExternalTranslationRequestResource::class, description: 'Declined external translation request')]
+    public function decline(ExternalTranslationRequestDeclineRequest $request, string $id): ExternalTranslationRequestResource
+    {
+        /** @var ExternalTranslationRequest $translationRequest */
+        $translationRequest = $this->getBaseQuery()->findOrFail($id);
+        $this->authorize('decline', $translationRequest);
+
+        /** @var ExternalTranslationRequestRecipient $recipient */
+        $recipient = $translationRequest->recipients
+            ->firstWhere('institution_id', Auth::user()->institutionId);
+
+        try {
+            $this->stateMachine->declineRecipient($recipient, $request->validated('decline_comment'));
         } catch (DomainException $exception) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
         }

@@ -27,7 +27,7 @@ class ExternalTranslationRequestPolicy
 
     public function view(AuthUser $user, ExternalTranslationRequest $request): bool
     {
-        $project = $request->assignment->subProject->project;
+        $project = $request->assignment->project;
 
         if ($user->isInSameInstitutionAs($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageExternalTranslationRequest);
@@ -48,7 +48,7 @@ class ExternalTranslationRequestPolicy
 
     public function create(AuthUser $user, Assignment $assignment): bool
     {
-        if (! $user->isInSameInstitutionAs($assignment->subProject->project)) {
+        if (! $user->isInSameInstitutionAs($assignment->project)) {
             return false;
         }
 
@@ -81,9 +81,21 @@ class ExternalTranslationRequestPolicy
         return $this->isOwnerWithManagePrivilege($user, $request);
     }
 
+    public function accept(AuthUser $user, ExternalTranslationRequest $request): bool
+    {
+        return $user->hasPrivilege(PrivilegeKey::RespondExternalTranslationRequest)
+            && $request->recipients->contains('institution_id', $user->institutionId);
+    }
+
+    public function decline(AuthUser $user, ExternalTranslationRequest $request): bool
+    {
+        return $user->hasPrivilege(PrivilegeKey::RespondExternalTranslationRequest)
+            && $request->recipients->contains('institution_id', $user->institutionId);
+    }
+
     public function downloadMedia(AuthUser $user, ExternalTranslationRequest $request): bool
     {
-        $project = $request->assignment->subProject->project;
+        $project = $request->assignment->project;
 
         if ($user->isInSameInstitutionAs($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageExternalTranslationRequest);
@@ -114,7 +126,7 @@ class ExternalTranslationRequestPolicy
 
     private function isOwnerWithManagePrivilege(AuthUser $user, ExternalTranslationRequest $request): bool
     {
-        return $user->isInSameInstitutionAs($request->assignment->subProject->project) &&
+        return $user->isInSameInstitutionAs($request->assignment->project) &&
             $user->hasPrivilege(PrivilegeKey::ManageExternalTranslationRequest);
     }
 
@@ -156,7 +168,7 @@ class ExternalTranslationRequestScope implements IScope
     {
         $institutionId = Auth::user()->institutionId;
         $builder->where(function (Builder $q) use ($institutionId) {
-            $q->whereHas('assignment.subProject.project',
+            $q->whereHas('assignment.project',
                     fn (Builder $p) => $p->where('institution_id', $institutionId))
                 ->orWhereHas('recipients',
                     fn (Builder $r) => $r->where('institution_id', $institutionId));

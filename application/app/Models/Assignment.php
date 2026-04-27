@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
+use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 
 /**
  * App\Models\Assignment
@@ -46,6 +48,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
  * @property-read SubProject $subProject
+ * @property-read Project $project
  * @property-read JobDefinition $jobDefinition
  * @property-read Collection<int, Volume> $volumes
  * @property-read int|null $volumes_count
@@ -72,6 +75,7 @@ class Assignment extends Model implements AuditLoggable
 {
     use HasUuids;
     use HasFactory;
+    use HasRelationships;
 
     protected $guarded = [];
 
@@ -87,6 +91,14 @@ class Assignment extends Model implements AuditLoggable
     public function subProject(): BelongsTo
     {
         return $this->belongsTo(SubProject::class);
+    }
+
+    public function project(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->subProject(),
+            new SubProject()->project(),
+        );
     }
 
     public function candidates(): HasMany

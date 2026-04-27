@@ -25,7 +25,7 @@ class AssignmentPolicy
      */
     public function view(AuthUser $user, Assignment $assignment): bool
     {
-        $project = $assignment->subProject->project;
+        $project = $assignment->project;
 
         if ($user->isInSameInstitutionAs($project)) {
             if (Gate::allows('view', $project)) {
@@ -45,7 +45,7 @@ class AssignmentPolicy
      */
     public function create(AuthUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return Gate::allows('update', [$assignment->project]);
     }
 
     /**
@@ -54,7 +54,7 @@ class AssignmentPolicy
      */
     public function update(AuthUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return Gate::allows('update', [$assignment->project]);
     }
 
     /**
@@ -63,7 +63,7 @@ class AssignmentPolicy
      */
     public function updateAssigneeComment(AuthUser $user, Assignment $assignment): bool
     {
-        return $user->isInSameInstitutionAs($assignment->subProject->project) && (
+        return $user->isInSameInstitutionAs($assignment->project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
                 $this->isAssignedTo($user, $assignment)
             );
@@ -96,7 +96,7 @@ class AssignmentPolicy
 
     public function markAsCompleted(AuthUser $user, Assignment $assignment): bool
     {
-        $project = $assignment->subProject->project;
+        $project = $assignment->project;
 
         if ($user->isInSameInstitutionAs($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
@@ -158,7 +158,7 @@ class AssignmentScope implements IScope
     {
         $institutionId = Auth::user()->institutionId;
         $builder->where(function (Builder $outer) use ($institutionId) {
-            $outer->whereHas('subProject.project',
+            $outer->whereHas('project',
                     fn (Builder $p) => $p->where('institution_id', $institutionId))
                 ->orWhere(fn (Builder $self) => $self->sharedWithInstitution($institutionId));
         });

@@ -668,6 +668,118 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    // --- accept ---
+
+    public function test_partner_with_respond_privilege_can_accept_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/accept");
+
+        // THEN
+        $response->assertOk();
+    }
+
+    public function test_partner_without_respond_privilege_cannot_accept(): void
+    {
+        // GIVEN — partner has ViewETR but not RespondETR
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/accept");
+
+        // THEN
+        $response->assertForbidden();
+    }
+
+    public function test_owner_institution_user_cannot_accept_their_own_request(): void
+    {
+        // GIVEN — owner has no recipient row, even with the Respond privilege
+        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/accept");
+
+        // THEN — accept policy requires the caller's institution to be among recipients
+        $response->assertForbidden();
+    }
+
+    // --- decline ---
+
+    public function test_partner_with_respond_privilege_can_decline_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/decline", [
+                'decline_comment' => 'Not available',
+            ]);
+
+        // THEN
+        $response->assertOk();
+    }
+
+    public function test_partner_without_respond_privilege_cannot_decline(): void
+    {
+        // GIVEN — partner has ViewETR but not RespondETR
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/decline", [
+                'decline_comment' => 'Not available',
+            ]);
+
+        // THEN
+        $response->assertForbidden();
+    }
+
+    public function test_owner_institution_user_cannot_decline_their_own_request(): void
+    {
+        // GIVEN — owner has no recipient row, even with the Respond privilege
+        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/decline", [
+                'decline_comment' => 'Not available',
+            ]);
+
+        // THEN — decline policy requires the caller's institution to be among recipients
+        $response->assertForbidden();
+    }
+
     // --- helpers ---
 
     private function createOwnerUser(PrivilegeKey ...$extra): InstitutionUser
