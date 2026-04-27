@@ -130,11 +130,6 @@ class Vendor extends Model implements AuditLoggable
         return $this->hasMany(Price::class);
     }
 
-    public function skillLanguagePairs(): HasMany
-    {
-        return $this->hasMany(VendorSkillLanguagePair::class);
-    }
-
     public function candidates()
     {
         return $this->hasMany(Candidate::class);
