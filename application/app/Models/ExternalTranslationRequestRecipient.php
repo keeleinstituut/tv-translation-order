@@ -27,6 +27,7 @@ use Spatie\EloquentSortable\SortableTrait;
  * @property string|null $calculated_price
  * @property string|null $proposed_price
  * @property string|null $decline_comment
+ * @property string|null $rejection_comment
  * @property string|null $response_comment
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at

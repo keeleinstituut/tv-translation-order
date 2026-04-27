@@ -81,12 +81,16 @@ readonly class ExternalTranslationRequestStateMachine
         });
     }
 
+    /**
+     * @param array<string, string> $rejectionComments map of non-selected in-play recipient_id => rejection_comment
+     */
     public function selectRecipient(
         ExternalTranslationRequest          $request,
         ExternalTranslationRequestRecipient $recipient,
+        array                               $rejectionComments,
     ): void
     {
-        DB::transaction(function () use ($request, $recipient) {
+        DB::transaction(function () use ($request, $recipient, $rejectionComments) {
             $lockedRequest = ExternalTranslationRequest::query()
                 ->whereKey($request->getKey())
                 ->lockForUpdate()
@@ -105,7 +109,30 @@ readonly class ExternalTranslationRequestStateMachine
                 throw new DomainException("Recipient is not in ACCEPTED state.");
             }
 
+            $rejectedRecipients = $lockedRequest->recipients()
+                ->whereKey(array_keys($rejectionComments))
+                ->whereIn('status', [
+                    ExternalRequestRecipientStatus::Pending,
+                    ExternalRequestRecipientStatus::Notified,
+                    ExternalRequestRecipientStatus::Accepted,
+                ])
+                ->lockForUpdate()
+                ->get();
+
+            if ($rejectedRecipients->count() !== count($rejectionComments)) {
+                throw new DomainException("One or more rejected recipients are no longer in-play.");
+            }
+
             $lockedRecipient->update(['status' => ExternalRequestRecipientStatus::Selected]);
+
+            foreach ($rejectedRecipients as $rejectedRecipient) {
+                $rejectedRecipient->update([
+                    'status' => ExternalRequestRecipientStatus::Rejected,
+                    'rejection_comment' => $rejectionComments[$rejectedRecipient->getKey()],
+                    'responded_at' => $rejectedRecipient->responded_at ?? now(),
+                ]);
+            }
+
             $lockedRequest->update(['status' => ExternalRequestStatus::Fulfilled]);
 
             $finalPrice = $lockedRecipient->proposed_price ?? $lockedRequest->price ?? $lockedRecipient->calculated_price;

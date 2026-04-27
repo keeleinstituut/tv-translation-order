@@ -296,6 +296,290 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    // --- select ---
+
+    public function test_owner_can_select_recipient_with_rejection_comments_for_other_in_play_recipients(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'proposed_price' => '123.456',
+            'position' => 1,
+        ]);
+        $loserAccepted = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 2,
+        ]);
+        $loserNotified = ExternalTranslationRequestRecipient::factory()->notified()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'position' => 3,
+        ]);
+        $loserPending = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Pending,
+            'position' => 4,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [
+                    ['recipient_id' => $loserAccepted->id, 'rejection_comment' => 'price too high'],
+                    ['recipient_id' => $loserNotified->id, 'rejection_comment' => 'no answer in time window'],
+                    ['recipient_id' => $loserPending->id, 'rejection_comment' => 'not needed'],
+                ],
+            ]);
+
+        // THEN
+        $response->assertOk();
+        $this->assertSame(ExternalRequestStatus::Fulfilled, $translationRequest->fresh()->status);
+        $this->assertSame(ExternalRequestRecipientStatus::Selected, $selected->fresh()->status);
+        $this->assertSame(ExternalRequestRecipientStatus::Rejected, $loserAccepted->fresh()->status);
+        $this->assertSame('price too high', $loserAccepted->fresh()->rejection_comment);
+        $this->assertSame(ExternalRequestRecipientStatus::Rejected, $loserNotified->fresh()->status);
+        $this->assertSame('no answer in time window', $loserNotified->fresh()->rejection_comment);
+        $this->assertSame(ExternalRequestRecipientStatus::Rejected, $loserPending->fresh()->status);
+        $this->assertSame('not needed', $loserPending->fresh()->rejection_comment);
+        $this->assertSame($selected->institution_id, $assignment->fresh()->external_institution_id);
+    }
+
+    public function test_owner_can_select_when_no_other_in_play_recipients(): void
+    {
+        // GIVEN — only the selected recipient is in-play; everyone else is terminal
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'proposed_price' => '99.000',
+            'position' => 1,
+        ]);
+        $declined = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Declined,
+            'decline_comment' => 'self-declined',
+            'position' => 2,
+        ]);
+        $expired = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Expired,
+            'position' => 3,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [],
+            ]);
+
+        // THEN
+        $response->assertOk();
+        $this->assertSame(ExternalRequestRecipientStatus::Selected, $selected->fresh()->status);
+        $this->assertSame(ExternalRequestRecipientStatus::Declined, $declined->fresh()->status);
+        $this->assertSame('self-declined', $declined->fresh()->decline_comment);
+        $this->assertNull($declined->fresh()->rejection_comment);
+        $this->assertSame(ExternalRequestRecipientStatus::Expired, $expired->fresh()->status);
+        $this->assertNull($expired->fresh()->rejection_comment);
+    }
+
+    public function test_select_fails_when_missing_rejection_comment_for_in_play_recipient(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 1,
+        ]);
+        $loser = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 2,
+        ]);
+
+        // WHEN — omit $loser from rejection_comments
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable();
+        $this->assertSame(ExternalRequestStatus::Active, $translationRequest->fresh()->status);
+        $this->assertSame(ExternalRequestRecipientStatus::Accepted, $loser->fresh()->status);
+    }
+
+    public function test_select_fails_when_rejection_comments_include_terminal_recipient(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 1,
+        ]);
+        $declined = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Declined,
+            'decline_comment' => 'self-declined',
+            'position' => 2,
+        ]);
+
+        // WHEN — DECLINED recipient must not appear in rejection_comments
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [
+                    ['recipient_id' => $declined->id, 'rejection_comment' => 'no'],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable();
+        $this->assertSame(ExternalRequestRecipientStatus::Declined, $declined->fresh()->status);
+        $this->assertNull($declined->fresh()->rejection_comment);
+        $this->assertSame('self-declined', $declined->fresh()->decline_comment);
+    }
+
+    public function test_select_fails_when_rejection_comments_include_selected_recipient(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 1,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [
+                    ['recipient_id' => $selected->id, 'rejection_comment' => 'self'],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable();
+        $this->assertSame(ExternalRequestRecipientStatus::Accepted, $selected->fresh()->status);
+    }
+
+    public function test_select_fails_when_rejection_comments_include_foreign_recipient(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 1,
+        ]);
+        $foreignAssignment = $this->createAssignmentForOwner($ownerUser);
+        $foreignRequest = $this->createTranslationRequest($foreignAssignment);
+        $foreignRecipient = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $foreignRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [
+                    ['recipient_id' => $foreignRecipient->id, 'rejection_comment' => 'foreign'],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable();
+    }
+
+    public function test_select_fails_when_rejection_comments_have_duplicate_recipient_id(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 1,
+        ]);
+        $loser = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 2,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [
+                    ['recipient_id' => $loser->id, 'rejection_comment' => 'first'],
+                    ['recipient_id' => $loser->id, 'rejection_comment' => 'duplicate'],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable();
+    }
+
+    public function test_select_fails_when_rejection_comment_is_empty(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+
+        $selected = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 1,
+        ]);
+        $loser = ExternalTranslationRequestRecipient::factory()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'status' => ExternalRequestRecipientStatus::Accepted,
+            'position' => 2,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+                'recipient_id' => $selected->id,
+                'rejection_comments' => [
+                    ['recipient_id' => $loser->id, 'rejection_comment' => ''],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable();
+    }
+
     // --- helpers ---
 
     private function createOwnerUser(PrivilegeKey ...$extra): InstitutionUser

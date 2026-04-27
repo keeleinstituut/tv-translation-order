@@ -26,6 +26,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'calculated_price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'proposed_price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'decline_comment', type: 'string', nullable: true),
+        new OA\Property(property: 'rejection_comment', type: 'string', nullable: true),
         new OA\Property(property: 'response_comment', type: 'string', nullable: true),
         new OA\Property(property: 'requestor', type: 'object', nullable: true),
         new OA\Property(property: 'order', type: 'object', nullable: true),
@@ -50,6 +51,7 @@ class ExternalTranslationRequestInboxDetailsResource extends JsonResource
             'status' => $this->status,
             'response_deadline' => $this->resolveResponseDeadline($translationRequest),
             'decline_comment' => $this->decline_comment,
+            'rejection_comment' => $this->rejection_comment,
             'response_comment' => $this->response_comment,
             'requestor' => [
                 'institution_name' => $project->institution?->name,

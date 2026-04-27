@@ -10,6 +10,7 @@ enum ExternalRequestRecipientStatus: string
     case Declined = 'DECLINED';
     case Expired = 'EXPIRED';
     case Selected = 'SELECTED';
+    case Rejected = 'REJECTED';
 
     /** @return array<self> */
     public static function activeForPartner(): array

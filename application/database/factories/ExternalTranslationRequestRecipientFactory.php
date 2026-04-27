@@ -26,6 +26,7 @@ class ExternalTranslationRequestRecipientFactory extends Factory
             'calculated_price' => null,
             'proposed_price' => null,
             'decline_comment' => null,
+            'rejection_comment' => null,
             'response_comment' => null,
         ];
     }

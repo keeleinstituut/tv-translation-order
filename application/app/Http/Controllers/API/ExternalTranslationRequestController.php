@@ -300,8 +300,12 @@ class ExternalTranslationRequestController extends Controller
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Recipient is not in ACCEPTED state.');
         }
 
+        $rejectionComments = collect($request->validated('rejection_comments', []))
+            ->pluck('rejection_comment', 'recipient_id')
+            ->all();
+
         try {
-            $this->stateMachine->selectRecipient($translationRequest, $recipient);
+            $this->stateMachine->selectRecipient($translationRequest, $recipient, $rejectionComments);
         } catch (DomainException $exception) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
         }
