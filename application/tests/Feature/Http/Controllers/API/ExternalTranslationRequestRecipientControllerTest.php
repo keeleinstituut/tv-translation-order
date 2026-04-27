@@ -5,6 +5,7 @@ namespace Tests\Feature\Http\Controllers\API;
 use App\Enums\ExternalRequestStatus;
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\ExternalTranslationRequest;
 use App\Models\ExternalTranslationRequestRecipient;
@@ -238,7 +239,11 @@ class ExternalTranslationRequestRecipientControllerTest extends TestCase
     private function createAssignmentForOwner(InstitutionUser $ownerUser): Assignment
     {
         $project = Project::factory()->create(['institution_id' => $ownerUser->institution['id']]);
-        $subProject = SubProject::factory()->create(['project_id' => $project->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
 
         return Assignment::factory()->create(['sub_project_id' => $subProject->id]);
     }

@@ -227,14 +227,14 @@ class MediaController extends Controller
             ->where('id', $params['id'])
             ->first() ?? abort(404);
 
-        $this->auditLogPublisher->publish(
-            AuditLogMessageBuilder::makeUsingJWT()->toDownloadProjectFileEvent(
-                $media->id,
-                $collectionOwnerEntity->id,
-                $collectionOwnerEntity->ext_id,
-                $media->file_name
-            )
-        );
+//        $this->auditLogPublisher->publish(
+//            AuditLogMessageBuilder::makeUsingJWT()->toDownloadProjectFileEvent(
+//                $media->id,
+//                $collectionOwnerEntity->id,
+//                $collectionOwnerEntity->ext_id,
+//                $media->file_name
+//            )
+//        );
 
         return $media->toResponse($request);
     }
