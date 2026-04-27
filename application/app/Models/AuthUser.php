@@ -114,7 +114,7 @@ class AuthUser extends JwtPayloadUser
             ->where('institution_id', $this->institutionId)
             ->whereHas('externalTranslationRequest',
                 fn ($q) => $q
-                    ->where('assignment_id', $assignment->getKey())
+                    ->where('assignment_id', $assignment->id)
                     ->where('status', ExternalRequestStatus::Active))
             ->exists();
     }
@@ -127,11 +127,11 @@ class AuthUser extends JwtPayloadUser
 
         return Assignment::query()
             ->where('external_institution_id', $this->institutionId)
-            ->whereHas('subProject', fn ($q) => $q->where('project_id', $project->getKey()))
+            ->whereHas('subProject', fn ($q) => $q->where('project_id', $project->id))
             ->exists() || ExternalTranslationRequestRecipient::query()
             ->where('institution_id', $this->institutionId)
             ->whereHas('externalTranslationRequest.assignment.subProject',
-                fn ($q) => $q->where('project_id', $project->getKey()))
+                fn ($q) => $q->where('project_id', $project->id))
             ->whereHas('externalTranslationRequest', function ($q) use ($requireSourceFiles) {
                 $q->where('status', ExternalRequestStatus::Active);
 

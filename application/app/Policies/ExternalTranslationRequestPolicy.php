@@ -38,7 +38,7 @@ class ExternalTranslationRequestPolicy
         }
 
         return ExternalTranslationRequestRecipient::query()
-            ->where('external_translation_request_id', $request->getKey())
+            ->where('external_translation_request_id', $request->id)
             ->where('institution_id', $user->institutionId)
             ->exists();
     }
@@ -99,7 +99,7 @@ class ExternalTranslationRequestPolicy
         }
 
         return ExternalTranslationRequestRecipient::query()
-            ->where('external_translation_request_id', $request->getKey())
+            ->where('external_translation_request_id', $request->id)
             ->where('institution_id', $user->institutionId)
             ->whereIn('status', [
                 ExternalRequestRecipientStatus::Notified,

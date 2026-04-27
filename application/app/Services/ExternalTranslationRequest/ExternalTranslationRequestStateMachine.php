@@ -92,7 +92,7 @@ readonly class ExternalTranslationRequestStateMachine
     {
         DB::transaction(function () use ($request, $recipient, $rejectionComments) {
             $lockedRequest = ExternalTranslationRequest::query()
-                ->whereKey($request->getKey())
+                ->where('id', $request->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -101,7 +101,7 @@ readonly class ExternalTranslationRequestStateMachine
             }
 
             $lockedRecipient = $lockedRequest->recipients()
-                ->whereKey($recipient->getKey())
+                ->where('id', $recipient->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -110,7 +110,7 @@ readonly class ExternalTranslationRequestStateMachine
             }
 
             $rejectedRecipients = $lockedRequest->recipients()
-                ->whereKey(array_keys($rejectionComments))
+                ->whereIn('id', array_keys($rejectionComments))
                 ->whereIn('status', [
                     ExternalRequestRecipientStatus::Pending,
                     ExternalRequestRecipientStatus::Notified,
@@ -128,7 +128,7 @@ readonly class ExternalTranslationRequestStateMachine
             foreach ($rejectedRecipients as $rejectedRecipient) {
                 $rejectedRecipient->update([
                     'status' => ExternalRequestRecipientStatus::Rejected,
-                    'rejection_comment' => $rejectionComments[$rejectedRecipient->getKey()],
+                    'rejection_comment' => $rejectionComments[$rejectedRecipient->id],
                     'responded_at' => $rejectedRecipient->responded_at ?? now(),
                 ]);
             }
@@ -147,7 +147,7 @@ readonly class ExternalTranslationRequestStateMachine
     {
         DB::transaction(function () use ($request) {
             $lockedRequest = ExternalTranslationRequest::query()
-                ->whereKey($request->getKey())
+                ->where('id', $request->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -199,12 +199,12 @@ readonly class ExternalTranslationRequestStateMachine
     private function lockRecipientAndRequest(ExternalTranslationRequestRecipient $recipient): array
     {
         $request = ExternalTranslationRequest::query()
-            ->whereKey($recipient->external_translation_request_id)
+            ->where('id', $recipient->external_translation_request_id)
             ->lockForUpdate()
             ->firstOrFail();
 
         $lockedRecipient = $request->recipients()
-            ->whereKey($recipient->getKey())
+            ->where('id', $recipient->id)
             ->lockForUpdate()
             ->firstOrFail();
 
