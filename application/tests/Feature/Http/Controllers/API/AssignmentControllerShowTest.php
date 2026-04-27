@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
+use App\Enums\ExternalRequestStatus;
+use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
+use App\Models\ExternalTranslationRequest;
+use App\Models\ExternalTranslationRequestRecipient;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
@@ -188,6 +192,74 @@ class AssignmentControllerShowTest extends TestCase
             ->getJson("/api/assignments/{$assignment->id}");
 
         // THEN
+        $response->assertNotFound();
+    }
+
+    public function test_partner_with_view_etr_privilege_can_view_assignment_when_active_recipient(): void
+    {
+        // GIVEN
+        $ownerInstitution = Institution::factory()->create();
+        $partnerUser = InstitutionUser::factory()
+            ->createWithPrivileges(PrivilegeKey::ViewExternalTranslationRequest);
+
+        $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+
+        $translationRequest = ExternalTranslationRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => ExternalRequestStatus::Active,
+        ]);
+        ExternalTranslationRequestRecipient::factory()->notified()->create([
+            'external_translation_request_id' => $translationRequest->id,
+            'institution_id' => $partnerUser->institution['id'],
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $partnerUser->id,
+            'selectedInstitution' => ['id' => $partnerUser->institution['id']],
+            'privileges' => [PrivilegeKey::ViewExternalTranslationRequest->value],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson("/api/assignments/{$assignment->id}");
+
+        // THEN
+        $response->assertOk()
+            ->assertJson(['data' => ['id' => $assignment->id]]);
+    }
+
+    public function test_partner_cannot_view_assignment_when_not_a_recipient(): void
+    {
+        // GIVEN — partner has ViewETR but no recipient record for this assignment
+        $ownerInstitution = Institution::factory()->create();
+        $partnerUser = InstitutionUser::factory()
+            ->createWithPrivileges(PrivilegeKey::ViewExternalTranslationRequest);
+
+        $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $partnerUser->id,
+            'selectedInstitution' => ['id' => $partnerUser->institution['id']],
+            'privileges' => [PrivilegeKey::ViewExternalTranslationRequest->value],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson("/api/assignments/{$assignment->id}");
+
+        // THEN — AssignmentScope excludes the assignment; findOrFail returns 404
         $response->assertNotFound();
     }
 
