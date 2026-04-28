@@ -424,7 +424,7 @@ class ProjectController extends Controller
             'clientInstitutionUser',
             'typeClassifierValue.projectTypeConfig',
             'translationDomainClassifierValue',
-            'subProjects.assignments.candidates.institutionUser',
+            'subProjects.assignments.candidates.vendor.institutionUser',
             'subProjects.assignments.assignee.institutionUser',
             'subProjects.sourceLanguageClassifierValue',
             'subProjects.destinationLanguageClassifierValue',
