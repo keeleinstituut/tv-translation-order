@@ -413,6 +413,7 @@ class WorkflowController extends Controller
             'subProject.project.helpFiles',
             'subProject.project.sourceFiles',
             'subProject.project.finalFiles',
+            'subProject.project.projectComments',
             'subProject.sourceFiles',
             'subProject.finalFiles.assignment.jobDefinition',
             'subProject.catToolTmKeys',

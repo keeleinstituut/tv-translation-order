@@ -28,6 +28,11 @@ class CandidateObserver
      */
     public function created(Candidate $candidate): void
     {
+        if (in_array($candidate->assignment->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
+            TrackSubProjectStatus::dispatchSync($candidate->assignment->subProject);
+            $candidate->assignment->subProject->refresh();
+        }
+
         /** @var Vendor $vendor */
         $vendor = $candidate->vendor()->withTrashed()->first();
         if (filled($candidate->assignment) && filled($vendor?->institution_user_id)) {
@@ -37,12 +42,8 @@ class CandidateObserver
             );
         }
 
-        if (in_array($candidate->assignment->subProject->status, [SubProjectStatus::New, SubProjectStatus::Registered])) {
-            TrackSubProjectStatus::dispatchSync($candidate->assignment->subProject);
-        }
-
         if ($candidate->assignment->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
-            ProcessCandidatesNotificationCycle::dispatch($candidate->assignment);
+            ProcessCandidatesNotificationCycle::dispatchAfterResponse($candidate->assignment);
         }
     }
 
@@ -67,9 +68,6 @@ class CandidateObserver
     public function deleted(Candidate $candidate): void
     {
         $this->deleteCandidateFromWorkflow($candidate);
-        if (filled($candidate->notified_at)) {
-            $this->publishTaskDeclinedEmailNotification($candidate->assignment, $candidate->vendor);
-        }
 
         if ($candidate->assignment->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
             ProcessCandidatesNotificationCycle::dispatch($candidate->assignment);

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\CandidateStatus;
 use App\Enums\JobKey;
 use App\Enums\TaskType;
+use App\Exceptions\CalendarSlotConflictException;
 use App\Helpers\SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
@@ -12,7 +14,6 @@ use App\Http\Requests\API\AssignmentAddCandidatesRequest;
 use App\Http\Requests\API\AssignmentCatToolJobBulkLinkRequest;
 use App\Http\Requests\API\AssignmentCreateRequest;
 use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
-use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
@@ -23,19 +24,19 @@ use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
 use App\Models\Media;
-use App\Models\SubProject;
+use App\Models\VendorCalendarEntry;
 use App\Policies\AssignmentPolicy;
-use App\Policies\SubProjectPolicy;
-use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
+use App\Services\Calendar\CalendarSettingsResolver;
+use App\Services\Calendar\VendorReservationService;
 use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use NotificationClient\Services\NotificationPublisher;
@@ -45,7 +46,12 @@ use Throwable;
 
 class AssignmentController extends Controller
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
+    public function __construct(
+        private readonly NotificationPublisher $notificationPublisher,
+        private readonly VendorReservationService $vendorReservation,
+        private readonly CalendarSettingsResolver $calendarSettings,
+        AuditLogPublisher $auditLogPublisher,
+    )
     {
         parent::__construct($auditLogPublisher);
     }
@@ -307,6 +313,7 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -356,6 +363,7 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -548,6 +556,50 @@ class AssignmentController extends Controller
                 'catToolJobs',
                 'jobDefinition',
             ]);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function syncCalendarReservationWithCandidates(Assignment $assignment): void
+    {
+        $assignment->loadMissing('subProject.project');
+        $project = $assignment->project;
+
+        if (blank($project) || !$project->is_calendar_project) {
+            return;
+        }
+
+        $currentCalendarVendorId = VendorCalendarEntry::where('assignment_id', $assignment->id)
+            ->value('vendor_id');
+        $nextCandidate = $assignment->candidates()
+            ->where('status', '!=', CandidateStatus::Declined)
+            ->ordered()
+            ->first();
+
+        if (blank($nextCandidate)) {
+            VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
+            return;
+        }
+
+        if ($currentCalendarVendorId === $nextCandidate->vendor_id) {
+            return;
+        }
+
+        $timeSlot = $this->calendarSettings->resolveTimeSlotForProject($project);
+
+        try {
+            $this->vendorReservation->rotate(
+                $assignment,
+                $nextCandidate->vendor_id,
+                $timeSlot->bufferedStartAt,
+                $timeSlot->bufferedEndAt,
+            );
+        } catch (CalendarSlotConflictException) {
+            throw ValidationException::withMessages([
+                'data' => 'Valitud teostaja ei ole valitud ajavahemikul saadaval.',
+            ]);
+        }
     }
 
     /**
