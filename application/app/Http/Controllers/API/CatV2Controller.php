@@ -109,7 +109,10 @@ class CatV2Controller extends Controller
                 ],
                 4 => tap(collect(), function ($acc) use ($params) {
                     if ($name = $params->get('name')) {
-                        $acc['name'] = $name;
+                        $acc['name'] = [
+                            'operator' => 'ilike',
+                            'value' => "%$name%",
+                        ];
                     }
                     return $acc;
                 })->toArray()
