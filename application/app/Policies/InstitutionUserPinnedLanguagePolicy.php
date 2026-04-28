@@ -10,7 +10,11 @@ class InstitutionUserPinnedLanguagePolicy
 {
     public function create(AuthUser $user): bool
     {
-        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::CreateProject]);
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject)) {
+            return true;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency();
     }
 
     public function delete(AuthUser $user, InstitutionUserPinnedLanguage $pinnedLanguage): bool

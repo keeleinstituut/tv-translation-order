@@ -94,6 +94,11 @@ class Institution extends Model
         'institution_type' => InstitutionType::class,
     ];
 
+    public function isTranslationAgency(): bool
+    {
+        return $this->institution_type === InstitutionType::TranslationAgency;
+    }
+
     public function institutionProjectSequence()
     {
         return $this->morphOne(Sequence::class, 'sequenceable')

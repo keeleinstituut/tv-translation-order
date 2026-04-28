@@ -16,8 +16,15 @@ class ProjectCommentPolicy
 
     public function create(AuthUser $user, Project $project): bool
     {
-        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::CreateProject]) ||
-            $project->assignees()->where('institution_user_id', $user->institutionUserId)->exists();
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject)) {
+            return true;
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency()) {
+            return true;
+        }
+
+        return $project->assignees()->where('institution_user_id', $user->institutionUserId)->exists();
     }
 
     public function update(AuthUser $user, ProjectComment $projectComment): bool

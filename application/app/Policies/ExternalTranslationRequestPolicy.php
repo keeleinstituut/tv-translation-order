@@ -5,12 +5,10 @@ namespace App\Policies;
 use App\Enums\ExternalRequestMode;
 use App\Enums\ExternalRequestRecipientStatus;
 use App\Enums\ExternalRequestStatus;
-use App\Enums\InstitutionType;
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
 use App\Models\Assignment;
 use App\Models\AuthUser;
-use App\Models\CachedEntities\Institution;
 use App\Models\ExternalTranslationRequest;
 use App\Models\ExternalTranslationRequestRecipient;
 
@@ -56,9 +54,7 @@ class ExternalTranslationRequestPolicy
             return false;
         }
 
-        return ! Institution::where('id', $user->institutionId)
-            ->where('institution_type', InstitutionType::TranslationAgency)
-            ->exists();
+        return ! $user->belongsToTranslationAgency();
     }
 
     public function update(AuthUser $user, ExternalTranslationRequest $request): bool

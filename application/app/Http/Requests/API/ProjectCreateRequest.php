@@ -315,6 +315,10 @@ class ProjectCreateRequest extends FormRequest
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {
+                if ($institutionUser->belongsToTranslationAgency()) {
+                    return ['The user referenced by :attribute may not belong to a translation agency institution.'];
+                }
+
                 if ($institutionUser->hasPrivileges(PrivilegeKey::CreateProject)) {
                     return [];
                 }

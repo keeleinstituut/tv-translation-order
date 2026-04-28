@@ -66,6 +66,10 @@ class ProjectPolicy
             return false;
         }
 
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->hasPrivilege(PrivilegeKey::CreateProject) &&
             ($user->isClientOf($project) || $user->hasPrivilege(PrivilegeKey::ChangeClient)) &&
             ($project->manager_institution_user_id === null || $user->isManagerOf($project) ||
@@ -89,6 +93,10 @@ class ProjectPolicy
      */
     public function changeClient(AuthUser $user, Project $project): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->isInSameInstitutionAs($project) &&
             ($user->hasPrivilege(PrivilegeKey::ChangeClient) || empty($project->client_institution_user_id));
     }

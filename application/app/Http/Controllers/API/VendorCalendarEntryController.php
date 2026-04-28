@@ -173,7 +173,8 @@ class VendorCalendarEntryController extends Controller
             return $query->whereIn('vendor_id', $vendorIds);
         }
 
-        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
+            && ! Auth::user()->belongsToTranslationAgency()) {
             return $query->forClient($institutionUserId);
         }
 

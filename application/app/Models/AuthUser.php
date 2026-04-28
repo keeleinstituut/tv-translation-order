@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
 use App\Enums\ExternalRequestStatus;
+use App\Models\CachedEntities\Institution;
 use App\Models\ExternalTranslationRequestRecipient;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -13,6 +14,23 @@ class AuthUser extends JwtPayloadUser
     private bool|null $isVendor = null;
 
     private Vendor|null $vendor = null;
+    private Institution|null $institution = null;
+
+    public function institution(): Institution|null
+    {
+        if (is_null($this->institution)) {
+            $this->institution = Institution::query()
+                ->where('institution_id', $this->institutionId)
+                ->first();
+        }
+
+        return $this->institution;
+    }
+
+    public function belongsToTranslationAgency(): bool
+    {
+        return $this->institution()?->isTranslationAgency() === true;
+    }
 
     public function isVendor(): bool
     {
@@ -47,6 +65,10 @@ class AuthUser extends JwtPayloadUser
 
     public function isClient(): bool
     {
+        if ($this->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $this->hasPrivilege(PrivilegeKey::CreateProject);
     }
 

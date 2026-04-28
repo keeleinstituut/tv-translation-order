@@ -15,11 +15,19 @@ class InstitutionUserPolicy
     public function viewAny(AuthUser $user, ?string $projectRole = null): bool
     {
         if ($projectRole === 'manager') {
-            return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::CreateProject, PrivilegeKey::EditVendorDatabase]);
+            if ($user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::EditVendorDatabase])) {
+                return true;
+            }
+
+            return $user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency();
         }
 
         if ($projectRole === 'client') {
-            return $user->hasAtLeastOnePrivilege([PrivilegeKey::ChangeClient, PrivilegeKey::ChangeProjectManager, PrivilegeKey::EditVendorDatabase]);
+            if ($user->hasAtLeastOnePrivilege([PrivilegeKey::ChangeProjectManager, PrivilegeKey::EditVendorDatabase])) {
+                return true;
+            }
+
+            return $user->hasPrivilege(PrivilegeKey::ChangeClient) && ! $user->belongsToTranslationAgency();
         }
 
 
