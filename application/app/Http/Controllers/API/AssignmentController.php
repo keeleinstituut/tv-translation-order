@@ -564,7 +564,7 @@ class AssignmentController extends Controller
     private function syncCalendarReservationWithCandidates(Assignment $assignment): void
     {
         $assignment->loadMissing('subProject.project');
-        $project = $assignment->project;
+        $project = $assignment->subProject->project;
 
         if (blank($project) || !$project->is_calendar_project) {
             return;
@@ -572,8 +572,18 @@ class AssignmentController extends Controller
 
         $currentCalendarVendorId = VendorCalendarEntry::where('assignment_id', $assignment->id)
             ->value('vendor_id');
+
+        $statusPriority = sprintf(
+            "CASE status WHEN '%s' THEN 1 WHEN '%s' THEN 2 WHEN '%s' THEN 3 WHEN '%s' THEN 4 ELSE 5 END",
+            CandidateStatus::Done->value,
+            CandidateStatus::Accepted->value,
+            CandidateStatus::SubmittedToVendor->value,
+            CandidateStatus::New->value,
+        );
+
         $nextCandidate = $assignment->candidates()
-            ->where('status', '!=', CandidateStatus::Declined)
+            ->whereNotIn('status', [CandidateStatus::Declined, CandidateStatus::Rejected])
+            ->orderByRaw($statusPriority)
             ->ordered()
             ->first();
 

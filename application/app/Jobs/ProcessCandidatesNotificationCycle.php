@@ -8,6 +8,7 @@ use App\Models\Assignment;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
 use App\Services\Calendar\CalendarSettingsResolver;
+use App\Services\Calendar\TimeSlot;
 use App\Services\Calendar\VendorReservationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -25,11 +26,8 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public const int DEFAULT_REACTION_TIME_SECONDS = 1800; // 30min
+    public const int DEFAULT_REACTION_TIME_MINUTES = 30;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(private readonly Assignment $assignment)
     {
     }
@@ -43,98 +41,132 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
         CalendarSettingsResolver $calendarSettings,
     ): void
     {
+        if ($this->shouldSkipCycle()) {
+            return;
+        }
+
+        if ($this->assignment->subProject->project->is_calendar_project) {
+            $this->dispatchCalendarCycle($notificationPublisher, $vendorReservation, $calendarSettings);
+            return;
+        }
+
+        $this->dispatchSimpleCycle($notificationPublisher);
+    }
+
+    private function shouldSkipCycle(): bool
+    {
         if (filled($this->assignment->assigned_vendor_id)) {
-            return;
+            return true;
         }
 
-        /** We need to notify candidates only in case if tasks are populated */
+        // Tasks for the previous job_definition shouldn't be acted on.
         if ($this->assignment->job_definition_id !== $this->assignment->subProject->active_job_definition_id) {
-            return;
+            return true;
         }
 
-        if (empty($this->assignment->candidates)) {
+        return empty($this->assignment->candidates);
+    }
+
+    /**
+     * Notify one calendar candidate per cycle, internals before externals.
+     * After a successful notification this job returns; CandidateObserver / AutoDeclineVendorTaskProposal
+     * are responsible for re-dispatching the cycle to advance to the next candidate.
+     *
+     * @throws Throwable
+     */
+    private function dispatchCalendarCycle(
+        NotificationPublisher    $notificationPublisher,
+        VendorReservationService $vendorReservation,
+        CalendarSettingsResolver $calendarSettings,
+    ): void
+    {
+        if ($this->hasPendingNotifiedVendor()) {
             return;
         }
 
         $project = $this->assignment->subProject->project;
-        if ($project->is_calendar_project) {
+        $candidates = $this->assignment->candidates()
+            ->with(['vendor.institutionUser'])
+            ->whereHas('vendor')
+            ->where('status', CandidateStatus::New)
+            ->ordered()
+            ->get();
 
-            if ($this->hasPendingNotifiedVendor()) {
-                /**
-                 * If there is a vendor who got notified, we will wait until acceptance or declining
-                 * In case if the vendor is external, the system will reject the pending proposal automatically after the delay
-                 * @see AutoDeclineVendorTaskProposal
-                 */
-                return;
-            }
-
-            $timeSlot = $calendarSettings->resolveTimeSlotForProject($project);
-
-            /** @var Collection<Candidate> $candidates */
-            $candidates = $this->assignment->candidates()
-                ->whereHas('vendor')
-                ->where('status', CandidateStatus::New)
-                ->ordered()
-                ->get();
-
-            if (blank($candidates) && $project->use_external_vendor) {
-                $this->handleNoExternalCandidatesRemaining($this->assignment, $notificationPublisher);
-                return;
-            }
-
-            [$internals, $externals] = $candidates->partition(fn(Candidate $candidate) => $candidate->vendor?->is_internal);
-            /** @var Candidate $candidate */
-            foreach ($internals as $candidate) {
-                try {
-                    $vendorReservation->rotate(
-                        $this->assignment,
-                        $candidate->vendor_id,
-                        $timeSlot->bufferedStartAt,
-                        $timeSlot->bufferedEndAt,
-                    );
-                } catch (CalendarSlotConflictException) {
-                    $candidate->status = CandidateStatus::Declined;
-                    $candidate->saveOrFail();
-                    continue;
-                }
-
-                if (blank($candidate->notified_at)) {
-                    $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
-                }
-                return;
-            }
-
-            foreach ($externals as $candidate) {
-                try {
-                    $vendorReservation->rotate(
-                        $this->assignment,
-                        $candidate->vendor_id,
-                        $timeSlot->bufferedStartAt,
-                        $timeSlot->bufferedEndAt,
-                    );
-                } catch (CalendarSlotConflictException) {
-                    $candidate->status = CandidateStatus::Declined;
-                    $candidate->saveOrFail();
-                    continue;
-                }
-
-                if (blank($candidate->notified_at)) {
-                    $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
-                    AutoDeclineVendorTaskProposal::dispatch($candidate->id)
-                        ->afterCommit()
-                        ->delay(now()->addSeconds($this->getReactionTimeSeconds()));
-                }
-                return;
-            }
-
-            $this->handleNoExternalCandidatesRemaining($this->assignment, $notificationPublisher);
+        if (blank($candidates) && $project->use_external_vendor) {
+            $this->notifyNoExternalRemaining($this->assignment, $notificationPublisher);
+            return;
         }
 
+        $timeSlot = $calendarSettings->resolveTimeSlotForProject($project);
+        [$internals, $externals] = $candidates->partition(fn(Candidate $candidate) => $candidate->vendor->is_internal);
+
+        foreach ($internals as $candidate) {
+            if ($this->processCalendarCandidate($candidate, $vendorReservation, $timeSlot, $notificationPublisher)) {
+                return;
+            }
+        }
+
+        foreach ($externals as $candidate) {
+            if ($this->processCalendarCandidate($candidate, $vendorReservation, $timeSlot, $notificationPublisher)) {
+                return;
+            }
+        }
+
+        $this->notifyNoExternalRemaining($this->assignment, $notificationPublisher);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    private function dispatchSimpleCycle(NotificationPublisher $notificationPublisher): void
+    {
         $this->assignment->candidates->each(function (Candidate $candidate) use ($notificationPublisher) {
             if ($candidate->status === CandidateStatus::New && blank($candidate->notified_at)) {
                 $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
             }
         });
+    }
+
+    /**
+     * Try to reserve the calendar slot and notify a single candidate.
+     *
+     * @return bool true when the cycle should stop (candidate notified or already pending);
+     *              false when the candidate was skipped due to a slot conflict and the loop should try the next one.
+     * @throws Throwable
+     */
+    private function processCalendarCandidate(
+        Candidate                $candidate,
+        VendorReservationService $vendorReservation,
+        TimeSlot                 $timeSlot,
+        NotificationPublisher    $notificationPublisher,
+    ): bool
+    {
+        try {
+            $vendorReservation->rotate(
+                $this->assignment,
+                $candidate->vendor_id,
+                $timeSlot->bufferedStartAt,
+                $timeSlot->bufferedEndAt,
+            );
+        } catch (CalendarSlotConflictException) {
+            $candidate->status = CandidateStatus::Rejected;
+            $candidate->saveOrFail();
+            return false;
+        }
+
+        if (filled($candidate->notified_at)) {
+            return true;
+        }
+
+        $this->notifyAssignmentCandidate($candidate, $notificationPublisher);
+
+        if (!$candidate->vendor->is_internal) {
+            AutoDeclineVendorTaskProposal::dispatch($candidate->id)
+                ->afterCommit()
+                ->delay(now()->addMinutes($this->getReactionTimeMinutes()));
+        }
+
+        return true;
     }
 
     /**
@@ -164,28 +196,23 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
         }
     }
 
-    /**
-     * @return int
-     */
-    private function getReactionTimeSeconds(): int
+    private function getReactionTimeMinutes(): int
     {
         $institutionId = $this->assignment->subProject?->project?->institution_id;
 
         if (blank($institutionId)) {
-            return self::DEFAULT_REACTION_TIME_SECONDS;
+            return self::DEFAULT_REACTION_TIME_MINUTES;
         }
 
         return CalendarSetting::where('institution_id', $institutionId)
             ->first()
-            ?->reaction_time_seconds ?? self::DEFAULT_REACTION_TIME_SECONDS;
+            ?->reaction_time_minutes ?? self::DEFAULT_REACTION_TIME_MINUTES;
     }
 
     /**
-     * @param Assignment $assignment
-     * @return void
      * @throws Throwable
      */
-    private function handleNoExternalCandidatesRemaining(Assignment $assignment, NotificationPublisher $notificationPublisher): void
+    private function notifyNoExternalRemaining(Assignment $assignment, NotificationPublisher $notificationPublisher): void
     {
         $manager = $assignment->subProject?->project?->managerInstitutionUser;
         $institution = $assignment->subProject?->project?->institution;

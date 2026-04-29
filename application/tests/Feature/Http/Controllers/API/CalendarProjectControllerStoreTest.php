@@ -45,7 +45,7 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->institution = Institution::factory()->create();
         CalendarSetting::create([
             'institution_id' => $this->institution->id,
-            'reaction_time_seconds' => 30,
+            'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 0,
             'buffer_after_minutes' => 0,
             'default_project_type_id' => null,

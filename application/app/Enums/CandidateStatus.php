@@ -8,6 +8,7 @@ enum CandidateStatus: string
     case SubmittedToVendor = 'SUBMITTED_TO_VENDOR';
     case Accepted = 'ACCEPTED';
     case Declined = 'DECLINED';
+    case Rejected = 'REJECTED';
 
     case Done = 'DONE';
 }

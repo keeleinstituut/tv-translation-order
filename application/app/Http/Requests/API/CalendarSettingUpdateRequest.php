@@ -15,7 +15,7 @@ use OpenApi\Attributes as OA;
     required: true,
     content: new OA\JsonContent(
         properties: [
-            new OA\Property(property: 'reaction_time_seconds', type: 'integer', example: 30),
+            new OA\Property(property: 'reaction_time_minutes', type: 'integer', example: 30),
             new OA\Property(property: 'buffer_before_minutes', type: 'integer', example: 0),
             new OA\Property(property: 'buffer_after_minutes', type: 'integer', example: 0),
             new OA\Property(property: 'default_project_type_id', type: 'string', format: 'uuid'),
@@ -30,7 +30,7 @@ class CalendarSettingUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reaction_time_seconds' => ['sometimes', 'integer', 'min:0'],
+            'reaction_time_minutes' => ['sometimes', 'integer', 'min:0'],
             'buffer_before_minutes' => ['sometimes', 'integer', 'min:0'],
             'buffer_after_minutes' => ['sometimes', 'integer', 'min:0'],
             'default_project_type_id' => [

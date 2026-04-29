@@ -1058,7 +1058,7 @@ class ProjectController extends Controller
     {
         $currentCandidate = Candidate::with('vendor.institutionUser')
             ->where('assignment_id', $assignment->id)
-            ->whereNot('status', [CandidateStatus::Declined])
+            ->whereNot('status', [CandidateStatus::Declined, CandidateStatus::Rejected])
             ->orderBy('position')
             ->first();
 
