@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property string $id
  * @property string $institution_id
- * @property int $reaction_time_seconds
+ * @property int $reaction_time_minutes
  * @property int $buffer_before_minutes
  * @property int $buffer_after_minutes
  * @property string|null $default_project_type_id
@@ -29,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @method static Builder<static>|CalendarSetting whereDefaultProjectTypeId($value)
  * @method static Builder<static>|CalendarSetting whereId($value)
  * @method static Builder<static>|CalendarSetting whereInstitutionId($value)
- * @method static Builder<static>|CalendarSetting whereReactionTimeSeconds($value)
+ * @method static Builder<static>|CalendarSetting whereReactionTimeMinutes($value)
  * @method static Builder<static>|CalendarSetting whereUpdatedAt($value)
  * @mixin \Eloquent
  */
@@ -43,7 +43,7 @@ class CalendarSetting extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'reaction_time_seconds' => 'integer',
+        'reaction_time_minutes' => 'integer',
         'buffer_before_minutes' => 'integer',
         'buffer_after_minutes' => 'integer',
     ];

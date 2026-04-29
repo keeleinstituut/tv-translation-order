@@ -35,7 +35,7 @@ class CalendarSettingsSeeder extends Seeder
             ->map(fn (string $id) => [
                 'id' => Str::orderedUuid()->toString(),
                 'institution_id' => $id,
-                'reaction_time_seconds' => 30,
+                'reaction_time_minutes' => 30,
                 'buffer_before_minutes' => 0,
                 'buffer_after_minutes' => 0,
                 'default_project_type_id' => $this->getCalendarSupportedProjectTypes()->random(),

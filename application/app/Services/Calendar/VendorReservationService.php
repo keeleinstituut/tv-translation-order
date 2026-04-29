@@ -143,20 +143,29 @@ readonly class VendorReservationService
     }
 
     /**
-     * Rotate the reservation to a different vendor (cascade decline).
-     * Deletes old VCE, creates new one atomically.
+     * Switch the assignment's reservation to a different vendor (cascade decline).
+     *
+     * No-op when the assignment is already reserved for $newVendorId — does NOT
+     * touch start/end times in that case. If only the time slot needs to change
+     * for the same vendor, update the VCE directly at the call site.
      *
      * @throws CalendarSlotConflictException
      */
-    public function rotate(
+    public function rotateToVendor(
         Assignment $assignment,
         string     $newVendorId,
         Carbon     $startAt,
         Carbon     $endAt,
     ): VendorCalendarEntry
     {
-        return DB::transaction(function () use ($assignment, $newVendorId, $startAt, $endAt) {
-            VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
+        $entry = $assignment->calendarEntry;
+        if ($entry?->vendor_id === $newVendorId) {
+            return $entry;
+        }
+
+        return DB::transaction(function () use ($assignment, $entry, $newVendorId, $startAt, $endAt) {
+            $entry?->delete();
+
             return $this->createCalendarEntryWithConflictHandling([
                 'vendor_id' => $newVendorId,
                 'start_at' => $startAt,
