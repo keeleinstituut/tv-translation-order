@@ -599,7 +599,7 @@ class AssignmentController extends Controller
         $timeSlot = $this->calendarSettings->resolveTimeSlotForProject($project);
 
         try {
-            $this->vendorReservation->rotate(
+            $this->vendorReservation->rotateToVendor(
                 $assignment,
                 $nextCandidate->vendor_id,
                 $timeSlot->bufferedStartAt,

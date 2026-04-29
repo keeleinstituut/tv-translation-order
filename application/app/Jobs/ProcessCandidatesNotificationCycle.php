@@ -142,7 +142,7 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
     ): bool
     {
         try {
-            $vendorReservation->rotate(
+            $vendorReservation->rotateToVendor(
                 $this->assignment,
                 $candidate->vendor_id,
                 $timeSlot->bufferedStartAt,
