@@ -308,12 +308,12 @@ class AssignmentController extends Controller
                         return $candidate->vendor?->institution_user_id;
                     })->filter()->values();
 
-                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
-
                     if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
                         AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
                     }
+
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -358,16 +358,24 @@ class AssignmentController extends Controller
                             $candidate->deleteQuietly();
                         });
 
-                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
-
                     if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
                         DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
                     }
+
+                    if ($vendorIds->contains($assignment->assigned_vendor_id)) {
+                        $assignment->assigned_vendor_id = null;
+                        $assignment->saveOrFail();
+                    }
+
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
-            $assignment->load('candidates.vendor.institutionUser');
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+            ]);
             return AssignmentResource::make($assignment);
         });
     }
@@ -507,14 +515,16 @@ class AssignmentController extends Controller
                         )
                 );
 
+                $institutionId = $assignment->subProject->project->institution_id;
+
                 $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
                 if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
-                    $this->notificationPublisher->publishEmailNotification($message);
+                    $this->notificationPublisher->publishEmailNotification($message, $institutionId);
                 }
 
                 $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
                 if (filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager, true))) {
-                    $this->notificationPublisher->publishEmailNotification($message);
+                    $this->notificationPublisher->publishEmailNotification($message, $institutionId);
                 }
             }
 

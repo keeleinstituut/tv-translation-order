@@ -190,7 +190,7 @@ class WorkflowService
     /**
      * @throws RequestException
      */
-    public static function setAssignee($taskId, string $vendorId)
+    public static function setAssignee($taskId, ?string $vendorId)
     {
         return static::client()->post("/task/$taskId/assignee", [
             'userId' => $vendorId
