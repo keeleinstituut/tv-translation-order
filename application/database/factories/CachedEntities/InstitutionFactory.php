@@ -32,7 +32,7 @@ class InstitutionFactory extends Factory
             'phone' => null,
             'email' => fake()->companyEmail(),
             'logo_url' => fake()->url(),
-            'institution_type' => InstitutionType::Institution,
+            'type' => InstitutionType::Institution,
         ];
     }
 }

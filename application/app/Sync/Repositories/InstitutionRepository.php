@@ -30,7 +30,7 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
         $obj->logo_url = $resource['logo_url'];
         $obj->deleted_at = $resource['deleted_at'];
         $obj->synced_at = Carbon::now();
-        $obj->institution_type = InstitutionType::tryFrom($resource['institution_type'] ?? '') ?: InstitutionType::Institution;
+        $obj->type = InstitutionType::tryFrom($resource['institution_type'] ?? '') ?: InstitutionType::Institution;
 
         $obj->worktime_timezone = $resource['worktime_timezone'] ?? null;
         $obj->monday_worktime_start = $resource['monday_worktime_start'] ?? null;

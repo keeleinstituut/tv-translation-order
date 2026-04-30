@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('cached_institutions', function (Blueprint $table) {
-            $table->enum('institution_type', ['INSTITUTION', 'TRANSLATION_AGENCY'])->default('INSTITUTION')->after('synced_at');
+            $table->enum('type', ['INSTITUTION', 'TRANSLATION_AGENCY'])->default('INSTITUTION')->after('synced_at');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('cached_institutions', function (Blueprint $table) {
-            $table->dropColumn('institution_type');
+            $table->dropColumn('type');
         });
     }
 };

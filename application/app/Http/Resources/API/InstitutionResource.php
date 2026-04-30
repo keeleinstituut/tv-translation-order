@@ -20,7 +20,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'email', type: 'string', format: 'email', nullable: true),
         new OA\Property(property: 'phone', type: 'string', nullable: true),
         new OA\Property(property: 'logo_url', type: 'string', nullable: true),
-        new OA\Property(property: 'institution_type', type: 'string', nullable: true),
+        new OA\Property(property: 'type', type: 'string', nullable: true),
     ],
     type: 'object'
 )]
@@ -35,7 +35,7 @@ class InstitutionResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'logo_url' => $this->logo_url,
-            'institution_type' => $this->institution_type,
+            'type' => $this->type,
         ];
     }
 }
