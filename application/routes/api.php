@@ -88,6 +88,12 @@ Route::post('/prices/bulk', [API\PriceController::class, 'bulkStore'])->name('tr
 Route::put('/prices/bulk', [API\PriceController::class, 'bulkUpdate'])->name('translation-order.prices.bulkUpdate');
 Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy'])->name('translation-order.prices.bulkDestroy');
 
+Route::get('/vendor-skill-languages', [API\VendorSkillLanguageController::class, 'index'])->name('translation-order.vendor_skill_languages.index');
+Route::post('/vendor-skill-languages', [API\VendorSkillLanguageController::class, 'store'])->name('translation-order.vendor_skill_languages.store');
+Route::post('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkStore'])->name('translation-order.vendor_skill_languages.bulkStore');
+Route::put('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkUpdate'])->name('translation-order.vendor_skill_languages.bulkUpdate');
+Route::delete('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkDestroy'])->name('translation-order.vendor_skill_languages.bulkDestroy');
+
 Route::get('/institution-prices', [API\InstitutionPriceController::class, 'index'])->name('translation-order.institution_prices.index');
 Route::post('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkStore'])->name('translation-order.institution_prices.bulkStore');
 Route::put('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkUpdate'])->name('translation-order.institution_prices.bulkUpdate');

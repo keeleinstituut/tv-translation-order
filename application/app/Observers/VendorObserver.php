@@ -2,7 +2,6 @@
 
 namespace App\Observers;
 
-use App\Jobs\RefreshVendorLanguageCoverageJob;
 use App\Models\Candidate;
 use App\Models\Vendor;
 
@@ -21,9 +20,6 @@ class VendorObserver
      */
     public function updated(Vendor $vendor): void
     {
-        if ($vendor->wasChanged(['company_name', 'institution_user_id'])) {
-            RefreshVendorLanguageCoverageJob::dispatch();
-        }
     }
 
     /**
@@ -40,7 +36,6 @@ class VendorObserver
      */
     public function restored(Vendor $vendor): void
     {
-        RefreshVendorLanguageCoverageJob::dispatch();
     }
 
     /**

@@ -3,7 +3,7 @@
 namespace App\Repositories\Calendar;
 
 use App\Models\InstitutionMainLanguage;
-use App\Models\VendorLanguageCoverage;
+use App\Models\VendorSkillLanguage;
 use App\Services\Calendar\CalendarSettingsResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -14,7 +14,6 @@ readonly class VendorLanguageCoverageRepository
         private CalendarSettingsResolver $calendarSettings,
     ) {}
 
-
     /**
      * Get all vendor IDs serving a language at an institution.
      */
@@ -23,27 +22,35 @@ readonly class VendorLanguageCoverageRepository
         return $this->baseQuery(
             institutionId: $institutionId,
             languageId: $languageId,
-        )->pluck('vendor_id');
+        )->pluck('vendor_skill_languages.vendor_id');
     }
 
     /**
-     * Get full coverage data (vendor_id, language_id, is_internal, institution_user_id).
+     * Get coverage rows (vendor_id, language_id, institution_user_id) for an institution's internal vendors.
      */
     public function getCoverageForInstitution(string $institutionId): Collection
     {
         return $this->baseQuery(institutionId: $institutionId, isInternal: true)
-            ->get(['vendor_id', 'language_id', 'institution_user_id']);
+            ->get([
+                'vendor_skill_languages.vendor_id',
+                'vendor_skill_languages.dst_lang_classifier_value_id as language_id',
+                'v.institution_user_id',
+            ]);
     }
 
-    public function getCoverageForInstitutionMainLanguages(string $institutionId,): Collection
+    public function getCoverageForInstitutionMainLanguages(string $institutionId): Collection
     {
         $mainLanguageIds = InstitutionMainLanguage::query()
             ->where('institution_id', $institutionId)
             ->pluck('language_id');
 
         return $this->baseQuery(institutionId: $institutionId, isInternal: true)
-            ->whereIn('language_id', $mainLanguageIds)
-            ->get(['vendor_id', 'language_id', 'institution_user_id']);
+            ->whereIn('vendor_skill_languages.dst_lang_classifier_value_id', $mainLanguageIds)
+            ->get([
+                'vendor_skill_languages.vendor_id',
+                'vendor_skill_languages.dst_lang_classifier_value_id as language_id',
+                'v.institution_user_id',
+            ]);
     }
 
     private function baseQuery(
@@ -53,16 +60,22 @@ readonly class VendorLanguageCoverageRepository
     ): Builder {
         $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
 
-        $query = VendorLanguageCoverage::query()
-            ->where('institution_id', $institutionId)
-            ->where('skill_id', $skillId);
+        $query = VendorSkillLanguage::query()
+            ->join('vendors as v', 'v.id', '=', 'vendor_skill_languages.vendor_id')
+            ->join('cached_institution_users as ciu', 'ciu.id', '=', 'v.institution_user_id')
+            ->whereNull('v.deleted_at')
+            ->whereNull('ciu.deleted_at')
+            ->where('vendor_skill_languages.skill_id', $skillId)
+            ->whereRaw("(ciu.institution->>'id')::uuid = ?", [$institutionId]);
 
         if ($languageId) {
-            $query->where('language_id', $languageId);
+            $query->where('vendor_skill_languages.dst_lang_classifier_value_id', $languageId);
         }
 
-        if (! is_null($isInternal)) {
-            $query->where('is_internal', $isInternal);
+        if ($isInternal === true) {
+            $query->whereRaw("(v.company_name IS NULL OR v.company_name = '')");
+        } elseif ($isInternal === false) {
+            $query->whereRaw("(v.company_name IS NOT NULL AND v.company_name != '')");
         }
 
         return $query;

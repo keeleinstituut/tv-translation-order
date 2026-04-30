@@ -26,7 +26,7 @@ class PriceController extends Controller
      */
     #[OA\Get(
         path: '/prices',
-        summary: 'List prices of current institution (institution inferrred from JWT)',
+        summary: 'List prices of current institution (institution inferrred from JWT). Deprecated — vendor capability data is now in /vendor-skill-languages.',
         tags: ['Vendor management'],
         parameters: [
             new OA\QueryParameter(name: 'vendor_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
@@ -51,7 +51,8 @@ class PriceController extends Controller
                 )
             ),
         ],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid],
+        deprecated: true
     )]
     #[OAH\CollectionResponse(itemsRef: PriceResource::class)]
     public function index(PriceListRequest $request)
@@ -168,10 +169,11 @@ class PriceController extends Controller
 
     #[OA\Post(
         path: '/prices/bulk',
-        summary: 'Bulk create new prices',
+        summary: 'Bulk create new prices. Deprecated — vendor capability data is now in /vendor-skill-languages.',
         requestBody: new OAH\RequestBody(PriceBulkCreateRequest::class),
         tags: ['Vendor management'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid],
+        deprecated: true
     )]
     #[OAH\CollectionResponse(itemsRef: PriceResource::class, description: 'Created prices', response: Response::HTTP_CREATED)]
     public function bulkStore(PriceBulkCreateRequest $request)
@@ -209,10 +211,11 @@ class PriceController extends Controller
 
     #[OA\Put(
         path: '/prices/bulk',
-        summary: 'Bulk delete prices',
+        summary: 'Bulk update prices. Deprecated — vendor capability data is now in /vendor-skill-languages.',
         requestBody: new OAH\RequestBody(PriceBulkUpdateRequest::class),
         tags: ['Vendor management'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid],
+        deprecated: true
     )]
     #[OAH\CollectionResponse(itemsRef: PriceResource::class, description: 'Updated prices')]
     public function bulkUpdate(PriceBulkUpdateRequest $request)
@@ -257,10 +260,11 @@ class PriceController extends Controller
 
     #[OA\Delete(
         path: '/prices/bulk',
-        summary: 'Bulk delete prices',
+        summary: 'Bulk delete prices. Deprecated — vendor capability data is now in /vendor-skill-languages.',
         requestBody: new OAH\RequestBody(PriceBulkDeleteRequest::class),
         tags: ['Vendor management'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid],
+        deprecated: true
     )]
     #[OAH\CollectionResponse(itemsRef: PriceResource::class, description: 'Deleted prices')]
     public function bulkDestroy(PriceBulkDeleteRequest $request)

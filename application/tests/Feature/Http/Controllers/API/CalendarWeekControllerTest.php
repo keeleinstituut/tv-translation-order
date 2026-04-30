@@ -9,7 +9,7 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Project;
 use App\Models\Skill;
 use App\Models\SubProject;
@@ -439,7 +439,7 @@ class CalendarWeekControllerTest extends TestCase
             ->create();
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => Skill::findByCode(SkillCode::OralInterpretation)->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -460,7 +460,6 @@ class CalendarWeekControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
@@ -620,7 +619,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => Skill::findByCode(SkillCode::OralInterpretation)->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -640,7 +639,6 @@ class CalendarWeekControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         return $vendor;
     }
