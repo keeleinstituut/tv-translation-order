@@ -362,12 +362,20 @@ class AssignmentController extends Controller
                         DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
                     }
 
+                    if ($vendorIds->contains($assignment->assigned_vendor_id)) {
+                        $assignment->assigned_vendor_id = null;
+                        $assignment->saveOrFail();
+                    }
+
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
                     $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
-            $assignment->load('candidates.vendor.institutionUser');
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+            ]);
             return AssignmentResource::make($assignment);
         });
     }
@@ -507,14 +515,16 @@ class AssignmentController extends Controller
                         )
                 );
 
+                $institutionId = $assignment->subProject->project->institution_id;
+
                 $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
                 if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
-                    $this->notificationPublisher->publishEmailNotification($message);
+                    $this->notificationPublisher->publishEmailNotification($message, $institutionId);
                 }
 
                 $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
                 if (filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager, true))) {
-                    $this->notificationPublisher->publishEmailNotification($message);
+                    $this->notificationPublisher->publishEmailNotification($message, $institutionId);
                 }
             }
 
@@ -570,9 +580,6 @@ class AssignmentController extends Controller
             return;
         }
 
-        $currentCalendarVendorId = VendorCalendarEntry::where('assignment_id', $assignment->id)
-            ->value('vendor_id');
-
         $statusPriority = sprintf(
             "CASE status WHEN '%s' THEN 1 WHEN '%s' THEN 2 WHEN '%s' THEN 3 WHEN '%s' THEN 4 ELSE 5 END",
             CandidateStatus::Done->value,
@@ -589,10 +596,6 @@ class AssignmentController extends Controller
 
         if (blank($nextCandidate)) {
             VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
-            return;
-        }
-
-        if ($currentCalendarVendorId === $nextCandidate->vendor_id) {
             return;
         }
 

@@ -197,6 +197,15 @@ class WorkflowService
         ])->throw()->json();
     }
 
+    /**
+     * @throws RequestException
+     */
+    public static function unclaimTask($taskId)
+    {
+        return static::client()->post("/task/$taskId/unclaim")
+            ->throw()->json();
+    }
+
     public static function getHistoryTask($params = [], $queryParams = [])
     {
         $response = static::client()->post('/history/task?' . http_build_query($queryParams), $params);
