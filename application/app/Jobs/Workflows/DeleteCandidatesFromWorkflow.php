@@ -56,7 +56,7 @@ class DeleteCandidatesFromWorkflow implements ShouldQueue
         }
 
         if (in_array(data_get($taskData, 'task.assignee'), $this->candidatesInstitutionUserIds, true)) {
-            WorkflowService::setAssignee(data_get($taskData, 'task.id'), null);
+            WorkflowService::unclaimTask(data_get($taskData, 'task.id'));
         }
     }
 }

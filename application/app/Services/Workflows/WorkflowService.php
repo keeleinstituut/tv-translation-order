@@ -190,11 +190,20 @@ class WorkflowService
     /**
      * @throws RequestException
      */
-    public static function setAssignee($taskId, ?string $vendorId)
+    public static function setAssignee($taskId, string $vendorId)
     {
         return static::client()->post("/task/$taskId/assignee", [
             'userId' => $vendorId
         ])->throw()->json();
+    }
+
+    /**
+     * @throws RequestException
+     */
+    public static function unclaimTask($taskId)
+    {
+        return static::client()->post("/task/$taskId/unclaim")
+            ->throw()->json();
     }
 
     public static function getHistoryTask($params = [], $queryParams = [])
