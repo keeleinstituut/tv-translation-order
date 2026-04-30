@@ -308,12 +308,12 @@ class AssignmentController extends Controller
                         return $candidate->vendor?->institution_user_id;
                     })->filter()->values();
 
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
                         AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
                     }
-
-                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -358,12 +358,12 @@ class AssignmentController extends Controller
                             $candidate->deleteQuietly();
                         });
 
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
                         DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
                     }
-
-                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -570,9 +570,6 @@ class AssignmentController extends Controller
             return;
         }
 
-        $currentCalendarVendorId = VendorCalendarEntry::where('assignment_id', $assignment->id)
-            ->value('vendor_id');
-
         $statusPriority = sprintf(
             "CASE status WHEN '%s' THEN 1 WHEN '%s' THEN 2 WHEN '%s' THEN 3 WHEN '%s' THEN 4 ELSE 5 END",
             CandidateStatus::Done->value,
@@ -589,10 +586,6 @@ class AssignmentController extends Controller
 
         if (blank($nextCandidate)) {
             VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
-            return;
-        }
-
-        if ($currentCalendarVendorId === $nextCandidate->vendor_id) {
             return;
         }
 
