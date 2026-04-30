@@ -124,7 +124,6 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->create();
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
-        $this->refreshView();
 
         $dayName = strtolower(Carbon::tomorrow()->utc()->format('l'));
         $this->institution->forceFill([
@@ -456,7 +455,6 @@ class CalendarProjectControllerStoreTest extends TestCase
         // calendar imported, no conflicting entries, no emergency schedule.
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor, $eventDate);
-        $this->refreshView();
 
         $actingUser = InstitutionUser::factory()
             ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
@@ -505,7 +503,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->create();
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
-        $this->refreshView();
+
         // Block the vendor so auto matching finds nothing
         VendorCalendarEntry::create([
             'vendor_id' => $vendor->id,

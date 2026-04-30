@@ -20,8 +20,7 @@ class AuthUser extends JwtPayloadUser
     {
         if (is_null($this->institution)) {
             $this->institution = Institution::query()
-                ->where('institution_id', $this->institutionId)
-                ->first();
+                ->find($this->institutionId);
         }
 
         return $this->institution;

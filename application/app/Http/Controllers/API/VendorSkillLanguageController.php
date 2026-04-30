@@ -203,24 +203,27 @@ class VendorSkillLanguageController extends Controller
 
         $rows = $this->getBaseQuery()
             ->whereIn('id', $inputData->pluck('id'))
-            ->with([
-                'vendor',
-                'vendor.institutionUser',
-                'sourceLanguageClassifierValue',
-                'destinationLanguageClassifierValue',
-                'skill',
-            ])
             ->orderBy('created_at', 'asc')
             ->get();
 
         return DB::transaction(function () use ($mappedById, $rows): AnonymousResourceCollection {
-            $updated = $rows->map(function (VendorSkillLanguage $row) use ($mappedById) {
+            $rows->each(function (VendorSkillLanguage $row) use ($mappedById): void {
                 $this->authorize('update', $row);
                 $row->fill($mappedById->get($row->id));
                 $row->saveOrFail();
-
-                return $row;
             });
+
+            $updated = $this->getBaseQuery()
+                ->whereIn('id', $rows->pluck('id'))
+                ->with([
+                    'vendor',
+                    'vendor.institutionUser',
+                    'sourceLanguageClassifierValue',
+                    'destinationLanguageClassifierValue',
+                    'skill',
+                ])
+                ->orderBy('created_at', 'asc')
+                ->get();
 
             return VendorSkillLanguageResource::collection($updated);
         });
