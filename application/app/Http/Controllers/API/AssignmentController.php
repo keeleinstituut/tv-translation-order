@@ -308,12 +308,14 @@ class AssignmentController extends Controller
                         return $candidate->vendor?->institution_user_id;
                     })->filter()->values();
 
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
-                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
+                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray())
+                            ->afterCommit();
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -358,8 +360,11 @@ class AssignmentController extends Controller
                             $candidate->deleteQuietly();
                         });
 
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
-                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
+                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray())
+                            ->afterCommit();
                     }
 
                     if ($vendorIds->contains($assignment->assigned_vendor_id)) {
@@ -368,7 +373,6 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
