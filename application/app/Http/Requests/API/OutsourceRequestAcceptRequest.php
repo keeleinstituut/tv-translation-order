@@ -15,7 +15,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class ExternalTranslationRequestAcceptRequest extends FormRequest
+class OutsourceRequestAcceptRequest extends FormRequest
 {
     public function rules(): array
     {

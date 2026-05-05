@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use App\Enums\ExternalRequestRecipientStatus;
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\ExternalTranslationRequest;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Models\OutsourceOffer;
+use App\Models\OutsourceRequest;
 use App\Models\Project;
 use App\Models\SubProject;
 use Illuminate\Http\UploadedFile;
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 
-class ExternalTranslationRequestControllerTest extends TestCase
+class OutsourceRequestControllerTest extends TestCase
 {
     // --- index ---
 
@@ -25,14 +25,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson('/api/external-translation-requests');
+            ->getJson('/api/outsource-requests');
 
         // THEN
         $response->assertOk()
@@ -43,14 +43,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         // No recipient for partnerUser's institution
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson('/api/external-translation-requests');
+            ->getJson('/api/outsource-requests');
 
         // THEN
         $response->assertOk()
@@ -63,14 +63,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
 
         // THEN
         $response->assertOk()
@@ -81,14 +81,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         // No recipient for partnerUser's institution — scope excludes the record
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
 
         // THEN
         $response->assertNotFound();
@@ -98,14 +98,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN — partner has only RespondETR (no ViewETR / ManageETR)
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
 
         // THEN — Respond privilege is sufficient for the partner branch of view()
         $response->assertOk()
@@ -122,9 +122,9 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // WHEN
         $listResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($strangerUser))
-            ->getJson('/api/external-translation-requests');
+            ->getJson('/api/outsource-requests');
         $showResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($strangerUser))
-            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
 
         // THEN — viewAny rejects them
         $listResponse->assertForbidden();
@@ -137,8 +137,8 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN — request with two partners
         $ownerUser = $this->createOwnerUser();
-        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
-        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $recipientA = $this->createNotifiedRecipient($translationRequest, $partnerA);
@@ -146,21 +146,21 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // WHEN owner reads the request
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
 
         // THEN owner sees both recipient rows
         $response->assertOk()
-            ->assertJsonPath('data.recipients.0.id', fn($id) => in_array($id, [$recipientA->id, $recipientB->id]))
-            ->assertJsonPath('data.recipients.1.id', fn($id) => in_array($id, [$recipientA->id, $recipientB->id]));
-        $this->assertCount(2, $response->json('data.recipients'));
+            ->assertJsonPath('data.offers.0.id', fn($id) => in_array($id, [$recipientA->id, $recipientB->id]))
+            ->assertJsonPath('data.offers.1.id', fn($id) => in_array($id, [$recipientA->id, $recipientB->id]));
+        $this->assertCount(2, $response->json('data.offers'));
     }
 
     public function test_partner_sees_only_their_own_recipient_row_in_show_response(): void
     {
         // GIVEN — request with two partners
         $ownerUser = $this->createOwnerUser();
-        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
-        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $recipientA = $this->createNotifiedRecipient($translationRequest, $partnerA);
@@ -168,21 +168,21 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // WHEN partner A reads the request
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerA))
-            ->getJson("/api/external-translation-requests/{$translationRequest->id}");
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
 
         // THEN partner A sees only their own recipient row, not the competitor's
         $response->assertOk()
             ->assertJsonFragment(['id' => $recipientA->id])
             ->assertJsonMissing(['id' => $recipientB->id]);
-        $this->assertCount(1, $response->json('data.recipients'));
+        $this->assertCount(1, $response->json('data.offers'));
     }
 
     public function test_partner_sees_only_their_own_recipient_row_in_index_response(): void
     {
         // GIVEN — request with two partners
         $ownerUser = $this->createOwnerUser();
-        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
-        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $recipientA = $this->createNotifiedRecipient($translationRequest, $partnerA);
@@ -190,13 +190,13 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // WHEN partner A lists requests
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerA))
-            ->getJson('/api/external-translation-requests');
+            ->getJson('/api/outsource-requests');
 
         // THEN the embedded recipients[] for the request contains only partner A's row
         $response->assertOk()
             ->assertJsonFragment(['id' => $recipientA->id])
             ->assertJsonMissing(['id' => $recipientB->id]);
-        $this->assertCount(1, $response->json('data.0.recipients'));
+        $this->assertCount(1, $response->json('data.0.offers'));
     }
 
     // --- downloadMedia ---
@@ -206,21 +206,21 @@ class ExternalTranslationRequestControllerTest extends TestCase
         // GIVEN
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
-            ->toMediaCollection(ExternalTranslationRequest::REQUEST_FILES_COLLECTION);
-        $media = $translationRequest->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION)->first();
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson('/api/media/download?' . http_build_query([
-                'reference_object_type' => 'external_translation_request',
+                'reference_object_type' => 'outsource_request',
                 'reference_object_id' => $translationRequest->id,
-                'collection' => ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
                 'id' => $media->id,
             ]));
 
@@ -233,25 +233,25 @@ class ExternalTranslationRequestControllerTest extends TestCase
         // GIVEN
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
-        ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => ExternalRequestRecipientStatus::Accepted,
+            'status' => OutsourceOfferStatus::Accepted,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
-            ->toMediaCollection(ExternalTranslationRequest::REQUEST_FILES_COLLECTION);
-        $media = $translationRequest->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION)->first();
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson('/api/media/download?' . http_build_query([
-                'reference_object_type' => 'external_translation_request',
+                'reference_object_type' => 'outsource_request',
                 'reference_object_id' => $translationRequest->id,
-                'collection' => ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
                 'id' => $media->id,
             ]));
 
@@ -264,25 +264,25 @@ class ExternalTranslationRequestControllerTest extends TestCase
         // GIVEN
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
-        ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => ExternalRequestRecipientStatus::Selected,
+            'status' => OutsourceOfferStatus::Selected,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
-            ->toMediaCollection(ExternalTranslationRequest::REQUEST_FILES_COLLECTION);
-        $media = $translationRequest->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION)->first();
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson('/api/media/download?' . http_build_query([
-                'reference_object_type' => 'external_translation_request',
+                'reference_object_type' => 'outsource_request',
                 'reference_object_id' => $translationRequest->id,
-                'collection' => ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
                 'id' => $media->id,
             ]));
 
@@ -295,21 +295,21 @@ class ExternalTranslationRequestControllerTest extends TestCase
         // GIVEN
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, ['include_source_files' => false]);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
-            ->toMediaCollection(ExternalTranslationRequest::REQUEST_FILES_COLLECTION);
-        $media = $translationRequest->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION)->first();
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson('/api/media/download?' . http_build_query([
-                'reference_object_type' => 'external_translation_request',
+                'reference_object_type' => 'outsource_request',
                 'reference_object_id' => $translationRequest->id,
-                'collection' => ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
                 'id' => $media->id,
             ]));
 
@@ -322,7 +322,7 @@ class ExternalTranslationRequestControllerTest extends TestCase
         // GIVEN
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $project = Project::factory()->create([
             'institution_id' => $ownerUser->institution['id'],
             'status' => \App\Enums\ProjectStatus::Accepted,
@@ -337,15 +337,15 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
-            ->toMediaCollection(ExternalTranslationRequest::REQUEST_FILES_COLLECTION);
-        $media = $translationRequest->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION)->first();
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson('/api/media/download?' . http_build_query([
-                'reference_object_type' => 'external_translation_request',
+                'reference_object_type' => 'outsource_request',
                 'reference_object_id' => $translationRequest->id,
-                'collection' => ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
                 'id' => $media->id,
             ]));
 
@@ -358,25 +358,25 @@ class ExternalTranslationRequestControllerTest extends TestCase
         // GIVEN — recipient is Pending, not yet Notified
         Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
-        ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => ExternalRequestRecipientStatus::Pending,
+            'status' => OutsourceOfferStatus::Pending,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
-            ->toMediaCollection(ExternalTranslationRequest::REQUEST_FILES_COLLECTION);
-        $media = $translationRequest->getMedia(ExternalTranslationRequest::REQUEST_FILES_COLLECTION)->first();
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
             ->getJson('/api/media/download?' . http_build_query([
-                'reference_object_type' => 'external_translation_request',
+                'reference_object_type' => 'outsource_request',
                 'reference_object_id' => $translationRequest->id,
-                'collection' => ExternalTranslationRequest::REQUEST_FILES_COLLECTION,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
                 'id' => $media->id,
             ]));
 
@@ -393,30 +393,30 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'proposed_price' => '123.456',
             'position' => 1,
         ]);
-        $loserAccepted = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $loserAccepted = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 2,
         ]);
-        $loserNotified = ExternalTranslationRequestRecipient::factory()->notified()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        $loserNotified = OutsourceOffer::factory()->notified()->create([
+            'outsource_request_id' => $translationRequest->id,
             'position' => 3,
         ]);
-        $loserPending = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Pending,
+        $loserPending = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Pending,
             'position' => 4,
         ]);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [
                     ['recipient_id' => $loserAccepted->id, 'rejection_comment' => 'price too high'],
@@ -427,13 +427,13 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // THEN
         $response->assertOk();
-        $this->assertSame(ExternalRequestStatus::Fulfilled, $translationRequest->fresh()->status);
-        $this->assertSame(ExternalRequestRecipientStatus::Selected, $selected->fresh()->status);
-        $this->assertSame(ExternalRequestRecipientStatus::Rejected, $loserAccepted->fresh()->status);
+        $this->assertSame(OutsourceRequestStatus::Fulfilled, $translationRequest->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Selected, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Rejected, $loserAccepted->fresh()->status);
         $this->assertSame('price too high', $loserAccepted->fresh()->rejection_comment);
-        $this->assertSame(ExternalRequestRecipientStatus::Rejected, $loserNotified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Rejected, $loserNotified->fresh()->status);
         $this->assertSame('no answer in time window', $loserNotified->fresh()->rejection_comment);
-        $this->assertSame(ExternalRequestRecipientStatus::Rejected, $loserPending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Rejected, $loserPending->fresh()->status);
         $this->assertSame('not needed', $loserPending->fresh()->rejection_comment);
         $this->assertSame($selected->institution_id, $assignment->fresh()->external_institution_id);
     }
@@ -445,38 +445,38 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'proposed_price' => '99.000',
             'position' => 1,
         ]);
-        $declined = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Declined,
+        $declined = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Declined,
             'decline_comment' => 'self-declined',
             'position' => 2,
         ]);
-        $expired = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Expired,
+        $expired = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Expired,
             'position' => 3,
         ]);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [],
             ]);
 
         // THEN
         $response->assertOk();
-        $this->assertSame(ExternalRequestRecipientStatus::Selected, $selected->fresh()->status);
-        $this->assertSame(ExternalRequestRecipientStatus::Declined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Selected, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
         $this->assertSame('self-declined', $declined->fresh()->decline_comment);
         $this->assertNull($declined->fresh()->rejection_comment);
-        $this->assertSame(ExternalRequestRecipientStatus::Expired, $expired->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Expired, $expired->fresh()->status);
         $this->assertNull($expired->fresh()->rejection_comment);
     }
 
@@ -487,28 +487,28 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 1,
         ]);
-        $loser = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $loser = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 2,
         ]);
 
         // WHEN — omit $loser from rejection_comments
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [],
             ]);
 
         // THEN
         $response->assertUnprocessable();
-        $this->assertSame(ExternalRequestStatus::Active, $translationRequest->fresh()->status);
-        $this->assertSame(ExternalRequestRecipientStatus::Accepted, $loser->fresh()->status);
+        $this->assertSame(OutsourceRequestStatus::Active, $translationRequest->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Accepted, $loser->fresh()->status);
     }
 
     public function test_select_fails_when_rejection_comments_include_terminal_recipient(): void
@@ -518,21 +518,21 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 1,
         ]);
-        $declined = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Declined,
+        $declined = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Declined,
             'decline_comment' => 'self-declined',
             'position' => 2,
         ]);
 
         // WHEN — DECLINED recipient must not appear in rejection_comments
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [
                     ['recipient_id' => $declined->id, 'rejection_comment' => 'no'],
@@ -541,7 +541,7 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // THEN
         $response->assertUnprocessable();
-        $this->assertSame(ExternalRequestRecipientStatus::Declined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
         $this->assertNull($declined->fresh()->rejection_comment);
         $this->assertSame('self-declined', $declined->fresh()->decline_comment);
     }
@@ -553,15 +553,15 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 1,
         ]);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [
                     ['recipient_id' => $selected->id, 'rejection_comment' => 'self'],
@@ -570,7 +570,7 @@ class ExternalTranslationRequestControllerTest extends TestCase
 
         // THEN
         $response->assertUnprocessable();
-        $this->assertSame(ExternalRequestRecipientStatus::Accepted, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Accepted, $selected->fresh()->status);
     }
 
     public function test_select_fails_when_rejection_comments_include_foreign_recipient(): void
@@ -580,21 +580,21 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 1,
         ]);
         $foreignAssignment = $this->createAssignmentForOwner($ownerUser);
         $foreignRequest = $this->createTranslationRequest($foreignAssignment);
-        $foreignRecipient = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $foreignRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $foreignRecipient = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $foreignRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
         ]);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [
                     ['recipient_id' => $foreignRecipient->id, 'rejection_comment' => 'foreign'],
@@ -612,20 +612,20 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 1,
         ]);
-        $loser = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $loser = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 2,
         ]);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [
                     ['recipient_id' => $loser->id, 'rejection_comment' => 'first'],
@@ -644,20 +644,20 @@ class ExternalTranslationRequestControllerTest extends TestCase
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
 
-        $selected = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 1,
         ]);
-        $loser = ExternalTranslationRequestRecipient::factory()->create([
-            'external_translation_request_id' => $translationRequest->id,
-            'status' => ExternalRequestRecipientStatus::Accepted,
+        $loser = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
             'position' => 2,
         ]);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/select", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
                 'recipient_id' => $selected->id,
                 'rejection_comments' => [
                     ['recipient_id' => $loser->id, 'rejection_comment' => ''],
@@ -674,14 +674,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/accept");
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
 
         // THEN
         $response->assertOk();
@@ -691,14 +691,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN — partner has ViewETR but not RespondETR
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/accept");
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
 
         // THEN
         $response->assertForbidden();
@@ -707,15 +707,15 @@ class ExternalTranslationRequestControllerTest extends TestCase
     public function test_owner_institution_user_cannot_accept_their_own_request(): void
     {
         // GIVEN — owner has no recipient row, even with the Respond privilege
-        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondExternalTranslationRequest);
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondOutsourceRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/accept");
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
 
         // THEN — accept policy requires the caller's institution to be among recipients
         $response->assertForbidden();
@@ -727,14 +727,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/decline", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
                 'decline_comment' => 'Not available',
             ]);
 
@@ -746,14 +746,14 @@ class ExternalTranslationRequestControllerTest extends TestCase
     {
         // GIVEN — partner has ViewETR but not RespondETR
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/decline", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
                 'decline_comment' => 'Not available',
             ]);
 
@@ -764,15 +764,15 @@ class ExternalTranslationRequestControllerTest extends TestCase
     public function test_owner_institution_user_cannot_decline_their_own_request(): void
     {
         // GIVEN — owner has no recipient row, even with the Respond privilege
-        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondExternalTranslationRequest);
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondExternalTranslationRequest);
+        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondOutsourceRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/external-translation-requests/{$translationRequest->id}/decline", [
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
                 'decline_comment' => 'Not available',
             ]);
 
@@ -785,7 +785,7 @@ class ExternalTranslationRequestControllerTest extends TestCase
     private function createOwnerUser(PrivilegeKey ...$extra): InstitutionUser
     {
         return InstitutionUser::factory()
-            ->createWithPrivileges(PrivilegeKey::ManageExternalTranslationRequest, ...$extra);
+            ->createWithPrivileges(PrivilegeKey::ManageOutsourceRequest, ...$extra);
     }
 
     private function createPartnerUser(PrivilegeKey ...$privileges): InstitutionUser
@@ -805,24 +805,24 @@ class ExternalTranslationRequestControllerTest extends TestCase
         return Assignment::factory()->create(['sub_project_id' => $subProject->id]);
     }
 
-    private function createTranslationRequest(Assignment $assignment, array $overrides = []): ExternalTranslationRequest
+    private function createTranslationRequest(Assignment $assignment, array $overrides = []): OutsourceRequest
     {
-        return ExternalTranslationRequest::factory()->create(array_merge([
+        return OutsourceRequest::factory()->create(array_merge([
             'assignment_id' => $assignment->id,
-            'status' => ExternalRequestStatus::Active,
+            'status' => OutsourceRequestStatus::Active,
             'include_source_files' => true,
         ], $overrides));
     }
 
     private function createNotifiedRecipient(
-        ExternalTranslationRequest $request,
+        OutsourceRequest $request,
         InstitutionUser $partnerUser,
         array $overrides = []
-    ): ExternalTranslationRequestRecipient {
-        return ExternalTranslationRequestRecipient::factory()
+    ): OutsourceOffer {
+        return OutsourceOffer::factory()
             ->notified()
             ->create(array_merge([
-                'external_translation_request_id' => $request->id,
+                'outsource_request_id' => $request->id,
                 'institution_id' => $partnerUser->institution['id'],
             ], $overrides));
     }

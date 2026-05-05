@@ -9,9 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('external_translation_request_recipients', function (Blueprint $table) {
+        Schema::create('outsource_offers', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('external_translation_request_id')->constrained('external_translation_requests');
+            $table->foreignUuid('outsource_request_id')->constrained('outsource_requests');
             $table->foreignUuid('institution_id')->constrained('cached_institutions');
             $table->unsignedInteger('position');
             $table->enum('status', ['PENDING', 'NOTIFIED', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'SELECTED'])->default('PENDING');
@@ -27,25 +27,25 @@ return new class extends Migration
         });
 
         DB::statement(<<<'SQL'
-            CREATE UNIQUE INDEX ext_request_recipients_pair_unique
-            ON external_translation_request_recipients (external_translation_request_id, institution_id)
+            CREATE UNIQUE INDEX outsource_offers_pair_unique
+            ON outsource_offers (outsource_request_id, institution_id)
             WHERE deleted_at IS NULL
         SQL);
 
         DB::statement(<<<'SQL'
-            CREATE INDEX ext_request_recipients_position_idx
-            ON external_translation_request_recipients (external_translation_request_id, position)
+            CREATE INDEX outsource_offers_position_idx
+            ON outsource_offers (outsource_request_id, position)
         SQL);
 
         DB::statement(<<<'SQL'
-            CREATE UNIQUE INDEX ext_request_recipients_selected_unique
-            ON external_translation_request_recipients (external_translation_request_id)
+            CREATE UNIQUE INDEX outsource_offers_selected_unique
+            ON outsource_offers (outsource_request_id)
             WHERE status = 'SELECTED' AND deleted_at IS NULL
         SQL);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('external_translation_request_recipients');
+        Schema::dropIfExists('outsource_offers');
     }
 };

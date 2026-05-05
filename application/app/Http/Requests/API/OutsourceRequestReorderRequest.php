@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\ExternalRequestRecipientStatus;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Enums\OutsourceOfferStatus;
+use App\Models\OutsourceOffer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
@@ -29,7 +29,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class ExternalTranslationRequestReorderRequest extends FormRequest
+class OutsourceRequestReorderRequest extends FormRequest
 {
     public function rules(): array
     {
@@ -46,9 +46,9 @@ class ExternalTranslationRequestReorderRequest extends FormRequest
             function (Validator $validator) {
                 $requestId = $this->route('id');
 
-                $pendingIds = ExternalTranslationRequestRecipient::query()
-                    ->where('external_translation_request_id', $requestId)
-                    ->where('status', ExternalRequestRecipientStatus::Pending)
+                $pendingIds = OutsourceOffer::query()
+                    ->where('outsource_request_id', $requestId)
+                    ->where('status', OutsourceOfferStatus::Pending)
                     ->pluck('id')
                     ->sort()
                     ->values();

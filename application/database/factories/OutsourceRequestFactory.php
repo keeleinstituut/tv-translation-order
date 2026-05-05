@@ -3,16 +3,16 @@
 namespace Database\Factories;
 
 use App\Enums\ExternalRequestMode;
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\ExternalTranslationRequest;
+use App\Models\OutsourceRequest;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<ExternalTranslationRequest>
+ * @extends Factory<OutsourceRequest>
  */
-class ExternalTranslationRequestFactory extends Factory
+class OutsourceRequestFactory extends Factory
 {
     public function definition(): array
     {
@@ -26,7 +26,7 @@ class ExternalTranslationRequestFactory extends Factory
             'price' => null,
             'include_price' => true,
             'include_source_files' => true,
-            'status' => ExternalRequestStatus::Active,
+            'status' => OutsourceRequestStatus::Active,
         ];
     }
 

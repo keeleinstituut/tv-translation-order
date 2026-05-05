@@ -3,10 +3,10 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\CandidateStatus;
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
-use App\Models\ExternalTranslationRequest;
+use App\Models\OutsourceRequest;
 use App\Models\InstitutionPartner;
 use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
@@ -42,7 +42,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class ExternalTranslationRequestCreateRequest extends FormRequest
+class OutsourceRequestCreateRequest extends FormRequest
 {
     public function rules(): array
     {
@@ -89,9 +89,9 @@ class ExternalTranslationRequestCreateRequest extends FormRequest
                     $validator->errors()->add('assignment_id', 'Assignment is already shared with an external institution.');
                 }
 
-                if (ExternalTranslationRequest::query()
+                if (OutsourceRequest::query()
                     ->where('assignment_id', $assignmentId)
-                    ->where('status', ExternalRequestStatus::Active)
+                    ->where('status', OutsourceRequestStatus::Active)
                     ->exists()
                 ) {
                     $validator->errors()->add('assignment_id', 'An active external translation request already exists for this assignment.');

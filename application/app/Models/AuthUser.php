@@ -4,9 +4,9 @@ namespace App\Models;
 
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Models\CachedEntities\Institution;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Models\OutsourceOffer;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class AuthUser extends JwtPayloadUser
@@ -131,12 +131,12 @@ class AuthUser extends JwtPayloadUser
             return true;
         }
 
-        return ExternalTranslationRequestRecipient::query()
+        return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
-            ->whereHas('externalTranslationRequest',
+            ->whereHas('outsourceRequest',
                 fn ($q) => $q
                     ->where('assignment_id', $assignment->id)
-                    ->where('status', ExternalRequestStatus::Active))
+                    ->where('status', OutsourceRequestStatus::Active))
             ->exists();
     }
 
@@ -149,12 +149,12 @@ class AuthUser extends JwtPayloadUser
         return Assignment::query()
             ->where('external_institution_id', $this->institutionId)
             ->whereHas('subProject', fn ($q) => $q->where('project_id', $project->id))
-            ->exists() || ExternalTranslationRequestRecipient::query()
+            ->exists() || OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
-            ->whereHas('externalTranslationRequest.assignment.subProject',
+            ->whereHas('outsourceRequest.assignment.subProject',
                 fn ($q) => $q->where('project_id', $project->id))
-            ->whereHas('externalTranslationRequest', function ($q) use ($requireSourceFiles) {
-                $q->where('status', ExternalRequestStatus::Active);
+            ->whereHas('outsourceRequest', function ($q) use ($requireSourceFiles) {
+                $q->where('status', OutsourceRequestStatus::Active);
 
                 if ($requireSourceFiles) {
                     $q->where('include_source_files', true);

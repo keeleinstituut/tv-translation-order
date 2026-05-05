@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
-use App\Models\ExternalTranslationRequest;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Models\OutsourceRequest;
+use App\Models\OutsourceOffer;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
@@ -200,7 +200,7 @@ class AssignmentControllerShowTest extends TestCase
         // GIVEN
         $ownerInstitution = Institution::factory()->create();
         $partnerUser = InstitutionUser::factory()
-            ->createWithPrivileges(PrivilegeKey::ViewExternalTranslationRequest);
+            ->createWithPrivileges(PrivilegeKey::ViewOutsourceRequest);
 
         $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
         $subProject = SubProject::factory()->create([
@@ -210,19 +210,19 @@ class AssignmentControllerShowTest extends TestCase
         ]);
         $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
 
-        $translationRequest = ExternalTranslationRequest::factory()->create([
+        $outsourceRequest = OutsourceRequest::factory()->create([
             'assignment_id' => $assignment->id,
-            'status' => ExternalRequestStatus::Active,
+            'status' => OutsourceRequestStatus::Active,
         ]);
-        ExternalTranslationRequestRecipient::factory()->notified()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        OutsourceOffer::factory()->notified()->create([
+            'outsource_request_id' => $outsourceRequest->id,
             'institution_id' => $partnerUser->institution['id'],
         ]);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $partnerUser->id,
             'selectedInstitution' => ['id' => $partnerUser->institution['id']],
-            'privileges' => [PrivilegeKey::ViewExternalTranslationRequest->value],
+            'privileges' => [PrivilegeKey::ViewOutsourceRequest->value],
         ]);
 
         // WHEN
@@ -239,7 +239,7 @@ class AssignmentControllerShowTest extends TestCase
         // GIVEN — partner has ViewETR but no recipient record for this assignment
         $ownerInstitution = Institution::factory()->create();
         $partnerUser = InstitutionUser::factory()
-            ->createWithPrivileges(PrivilegeKey::ViewExternalTranslationRequest);
+            ->createWithPrivileges(PrivilegeKey::ViewOutsourceRequest);
 
         $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
         $subProject = SubProject::factory()->create([
@@ -252,7 +252,7 @@ class AssignmentControllerShowTest extends TestCase
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $partnerUser->id,
             'selectedInstitution' => ['id' => $partnerUser->institution['id']],
-            'privileges' => [PrivilegeKey::ViewExternalTranslationRequest->value],
+            'privileges' => [PrivilegeKey::ViewOutsourceRequest->value],
         ]);
 
         // WHEN

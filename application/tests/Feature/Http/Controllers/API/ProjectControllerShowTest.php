@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\ExternalTranslationRequest;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Models\OutsourceRequest;
+use App\Models\OutsourceOffer;
 use App\Models\Project;
 use App\Models\SubProject;
 use Tests\AuthHelpers;
@@ -20,7 +20,7 @@ class ProjectControllerShowTest extends TestCase
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $project = Project::factory()->create(['institution_id' => $ownerUser->institution['id']]);
         $subProject = SubProject::factory()->create([
             'project_id' => $project->id,
@@ -28,12 +28,12 @@ class ProjectControllerShowTest extends TestCase
             'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
         ]);
         $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
-        $translationRequest = ExternalTranslationRequest::factory()->create([
+        $translationRequest = OutsourceRequest::factory()->create([
             'assignment_id' => $assignment->id,
-            'status' => ExternalRequestStatus::Active,
+            'status' => OutsourceRequestStatus::Active,
         ]);
-        ExternalTranslationRequestRecipient::factory()->notified()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        OutsourceOffer::factory()->notified()->create([
+            'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
         ]);
 
@@ -50,7 +50,7 @@ class ProjectControllerShowTest extends TestCase
     {
         // GIVEN — partner has ViewETR but no recipient record linking them to the project
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewExternalTranslationRequest);
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $project = Project::factory()->create(['institution_id' => $ownerUser->institution['id']]);
 
         // WHEN
@@ -64,7 +64,7 @@ class ProjectControllerShowTest extends TestCase
     private function createOwnerUser(): InstitutionUser
     {
         return InstitutionUser::factory()
-            ->createWithPrivileges(PrivilegeKey::ManageExternalTranslationRequest);
+            ->createWithPrivileges(PrivilegeKey::ManageOutsourceRequest);
     }
 
     private function createPartnerUser(PrivilegeKey ...$privileges): InstitutionUser

@@ -5,7 +5,7 @@ namespace App\Console;
 use App\Console\Commands\ExpireOverdueProposals;
 use App\Console\Commands\NotifyThatProjectDeadlineIsReached;
 use App\Console\Commands\NotifyThatProjectTimeslotPassedWithNoAssignee;
-use App\Console\Commands\SweepExpiredExternalTranslationRequestRecipients;
+use App\Console\Commands\SweepExpiredOutsourceOffers;
 use App\Helpers\DateUtil;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -42,7 +42,7 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes();
 
         $schedule
-            ->command(SweepExpiredExternalTranslationRequestRecipients::class)
+            ->command(SweepExpiredOutsourceOffers::class)
             ->onOneServer()
             ->everyFiveMinutes();
     }

@@ -7,7 +7,7 @@ use App\Models\Assignment;
 use App\Models\InstitutionPartner;
 use App\Models\Volume;
 
-class ExternalPartnerAssignmentPriceCalculator extends BaseAssignmentPriceCalculator
+class OutsourcePartnerPriceCalculator extends BaseAssignmentPriceCalculator
 {
     public function __construct(Assignment $assignment, private readonly InstitutionPartner $partner)
     {

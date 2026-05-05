@@ -35,7 +35,7 @@ class AssignmentPolicy
             return $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
         }
 
-        return $user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&
+        return $user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
             $user->isInPartnerInstitutionOfAssignment($assignment);
     }
 

@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use App\Enums\ExternalRequestMode;
-use App\Enums\ExternalRequestRecipientStatus;
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
-use Database\Factories\ExternalTranslationRequestFactory;
+use Database\Factories\OutsourceRequestFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -33,19 +33,19 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string|null $price
  * @property bool $include_price
  * @property bool $include_source_files
- * @property ExternalRequestStatus $status
+ * @property OutsourceRequestStatus $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Assignment $assignment
  * @property-read InstitutionUser $createdByInstitutionUser
- * @property-read Collection<int, ExternalTranslationRequestRecipient> $recipients
- * @property-read ExternalTranslationRequestRecipient|null $selectedRecipient
+ * @property-read Collection<int, OutsourceOffer> $offers
+ * @property-read OutsourceOffer|null $selectedOffer
  * @property-read Institution|null $ownerInstitution
  */
-class ExternalTranslationRequest extends Model implements HasMedia
+class OutsourceRequest extends Model implements HasMedia
 {
-    /** @use HasFactory<ExternalTranslationRequestFactory> */
+    /** @use HasFactory<OutsourceRequestFactory> */
     use HasFactory;
     use HasRelationships;
     use HasUuids;
@@ -58,7 +58,7 @@ class ExternalTranslationRequest extends Model implements HasMedia
 
     protected $casts = [
         'mode' => ExternalRequestMode::class,
-        'status' => ExternalRequestStatus::class,
+        'status' => OutsourceRequestStatus::class,
         'deadline_at' => 'datetime',
         'price' => 'decimal:3',
         'include_price' => 'boolean',
@@ -75,15 +75,15 @@ class ExternalTranslationRequest extends Model implements HasMedia
         return $this->belongsTo(InstitutionUser::class, 'created_by_institution_user_id');
     }
 
-    public function recipients(): HasMany
+    public function offers(): HasMany
     {
-        return $this->hasMany(ExternalTranslationRequestRecipient::class);
+        return $this->hasMany(OutsourceOffer::class);
     }
 
-    public function selectedRecipient(): HasOne
+    public function selectedOffer(): HasOne
     {
-        return $this->hasOne(ExternalTranslationRequestRecipient::class)
-            ->where('status', ExternalRequestRecipientStatus::Selected);
+        return $this->hasOne(OutsourceOffer::class)
+            ->where('status', OutsourceOfferStatus::Selected);
     }
 
     public function ownerInstitution(): HasOneDeep

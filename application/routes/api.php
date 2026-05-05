@@ -119,18 +119,18 @@ Route::prefix('/institution-partner-prices')
         Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partner_prices.bulkDestroy');
     });
 
-Route::prefix('/external-translation-requests')
-    ->controller(API\ExternalTranslationRequestController::class)
+Route::prefix('/outsource-requests')
+    ->controller(API\OutsourceRequestController::class)
     ->whereUuid('id')
     ->group(function (): void {
-        Route::get('/', 'index')->name('translation-order.external_translation_requests.index');
-        Route::post('/', 'store')->name('translation-order.external_translation_requests.store');
-        Route::get('/{id}', 'show')->name('translation-order.external_translation_requests.show');
-        Route::put('/{id}', 'update')->name('translation-order.external_translation_requests.update');
-        Route::post('/{id}/cancel', 'cancel')->name('translation-order.external_translation_requests.cancel');
-        Route::post('/{id}/select', 'select')->name('translation-order.external_translation_requests.select');
-        Route::post('/{id}/accept', 'accept')->name('translation-order.external_translation_requests.accept');
-        Route::post('/{id}/decline', 'decline')->name('translation-order.external_translation_requests.decline');
+        Route::get('/', 'index')->name('translation-order.outsource_requests.index');
+        Route::post('/', 'store')->name('translation-order.outsource_requests.store');
+        Route::get('/{id}', 'show')->name('translation-order.outsource_requests.show');
+        Route::put('/{id}', 'update')->name('translation-order.outsource_requests.update');
+        Route::post('/{id}/cancel', 'cancel')->name('translation-order.outsource_requests.cancel');
+        Route::post('/{id}/select', 'select')->name('translation-order.outsource_requests.select');
+        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_requests.accept');
+        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_requests.decline');
     });
 
 Route::prefix('/projects')

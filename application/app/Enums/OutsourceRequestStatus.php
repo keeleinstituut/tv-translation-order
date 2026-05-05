@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum ExternalRequestStatus: string
+enum OutsourceRequestStatus: string
 {
     case Active = 'ACTIVE';
     case Fulfilled = 'FULFILLED';

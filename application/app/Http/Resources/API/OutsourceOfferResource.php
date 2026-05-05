@@ -2,16 +2,16 @@
 
 namespace App\Http\Resources\API;
 
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Models\OutsourceOffer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
 /**
- * @mixin ExternalTranslationRequestRecipient
+ * @mixin OutsourceOffer
  */
 #[OA\Schema(
-    title: 'ExternalTranslationRequestRecipient',
+    title: 'OutsourceOffer',
     required: ['id', 'institution_id', 'position', 'status'],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
@@ -32,7 +32,7 @@ use OpenApi\Attributes as OA;
     ],
     type: 'object'
 )]
-class ExternalTranslationRequestRecipientResource extends JsonResource
+class OutsourceOfferResource extends JsonResource
 {
     public function toArray(Request $request): array
     {

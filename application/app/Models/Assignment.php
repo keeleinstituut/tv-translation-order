@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AssignmentStatus;
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
+use App\Models\OutsourceRequest;
 
 /**
  * App\Models\Assignment
@@ -140,17 +141,17 @@ class Assignment extends Model implements AuditLoggable
 
         $query->where(function (Builder $sharedQuery) use ($institutionId) {
             $sharedQuery->where('external_institution_id', $institutionId)
-                ->orWhereHas('externalTranslationRequests.recipients', function (Builder $q) use ($institutionId) {
+                ->orWhereHas('outsourceRequests.offers', function (Builder $q) use ($institutionId) {
                     $q->where('institution_id', $institutionId)
-                        ->whereHas('externalTranslationRequest',
-                            fn (Builder $requestQuery) => $requestQuery->where('status', ExternalRequestStatus::Active));
+                        ->whereHas('outsourceRequest',
+                            fn (Builder $requestQuery) => $requestQuery->where('status', OutsourceRequestStatus::Active));
                 });
         });
     }
 
-    public function externalTranslationRequests(): HasMany
+    public function outsourceRequests(): HasMany
     {
-        return $this->hasMany(ExternalTranslationRequest::class);
+        return $this->hasMany(OutsourceRequest::class);
     }
 
     public function externalInstitution(): BelongsTo

@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use App\Enums\ExternalRequestStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Enums\PrivilegeKey;
 use App\Enums\VolumeUnits;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\ExternalTranslationRequest;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Models\OutsourceRequest;
+use App\Models\OutsourceOffer;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Volume;
@@ -89,15 +89,15 @@ class VolumeControllerCrossInstitutionTest extends TestCase
         return [$assignment, $volume];
     }
 
-    private function createActiveRecipient(Assignment $assignment, InstitutionUser $partnerUser): ExternalTranslationRequestRecipient
+    private function createActiveRecipient(Assignment $assignment, InstitutionUser $partnerUser): OutsourceOffer
     {
-        $translationRequest = ExternalTranslationRequest::factory()->create([
+        $translationRequest = OutsourceRequest::factory()->create([
             'assignment_id' => $assignment->id,
-            'status' => ExternalRequestStatus::Active,
+            'status' => OutsourceRequestStatus::Active,
         ]);
 
-        return ExternalTranslationRequestRecipient::factory()->notified()->create([
-            'external_translation_request_id' => $translationRequest->id,
+        return OutsourceOffer::factory()->notified()->create([
+            'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
         ]);
     }

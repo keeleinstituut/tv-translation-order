@@ -51,7 +51,7 @@ class SubProjectPolicy
             return true;
         }
 
-        if ($user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
             return $subProject->assignments()
                 ->sharedWithInstitution($user->institutionId)
                 ->exists();
@@ -93,7 +93,7 @@ class SubProjectPolicy
 
     public function downloadMedia(AuthUser $user, SubProject $subProject): bool
     {
-        if ($user->hasPrivilege(PrivilegeKey::ViewExternalTranslationRequest) &&
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
             $user->hasActivePartnerAccessToProject($subProject->project, true)) {
             return true;
         }

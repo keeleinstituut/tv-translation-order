@@ -1,31 +1,31 @@
 <?php
 
-namespace App\Services\ExternalTranslationRequest;
+namespace App\Services\OutsourceRequest;
 
-use App\Enums\ExternalRequestRecipientStatus;
-use App\Enums\ExternalRequestStatus;
-use App\Jobs\ExpireExternalTranslationRequestRecipientJob;
-use App\Models\ExternalTranslationRequest;
-use App\Models\ExternalTranslationRequestRecipient;
+use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestStatus;
+use App\Jobs\ExpireOutsourceOfferJob;
+use App\Models\OutsourceRequest;
+use App\Models\OutsourceOffer;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
-readonly class ExternalTranslationRequestStateMachine
+readonly class OutsourceRequestStateMachine
 {
-    public function acceptRecipient(
-        ExternalTranslationRequestRecipient $recipient,
+    public function acceptOffer(
+        OutsourceOffer $recipient,
         ?float                              $proposedPrice,
         ?string                             $responseComment,
     ): void
     {
         DB::transaction(function () use ($recipient, $proposedPrice, $responseComment) {
-            [$lockedRecipient, $request] = $this->lockRecipientAndRequest($recipient);
-            $this->assertRecipientActionable($lockedRecipient, $request);
+            [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
+            $this->assertOfferActionable($lockedRecipient, $request);
 
             $lockedRecipient->update([
-                'status' => ExternalRequestRecipientStatus::Accepted,
+                'status' => OutsourceOfferStatus::Accepted,
                 'responded_at' => now(),
                 'proposed_price' => $proposedPrice,
                 'response_comment' => $responseComment,
@@ -33,23 +33,23 @@ readonly class ExternalTranslationRequestStateMachine
         });
     }
 
-    public function declineRecipient(
-        ExternalTranslationRequestRecipient $recipient,
+    public function declineOffer(
+        OutsourceOffer $recipient,
         string                              $declineComment,
     ): void
     {
         DB::transaction(function () use ($recipient, $declineComment) {
-            [$lockedRecipient, $request] = $this->lockRecipientAndRequest($recipient);
-            $this->assertRecipientActionable($lockedRecipient, $request);
+            [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
+            $this->assertOfferActionable($lockedRecipient, $request);
 
             $lockedRecipient->update([
-                'status' => ExternalRequestRecipientStatus::Declined,
+                'status' => OutsourceOfferStatus::Declined,
                 'responded_at' => now(),
                 'decline_comment' => $declineComment,
             ]);
 
             if ($request->isCascade()) {
-                $this->activateNextCascadeRecipient($request);
+                $this->activateNextCascadeOffer($request);
             }
         });
     }
@@ -57,16 +57,16 @@ readonly class ExternalTranslationRequestStateMachine
     /**
      * Idempotent — safe to call from both the delayed job and the sweeper.
      */
-    public function expireRecipient(ExternalTranslationRequestRecipient $recipient): void
+    public function expireOffer(OutsourceOffer $recipient): void
     {
         DB::transaction(function () use ($recipient) {
-            [$lockedRecipient, $request] = $this->lockRecipientAndRequest($recipient);
+            [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
 
-            if ($lockedRecipient->status !== ExternalRequestRecipientStatus::Notified) {
+            if ($lockedRecipient->status !== OutsourceOfferStatus::Notified) {
                 return;
             }
 
-            if ($request->status !== ExternalRequestStatus::Active) {
+            if ($request->status !== OutsourceRequestStatus::Active) {
                 return;
             }
 
@@ -74,10 +74,10 @@ readonly class ExternalTranslationRequestStateMachine
                 return;
             }
 
-            $lockedRecipient->update(['status' => ExternalRequestRecipientStatus::Expired]);
+            $lockedRecipient->update(['status' => OutsourceOfferStatus::Expired]);
 
             if ($request->isCascade()) {
-                $this->activateNextCascadeRecipient($request);
+                $this->activateNextCascadeOffer($request);
             }
         });
     }
@@ -85,39 +85,39 @@ readonly class ExternalTranslationRequestStateMachine
     /**
      * @param array<string, string> $rejectionComments map of non-selected in-play recipient_id => rejection_comment
      */
-    public function selectRecipient(
-        ExternalTranslationRequest          $request,
-        ExternalTranslationRequestRecipient $recipient,
-        array                               $rejectionComments,
+    public function selectOffer(
+        OutsourceRequest $request,
+        OutsourceOffer   $recipient,
+        array            $rejectionComments,
     ): void
     {
         DB::transaction(function () use ($request, $recipient, $rejectionComments) {
-            $lockedRequest = ExternalTranslationRequest::query()
+            $lockedRequest = OutsourceRequest::query()
                 ->where('id', $request->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedRequest->status !== ExternalRequestStatus::Active) {
+            if ($lockedRequest->status !== OutsourceRequestStatus::Active) {
                 throw new DomainException("Request is not ACTIVE.");
             }
 
-            /** @var ExternalTranslationRequestRecipient $lockedRecipient */
-            $lockedRecipient = $lockedRequest->recipients()
+            /** @var OutsourceOffer $lockedOffer */
+            $lockedRecipient = $lockedRequest->offers()
                 ->where('id', $recipient->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedRecipient->status !== ExternalRequestRecipientStatus::Accepted) {
+            if ($lockedRecipient->status !== OutsourceOfferStatus::Accepted) {
                 throw new DomainException("Recipient is not in ACCEPTED state.");
             }
 
-            /** @var Collection<ExternalTranslationRequestRecipient> $rejectedRecipients */
-            $rejectedRecipients = $lockedRequest->recipients()
+            /** @var Collection<OutsourceOffer> $rejectedOffers */
+            $rejectedRecipients = $lockedRequest->offers()
                 ->whereIn('id', array_keys($rejectionComments))
                 ->whereIn('status', [
-                    ExternalRequestRecipientStatus::Pending,
-                    ExternalRequestRecipientStatus::Notified,
-                    ExternalRequestRecipientStatus::Accepted,
+                    OutsourceOfferStatus::Pending,
+                    OutsourceOfferStatus::Notified,
+                    OutsourceOfferStatus::Accepted,
                 ])
                 ->lockForUpdate()
                 ->get();
@@ -126,17 +126,17 @@ readonly class ExternalTranslationRequestStateMachine
                 throw new DomainException("One or more rejected recipients are no longer in-play.");
             }
 
-            $lockedRecipient->update(['status' => ExternalRequestRecipientStatus::Selected]);
+            $lockedRecipient->update(['status' => OutsourceOfferStatus::Selected]);
 
             foreach ($rejectedRecipients as $rejectedRecipient) {
                 $rejectedRecipient->update([
-                    'status' => ExternalRequestRecipientStatus::Rejected,
+                    'status' => OutsourceOfferStatus::Rejected,
                     'rejection_comment' => $rejectionComments[$rejectedRecipient->id],
                     'responded_at' => $rejectedRecipient->responded_at ?? now(),
                 ]);
             }
 
-            $lockedRequest->update(['status' => ExternalRequestStatus::Fulfilled]);
+            $lockedRequest->update(['status' => OutsourceRequestStatus::Fulfilled]);
 
             $finalPrice = $lockedRecipient->proposed_price ?? $lockedRequest->price ?? $lockedRecipient->calculated_price;
             $lockedRequest->assignment->update([
@@ -146,38 +146,38 @@ readonly class ExternalTranslationRequestStateMachine
         });
     }
 
-    public function cancelRequest(ExternalTranslationRequest $request): void
+    public function cancelRequest(OutsourceRequest $request): void
     {
         DB::transaction(function () use ($request) {
-            $lockedRequest = ExternalTranslationRequest::query()
+            $lockedRequest = OutsourceRequest::query()
                 ->where('id', $request->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedRequest->status !== ExternalRequestStatus::Active) {
+            if ($lockedRequest->status !== OutsourceRequestStatus::Active) {
                 throw new DomainException("Request is not ACTIVE.");
             }
 
-            $lockedRequest->recipients()
+            $lockedRequest->offers()
                 ->whereIn('status', [
-                    ExternalRequestRecipientStatus::Pending,
-                    ExternalRequestRecipientStatus::Notified,
+                    OutsourceOfferStatus::Pending,
+                    OutsourceOfferStatus::Notified,
                 ])
-                ->update(['status' => ExternalRequestRecipientStatus::Expired]);
+                ->update(['status' => OutsourceOfferStatus::Expired]);
 
-            $lockedRequest->update(['status' => ExternalRequestStatus::Cancelled]);
+            $lockedRequest->update(['status' => OutsourceRequestStatus::Cancelled]);
         });
     }
 
-    private function activateNextCascadeRecipient(ExternalTranslationRequest $request): void
+    private function activateNextCascadeOffer(OutsourceRequest $request): void
     {
-        if ($request->status !== ExternalRequestStatus::Active || !$request->isCascade()) {
+        if ($request->status !== OutsourceRequestStatus::Active || !$request->isCascade()) {
             return;
         }
 
-        /** @var ExternalTranslationRequestRecipient $next */
-        $next = $request->recipients()
-            ->where('status', ExternalRequestRecipientStatus::Pending)
+        /** @var OutsourceOffer $next */
+        $next = $request->offers()
+            ->where('status', OutsourceOfferStatus::Pending)
             ->orderBy('position')
             ->lockForUpdate()
             ->first();
@@ -187,44 +187,44 @@ readonly class ExternalTranslationRequestStateMachine
         }
 
         $next->update([
-            'status' => ExternalRequestRecipientStatus::Notified,
+            'status' => OutsourceOfferStatus::Notified,
             'notified_at' => now(),
             'expires_at' => now()->addMinutes($request->reaction_time_minutes),
         ]);
 
-        ExpireExternalTranslationRequestRecipientJob::dispatch($next->id)
+        ExpireOutsourceOfferJob::dispatch($next->id)
             ->afterCommit()
             ->delay($next->expires_at);
     }
 
     /**
-     * @return array{ExternalTranslationRequestRecipient, ExternalTranslationRequest}
+     * @return array{OutsourceOffer, OutsourceRequest}
      */
-    private function lockRecipientAndRequest(ExternalTranslationRequestRecipient $recipient): array
+    private function lockOfferAndRequest(OutsourceOffer $recipient): array
     {
-        $request = ExternalTranslationRequest::query()
-            ->where('id', $recipient->external_translation_request_id)
+        $request = OutsourceRequest::query()
+            ->where('id', $recipient->outsource_request_id)
             ->lockForUpdate()
             ->firstOrFail();
 
-        $lockedRecipient = $request->recipients()
+        $lockedOffer = $request->offers()
             ->where('id', $recipient->id)
             ->lockForUpdate()
             ->firstOrFail();
 
-        return [$lockedRecipient, $request];
+        return [$lockedOffer, $request];
     }
 
-    private function assertRecipientActionable(
-        ExternalTranslationRequestRecipient $recipient,
-        ExternalTranslationRequest          $request,
+    private function assertOfferActionable(
+        OutsourceOffer $recipient,
+        OutsourceRequest $request,
     ): void
     {
-        if ($recipient->status !== ExternalRequestRecipientStatus::Notified) {
+        if ($recipient->status !== OutsourceOfferStatus::Notified) {
             throw new DomainException("Recipient is not in NOTIFIED state.");
         }
 
-        if ($request->status !== ExternalRequestStatus::Active) {
+        if ($request->status !== OutsourceRequestStatus::Active) {
             throw new DomainException("Request is not ACTIVE.");
         }
 
@@ -234,8 +234,8 @@ readonly class ExternalTranslationRequestStateMachine
     }
 
     private function hasResponseDeadlinePassed(
-        ExternalTranslationRequestRecipient $recipient,
-        ExternalTranslationRequest          $request,
+        OutsourceOffer $recipient,
+        OutsourceRequest $request,
     ): bool
     {
         $deadline = $request->isCascade()

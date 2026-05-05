@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('external_translation_requests', function (Blueprint $table) {
+        Schema::create('outsource_requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('assignment_id')->constrained('assignments');
             $table->foreignUuid('created_by_institution_user_id')->constrained('cached_institution_users');
@@ -26,14 +26,14 @@ return new class extends Migration
         });
 
         DB::statement(<<<'SQL'
-            CREATE UNIQUE INDEX external_translation_requests_assignment_active_unique
-            ON external_translation_requests (assignment_id)
+            CREATE UNIQUE INDEX outsource_requests_assignment_active_unique
+            ON outsource_requests (assignment_id)
             WHERE deleted_at IS NULL AND status = 'ACTIVE'
         SQL);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('external_translation_requests');
+        Schema::dropIfExists('outsource_requests');
     }
 };

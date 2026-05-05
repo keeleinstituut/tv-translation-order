@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\ExternalRequestRecipientStatus;
+use App\Enums\OutsourceOfferStatus;
 use App\Models\CachedEntities\Institution;
-use Database\Factories\ExternalTranslationRequestRecipientFactory;
+use Database\Factories\OutsourceOfferFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,10 +17,10 @@ use Spatie\EloquentSortable\SortableTrait;
 
 /**
  * @property string $id
- * @property string $external_translation_request_id
+ * @property string $outsource_request_id
  * @property string $institution_id
  * @property int $position
- * @property ExternalRequestRecipientStatus $status
+ * @property OutsourceOfferStatus $status
  * @property Carbon|null $notified_at
  * @property Carbon|null $responded_at
  * @property Carbon|null $expires_at
@@ -32,13 +32,13 @@ use Spatie\EloquentSortable\SortableTrait;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
- * @property-read ExternalTranslationRequest $externalTranslationRequest
+ * @property-read OutsourceRequest $outsourceRequest
  * @property-read Institution $institution
- * @method static Builder|ExternalTranslationRequestRecipient ordered($direction = 'asc')
+ * @method static Builder|OutsourceOffer ordered($direction = 'asc')
  */
-class ExternalTranslationRequestRecipient extends Model implements Sortable
+class OutsourceOffer extends Model implements Sortable
 {
-    /** @use HasFactory<ExternalTranslationRequestRecipientFactory> */
+    /** @use HasFactory<OutsourceOfferFactory> */
     use HasFactory;
     use HasUuids;
     use SoftDeletes;
@@ -52,7 +52,7 @@ class ExternalTranslationRequestRecipient extends Model implements Sortable
     ];
 
     protected $casts = [
-        'status' => ExternalRequestRecipientStatus::class,
+        'status' => OutsourceOfferStatus::class,
         'position' => 'integer',
         'notified_at' => 'datetime',
         'responded_at' => 'datetime',
@@ -63,12 +63,12 @@ class ExternalTranslationRequestRecipient extends Model implements Sortable
 
     public function buildSortQuery(): Builder
     {
-        return static::query()->where('external_translation_request_id', $this->external_translation_request_id);
+        return static::query()->where('outsource_request_id', $this->outsource_request_id);
     }
 
-    public function externalTranslationRequest(): BelongsTo
+    public function outsourceRequest(): BelongsTo
     {
-        return $this->belongsTo(ExternalTranslationRequest::class);
+        return $this->belongsTo(OutsourceRequest::class);
     }
 
     public function institution(): BelongsTo

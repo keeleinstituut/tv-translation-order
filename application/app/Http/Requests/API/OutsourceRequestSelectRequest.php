@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\ExternalRequestRecipientStatus;
-use App\Models\ExternalTranslationRequest;
+use App\Enums\OutsourceOfferStatus;
+use App\Models\OutsourceRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
@@ -30,7 +30,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class ExternalTranslationRequestSelectRequest extends FormRequest
+class OutsourceRequestSelectRequest extends FormRequest
 {
     public function rules(): array
     {
@@ -50,7 +50,7 @@ class ExternalTranslationRequestSelectRequest extends FormRequest
                     return;
                 }
 
-                $request = ExternalTranslationRequest::query()->find($this->route('id'));
+                $request = OutsourceRequest::query()->find($this->route('id'));
                 if ($request === null) {
                     return;
                 }
@@ -69,9 +69,9 @@ class ExternalTranslationRequestSelectRequest extends FormRequest
 
                 $expectedIds = $request->recipients()
                     ->whereIn('status', [
-                        ExternalRequestRecipientStatus::Pending,
-                        ExternalRequestRecipientStatus::Notified,
-                        ExternalRequestRecipientStatus::Accepted,
+                        OutsourceOfferStatus::Pending,
+                        OutsourceOfferStatus::Notified,
+                        OutsourceOfferStatus::Accepted,
                     ])
                     ->where('id', '!=', $selectedId)
                     ->pluck('id');
