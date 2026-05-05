@@ -67,7 +67,7 @@ class OutsourceRequestSelectRequest extends FormRequest
                     return;
                 }
 
-                $expectedIds = $request->recipients()
+                $expectedIds = $request->offers()
                     ->whereIn('status', [
                         OutsourceOfferStatus::Pending,
                         OutsourceOfferStatus::Notified,

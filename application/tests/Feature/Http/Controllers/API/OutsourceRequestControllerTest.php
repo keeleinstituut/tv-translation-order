@@ -2,23 +2,344 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
+use App\Enums\CandidateStatus;
+use App\Enums\ExternalRequestMode;
+use App\Enums\InstitutionType;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Enums\PrivilegeKey;
+use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
+use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\Candidate;
+use App\Models\InstitutionPartner;
 use App\Models\OutsourceOffer;
 use App\Models\OutsourceRequest;
 use App\Models\Project;
 use App\Models\SubProject;
+use App\Models\Vendor;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 
 class OutsourceRequestControllerTest extends TestCase
 {
+    // --- store ---
+
+    public function test_owner_can_create_cascade_request(): void
+    {
+        // GIVEN
+        Queue::fake();
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerA);
+        $this->createInstitutionPartner($ownerUser, $partnerB);
+
+        // WHEN
+        $response = $this->withHeaders($this->jsonHeadersFor($ownerUser))
+            ->post('/api/outsource-requests', [
+                'assignment_id' => $assignment->id,
+                'mode' => ExternalRequestMode::Cascade->value,
+                'reaction_time_minutes' => 30,
+                'recipients' => [
+                    ['institution_id' => $partnerA->institution['id']],
+                    ['institution_id' => $partnerB->institution['id']],
+                ],
+                'special_instructions' => 'Please preserve formatting.',
+                'include_price' => false,
+                'include_source_files' => true,
+                'override_price' => 123.456,
+                'request_files' => [
+                    UploadedFile::fake()->create('source.docx'),
+                ],
+            ]);
+
+        // THEN
+        $response->assertCreated();
+        $outsourceRequest = OutsourceRequest::query()
+            ->with('offers')
+            ->where('assignment_id', $assignment->id)
+            ->firstOrFail();
+        $offers = $outsourceRequest->offers()->orderBy('position')->get();
+
+        $this->assertSame(OutsourceRequestStatus::Active, $outsourceRequest->status);
+        $this->assertSame(ExternalRequestMode::Cascade, $outsourceRequest->mode);
+        $this->assertSame(30, $outsourceRequest->reaction_time_minutes);
+        $this->assertNull($outsourceRequest->deadline_at);
+        $this->assertSame('Please preserve formatting.', $outsourceRequest->special_instructions);
+        $this->assertSame('123.456', $outsourceRequest->price);
+        $this->assertFalse($outsourceRequest->include_price);
+        $this->assertTrue($outsourceRequest->include_source_files);
+        $this->assertCount(1, $outsourceRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION));
+        $this->assertCount(2, $offers);
+        $this->assertSame(1, $offers[0]->position);
+        $this->assertSame($partnerA->institution['id'], $offers[0]->institution_id);
+        $this->assertSame(OutsourceOfferStatus::Notified, $offers[0]->status);
+        $this->assertNotNull($offers[0]->notified_at);
+        $this->assertNotNull($offers[0]->expires_at);
+        $this->assertSame(2, $offers[1]->position);
+        $this->assertSame($partnerB->institution['id'], $offers[1]->institution_id);
+        $this->assertSame(OutsourceOfferStatus::Pending, $offers[1]->status);
+        $this->assertNull($offers[1]->notified_at);
+        $this->assertNull($offers[1]->expires_at);
+        Queue::assertPushed(ExpireOutsourceOfferJob::class, 1);
+        Queue::assertPushed(
+            ExpireOutsourceOfferJob::class,
+            fn (ExpireOutsourceOfferJob $job) => $job->recipientId === $offers[0]->id
+        );
+    }
+
+    public function test_owner_can_create_parallel_request(): void
+    {
+        // GIVEN
+        Queue::fake();
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $deadline = now()->addDays(2)->milliseconds(0);
+        $this->createInstitutionPartner($ownerUser, $partnerA);
+        $this->createInstitutionPartner($ownerUser, $partnerB);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                'assignment_id' => $assignment->id,
+                'mode' => ExternalRequestMode::Parallel->value,
+                'deadline_at' => $deadline->toISOString(),
+                'recipients' => [
+                    ['institution_id' => $partnerA->institution['id']],
+                    ['institution_id' => $partnerB->institution['id']],
+                ],
+            ]);
+
+        // THEN
+        $response->assertCreated();
+        $outsourceRequest = OutsourceRequest::query()
+            ->with('offers')
+            ->where('assignment_id', $assignment->id)
+            ->firstOrFail();
+        $offers = $outsourceRequest->offers()->orderBy('position')->get();
+
+        $this->assertSame(ExternalRequestMode::Parallel, $outsourceRequest->mode);
+        $this->assertNull($outsourceRequest->reaction_time_minutes);
+        $this->assertTrue($deadline->equalTo($outsourceRequest->deadline_at));
+        $this->assertCount(2, $offers);
+        $offers->each(function (OutsourceOffer $offer) use ($deadline): void {
+            $this->assertSame(OutsourceOfferStatus::Notified, $offer->status);
+            $this->assertNotNull($offer->notified_at);
+            $this->assertTrue($deadline->equalTo($offer->expires_at));
+        });
+        Queue::assertPushed(ExpireOutsourceOfferJob::class, 2);
+    }
+
+    public function test_partner_cannot_create_request_for_another_institution_assignment(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ManageOutsourceRequest);
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($partnerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('outsource_requests', ['assignment_id' => $assignment->id]);
+    }
+
+    public function test_user_without_manage_privilege_cannot_create_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('outsource_requests', ['assignment_id' => $assignment->id]);
+    }
+
+    public function test_translation_agency_user_cannot_create_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        Institution::query()
+            ->whereKey($ownerUser->institution['id'])
+            ->update(['type' => InstitutionType::TranslationAgency]);
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('outsource_requests', ['assignment_id' => $assignment->id]);
+    }
+
+    public function test_create_request_requires_mode_specific_deadline_fields(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $cascadeResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'reaction_time_minutes' => null,
+            ]);
+        $parallelResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'mode' => ExternalRequestMode::Parallel->value,
+                'reaction_time_minutes' => null,
+                'deadline_at' => null,
+            ]);
+
+        // THEN
+        $cascadeResponse->assertUnprocessable()
+            ->assertJsonValidationErrors('reaction_time_minutes');
+        $parallelResponse->assertUnprocessable()
+            ->assertJsonValidationErrors('deadline_at');
+    }
+
+    public function test_create_request_rejects_duplicate_recipients(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'recipients' => [
+                    ['institution_id' => $recipientUser->institution['id']],
+                    ['institution_id' => $recipientUser->institution['id']],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('recipients');
+    }
+
+    public function test_create_request_rejects_non_partner_recipient(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('recipients.0.institution_id');
+    }
+
+    public function test_create_request_rejects_assignment_that_already_has_vendor(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser, [
+            'assigned_vendor_id' => Vendor::factory(),
+        ]);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('assignment_id');
+    }
+
+    public function test_create_request_rejects_assignment_with_active_vendor_candidates(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        Candidate::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => CandidateStatus::New,
+        ]);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('assignment_id');
+    }
+
+    public function test_create_request_rejects_assignment_already_shared_with_external_institution(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser, [
+            'external_institution_id' => $recipientUser->institution['id'],
+        ]);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('assignment_id');
+    }
+
+    public function test_create_request_rejects_assignment_with_active_outsource_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createTranslationRequest($assignment);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', $this->validCreatePayload($assignment, [$recipientUser]));
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('assignment_id');
+    }
+
     // --- index ---
 
     public function test_partner_can_list_requests_where_they_are_recipient(): void
@@ -55,6 +376,83 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertOk()
             ->assertJsonMissing(['id' => $translationRequest->id]);
+    }
+
+    public function test_owner_can_filter_index_by_assignment_sub_project_project_and_status(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $matchingAssignment = $this->createAssignmentForOwner($ownerUser);
+        $otherAssignment = $this->createAssignmentForOwner($ownerUser);
+        $matchingRequest = $this->createTranslationRequest($matchingAssignment);
+        $otherRequest = $this->createTranslationRequest($otherAssignment);
+        $fulfilledRequest = $this->createTranslationRequest($matchingAssignment, [
+            'status' => OutsourceRequestStatus::Fulfilled,
+        ]);
+
+        // WHEN
+        $assignmentResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'assignment_id' => $matchingAssignment->id,
+            ]));
+        $subProjectResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'sub_project_id' => $matchingAssignment->sub_project_id,
+            ]));
+        $projectResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'project_id' => $matchingAssignment->subProject->project_id,
+            ]));
+        $statusResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'status' => [OutsourceRequestStatus::Fulfilled->value],
+            ]));
+
+        // THEN
+        $assignmentResponse->assertOk()
+            ->assertJsonFragment(['id' => $matchingRequest->id])
+            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $otherRequest->id]);
+        $subProjectResponse->assertOk()
+            ->assertJsonFragment(['id' => $matchingRequest->id])
+            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $otherRequest->id]);
+        $projectResponse->assertOk()
+            ->assertJsonFragment(['id' => $matchingRequest->id])
+            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $otherRequest->id]);
+        $statusResponse->assertOk()
+            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $matchingRequest->id])
+            ->assertJsonMissing(['id' => $otherRequest->id]);
+    }
+
+    public function test_owner_can_sort_and_paginate_index(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $olderAssignment = $this->createAssignmentForOwner($ownerUser);
+        $newerAssignment = $this->createAssignmentForOwner($ownerUser);
+        $olderRequest = $this->createTranslationRequest($olderAssignment, [
+            'created_at' => now()->subDay(),
+        ]);
+        $newerRequest = $this->createTranslationRequest($newerAssignment, [
+            'created_at' => now(),
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'sort_order' => 'asc',
+                'per_page' => 1,
+            ]));
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonPath('data.0.id', $olderRequest->id)
+            ->assertJsonMissing(['id' => $newerRequest->id])
+            ->assertJsonPath('meta.per_page', 1);
+        $this->assertCount(1, $response->json('data'));
     }
 
     // --- show ---
@@ -382,6 +780,292 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN
         $response->assertForbidden();
+    }
+
+    // --- update ---
+
+    public function test_owner_can_reorder_pending_cascade_offers(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'mode' => ExternalRequestMode::Cascade,
+            'reaction_time_minutes' => 60,
+            'deadline_at' => null,
+        ]);
+        $notified = OutsourceOffer::factory()->notified()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 1,
+        ]);
+        $pendingA = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 2,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+        $pendingB = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 3,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson("/api/outsource-requests/{$translationRequest->id}", [
+                'recipients' => [
+                    ['id' => $pendingA->id, 'position' => 3],
+                    ['id' => $pendingB->id, 'position' => 2],
+                ],
+            ]);
+
+        // THEN
+        $response->assertOk();
+        $this->assertSame(1, $notified->fresh()->position);
+        $this->assertSame(3, $pendingA->fresh()->position);
+        $this->assertSame(2, $pendingB->fresh()->position);
+    }
+
+    public function test_partner_cannot_reorder_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ManageOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'mode' => ExternalRequestMode::Cascade,
+            'reaction_time_minutes' => 60,
+            'deadline_at' => null,
+        ]);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+        $pending = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 2,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->putJson("/api/outsource-requests/{$translationRequest->id}", [
+                'recipients' => [
+                    ['id' => $pending->id, 'position' => 1],
+                ],
+            ]);
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertSame(2, $pending->fresh()->position);
+    }
+
+    public function test_parallel_request_cannot_be_reordered(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'mode' => ExternalRequestMode::Parallel,
+        ]);
+        $pending = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 1,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson("/api/outsource-requests/{$translationRequest->id}", [
+                'recipients' => [
+                    ['id' => $pending->id, 'position' => 2],
+                ],
+            ]);
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertSame(1, $pending->fresh()->position);
+    }
+
+    public function test_non_active_request_cannot_be_reordered(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'mode' => ExternalRequestMode::Cascade,
+            'reaction_time_minutes' => 60,
+            'deadline_at' => null,
+            'status' => OutsourceRequestStatus::Fulfilled,
+        ]);
+        $pending = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 1,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson("/api/outsource-requests/{$translationRequest->id}", [
+                'recipients' => [
+                    ['id' => $pending->id, 'position' => 2],
+                ],
+            ]);
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertSame(1, $pending->fresh()->position);
+    }
+
+    public function test_reorder_requires_exact_pending_offer_permutation(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'mode' => ExternalRequestMode::Cascade,
+            'reaction_time_minutes' => 60,
+            'deadline_at' => null,
+        ]);
+        $pendingA = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 1,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+        $pendingB = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 2,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson("/api/outsource-requests/{$translationRequest->id}", [
+                'recipients' => [
+                    ['id' => $pendingA->id, 'position' => 2],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('recipients');
+        $this->assertSame(1, $pendingA->fresh()->position);
+        $this->assertSame(2, $pendingB->fresh()->position);
+    }
+
+    public function test_reorder_requires_unique_positions(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'mode' => ExternalRequestMode::Cascade,
+            'reaction_time_minutes' => 60,
+            'deadline_at' => null,
+        ]);
+        $pendingA = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 1,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+        $pendingB = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'position' => 2,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson("/api/outsource-requests/{$translationRequest->id}", [
+                'recipients' => [
+                    ['id' => $pendingA->id, 'position' => 1],
+                    ['id' => $pendingB->id, 'position' => 1],
+                ],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('recipients');
+    }
+
+    // --- cancel ---
+
+    public function test_owner_can_cancel_active_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $pending = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Pending,
+        ]);
+        $notified = OutsourceOffer::factory()->notified()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Notified,
+        ]);
+        $accepted = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Accepted,
+        ]);
+        $declined = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Declined,
+        ]);
+        $rejected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Rejected,
+        ]);
+        $selected = OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'status' => OutsourceOfferStatus::Selected,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel");
+
+        // THEN
+        $response->assertOk();
+        $this->assertSame(OutsourceRequestStatus::Cancelled, $translationRequest->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Expired, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Expired, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Accepted, $accepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Rejected, $rejected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::Selected, $selected->fresh()->status);
+    }
+
+    public function test_partner_cannot_cancel_request(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ManageOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel");
+
+        // THEN
+        $response->assertForbidden();
+        $this->assertSame(OutsourceRequestStatus::Active, $translationRequest->fresh()->status);
+    }
+
+    public function test_cancel_non_active_request_returns_conflict(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'status' => OutsourceRequestStatus::Fulfilled,
+        ]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel");
+
+        // THEN
+        $response->assertConflict();
+        $this->assertSame(OutsourceRequestStatus::Fulfilled, $translationRequest->fresh()->status);
     }
 
     // --- select ---
@@ -793,7 +1477,7 @@ class OutsourceRequestControllerTest extends TestCase
         return InstitutionUser::factory()->createWithPrivileges(...$privileges);
     }
 
-    private function createAssignmentForOwner(InstitutionUser $ownerUser): Assignment
+    private function createAssignmentForOwner(InstitutionUser $ownerUser, array $overrides = []): Assignment
     {
         $project = Project::factory()->create(['institution_id' => $ownerUser->institution['id']]);
         $subProject = SubProject::factory()->create([
@@ -802,7 +1486,10 @@ class OutsourceRequestControllerTest extends TestCase
             'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
         ]);
 
-        return Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+        return Assignment::factory()->create(array_merge([
+            'sub_project_id' => $subProject->id,
+            'assigned_vendor_id' => null,
+        ], $overrides));
     }
 
     private function createTranslationRequest(Assignment $assignment, array $overrides = []): OutsourceRequest
@@ -825,5 +1512,39 @@ class OutsourceRequestControllerTest extends TestCase
                 'outsource_request_id' => $request->id,
                 'institution_id' => $partnerUser->institution['id'],
             ], $overrides));
+    }
+
+    private function createInstitutionPartner(InstitutionUser $ownerUser, InstitutionUser $partnerUser): InstitutionPartner
+    {
+        return InstitutionPartner::factory()->create([
+            'institution_id' => $ownerUser->institution['id'],
+            'partner_institution_id' => $partnerUser->institution['id'],
+        ]);
+    }
+
+    /**
+     * @param array<int, InstitutionUser> $recipients
+     * @return array<string, mixed>
+     */
+    private function validCreatePayload(Assignment $assignment, array $recipients): array
+    {
+        return [
+            'assignment_id' => $assignment->id,
+            'mode' => ExternalRequestMode::Cascade->value,
+            'reaction_time_minutes' => 60,
+            'recipients' => collect($recipients)
+                ->map(fn (InstitutionUser $recipient): array => [
+                    'institution_id' => $recipient->institution['id'],
+                ])
+                ->all(),
+        ];
+    }
+
+    private function jsonHeadersFor(InstitutionUser $institutionUser): array
+    {
+        return [
+            ...AuthHelpers::createHeadersForInstitutionUser($institutionUser),
+            'Accept' => 'application/json',
+        ];
     }
 }

@@ -80,13 +80,13 @@ class OutsourceRequestPolicy
     public function accept(AuthUser $user, OutsourceRequest $request): bool
     {
         return $user->hasPrivilege(PrivilegeKey::RespondOutsourceRequest)
-            && $request->recipients->contains('institution_id', $user->institutionId);
+            && $request->offers->contains('institution_id', $user->institutionId);
     }
 
     public function decline(AuthUser $user, OutsourceRequest $request): bool
     {
         return $user->hasPrivilege(PrivilegeKey::RespondOutsourceRequest)
-            && $request->recipients->contains('institution_id', $user->institutionId);
+            && $request->offers->contains('institution_id', $user->institutionId);
     }
 
     public function downloadMedia(AuthUser $user, OutsourceRequest $request): bool
