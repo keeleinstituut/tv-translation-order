@@ -135,13 +135,14 @@ class OutsourceRequestController extends Controller
     {
         $validated = $request->validated();
         $assignment = Assignment::findOrFail($validated['assignment_id']);
-        $institutionId = Auth::user()->institutionUserId;
+        $institutionUserId = Auth::user()->institutionUserId;
+        $institutionId = Auth::user()->institutionId;
         $this->authorize('create', [OutsourceRequest::class, $assignment]);
 
-        $outsourceRequest = DB::transaction(function () use ($validated, $assignment, $institutionId) {
+        $outsourceRequest = DB::transaction(function () use ($validated, $assignment, $institutionUserId, $institutionId) {
             $outsourceRequest = OutsourceRequest::create([
                 'assignment_id' => $assignment->id,
-                'created_by_institution_user_id' => $institutionId,
+                'created_by_institution_user_id' => $institutionUserId,
                 'mode' => $validated['mode'],
                 'reaction_time_minutes' => $validated['reaction_time_minutes'] ?? null,
                 'deadline_at' => $validated['deadline_at'] ?? null,

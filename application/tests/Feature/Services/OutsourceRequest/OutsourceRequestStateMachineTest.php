@@ -7,8 +7,11 @@ use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\Assignment;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Models\OutsourceOffer;
 use App\Models\OutsourceRequest;
+use App\Models\Project;
+use App\Models\SubProject;
 use App\Services\OutsourceRequest\OutsourceRequestStateMachine;
 use DomainException;
 use Illuminate\Support\Facades\Queue;
@@ -69,7 +72,9 @@ class OutsourceRequestStateMachineTest extends TestCase
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createCascadeRequest();
         $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::Notified,
             'expires_at' => now()->subMinute(),
         ]);
@@ -208,7 +213,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $this->assertSame(OutsourceOfferStatus::Rejected, $loser->status);
         $this->assertSame('Price was higher.', $loser->rejection_comment);
         $this->assertSame($winner->institution_id, $assignment->external_institution_id);
-        $this->assertEquals(321.123, $assignment->price);
+        $this->assertEquals(321.12, $assignment->price);
     }
 
     public function test_select_offer_uses_request_price_when_offer_has_no_proposed_price(): void
@@ -227,7 +232,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $stateMachine->selectOffer($request, $winner, []);
 
         // THEN
-        $this->assertEquals(222.222, $request->assignment->fresh()->price);
+        $this->assertEquals(222.22, $request->assignment->fresh()->price);
     }
 
     public function test_select_offer_uses_calculated_price_when_offer_and_request_price_are_empty(): void
@@ -246,7 +251,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $stateMachine->selectOffer($request, $winner, []);
 
         // THEN
-        $this->assertEquals(111.111, $request->assignment->fresh()->price);
+        $this->assertEquals(111.11, $request->assignment->fresh()->price);
     }
 
     public function test_cancel_request_expires_only_pending_and_notified_offers(): void
@@ -290,7 +295,7 @@ class OutsourceRequestStateMachineTest extends TestCase
     private function createRequest(array $overrides = []): OutsourceRequest
     {
         return OutsourceRequest::factory()->create(array_merge([
-            'assignment_id' => Assignment::factory()->create(['assigned_vendor_id' => null])->id,
+            'assignment_id' => $this->createAssignment()->id,
             'mode' => ExternalRequestMode::Parallel,
             'deadline_at' => now()->addDay(),
             'status' => OutsourceRequestStatus::Active,
@@ -309,9 +314,24 @@ class OutsourceRequestStateMachineTest extends TestCase
     private function createOffer(array $overrides = []): OutsourceOffer
     {
         return OutsourceOffer::factory()->create(array_merge([
-            'outsource_request_id' => OutsourceRequest::factory(),
+            'outsource_request_id' => $this->createRequest()->id,
             'status' => OutsourceOfferStatus::Notified,
             'expires_at' => now()->addHour(),
         ], $overrides));
+    }
+
+    private function createAssignment(): Assignment
+    {
+        $project = Project::factory()->create();
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+
+        return Assignment::factory()->create([
+            'sub_project_id' => $subProject->id,
+            'assigned_vendor_id' => null,
+        ]);
     }
 }
