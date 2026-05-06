@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
+use App\Enums\InstitutionType;
 use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
+use App\Models\InstitutionPartner;
 use App\Models\InstitutionUserPinnedLanguage;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -274,11 +276,149 @@ class InstitutionControllerTest extends TestCase
         $response->assertStatus(422);
     }
 
+    // -------------------------------------------------------------------------
+    // index — list institutions (partner-creation lookup)
+    // -------------------------------------------------------------------------
+
+    public function test_index_returns_paginated_institutions_with_no_filters(): void
+    {
+        // GIVEN — caller plus three other institutions
+        $caller = Institution::factory()->create();
+        Institution::factory(3)->create();
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)->getJson('/api/institutions');
+
+        // THEN — caller's institution is included by default
+        $response->assertOk()
+            ->assertJsonStructure(['data' => [['id', 'name', 'short_name', 'email', 'phone', 'logo_url', 'type']]])
+            ->assertJsonFragment(['id' => $caller->id]);
+        $this->assertGreaterThanOrEqual(4, count($response->json('data')));
+    }
+
+    public function test_index_name_filter_narrows_results_case_insensitive(): void
+    {
+        // GIVEN
+        $caller = Institution::factory()->create();
+        $matching = Institution::factory()->create(['name' => 'Acme Translations']);
+        $other = Institution::factory()->create(['name' => 'Globex Corporation']);
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN — lowercase fragment of name
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?name=acme');
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $matching->id])
+            ->assertJsonMissing(['id' => $other->id]);
+    }
+
+    public function test_index_type_filter_narrows_results(): void
+    {
+        // GIVEN
+        $caller = Institution::factory()->create();
+        $agency = Institution::factory()->create(['type' => InstitutionType::TranslationAgency]);
+        $regular = Institution::factory()->create(['type' => InstitutionType::Institution]);
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?type=' . InstitutionType::TranslationAgency->value);
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $agency->id])
+            ->assertJsonMissing(['id' => $regular->id]);
+    }
+
+    public function test_index_not_partner_filter_excludes_self_and_already_partnered(): void
+    {
+        // GIVEN
+        $caller = Institution::factory()->create();
+        $alreadyPartner = Institution::factory()->create();
+        $candidate = Institution::factory()->create();
+
+        InstitutionPartner::factory()->create([
+            'institution_id' => $caller->id,
+            'partner_institution_id' => $alreadyPartner->id,
+        ]);
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?not_partner_of_current_institution=1');
+
+        // THEN — caller and already-partnered institution excluded; candidate present
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $candidate->id])
+            ->assertJsonMissing(['id' => $caller->id])
+            ->assertJsonMissing(['id' => $alreadyPartner->id]);
+    }
+
+    public function test_index_not_partner_filter_ignores_soft_deleted_partner_rows(): void
+    {
+        // GIVEN — partner row exists but is soft-deleted, so the institution should reappear as a candidate
+        $caller = Institution::factory()->create();
+        $previouslyPartner = Institution::factory()->create();
+
+        $partner = InstitutionPartner::factory()->create([
+            'institution_id' => $caller->id,
+            'partner_institution_id' => $previouslyPartner->id,
+        ]);
+        $partner->delete();
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?not_partner_of_current_institution=1');
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $previouslyPartner->id]);
+    }
+
+    public function test_index_returns_403_without_manage_external_partner_privilege(): void
+    {
+        // GIVEN — caller has an unrelated privilege only
+        $caller = Institution::factory()->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $caller->id, 'name' => 'Test'],
+            'privileges' => [PrivilegeKey::ViewExternalPartner->value],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)->getJson('/api/institutions');
+
+        // THEN
+        $response->assertForbidden();
+    }
+
+    public function test_index_returns_401_when_unauthenticated(): void
+    {
+        $response = $this->getJson('/api/institutions');
+        $response->assertUnauthorized();
+    }
+
     private function tokenWithEditInstitution(string $institutionId, string $institutionName = 'Test Institution'): string
     {
         return AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institutionId, 'name' => $institutionName],
             'privileges' => [PrivilegeKey::EditInstitution->value],
+        ]);
+    }
+
+    private function tokenWithManageExternalPartner(string $institutionId, string $institutionName = 'Test Institution'): string
+    {
+        return AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institutionId, 'name' => $institutionName],
+            'privileges' => [PrivilegeKey::ManageExternalPartner->value],
         ]);
     }
 }

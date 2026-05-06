@@ -99,6 +99,8 @@ Route::post('/institution-prices/bulk', [API\InstitutionPriceController::class, 
 Route::put('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkUpdate'])->name('translation-order.institution_prices.bulkUpdate');
 Route::delete('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkDestroy'])->name('translation-order.institution_prices.bulkDestroy');
 
+Route::get('/institutions', [API\InstitutionController::class, 'index'])->name('translation-order.institutions.index');
+
 Route::prefix('/institution-partners')
     ->controller(API\InstitutionPartnerController::class)
     ->group(function (): void {
