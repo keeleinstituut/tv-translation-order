@@ -3,7 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\CandidateStatus;
-use App\Enums\OutsourceRequestStatus;
+use App\Enums\ExternalRequestMode;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\OutsourceRequest;
@@ -22,7 +22,7 @@ use OpenApi\Attributes as OA;
         required: ['assignment_id', 'mode', 'recipients'],
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-            new OA\Property(property: 'mode', type: 'string', enum: ['CASCADE', 'PARALLEL']),
+            new OA\Property(property: 'mode', type: 'string', enum: ExternalRequestMode::class),
             new OA\Property(property: 'reaction_time_minutes', type: 'integer', enum: [15, 30, 60, 120, 180, 240], nullable: true),
             new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', nullable: true),
             new OA\Property(
@@ -85,16 +85,11 @@ class OutsourceRequestCreateRequest extends FormRequest
                     $validator->errors()->add('assignment_id', 'Assignment has active vendor candidates.');
                 }
 
-                if ($assignment->external_institution_id !== null) {
-                    $validator->errors()->add('assignment_id', 'Assignment is already shared with an external institution.');
-                }
-
                 if (OutsourceRequest::query()
                     ->where('assignment_id', $assignmentId)
-                    ->where('status', OutsourceRequestStatus::Active)
                     ->exists()
                 ) {
-                    $validator->errors()->add('assignment_id', 'An active external translation request already exists for this assignment.');
+                    $validator->errors()->add('assignment_id', 'An external translation request already exists for this assignment.');
                 }
 
                 $callerInstitutionId = Auth::user()->institutionId;

@@ -86,6 +86,7 @@ class AssignmentController extends Controller
                 'subProject.project.managerInstitutionUser',
                 'subProject.project.projectComments',
                 'subProject.project.helpFiles',
+                'outsourceRequest.offers.institution'
             ])->findOrFail($id);
 
         $this->authorize('view', $assignment);
@@ -181,7 +182,9 @@ class AssignmentController extends Controller
                 'assignee.institutionUser',
                 'volumes',
                 'catToolJobs',
-                'jobDefinition'
+                'jobDefinition',
+                'outsourceRequest.offers.institution',
+                'outsourceRequest.ownerInstitution',
             ]);
 
             return AssignmentResource::make($assignment);
@@ -222,7 +225,9 @@ class AssignmentController extends Controller
                 'assignee.institutionUser',
                 'volumes',
                 'catToolJobs',
-                'jobDefinition'
+                'jobDefinition',
+                'outsourceRequest.offers.institution',
+                'outsourceRequest.ownerInstitution',
             ]);
 
             return AssignmentResource::make($assignment);
@@ -557,6 +562,8 @@ class AssignmentController extends Controller
                 'volumes.institutionDiscount',
                 'catToolJobs',
                 'jobDefinition',
+                'outsourceRequest.offers.institution',
+                'outsourceRequest.ownerInstitution',
             ]);
     }
 

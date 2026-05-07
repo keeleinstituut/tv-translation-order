@@ -27,7 +27,7 @@ class OutsourceRequestPolicy
     {
         $project = $request->assignment->project;
 
-        if ($user->isInSameInstitutionAs($project)) {
+        if ($user->isInSameInstitutionAsProject($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageOutsourceRequest);
         }
 
@@ -46,7 +46,7 @@ class OutsourceRequestPolicy
 
     public function create(AuthUser $user, Assignment $assignment): bool
     {
-        if (! $user->isInSameInstitutionAs($assignment->project)) {
+        if (! $user->isInSameInstitutionAsProject($assignment->project)) {
             return false;
         }
 
@@ -93,8 +93,20 @@ class OutsourceRequestPolicy
     {
         $project = $request->assignment->project;
 
-        if ($user->isInSameInstitutionAs($project)) {
+        if ($user->isInSameInstitutionAsProject($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageOutsourceRequest);
+        }
+
+        if (! $user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
+            return false;
+        }
+
+        if (OutsourceOffer::query()
+            ->where('outsource_request_id', $request->id)
+            ->where('institution_id', $user->institutionId)
+            ->where('status', OutsourceOfferStatus::Selected)
+            ->exists()) {
+            return true;
         }
 
         if ($project->status === ProjectStatus::Accepted) {
@@ -102,10 +114,6 @@ class OutsourceRequestPolicy
         }
 
         if (! $request->include_source_files) {
-            return false;
-        }
-
-        if (! $user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
             return false;
         }
 
@@ -122,7 +130,7 @@ class OutsourceRequestPolicy
 
     private function isOwnerWithManagePrivilege(AuthUser $user, OutsourceRequest $request): bool
     {
-        return $user->isInSameInstitutionAs($request->assignment->project) &&
+        return $user->isInSameInstitutionAsProject($request->assignment->project) &&
             $user->hasPrivilege(PrivilegeKey::ManageOutsourceRequest);
     }
 

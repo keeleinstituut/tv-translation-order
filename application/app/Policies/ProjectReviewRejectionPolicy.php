@@ -14,12 +14,12 @@ class ProjectReviewRejectionPolicy
             return false;
         }
 
-        if (! $user->isInSameInstitutionAs($project)) {
+        if (! $user->isInSameInstitutionAsProject($project)) {
             return false;
         }
 
         return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::ViewInstitutionProjectDetail]) ||
-            $user->isClientOf($project) ||
-            $user->isAssignmentsCandidate($project);
+            $user->isClientOfProject($project) ||
+            $user->hasAssignmentCandidateAccessToProject($project);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\InstitutionType;
 use App\Models\CachedEntities\Institution;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,7 +21,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'email', type: 'string', format: 'email', nullable: true),
         new OA\Property(property: 'phone', type: 'string', nullable: true),
         new OA\Property(property: 'logo_url', type: 'string', nullable: true),
-        new OA\Property(property: 'type', type: 'string', nullable: true),
+        new OA\Property(property: 'type', type: 'string', enum: InstitutionType::class, nullable: true),
     ],
     type: 'object'
 )]

@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assignments', function (Blueprint $table) {
-            $table->foreignUuid('external_institution_id')->nullable()->constrained('cached_institutions');
+            $table->index('sub_project_id', 'assignments_sub_project_id_idx');
         });
     }
 
     public function down(): void
     {
         Schema::table('assignments', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('external_institution_id');
+            $table->dropIndex('assignments_sub_project_id_idx');
         });
     }
 };

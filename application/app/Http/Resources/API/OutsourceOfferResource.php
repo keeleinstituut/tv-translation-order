@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\OutsourceOfferStatus;
 use App\Models\OutsourceOffer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -17,7 +18,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'institution_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'position', type: 'integer'),
-        new OA\Property(property: 'status', type: 'string'),
+        new OA\Property(property: 'status', type: 'string', enum: OutsourceOfferStatus::class),
         new OA\Property(property: 'notified_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'responded_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'expires_at', type: 'string', format: 'date-time', nullable: true),

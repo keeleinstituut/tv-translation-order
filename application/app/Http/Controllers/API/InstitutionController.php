@@ -22,7 +22,7 @@ class InstitutionController extends Controller
         tags: ['Institutions'],
         parameters: [
             new OA\QueryParameter(name: 'name', schema: new OA\Schema(type: 'string', nullable: true)),
-            new OA\QueryParameter(name: 'type', schema: new OA\Schema(type: 'string', enum: ['INSTITUTION', 'TRANSLATION_AGENCY'], nullable: true)),
+            new OA\QueryParameter(name: 'type', schema: new OA\Schema(type: 'string', enum: InstitutionType::class, nullable: true)),
             new OA\QueryParameter(name: 'not_partner_of_current_institution', schema: new OA\Schema(type: 'boolean', default: false, nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'name', enum: ['name'])),

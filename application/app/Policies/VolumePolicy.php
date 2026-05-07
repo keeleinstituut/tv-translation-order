@@ -38,7 +38,7 @@ class VolumePolicy
     public function update(AuthUser $user, Volume $volume): bool
     {
         return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
-            ! $user->isInPartnerInstitutionOfAssignment($volume->assignment);
+            ! $user->hasSharedPartnerAccessToAssignment($volume->assignment);
     }
 
     /**
@@ -47,7 +47,7 @@ class VolumePolicy
     public function delete(AuthUser $user, Volume $volume): bool
     {
         return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
-            ! $user->isInPartnerInstitutionOfAssignment($volume->assignment);
+            ! $user->hasSharedPartnerAccessToAssignment($volume->assignment);
     }
 
     /**

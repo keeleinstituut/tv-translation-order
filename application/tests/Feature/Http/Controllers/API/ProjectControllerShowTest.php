@@ -32,9 +32,10 @@ class ProjectControllerShowTest extends TestCase
             'assignment_id' => $assignment->id,
             'status' => OutsourceRequestStatus::Active,
         ]);
-        OutsourceOffer::factory()->notified()->create([
+        OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
+            'status' => \App\Enums\OutsourceOfferStatus::Selected,
         ]);
 
         // WHEN

@@ -27,7 +27,7 @@ class AssignmentPolicy
     {
         $project = $assignment->project;
 
-        if ($user->isInSameInstitutionAs($project)) {
+        if ($user->isInSameInstitutionAsProject($project)) {
             if (Gate::allows('view', $project)) {
                 return true;
             }
@@ -35,8 +35,10 @@ class AssignmentPolicy
             return $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
         }
 
-        return $user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
-            $user->isInPartnerInstitutionOfAssignment($assignment);
+        return $user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) && (
+                $user->hasSharedPartnerAccessToAssignment($assignment) ||
+                $user->hasActivePartnerAccessToAssignment($assignment)
+            );
     }
 
     /**
@@ -54,7 +56,8 @@ class AssignmentPolicy
      */
     public function update(AuthUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->project]);
+        return $user->hasActivePartnerAccessToAssignment($assignment) ||
+            Gate::allows('update', [$assignment->project]);
     }
 
     /**
@@ -63,7 +66,7 @@ class AssignmentPolicy
      */
     public function updateAssigneeComment(AuthUser $user, Assignment $assignment): bool
     {
-        return $user->isInSameInstitutionAs($assignment->project) && (
+        return $user->isInSameInstitutionAsProject($assignment->project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
                 $this->isAssignedTo($user, $assignment)
             );
@@ -98,13 +101,13 @@ class AssignmentPolicy
     {
         $project = $assignment->project;
 
-        if ($user->isInSameInstitutionAs($project)) {
+        if ($user->isInSameInstitutionAsProject($project)) {
             return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
                 $this->isAssignedTo($user, $assignment);
         }
 
-        return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
-            $assignment->external_institution_id === $user->institutionId;
+        return $user->hasSharedPartnerAccessToAssignment($assignment) &&
+            $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     public function isCandidateOf(AuthUser $user, Assignment $assignment): bool
@@ -159,8 +162,8 @@ class AssignmentScope implements IScope
         $institutionId = Auth::user()->institutionId;
         $builder->where(function (Builder $outer) use ($institutionId) {
             $outer->whereHas('project',
-                    fn (Builder $p) => $p->where('institution_id', $institutionId))
-                ->orWhere(fn (Builder $self) => $self->sharedWithInstitution($institutionId));
+                fn(Builder $p) => $p->where('institution_id', $institutionId))
+                ->orWhere(fn(Builder $self) => $self->sharedWithInstitution($institutionId));
         });
     }
 }

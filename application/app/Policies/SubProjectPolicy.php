@@ -42,19 +42,17 @@ class SubProjectPolicy
         }
 
         $project = $subProject->project;
-        if ($user->isClientOf($project)
-            || $user->isManagerOf($project)) {
+        if ($user->isClientOfProject($project)
+            || $user->isManagerOfProject($project)) {
             return $user->hasAtLeastOnePrivilege([PrivilegeKey::ViewPersonalProject, PrivilegeKey::ViewInstitutionProjectDetail]);
         }
 
-        if ($user->hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail) && $user->isInSameInstitutionAs($project)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail) && $user->isInSameInstitutionAsProject($project)) {
             return true;
         }
 
         if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
-            return $subProject->assignments()
-                ->sharedWithInstitution($user->institutionId)
-                ->exists();
+            return $user->hasActivePartnerAccessToSubProject($subProject);
         }
 
         return false;
@@ -75,7 +73,7 @@ class SubProjectPolicy
      */
     public function manageCatTool(AuthUser $user, SubProject $subProject): bool
     {
-        return $user->isInSameInstitutionAs($subProject->project) &&
+        return $user->isInSameInstitutionAsProject($subProject->project) &&
             $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
@@ -94,19 +92,22 @@ class SubProjectPolicy
     public function downloadMedia(AuthUser $user, SubProject $subProject): bool
     {
         if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
-            $user->hasActivePartnerAccessToProject($subProject->project, true)) {
+            (
+                $user->hasActivePartnerAccessToSubProject($subProject)
+                || $user->hasSharedPartnerAccessToSubProject($subProject, true)
+            )) {
             return true;
         }
 
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject) ||
-            $user->isClientOf($subProject->project);
+            $user->isClientOfProject($subProject->project);
     }
 
     // partner access deliberately excluded
     public function editSourceFiles(AuthUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($user, $subProject) ||
-            $user->isClientOf($subProject->project);
+            $user->isClientOfProject($subProject->project);
     }
 
     // partner access deliberately excluded
@@ -129,7 +130,7 @@ class SubProjectPolicy
 
     private function hasManageProjectPrivilege(AuthUser $user, SubProject $subProject): bool
     {
-        if (! $user->isInSameInstitutionAs($subProject->project)) {
+        if (! $user->isInSameInstitutionAsProject($subProject->project)) {
             return false;
         }
 

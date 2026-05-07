@@ -2,7 +2,9 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\ExternalRequestMode;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Http\Resources\MediaResource;
 use App\Models\AuthUser;
 use App\Models\OutsourceRequest;
@@ -20,15 +22,16 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'mode', type: 'string'),
+        new OA\Property(property: 'mode', type: 'string', enum: ExternalRequestMode::class),
         new OA\Property(property: 'reaction_time_minutes', type: 'integer', nullable: true),
         new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
         new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'include_price', type: 'boolean'),
         new OA\Property(property: 'include_source_files', type: 'boolean'),
-        new OA\Property(property: 'status', type: 'string'),
+        new OA\Property(property: 'status', type: 'string', enum: OutsourceRequestStatus::class),
         new OA\Property(property: 'is_cascade_exhausted', type: 'boolean'),
+        new OA\Property(property: 'assignment', ref: AssignmentResource::class, nullable: true),
         new OA\Property(property: 'offers', type: 'array', items: new OA\Items(ref: OutsourceOfferResource::class), nullable: true),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
@@ -50,7 +53,7 @@ class OutsourceRequestResource extends JsonResource
             'include_price' => $this->include_price,
             'include_source_files' => $this->include_source_files,
             'status' => $this->status,
-            'is_cascade_exhausted' => $this->computeIsCascadeExhausted(),
+            'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
             'offers' => $this->whenLoaded('offers', fn() => OutsourceOfferResource::collection(
                 $this->visibleOffers($request)
             )),
@@ -77,22 +80,5 @@ class OutsourceRequestResource extends JsonResource
         return $this->offers
             ->where('institution_id', $user?->institutionId)
             ->values();
-    }
-
-    private function computeIsCascadeExhausted(): bool
-    {
-        if (!$this->isCascade()) {
-            return false;
-        }
-
-        if ($this->relationLoaded('offers')) {
-            return $this->offers
-                ->whereIn('status', [OutsourceOfferStatus::Pending, OutsourceOfferStatus::Notified])
-                ->isEmpty();
-        }
-
-        return !$this->offers()
-            ->whereIn('status', [OutsourceOfferStatus::Pending, OutsourceOfferStatus::Notified])
-            ->exists();
     }
 }

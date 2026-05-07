@@ -38,8 +38,8 @@ class ProjectPolicy
             return true;
         }
 
-        if ($user->isClientOf($project)
-            || $user->isManagerOf($project)) {
+        if ($user->isClientOfProject($project)
+            || $user->isManagerOfProject($project)) {
             return $user->hasPrivilege(PrivilegeKey::ViewPersonalProject);
         }
 
@@ -50,7 +50,7 @@ class ProjectPolicy
         }
 
         if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
-            return $user->hasPartnerAccessToProject($project);
+            return $user->hasActivePartnerAccessToProject($project);
         }
 
         return false;
@@ -71,8 +71,8 @@ class ProjectPolicy
         }
 
         return $user->hasPrivilege(PrivilegeKey::CreateProject) &&
-            ($user->isClientOf($project) || $user->hasPrivilege(PrivilegeKey::ChangeClient)) &&
-            ($project->manager_institution_user_id === null || $user->isManagerOf($project) ||
+            ($user->isClientOfProject($project) || $user->hasPrivilege(PrivilegeKey::ChangeClient)) &&
+            ($project->manager_institution_user_id === null || $user->isManagerOfProject($project) ||
                 $user->hasPrivilege(PrivilegeKey::ChangeProjectManager)
             );
     }
@@ -83,7 +83,7 @@ class ProjectPolicy
      */
     public function update(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) &&
+        return $user->isInSameInstitutionAsProject($project) &&
             $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
@@ -97,61 +97,64 @@ class ProjectPolicy
             return false;
         }
 
-        return $user->isInSameInstitutionAs($project) &&
+        return $user->isInSameInstitutionAsProject($project) &&
             ($user->hasPrivilege(PrivilegeKey::ChangeClient) || empty($project->client_institution_user_id));
     }
 
     // partner access deliberately excluded
     public function changeProjectManager(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) &&
+        return $user->isInSameInstitutionAsProject($project) &&
             ($user->hasPrivilege(PrivilegeKey::ChangeProjectManager) || empty($project->manager_institution_user_id));
     }
 
     // partner access deliberately excluded
     public function editSourceFiles(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) && (
+        return $user->isInSameInstitutionAsProject($project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isClientOf($project)
+                $user->isClientOfProject($project)
             );
     }
 
     // partner access deliberately excluded
     public function editHelpFiles(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) && (
+        return $user->isInSameInstitutionAsProject($project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isClientOf($project)
+                $user->isClientOfProject($project)
             );
     }
 
     public function downloadMedia(AuthUser $user, Project $project): bool
     {
         if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
-            $user->hasActivePartnerAccessToProject($project, true)) {
+            (
+                $user->hasActivePartnerAccessToProject($project)
+                || $user->hasSharedPartnerAccessToProject($project, true)
+            )) {
             return true;
         }
 
-        if (! $user->isInSameInstitutionAs($project)) {
+        if (! $user->isInSameInstitutionAsProject($project)) {
             return false;
         }
 
         return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-            $user->isClientOf($project) ||
-            $user->isAssignmentsCandidate($project);
+            $user->isClientOfProject($project) ||
+            $user->hasAssignmentCandidateAccessToProject($project);
     }
 
     // partner access deliberately excluded
     public function cancel(AuthUser $user, Project $project): bool
     {
-        return $user->hasPrivilege(PrivilegeKey::ManageProject) || $user->isClientOf($project);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject) || $user->isClientOfProject($project);
     }
 
     // partner access deliberately excluded
     public function review(AuthUser $user, Project $project): bool
     {
-        return $user->isClientOf($project);
+        return $user->isClientOfProject($project);
     }
 
     // partner access deliberately excluded

@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('outsource_requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('assignment_id')->constrained('assignments');
-            $table->foreignUuid('created_by_institution_user_id')->constrained('cached_institution_users');
+            $table->foreignUuid('institution_user_id')->constrained('cached_institution_users');
             $table->enum('mode', ['CASCADE', 'PARALLEL']);
             $table->unsignedInteger('reaction_time_minutes')->nullable();
             $table->timestampTz('deadline_at')->nullable();
@@ -26,9 +26,9 @@ return new class extends Migration
         });
 
         DB::statement(<<<'SQL'
-            CREATE UNIQUE INDEX outsource_requests_assignment_active_unique
+            CREATE UNIQUE INDEX outsource_requests_assignment_not_deleted_unique
             ON outsource_requests (assignment_id)
-            WHERE deleted_at IS NULL AND status = 'ACTIVE'
+            WHERE deleted_at IS NULL
         SQL);
     }
 

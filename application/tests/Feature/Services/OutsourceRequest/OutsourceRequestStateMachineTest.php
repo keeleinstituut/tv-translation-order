@@ -212,7 +212,6 @@ class OutsourceRequestStateMachineTest extends TestCase
         $this->assertSame(OutsourceOfferStatus::Selected, $winner->status);
         $this->assertSame(OutsourceOfferStatus::Rejected, $loser->status);
         $this->assertSame('Price was higher.', $loser->rejection_comment);
-        $this->assertSame($winner->institution_id, $assignment->external_institution_id);
         $this->assertEquals(321.12, $assignment->price);
     }
 

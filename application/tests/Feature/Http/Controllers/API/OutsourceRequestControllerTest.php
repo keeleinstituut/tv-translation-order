@@ -308,8 +308,12 @@ class OutsourceRequestControllerTest extends TestCase
         // GIVEN
         $ownerUser = $this->createOwnerUser();
         $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser, [
-            'external_institution_id' => $recipientUser->institution['id'],
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $existingRequest = $this->createTranslationRequest($assignment, [
+            'status' => OutsourceRequestStatus::Fulfilled,
+        ]);
+        $this->createNotifiedRecipient($existingRequest, $recipientUser, [
+            'status' => OutsourceOfferStatus::Selected,
         ]);
         $this->createInstitutionPartner($ownerUser, $recipientUser);
 
@@ -384,9 +388,10 @@ class OutsourceRequestControllerTest extends TestCase
         $ownerUser = $this->createOwnerUser();
         $matchingAssignment = $this->createAssignmentForOwner($ownerUser);
         $otherAssignment = $this->createAssignmentForOwner($ownerUser);
+        $fulfilledAssignment = $this->createAssignmentForOwner($ownerUser);
         $matchingRequest = $this->createTranslationRequest($matchingAssignment);
         $otherRequest = $this->createTranslationRequest($otherAssignment);
-        $fulfilledRequest = $this->createTranslationRequest($matchingAssignment, [
+        $fulfilledRequest = $this->createTranslationRequest($fulfilledAssignment, [
             'status' => OutsourceRequestStatus::Fulfilled,
         ]);
 
@@ -411,15 +416,15 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $assignmentResponse->assertOk()
             ->assertJsonFragment(['id' => $matchingRequest->id])
-            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $fulfilledRequest->id])
             ->assertJsonMissing(['id' => $otherRequest->id]);
         $subProjectResponse->assertOk()
             ->assertJsonFragment(['id' => $matchingRequest->id])
-            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $fulfilledRequest->id])
             ->assertJsonMissing(['id' => $otherRequest->id]);
         $projectResponse->assertOk()
             ->assertJsonFragment(['id' => $matchingRequest->id])
-            ->assertJsonFragment(['id' => $fulfilledRequest->id])
+            ->assertJsonMissing(['id' => $fulfilledRequest->id])
             ->assertJsonMissing(['id' => $otherRequest->id]);
         $statusResponse->assertOk()
             ->assertJsonFragment(['id' => $fulfilledRequest->id])
@@ -665,6 +670,37 @@ class OutsourceRequestControllerTest extends TestCase
         $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $translationRequest->id,
+            'institution_id' => $partnerUser->institution['id'],
+            'status' => OutsourceOfferStatus::Selected,
+        ]);
+
+        $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+        $media = $translationRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)->first();
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson('/api/media/download?' . http_build_query([
+                'reference_object_type' => 'outsource_request',
+                'reference_object_id' => $translationRequest->id,
+                'collection' => OutsourceRequest::REQUEST_FILES_COLLECTION,
+                'id' => $media->id,
+            ]));
+
+        // THEN
+        $response->assertOk();
+    }
+
+    public function test_selected_partner_can_download_when_include_source_files_is_false(): void
+    {
+        // GIVEN
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, ['include_source_files' => false]);
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
@@ -1119,7 +1155,6 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertSame('no answer in time window', $loserNotified->fresh()->rejection_comment);
         $this->assertSame(OutsourceOfferStatus::Rejected, $loserPending->fresh()->status);
         $this->assertSame('not needed', $loserPending->fresh()->rejection_comment);
-        $this->assertSame($selected->institution_id, $assignment->fresh()->external_institution_id);
     }
 
     public function test_owner_can_select_when_no_other_in_play_recipients(): void

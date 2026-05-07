@@ -25,7 +25,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 /**
  * @property string $id
  * @property string $assignment_id
- * @property string $created_by_institution_user_id
+ * @property string $institution_user_id
  * @property ExternalRequestMode $mode
  * @property int|null $reaction_time_minutes
  * @property Carbon|null $deadline_at
@@ -38,7 +38,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Assignment $assignment
- * @property-read InstitutionUser $createdByInstitutionUser
+ * @property-read InstitutionUser $institutionUser
  * @property-read Collection<int, OutsourceOffer> $offers
  * @property-read OutsourceOffer|null $selectedOffer
  * @property-read Institution|null $ownerInstitution
@@ -70,9 +70,9 @@ class OutsourceRequest extends Model implements HasMedia
         return $this->belongsTo(Assignment::class);
     }
 
-    public function createdByInstitutionUser(): BelongsTo
+    public function institutionUser(): BelongsTo
     {
-        return $this->belongsTo(InstitutionUser::class, 'created_by_institution_user_id');
+        return $this->belongsTo(InstitutionUser::class, 'institution_user_id');
     }
 
     public function offers(): HasMany

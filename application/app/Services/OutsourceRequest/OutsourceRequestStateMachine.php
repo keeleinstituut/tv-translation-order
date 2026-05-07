@@ -16,8 +16,8 @@ readonly class OutsourceRequestStateMachine
 {
     public function acceptOffer(
         OutsourceOffer $recipient,
-        ?float                              $proposedPrice,
-        ?string                             $responseComment,
+        ?float         $proposedPrice,
+        ?string        $responseComment,
     ): void
     {
         DB::transaction(function () use ($recipient, $proposedPrice, $responseComment) {
@@ -35,7 +35,7 @@ readonly class OutsourceRequestStateMachine
 
     public function declineOffer(
         OutsourceOffer $recipient,
-        string                              $declineComment,
+        string         $declineComment,
     ): void
     {
         DB::transaction(function () use ($recipient, $declineComment) {
@@ -140,7 +140,6 @@ readonly class OutsourceRequestStateMachine
 
             $finalPrice = $lockedRecipient->proposed_price ?? $lockedRequest->price ?? $lockedRecipient->calculated_price;
             $lockedRequest->assignment->update([
-                'external_institution_id' => $lockedRecipient->institution_id,
                 'price' => $finalPrice,
             ]);
         });
@@ -153,10 +152,6 @@ readonly class OutsourceRequestStateMachine
                 ->where('id', $request->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            if ($lockedRequest->status !== OutsourceRequestStatus::Active) {
-                throw new DomainException("Request is not ACTIVE.");
-            }
 
             $lockedRequest->offers()
                 ->whereIn('status', [
@@ -216,7 +211,7 @@ readonly class OutsourceRequestStateMachine
     }
 
     private function assertOfferActionable(
-        OutsourceOffer $recipient,
+        OutsourceOffer   $recipient,
         OutsourceRequest $request,
     ): void
     {
@@ -234,7 +229,7 @@ readonly class OutsourceRequestStateMachine
     }
 
     private function hasResponseDeadlinePassed(
-        OutsourceOffer $recipient,
+        OutsourceOffer   $recipient,
         OutsourceRequest $request,
     ): bool
     {

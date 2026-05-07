@@ -53,7 +53,7 @@ class OutsourceRequestController extends Controller
             new OA\QueryParameter(name: 'assignment_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'sub_project_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
-            new OA\QueryParameter(name: 'status[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string'), nullable: true)),
+            new OA\QueryParameter(name: 'status[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', enum: OutsourceRequestStatus::class), nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
@@ -66,7 +66,12 @@ class OutsourceRequestController extends Controller
         $this->authorize('viewAny', OutsourceRequest::class);
 
         $params = collect($request->validated());
-        $query = $this->getBaseQuery();
+        $query = $this->getBaseQuery()->with([
+            'ownerInstitution',
+            'offers.institution',
+            'assignment.subProject',
+            'assignment.jobDefinition'
+        ]);
 
         if ($param = $params->get('assignment_id')) {
             $query->where('assignment_id', $param);
@@ -110,9 +115,16 @@ class OutsourceRequestController extends Controller
     {
         $this->authorize('viewAny', OutsourceRequest::class);
 
+        /** @var OutsourceRequest $outsourceRequest */
         $outsourceRequest = $this->getBaseQuery()
-            ->with(['media'])
-            ->findOrFail($id);
+            ->with([
+                'ownerInstitution',
+                'assignment.subProject.project.sourceFiles',
+                'assignment.subProject.project.helpFiles',
+                'assignment.jobDefinition',
+                'offers.institution',
+                'media'
+            ])->findOrFail($id);
 
         $this->authorize('view', $outsourceRequest);
 
@@ -142,7 +154,7 @@ class OutsourceRequestController extends Controller
         $outsourceRequest = DB::transaction(function () use ($validated, $assignment, $institutionUserId, $institutionId) {
             $outsourceRequest = OutsourceRequest::create([
                 'assignment_id' => $assignment->id,
-                'created_by_institution_user_id' => $institutionUserId,
+                'institution_user_id' => $institutionUserId,
                 'mode' => $validated['mode'],
                 'reaction_time_minutes' => $validated['reaction_time_minutes'] ?? null,
                 'deadline_at' => $validated['deadline_at'] ?? null,
@@ -255,10 +267,6 @@ class OutsourceRequestController extends Controller
         /** @var OutsourceRequest $outsourceRequest */
         $outsourceRequest = $this->getBaseQuery()->findOrFail($id);
         $this->authorize('cancel', $outsourceRequest);
-
-        if ($outsourceRequest->status !== OutsourceRequestStatus::Active) {
-            abort(Response::HTTP_CONFLICT, 'Request is not ACTIVE.');
-        }
 
         try {
             $this->stateMachine->cancelRequest($outsourceRequest);
@@ -396,7 +404,6 @@ class OutsourceRequestController extends Controller
     private function getBaseQuery(): Builder
     {
         return OutsourceRequest::query()
-            ->withGlobalScope('policy', OutsourceRequestPolicy::scope())
-            ->with(['offers.institution', 'assignment.subProject.project']);
+            ->withGlobalScope('policy', OutsourceRequestPolicy::scope());
     }
 }

@@ -18,7 +18,7 @@ class OutsourceRequestFactory extends Factory
     {
         return [
             'assignment_id' => Assignment::factory(),
-            'created_by_institution_user_id' => InstitutionUser::factory(),
+            'institution_user_id' => InstitutionUser::factory(),
             'mode' => ExternalRequestMode::Parallel,
             'reaction_time_minutes' => null,
             'deadline_at' => now()->addDays(3),

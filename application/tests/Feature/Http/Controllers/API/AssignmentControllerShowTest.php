@@ -3,6 +3,7 @@
 namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\OutsourceRequestStatus;
+use App\Enums\OutsourceOfferStatus;
 use App\Enums\PrivilegeKey;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
@@ -76,11 +77,13 @@ class AssignmentControllerShowTest extends TestCase
                     'volumes',
                     'cat_jobs',
                     'subProject',
+                    'outsource_request',
                 ],
             ])
             ->assertJson([
                 'data' => [
                     'id' => $assignment->id,
+                    'outsource_request' => null,
                 ],
             ]);
     }
@@ -214,9 +217,10 @@ class AssignmentControllerShowTest extends TestCase
             'assignment_id' => $assignment->id,
             'status' => OutsourceRequestStatus::Active,
         ]);
-        OutsourceOffer::factory()->notified()->create([
+        OutsourceOffer::factory()->create([
             'outsource_request_id' => $outsourceRequest->id,
             'institution_id' => $partnerUser->institution['id'],
+            'status' => OutsourceOfferStatus::Selected,
         ]);
 
         $accessToken = AuthHelpers::generateAccessToken([
@@ -231,7 +235,8 @@ class AssignmentControllerShowTest extends TestCase
 
         // THEN
         $response->assertOk()
-            ->assertJson(['data' => ['id' => $assignment->id]]);
+            ->assertJson(['data' => ['id' => $assignment->id]])
+            ->assertJsonPath('data.outsource_request.id', $outsourceRequest->id);
     }
 
     public function test_partner_cannot_view_assignment_when_not_a_recipient(): void

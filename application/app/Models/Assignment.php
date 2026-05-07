@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\AssignmentStatus;
-use App\Enums\OutsourceRequestStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -15,15 +14,13 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\CachedEntities\Institution;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
-use App\Models\OutsourceRequest;
 
 /**
  * App\Models\Assignment
@@ -44,7 +41,6 @@ use App\Models\OutsourceRequest;
  * @property Carbon|null $event_start_at
  * @property Carbon|null $completed_at
  * @property Carbon|null $timeslot_passed_notification_sent_at
- * @property string|null $external_institution_id
  * @property-read Vendor|null $assignee
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
@@ -140,23 +136,15 @@ class Assignment extends Model implements AuditLoggable
         }
 
         $query->where(function (Builder $sharedQuery) use ($institutionId) {
-            $sharedQuery->where('external_institution_id', $institutionId)
-                ->orWhereHas('outsourceRequests.offers', function (Builder $q) use ($institutionId) {
-                    $q->where('institution_id', $institutionId)
-                        ->whereHas('outsourceRequest',
-                            fn (Builder $requestQuery) => $requestQuery->where('status', OutsourceRequestStatus::Active));
-                });
+            $sharedQuery->whereHas('outsourceRequest.offers', function (Builder $q) use ($institutionId) {
+                    $q->where('institution_id', $institutionId);
+            });
         });
     }
 
-    public function outsourceRequests(): HasMany
+    public function outsourceRequest(): HasOne
     {
-        return $this->hasMany(OutsourceRequest::class);
-    }
-
-    public function externalInstitution(): BelongsTo
-    {
-        return $this->belongsTo(Institution::class, 'external_institution_id');
+        return $this->hasOne(OutsourceRequest::class);
     }
 
     public function getPriceCalculator(): PriceCalculator
