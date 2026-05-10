@@ -25,7 +25,7 @@ readonly class OutsourceRequestStateMachine
             $this->assertOfferActionable($lockedRecipient, $request);
 
             $lockedRecipient->update([
-                'status' => OutsourceOfferStatus::Accepted,
+                'status' => OutsourceOfferStatus::RequestAccepted,
                 'responded_at' => now(),
                 'proposed_price' => $proposedPrice,
                 'response_comment' => $responseComment,
@@ -43,7 +43,7 @@ readonly class OutsourceRequestStateMachine
             $this->assertOfferActionable($lockedRecipient, $request);
 
             $lockedRecipient->update([
-                'status' => OutsourceOfferStatus::Declined,
+                'status' => OutsourceOfferStatus::RequestDeclined,
                 'responded_at' => now(),
                 'decline_comment' => $declineComment,
             ]);
@@ -62,7 +62,7 @@ readonly class OutsourceRequestStateMachine
         DB::transaction(function () use ($recipient) {
             [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
 
-            if ($lockedRecipient->status !== OutsourceOfferStatus::Notified) {
+            if ($lockedRecipient->status !== OutsourceOfferStatus::RequestSent) {
                 return;
             }
 
@@ -74,7 +74,7 @@ readonly class OutsourceRequestStateMachine
                 return;
             }
 
-            $lockedRecipient->update(['status' => OutsourceOfferStatus::Expired]);
+            $lockedRecipient->update(['status' => OutsourceOfferStatus::RequestExpired]);
 
             if ($request->isCascade()) {
                 $this->activateNextCascadeOffer($request);
@@ -101,23 +101,23 @@ readonly class OutsourceRequestStateMachine
                 throw new DomainException("Request is not ACTIVE.");
             }
 
-            /** @var OutsourceOffer $lockedOffer */
+            /** @var OutsourceOffer $lockedRecipient */
             $lockedRecipient = $lockedRequest->offers()
                 ->where('id', $recipient->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedRecipient->status !== OutsourceOfferStatus::Accepted) {
-                throw new DomainException("Recipient is not in ACCEPTED state.");
+            if ($lockedRecipient->status !== OutsourceOfferStatus::RequestAccepted) {
+                throw new DomainException("Recipient is not in REQUEST_ACCEPTED state.");
             }
 
             /** @var Collection<OutsourceOffer> $rejectedOffers */
             $rejectedRecipients = $lockedRequest->offers()
                 ->whereIn('id', array_keys($rejectionComments))
                 ->whereIn('status', [
-                    OutsourceOfferStatus::Pending,
-                    OutsourceOfferStatus::Notified,
-                    OutsourceOfferStatus::Accepted,
+                    OutsourceOfferStatus::RequestPending,
+                    OutsourceOfferStatus::RequestSent,
+                    OutsourceOfferStatus::RequestAccepted,
                 ])
                 ->lockForUpdate()
                 ->get();
@@ -126,11 +126,11 @@ readonly class OutsourceRequestStateMachine
                 throw new DomainException("One or more rejected recipients are no longer in-play.");
             }
 
-            $lockedRecipient->update(['status' => OutsourceOfferStatus::Selected]);
+            $lockedRecipient->update(['status' => OutsourceOfferStatus::OfferAccepted]);
 
             foreach ($rejectedRecipients as $rejectedRecipient) {
                 $rejectedRecipient->update([
-                    'status' => OutsourceOfferStatus::Rejected,
+                    'status' => OutsourceOfferStatus::OfferDeclined,
                     'rejection_comment' => $rejectionComments[$rejectedRecipient->id],
                     'responded_at' => $rejectedRecipient->responded_at ?? now(),
                 ]);
@@ -155,10 +155,10 @@ readonly class OutsourceRequestStateMachine
 
             $lockedRequest->offers()
                 ->whereIn('status', [
-                    OutsourceOfferStatus::Pending,
-                    OutsourceOfferStatus::Notified,
+                    OutsourceOfferStatus::RequestPending,
+                    OutsourceOfferStatus::RequestSent,
                 ])
-                ->update(['status' => OutsourceOfferStatus::Expired]);
+                ->update(['status' => OutsourceOfferStatus::RequestExpired]);
 
             $lockedRequest->update(['status' => OutsourceRequestStatus::Cancelled]);
         });
@@ -172,7 +172,7 @@ readonly class OutsourceRequestStateMachine
 
         /** @var OutsourceOffer $next */
         $next = $request->offers()
-            ->where('status', OutsourceOfferStatus::Pending)
+            ->where('status', OutsourceOfferStatus::RequestPending)
             ->orderBy('position')
             ->lockForUpdate()
             ->first();
@@ -182,7 +182,7 @@ readonly class OutsourceRequestStateMachine
         }
 
         $next->update([
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'notified_at' => now(),
             'expires_at' => now()->addMinutes($request->reaction_time_minutes),
         ]);
@@ -215,8 +215,8 @@ readonly class OutsourceRequestStateMachine
         OutsourceRequest $request,
     ): void
     {
-        if ($recipient->status !== OutsourceOfferStatus::Notified) {
-            throw new DomainException("Recipient is not in NOTIFIED state.");
+        if ($recipient->status !== OutsourceOfferStatus::RequestSent) {
+            throw new DomainException("Recipient is not in REQUEST_SENT state.");
         }
 
         if ($request->status !== OutsourceRequestStatus::Active) {

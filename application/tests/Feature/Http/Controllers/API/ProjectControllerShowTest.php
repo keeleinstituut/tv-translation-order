@@ -35,7 +35,7 @@ class ProjectControllerShowTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => \App\Enums\OutsourceOfferStatus::Selected,
+            'status' => \App\Enums\OutsourceOfferStatus::OfferAccepted,
         ]);
 
         // WHEN

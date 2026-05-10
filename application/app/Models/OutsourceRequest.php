@@ -83,7 +83,7 @@ class OutsourceRequest extends Model implements HasMedia
     public function selectedOffer(): HasOne
     {
         return $this->hasOne(OutsourceOffer::class)
-            ->where('status', OutsourceOfferStatus::Selected);
+            ->where('status', OutsourceOfferStatus::OfferAccepted);
     }
 
     public function ownerInstitution(): HasOneDeep

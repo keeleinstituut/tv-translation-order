@@ -23,14 +23,14 @@ class OutsourceRequestStateMachineTest extends TestCase
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $offer = $this->createOffer(['status' => OutsourceOfferStatus::Notified]);
+        $offer = $this->createOffer(['status' => OutsourceOfferStatus::RequestSent]);
 
         // WHEN
         $stateMachine->acceptOffer($offer, 123.456, 'We can do this.');
 
         // THEN
         $offer->refresh();
-        $this->assertSame(OutsourceOfferStatus::Accepted, $offer->status);
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
         $this->assertSame('123.456', $offer->proposed_price);
         $this->assertSame('We can do this.', $offer->response_comment);
         $this->assertNotNull($offer->responded_at);
@@ -40,11 +40,11 @@ class OutsourceRequestStateMachineTest extends TestCase
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $offer = $this->createOffer(['status' => OutsourceOfferStatus::Pending]);
+        $offer = $this->createOffer(['status' => OutsourceOfferStatus::RequestPending]);
 
         // THEN
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Recipient is not in NOTIFIED state.');
+        $this->expectExceptionMessage('Recipient is not in REQUEST_SENT state.');
 
         // WHEN
         $stateMachine->acceptOffer($offer, null, null);
@@ -57,7 +57,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $request = $this->createRequest(['status' => OutsourceRequestStatus::Cancelled]);
         $offer = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
         ]);
 
         // THEN
@@ -75,7 +75,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $request = $this->createCascadeRequest();
         $offer = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'expires_at' => now()->subMinute(),
         ]);
 
@@ -96,12 +96,12 @@ class OutsourceRequestStateMachineTest extends TestCase
         $notified = $this->createOffer([
             'outsource_request_id' => $request->id,
             'position' => 1,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
         ]);
         $next = $this->createOffer([
             'outsource_request_id' => $request->id,
             'position' => 2,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
             'expires_at' => null,
         ]);
 
@@ -111,10 +111,10 @@ class OutsourceRequestStateMachineTest extends TestCase
         // THEN
         $notified->refresh();
         $next->refresh();
-        $this->assertSame(OutsourceOfferStatus::Declined, $notified->status);
+        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $notified->status);
         $this->assertSame('No capacity.', $notified->decline_comment);
         $this->assertNotNull($notified->responded_at);
-        $this->assertSame(OutsourceOfferStatus::Notified, $next->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $next->status);
         $this->assertNotNull($next->notified_at);
         $this->assertNotNull($next->expires_at);
         Queue::assertPushed(
@@ -132,13 +132,13 @@ class OutsourceRequestStateMachineTest extends TestCase
         $notified = $this->createOffer([
             'outsource_request_id' => $request->id,
             'position' => 1,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'expires_at' => now()->subMinute(),
         ]);
         $next = $this->createOffer([
             'outsource_request_id' => $request->id,
             'position' => 2,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
             'expires_at' => null,
         ]);
 
@@ -146,8 +146,8 @@ class OutsourceRequestStateMachineTest extends TestCase
         $stateMachine->expireOffer($notified);
 
         // THEN
-        $this->assertSame(OutsourceOfferStatus::Expired, $notified->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Notified, $next->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestExpired, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $next->fresh()->status);
         Queue::assertPushed(
             ExpireOutsourceOfferJob::class,
             fn (ExpireOutsourceOfferJob $job) => $job->recipientId === $next->id
@@ -160,14 +160,14 @@ class OutsourceRequestStateMachineTest extends TestCase
         Queue::fake();
         $stateMachine = app(OutsourceRequestStateMachine::class);
         $futureOffer = $this->createOffer([
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'expires_at' => now()->addHour(),
         ]);
-        $acceptedOffer = $this->createOffer(['status' => OutsourceOfferStatus::Accepted]);
+        $acceptedOffer = $this->createOffer(['status' => OutsourceOfferStatus::RequestAccepted]);
         $inactiveRequest = $this->createRequest(['status' => OutsourceRequestStatus::Cancelled]);
         $inactiveOffer = $this->createOffer([
             'outsource_request_id' => $inactiveRequest->id,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'expires_at' => now()->subMinute(),
         ]);
 
@@ -177,9 +177,9 @@ class OutsourceRequestStateMachineTest extends TestCase
         $stateMachine->expireOffer($inactiveOffer);
 
         // THEN
-        $this->assertSame(OutsourceOfferStatus::Notified, $futureOffer->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Accepted, $acceptedOffer->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Notified, $inactiveOffer->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $futureOffer->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $acceptedOffer->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $inactiveOffer->fresh()->status);
         Queue::assertNothingPushed();
     }
 
@@ -190,12 +190,12 @@ class OutsourceRequestStateMachineTest extends TestCase
         $request = $this->createRequest(['price' => '555.000']);
         $winner = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'proposed_price' => '321.123',
         ]);
         $loser = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
         ]);
 
         // WHEN
@@ -209,8 +209,8 @@ class OutsourceRequestStateMachineTest extends TestCase
         $loser->refresh();
         $assignment = $request->assignment->fresh();
         $this->assertSame(OutsourceRequestStatus::Fulfilled, $request->status);
-        $this->assertSame(OutsourceOfferStatus::Selected, $winner->status);
-        $this->assertSame(OutsourceOfferStatus::Rejected, $loser->status);
+        $this->assertSame(OutsourceOfferStatus::OfferAccepted, $winner->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $loser->status);
         $this->assertSame('Price was higher.', $loser->rejection_comment);
         $this->assertEquals(321.12, $assignment->price);
     }
@@ -222,7 +222,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $request = $this->createRequest(['price' => '222.222']);
         $winner = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'proposed_price' => null,
             'calculated_price' => '111.111',
         ]);
@@ -241,7 +241,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $request = $this->createRequest(['price' => null]);
         $winner = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'proposed_price' => null,
             'calculated_price' => '111.111',
         ]);
@@ -260,23 +260,23 @@ class OutsourceRequestStateMachineTest extends TestCase
         $request = $this->createRequest();
         $pending = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
         $notified = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
         ]);
         $accepted = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
         ]);
         $declined = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Declined,
+            'status' => OutsourceOfferStatus::RequestDeclined,
         ]);
         $rejected = $this->createOffer([
             'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::Rejected,
+            'status' => OutsourceOfferStatus::OfferDeclined,
         ]);
 
         // WHEN
@@ -284,11 +284,11 @@ class OutsourceRequestStateMachineTest extends TestCase
 
         // THEN
         $this->assertSame(OutsourceRequestStatus::Cancelled, $request->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Expired, $pending->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Expired, $notified->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Accepted, $accepted->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Rejected, $rejected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestExpired, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestExpired, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $accepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
     }
 
     private function createRequest(array $overrides = []): OutsourceRequest
@@ -314,7 +314,7 @@ class OutsourceRequestStateMachineTest extends TestCase
     {
         return OutsourceOffer::factory()->create(array_merge([
             'outsource_request_id' => $this->createRequest()->id,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'expires_at' => now()->addHour(),
         ], $overrides));
     }

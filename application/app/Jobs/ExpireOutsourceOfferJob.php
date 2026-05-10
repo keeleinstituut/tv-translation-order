@@ -32,7 +32,7 @@ class ExpireOutsourceOfferJob implements ShouldQueue
             return;
         }
 
-        if ($recipient->status !== OutsourceOfferStatus::Notified) {
+        if ($recipient->status !== OutsourceOfferStatus::RequestSent) {
             return;
         }
 

@@ -81,12 +81,12 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertCount(2, $offers);
         $this->assertSame(1, $offers[0]->position);
         $this->assertSame($partnerA->institution['id'], $offers[0]->institution_id);
-        $this->assertSame(OutsourceOfferStatus::Notified, $offers[0]->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $offers[0]->status);
         $this->assertNotNull($offers[0]->notified_at);
         $this->assertNotNull($offers[0]->expires_at);
         $this->assertSame(2, $offers[1]->position);
         $this->assertSame($partnerB->institution['id'], $offers[1]->institution_id);
-        $this->assertSame(OutsourceOfferStatus::Pending, $offers[1]->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $offers[1]->status);
         $this->assertNull($offers[1]->notified_at);
         $this->assertNull($offers[1]->expires_at);
         Queue::assertPushed(ExpireOutsourceOfferJob::class, 1);
@@ -133,7 +133,7 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertTrue($deadline->equalTo($outsourceRequest->deadline_at));
         $this->assertCount(2, $offers);
         $offers->each(function (OutsourceOffer $offer) use ($deadline): void {
-            $this->assertSame(OutsourceOfferStatus::Notified, $offer->status);
+            $this->assertSame(OutsourceOfferStatus::RequestSent, $offer->status);
             $this->assertNotNull($offer->notified_at);
             $this->assertTrue($deadline->equalTo($offer->expires_at));
         });
@@ -313,7 +313,7 @@ class OutsourceRequestControllerTest extends TestCase
             'status' => OutsourceRequestStatus::Fulfilled,
         ]);
         $this->createNotifiedRecipient($existingRequest, $recipientUser, [
-            'status' => OutsourceOfferStatus::Selected,
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
         $this->createInstitutionPartner($ownerUser, $recipientUser);
 
@@ -642,7 +642,7 @@ class OutsourceRequestControllerTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
@@ -673,7 +673,7 @@ class OutsourceRequestControllerTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => OutsourceOfferStatus::Selected,
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
@@ -704,7 +704,7 @@ class OutsourceRequestControllerTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => OutsourceOfferStatus::Selected,
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
@@ -798,7 +798,7 @@ class OutsourceRequestControllerTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         $translationRequest->addMedia(UploadedFile::fake()->create('file.docx'))
@@ -837,12 +837,12 @@ class OutsourceRequestControllerTest extends TestCase
         $pendingA = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 2,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
         $pendingB = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 3,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         // WHEN
@@ -876,7 +876,7 @@ class OutsourceRequestControllerTest extends TestCase
         $pending = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 2,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         // WHEN
@@ -903,7 +903,7 @@ class OutsourceRequestControllerTest extends TestCase
         $pending = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 1,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         // WHEN
@@ -933,7 +933,7 @@ class OutsourceRequestControllerTest extends TestCase
         $pending = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 1,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         // WHEN
@@ -962,12 +962,12 @@ class OutsourceRequestControllerTest extends TestCase
         $pendingA = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 1,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
         $pendingB = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 2,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         // WHEN
@@ -998,12 +998,12 @@ class OutsourceRequestControllerTest extends TestCase
         $pendingA = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 1,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
         $pendingB = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'position' => 2,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
 
         // WHEN
@@ -1030,27 +1030,27 @@ class OutsourceRequestControllerTest extends TestCase
         $translationRequest = $this->createTranslationRequest($assignment);
         $pending = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
         ]);
         $notified = OutsourceOffer::factory()->notified()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
         ]);
         $accepted = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
         ]);
         $declined = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Declined,
+            'status' => OutsourceOfferStatus::RequestDeclined,
         ]);
         $rejected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Rejected,
+            'status' => OutsourceOfferStatus::OfferDeclined,
         ]);
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Selected,
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
 
         // WHEN
@@ -1060,12 +1060,12 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertOk();
         $this->assertSame(OutsourceRequestStatus::Cancelled, $translationRequest->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Expired, $pending->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Expired, $notified->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Accepted, $accepted->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Rejected, $rejected->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Selected, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestExpired, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestExpired, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $accepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferAccepted, $selected->fresh()->status);
     }
 
     public function test_partner_cannot_cancel_request(): void
@@ -1115,13 +1115,13 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'proposed_price' => '123.456',
             'position' => 1,
         ]);
         $loserAccepted = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 2,
         ]);
         $loserNotified = OutsourceOffer::factory()->notified()->create([
@@ -1130,7 +1130,7 @@ class OutsourceRequestControllerTest extends TestCase
         ]);
         $loserPending = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
             'position' => 4,
         ]);
 
@@ -1148,12 +1148,12 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertOk();
         $this->assertSame(OutsourceRequestStatus::Fulfilled, $translationRequest->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Selected, $selected->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Rejected, $loserAccepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferAccepted, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $loserAccepted->fresh()->status);
         $this->assertSame('price too high', $loserAccepted->fresh()->rejection_comment);
-        $this->assertSame(OutsourceOfferStatus::Rejected, $loserNotified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $loserNotified->fresh()->status);
         $this->assertSame('no answer in time window', $loserNotified->fresh()->rejection_comment);
-        $this->assertSame(OutsourceOfferStatus::Rejected, $loserPending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $loserPending->fresh()->status);
         $this->assertSame('not needed', $loserPending->fresh()->rejection_comment);
     }
 
@@ -1166,19 +1166,19 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'proposed_price' => '99.000',
             'position' => 1,
         ]);
         $declined = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Declined,
+            'status' => OutsourceOfferStatus::RequestDeclined,
             'decline_comment' => 'self-declined',
             'position' => 2,
         ]);
         $expired = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Expired,
+            'status' => OutsourceOfferStatus::RequestExpired,
             'position' => 3,
         ]);
 
@@ -1191,11 +1191,11 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN
         $response->assertOk();
-        $this->assertSame(OutsourceOfferStatus::Selected, $selected->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferAccepted, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
         $this->assertSame('self-declined', $declined->fresh()->decline_comment);
         $this->assertNull($declined->fresh()->rejection_comment);
-        $this->assertSame(OutsourceOfferStatus::Expired, $expired->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestExpired, $expired->fresh()->status);
         $this->assertNull($expired->fresh()->rejection_comment);
     }
 
@@ -1208,12 +1208,12 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 1,
         ]);
         $loser = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 2,
         ]);
 
@@ -1227,7 +1227,7 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertUnprocessable();
         $this->assertSame(OutsourceRequestStatus::Active, $translationRequest->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::Accepted, $loser->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $loser->fresh()->status);
     }
 
     public function test_select_fails_when_rejection_comments_include_terminal_recipient(): void
@@ -1239,12 +1239,12 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 1,
         ]);
         $declined = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Declined,
+            'status' => OutsourceOfferStatus::RequestDeclined,
             'decline_comment' => 'self-declined',
             'position' => 2,
         ]);
@@ -1260,7 +1260,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN
         $response->assertUnprocessable();
-        $this->assertSame(OutsourceOfferStatus::Declined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
         $this->assertNull($declined->fresh()->rejection_comment);
         $this->assertSame('self-declined', $declined->fresh()->decline_comment);
     }
@@ -1274,7 +1274,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 1,
         ]);
 
@@ -1289,7 +1289,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN
         $response->assertUnprocessable();
-        $this->assertSame(OutsourceOfferStatus::Accepted, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $selected->fresh()->status);
     }
 
     public function test_select_fails_when_rejection_comments_include_foreign_recipient(): void
@@ -1301,14 +1301,14 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 1,
         ]);
         $foreignAssignment = $this->createAssignmentForOwner($ownerUser);
         $foreignRequest = $this->createTranslationRequest($foreignAssignment);
         $foreignRecipient = OutsourceOffer::factory()->create([
             'outsource_request_id' => $foreignRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
         ]);
 
         // WHEN
@@ -1333,12 +1333,12 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 1,
         ]);
         $loser = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 2,
         ]);
 
@@ -1365,12 +1365,12 @@ class OutsourceRequestControllerTest extends TestCase
 
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 1,
         ]);
         $loser = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
-            'status' => OutsourceOfferStatus::Accepted,
+            'status' => OutsourceOfferStatus::RequestAccepted,
             'position' => 2,
         ]);
 

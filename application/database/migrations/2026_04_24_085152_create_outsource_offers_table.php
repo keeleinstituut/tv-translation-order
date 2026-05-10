@@ -14,7 +14,11 @@ return new class extends Migration
             $table->foreignUuid('outsource_request_id')->constrained('outsource_requests');
             $table->foreignUuid('institution_id')->constrained('cached_institutions');
             $table->unsignedInteger('position');
-            $table->enum('status', ['PENDING', 'NOTIFIED', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'SELECTED'])->default('PENDING');
+            $table->enum('status', [
+                'REQUEST_PENDING', 'REQUEST_SENT',
+                'REQUEST_ACCEPTED', 'REQUEST_DECLINED', 'REQUEST_EXPIRED',
+                'OFFER_ACCEPTED', 'OFFER_DECLINED',
+            ])->default('REQUEST_PENDING');
             $table->timestampTz('notified_at')->nullable();
             $table->timestampTz('responded_at')->nullable();
             $table->timestampTz('expires_at')->nullable();
@@ -40,7 +44,7 @@ return new class extends Migration
         DB::statement(<<<'SQL'
             CREATE UNIQUE INDEX outsource_offers_selected_unique
             ON outsource_offers (outsource_request_id)
-            WHERE status = 'SELECTED' AND deleted_at IS NULL
+            WHERE status = 'OFFER_ACCEPTED' AND deleted_at IS NULL
         SQL);
     }
 

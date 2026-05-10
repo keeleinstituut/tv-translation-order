@@ -96,7 +96,7 @@ class SubProjectControllerShowTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $outsourceRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => OutsourceOfferStatus::Selected,
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
 
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))

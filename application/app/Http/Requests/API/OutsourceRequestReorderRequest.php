@@ -48,7 +48,7 @@ class OutsourceRequestReorderRequest extends FormRequest
 
                 $pendingIds = OutsourceOffer::query()
                     ->where('outsource_request_id', $requestId)
-                    ->where('status', OutsourceOfferStatus::Pending)
+                    ->where('status', OutsourceOfferStatus::RequestPending)
                     ->pluck('id')
                     ->sort()
                     ->values();

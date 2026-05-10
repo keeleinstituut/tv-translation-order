@@ -184,8 +184,8 @@ class OutsourceRequestController extends Controller
                 $offer = $outsourceRequest->offers()->create([
                     'institution_id' => $row['institution_id'],
                     'status' => $notified
-                        ? OutsourceOfferStatus::Notified
-                        : OutsourceOfferStatus::Pending,
+                        ? OutsourceOfferStatus::RequestSent
+                        : OutsourceOfferStatus::RequestPending,
                     'notified_at' => $notified ? now() : null,
                     'expires_at' => match (true) {
                         $isCascade && $notified => now()->addMinutes($outsourceRequest->reaction_time_minutes),
@@ -239,7 +239,7 @@ class OutsourceRequestController extends Controller
             foreach ($validated['recipients'] as $item) {
                 $outsourceRequest->offers()
                     ->where('id', $item['id'])
-                    ->where('status', OutsourceOfferStatus::Pending)
+                    ->where('status', OutsourceOfferStatus::RequestPending)
                     ->update(['position' => $item['position']]);
             }
         });
@@ -307,8 +307,8 @@ class OutsourceRequestController extends Controller
         /** @var OutsourceOffer $offer */
         $offer = $outsourceRequest->offers()->findOrFail($request->validated('recipient_id'));
 
-        if ($offer->status !== OutsourceOfferStatus::Accepted) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Recipient is not in ACCEPTED state.');
+        if ($offer->status !== OutsourceOfferStatus::RequestAccepted) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Recipient is not in REQUEST_ACCEPTED state.');
         }
 
         $rejectionComments = collect($request->validated('rejection_comments', []))

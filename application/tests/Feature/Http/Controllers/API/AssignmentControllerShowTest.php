@@ -220,7 +220,7 @@ class AssignmentControllerShowTest extends TestCase
         OutsourceOffer::factory()->create([
             'outsource_request_id' => $outsourceRequest->id,
             'institution_id' => $partnerUser->institution['id'],
-            'status' => OutsourceOfferStatus::Selected,
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
 
         $accessToken = AuthHelpers::generateAccessToken([

@@ -143,7 +143,7 @@ class AuthUser extends JwtPayloadUser
 
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
-            ->where('status', OutsourceOfferStatus::Selected)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
             ->whereHas('outsourceRequest', fn ($q) => $q->where('assignment_id', $assignment->id))
             ->exists();
     }
@@ -174,7 +174,7 @@ class AuthUser extends JwtPayloadUser
 
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
-            ->where('status', OutsourceOfferStatus::Selected)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
             ->whereHas('outsourceRequest.assignment.subProject', fn ($q) => $q->where('id', $subProject->id))
             ->exists();
     }
@@ -204,7 +204,7 @@ class AuthUser extends JwtPayloadUser
 
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
-            ->where('status', OutsourceOfferStatus::Selected)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
             ->whereHas('outsourceRequest.assignment.subProject', fn ($q) => $q->where('project_id', $project->id))
             ->exists();
     }

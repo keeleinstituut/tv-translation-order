@@ -19,7 +19,7 @@ class OutsourceOfferFactory extends Factory
             'outsource_request_id' => OutsourceRequest::factory(),
             'institution_id' => Institution::factory(),
             'position' => 1,
-            'status' => OutsourceOfferStatus::Pending,
+            'status' => OutsourceOfferStatus::RequestPending,
             'notified_at' => null,
             'responded_at' => null,
             'expires_at' => null,
@@ -34,7 +34,7 @@ class OutsourceOfferFactory extends Factory
     public function notified(): static
     {
         return $this->state([
-            'status' => OutsourceOfferStatus::Notified,
+            'status' => OutsourceOfferStatus::RequestSent,
             'notified_at' => now(),
             'expires_at' => now()->addHour(),
         ]);

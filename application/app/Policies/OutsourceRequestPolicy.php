@@ -104,7 +104,7 @@ class OutsourceRequestPolicy
         if (OutsourceOffer::query()
             ->where('outsource_request_id', $request->id)
             ->where('institution_id', $user->institutionId)
-            ->where('status', OutsourceOfferStatus::Selected)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
             ->exists()) {
             return true;
         }
@@ -121,9 +121,9 @@ class OutsourceRequestPolicy
             ->where('outsource_request_id', $request->id)
             ->where('institution_id', $user->institutionId)
             ->whereIn('status', [
-                OutsourceOfferStatus::Notified,
-                OutsourceOfferStatus::Accepted,
-                OutsourceOfferStatus::Selected
+                OutsourceOfferStatus::RequestSent,
+                OutsourceOfferStatus::RequestAccepted,
+                OutsourceOfferStatus::OfferAccepted
             ])
             ->exists();
     }

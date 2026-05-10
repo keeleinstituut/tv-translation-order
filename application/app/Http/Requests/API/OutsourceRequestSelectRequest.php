@@ -69,9 +69,9 @@ class OutsourceRequestSelectRequest extends FormRequest
 
                 $expectedIds = $request->offers()
                     ->whereIn('status', [
-                        OutsourceOfferStatus::Pending,
-                        OutsourceOfferStatus::Notified,
-                        OutsourceOfferStatus::Accepted,
+                        OutsourceOfferStatus::RequestPending,
+                        OutsourceOfferStatus::RequestSent,
+                        OutsourceOfferStatus::RequestAccepted,
                     ])
                     ->where('id', '!=', $selectedId)
                     ->pluck('id');

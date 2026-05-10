@@ -17,7 +17,7 @@ class SweepExpiredOutsourceOffers extends Command
     public function handle(OutsourceRequestStateMachine $stateMachine): void
     {
         OutsourceOffer::query()
-            ->where('status', OutsourceOfferStatus::Notified)
+            ->where('status', OutsourceOfferStatus::RequestSent)
             ->where('expires_at', '<=', now())
             ->whereHas('outsourceRequest', fn($q) => $q->where('status', OutsourceRequestStatus::Active))
             ->with('outsourceRequest')
