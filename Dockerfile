@@ -190,7 +190,7 @@ echo "Generating OpenAPI document"
 su www-data -s /bin/sh -c "php artisan l5-swagger:generate"
 
 echo "Synchronizing entities from external services"
-#su www-data -s /bin/sh -c "php artisan sync:all"
+su www-data -s /bin/sh -c "php artisan sync:all"
 
 echo "Deploying BPMN templates to Camunda"
 su www-data -s /bin/sh -c "php artisan workflow:deploy"
