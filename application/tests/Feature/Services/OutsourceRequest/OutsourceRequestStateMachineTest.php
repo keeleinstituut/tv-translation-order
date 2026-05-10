@@ -296,7 +296,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         return OutsourceRequest::factory()->create(array_merge([
             'assignment_id' => $this->createAssignment()->id,
             'mode' => ExternalRequestMode::Parallel,
-            'deadline_at' => now()->addDay(),
+            'reaction_time_minutes' => 24 * 60,
             'status' => OutsourceRequestStatus::Active,
         ], $overrides));
     }
@@ -306,7 +306,6 @@ class OutsourceRequestStateMachineTest extends TestCase
         return $this->createRequest(array_merge([
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
         ], $overrides));
     }
 

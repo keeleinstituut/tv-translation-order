@@ -70,7 +70,7 @@ readonly class OutsourceRequestStateMachine
                 return;
             }
 
-            if (!$this->hasResponseDeadlinePassed($lockedRecipient, $request)) {
+            if (!$this->hasResponseDeadlinePassed($lockedRecipient)) {
                 return;
             }
 
@@ -223,20 +223,14 @@ readonly class OutsourceRequestStateMachine
             throw new DomainException("Request is not ACTIVE.");
         }
 
-        if ($this->hasResponseDeadlinePassed($recipient, $request)) {
+        if ($this->hasResponseDeadlinePassed($recipient)) {
             throw new DomainException("Recipient response deadline has passed.");
         }
     }
 
-    private function hasResponseDeadlinePassed(
-        OutsourceOffer   $recipient,
-        OutsourceRequest $request,
-    ): bool
+    private function hasResponseDeadlinePassed(OutsourceOffer $recipient): bool
     {
-        $deadline = $request->isCascade()
-            ? $recipient->expires_at
-            : $request->deadline_at;
-
-        return $deadline instanceof Carbon && $deadline->lte(now());
+        return $recipient->expires_at instanceof Carbon
+            && $recipient->expires_at->lte(now());
     }
 }

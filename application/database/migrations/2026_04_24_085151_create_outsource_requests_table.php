@@ -14,8 +14,7 @@ return new class extends Migration
             $table->foreignUuid('assignment_id')->constrained('assignments');
             $table->foreignUuid('institution_user_id')->constrained('cached_institution_users');
             $table->enum('mode', ['CASCADE', 'PARALLEL']);
-            $table->unsignedInteger('reaction_time_minutes')->nullable();
-            $table->timestampTz('deadline_at')->nullable();
+            $table->unsignedInteger('reaction_time_minutes');
             $table->text('special_instructions')->nullable();
             $table->decimal('price', 10, 3)->nullable();
             $table->boolean('include_price')->default(true);

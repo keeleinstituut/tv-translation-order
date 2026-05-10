@@ -27,8 +27,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string $assignment_id
  * @property string $institution_user_id
  * @property ExternalRequestMode $mode
- * @property int|null $reaction_time_minutes
- * @property Carbon|null $deadline_at
+ * @property int $reaction_time_minutes
  * @property string|null $special_instructions
  * @property string|null $price
  * @property bool $include_price
@@ -59,7 +58,6 @@ class OutsourceRequest extends Model implements HasMedia
     protected $casts = [
         'mode' => ExternalRequestMode::class,
         'status' => OutsourceRequestStatus::class,
-        'deadline_at' => 'datetime',
         'price' => 'decimal:3',
         'include_price' => 'boolean',
         'include_source_files' => 'boolean',
@@ -99,5 +97,14 @@ class OutsourceRequest extends Model implements HasMedia
     public function isCascade(): bool
     {
         return $this->mode === ExternalRequestMode::Cascade;
+    }
+
+    public function effectiveDeadlineAt(): ?Carbon
+    {
+        if ($this->isCascade() || $this->created_at === null) {
+            return null;
+        }
+
+        return $this->created_at->copy()->addMinutes($this->reaction_time_minutes);
     }
 }

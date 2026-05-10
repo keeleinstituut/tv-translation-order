@@ -19,12 +19,11 @@ use OpenApi\Attributes as OA;
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['assignment_id', 'mode', 'recipients'],
+        required: ['assignment_id', 'mode', 'reaction_time_minutes', 'recipients'],
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
             new OA\Property(property: 'mode', type: 'string', enum: ExternalRequestMode::class),
-            new OA\Property(property: 'reaction_time_minutes', type: 'integer', enum: [15, 30, 60, 120, 180, 240], nullable: true),
-            new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', nullable: true),
+            new OA\Property(property: 'reaction_time_minutes', type: 'integer', maximum: 525600, minimum: 1),
             new OA\Property(
                 property: 'recipients',
                 type: 'array',
@@ -49,8 +48,7 @@ class OutsourceRequestCreateRequest extends FormRequest
         return [
             'assignment_id' => 'required|uuid|exists:assignments,id',
             'mode' => 'required|string|in:CASCADE,PARALLEL',
-            'reaction_time_minutes' => 'required_if:mode,CASCADE|nullable|integer|in:15,30,60,120,180,240',
-            'deadline_at' => 'required_if:mode,PARALLEL|nullable|date|after:now',
+            'reaction_time_minutes' => 'required|integer|min:1|max:525600',
             'recipients' => 'required|array|min:1',
             'recipients.*.institution_id' => 'required|uuid',
             'special_instructions' => 'nullable|string',

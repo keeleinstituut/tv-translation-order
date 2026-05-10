@@ -72,7 +72,6 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertSame(OutsourceRequestStatus::Active, $outsourceRequest->status);
         $this->assertSame(ExternalRequestMode::Cascade, $outsourceRequest->mode);
         $this->assertSame(30, $outsourceRequest->reaction_time_minutes);
-        $this->assertNull($outsourceRequest->deadline_at);
         $this->assertSame('Please preserve formatting.', $outsourceRequest->special_instructions);
         $this->assertSame('123.456', $outsourceRequest->price);
         $this->assertFalse($outsourceRequest->include_price);
@@ -104,7 +103,7 @@ class OutsourceRequestControllerTest extends TestCase
         $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
-        $deadline = now()->addDays(2)->milliseconds(0);
+        $reactionTimeMinutes = 2 * 24 * 60;
         $this->createInstitutionPartner($ownerUser, $partnerA);
         $this->createInstitutionPartner($ownerUser, $partnerB);
 
@@ -113,7 +112,7 @@ class OutsourceRequestControllerTest extends TestCase
             ->postJson('/api/outsource-requests', [
                 'assignment_id' => $assignment->id,
                 'mode' => ExternalRequestMode::Parallel->value,
-                'deadline_at' => $deadline->toISOString(),
+                'reaction_time_minutes' => $reactionTimeMinutes,
                 'recipients' => [
                     ['institution_id' => $partnerA->institution['id']],
                     ['institution_id' => $partnerB->institution['id']],
@@ -128,14 +127,15 @@ class OutsourceRequestControllerTest extends TestCase
             ->firstOrFail();
         $offers = $outsourceRequest->offers()->orderBy('position')->get();
 
+        $expectedDeadline = $outsourceRequest->created_at->copy()->addMinutes($reactionTimeMinutes);
         $this->assertSame(ExternalRequestMode::Parallel, $outsourceRequest->mode);
-        $this->assertNull($outsourceRequest->reaction_time_minutes);
-        $this->assertTrue($deadline->equalTo($outsourceRequest->deadline_at));
+        $this->assertSame($reactionTimeMinutes, $outsourceRequest->reaction_time_minutes);
+        $this->assertTrue($expectedDeadline->equalTo($outsourceRequest->effectiveDeadlineAt()));
         $this->assertCount(2, $offers);
-        $offers->each(function (OutsourceOffer $offer) use ($deadline): void {
+        $offers->each(function (OutsourceOffer $offer) use ($expectedDeadline): void {
             $this->assertSame(OutsourceOfferStatus::RequestSent, $offer->status);
             $this->assertNotNull($offer->notified_at);
-            $this->assertTrue($deadline->equalTo($offer->expires_at));
+            $this->assertTrue($expectedDeadline->equalTo($offer->expires_at));
         });
         Queue::assertPushed(ExpireOutsourceOfferJob::class, 2);
     }
@@ -195,7 +195,7 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertDatabaseMissing('outsource_requests', ['assignment_id' => $assignment->id]);
     }
 
-    public function test_create_request_requires_mode_specific_deadline_fields(): void
+    public function test_create_request_requires_reaction_time_minutes(): void
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
@@ -204,24 +204,22 @@ class OutsourceRequestControllerTest extends TestCase
         $this->createInstitutionPartner($ownerUser, $recipientUser);
 
         // WHEN
-        $cascadeResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+        $missingResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson('/api/outsource-requests', [
                 ...$this->validCreatePayload($assignment, [$recipientUser]),
                 'reaction_time_minutes' => null,
             ]);
-        $parallelResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+        $tooLargeResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson('/api/outsource-requests', [
                 ...$this->validCreatePayload($assignment, [$recipientUser]),
-                'mode' => ExternalRequestMode::Parallel->value,
-                'reaction_time_minutes' => null,
-                'deadline_at' => null,
+                'reaction_time_minutes' => 525601,
             ]);
 
         // THEN
-        $cascadeResponse->assertUnprocessable()
+        $missingResponse->assertUnprocessable()
             ->assertJsonValidationErrors('reaction_time_minutes');
-        $parallelResponse->assertUnprocessable()
-            ->assertJsonValidationErrors('deadline_at');
+        $tooLargeResponse->assertUnprocessable()
+            ->assertJsonValidationErrors('reaction_time_minutes');
     }
 
     public function test_create_request_rejects_duplicate_recipients(): void
@@ -828,7 +826,6 @@ class OutsourceRequestControllerTest extends TestCase
         $translationRequest = $this->createTranslationRequest($assignment, [
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
         ]);
         $notified = OutsourceOffer::factory()->notified()->create([
             'outsource_request_id' => $translationRequest->id,
@@ -870,7 +867,6 @@ class OutsourceRequestControllerTest extends TestCase
         $translationRequest = $this->createTranslationRequest($assignment, [
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
         ]);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
         $pending = OutsourceOffer::factory()->create([
@@ -957,7 +953,6 @@ class OutsourceRequestControllerTest extends TestCase
         $translationRequest = $this->createTranslationRequest($assignment, [
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
         ]);
         $pendingA = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
@@ -993,7 +988,6 @@ class OutsourceRequestControllerTest extends TestCase
         $translationRequest = $this->createTranslationRequest($assignment, [
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
         ]);
         $pendingA = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,

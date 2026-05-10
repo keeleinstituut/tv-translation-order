@@ -20,8 +20,7 @@ class OutsourceRequestFactory extends Factory
             'assignment_id' => Assignment::factory(),
             'institution_user_id' => InstitutionUser::factory(),
             'mode' => ExternalRequestMode::Parallel,
-            'reaction_time_minutes' => null,
-            'deadline_at' => now()->addDays(3),
+            'reaction_time_minutes' => 4320,
             'special_instructions' => null,
             'price' => null,
             'include_price' => true,
@@ -35,7 +34,6 @@ class OutsourceRequestFactory extends Factory
         return $this->state([
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
         ]);
     }
 }

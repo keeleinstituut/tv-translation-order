@@ -18,13 +18,13 @@ use OpenApi\Attributes as OA;
  */
 #[OA\Schema(
     title: 'OutsourceRequest',
-    required: ['id', 'assignment_id', 'mode', 'status', 'include_price', 'include_source_files', 'is_cascade_exhausted'],
+    required: ['id', 'assignment_id', 'mode', 'reaction_time_minutes', 'status', 'include_price', 'include_source_files', 'is_cascade_exhausted'],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'mode', type: 'string', enum: ExternalRequestMode::class),
-        new OA\Property(property: 'reaction_time_minutes', type: 'integer', nullable: true),
-        new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'reaction_time_minutes', type: 'integer'),
+        new OA\Property(property: 'deadline_at', description: 'Computed for PARALLEL mode (created_at + reaction_time_minutes); null for CASCADE.', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
         new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'include_price', type: 'boolean'),
@@ -47,7 +47,7 @@ class OutsourceRequestResource extends JsonResource
             'assignment_id' => $this->assignment_id,
             'mode' => $this->mode,
             'reaction_time_minutes' => $this->reaction_time_minutes,
-            'deadline_at' => $this->deadline_at,
+            'deadline_at' => $this->effectiveDeadlineAt(),
             'special_instructions' => $this->special_instructions,
             'price' => $this->price,
             'include_price' => $this->include_price,
