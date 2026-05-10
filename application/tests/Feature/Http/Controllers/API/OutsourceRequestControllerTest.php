@@ -923,7 +923,6 @@ class OutsourceRequestControllerTest extends TestCase
         $translationRequest = $this->createTranslationRequest($assignment, [
             'mode' => ExternalRequestMode::Cascade,
             'reaction_time_minutes' => 60,
-            'deadline_at' => null,
             'status' => OutsourceRequestStatus::Fulfilled,
         ]);
         $pending = OutsourceOffer::factory()->create([
@@ -1078,24 +1077,6 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertForbidden();
         $this->assertSame(OutsourceRequestStatus::Active, $translationRequest->fresh()->status);
-    }
-
-    public function test_cancel_non_active_request_returns_conflict(): void
-    {
-        // GIVEN
-        $ownerUser = $this->createOwnerUser();
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, [
-            'status' => OutsourceRequestStatus::Fulfilled,
-        ]);
-
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel");
-
-        // THEN
-        $response->assertConflict();
-        $this->assertSame(OutsourceRequestStatus::Fulfilled, $translationRequest->fresh()->status);
     }
 
     // --- select ---

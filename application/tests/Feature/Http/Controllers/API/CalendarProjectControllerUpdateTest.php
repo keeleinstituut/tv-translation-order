@@ -164,7 +164,6 @@ class CalendarProjectControllerUpdateTest extends TestCase
         // Create an external vendor with coverage and pricing
         $externalVendor = $this->createVendorWithCoverage(internal: false);
         $this->createCalendarImport($externalVendor);
-        $this->refreshView();
 
         // WHEN: toggle use_external_vendor to true
         $payload = $this->createUpdatePayload($project, [

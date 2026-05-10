@@ -49,7 +49,7 @@ class InstitutionController extends Controller
             $query->where('type', InstitutionType::from($type));
         }
 
-        if ($params->boolean('not_partner_of_current_institution')) {
+        if ($request->boolean('not_partner_of_current_institution')) {
             $currentInstitutionId = Auth::user()->institutionId;
             $query
                 ->where('id', '!=', $currentInstitutionId)

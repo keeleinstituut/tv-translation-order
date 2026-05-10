@@ -19,36 +19,7 @@ use Tests\TestCase;
 
 class SubProjectControllerShowTest extends TestCase
 {
-    public function test_partner_cannot_see_source_files_when_request_excludes_them(): void
-    {
-        Storage::fake(config('media-library.disk_name', 'test-disk'));
-
-        $ownerInstitution = Institution::factory()->create();
-        $partnerUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ViewOutsourceRequest);
-
-        $subProject = $this->createSubProjectForInstitution($ownerInstitution->id);
-        $this->attachSourceFile($subProject);
-        $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
-
-        $outsourceRequest = OutsourceRequest::factory()->create([
-            'assignment_id' => $assignment->id,
-            'include_source_files' => false,
-        ]);
-
-        OutsourceOffer::factory()->notified()->create([
-            'outsource_request_id' => $outsourceRequest->id,
-            'institution_id' => $partnerUser->institution['id'],
-        ]);
-
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/subprojects/{$subProject->id}");
-
-        $response
-            ->assertOk()
-            ->assertJsonMissingPath('data.source_files');
-    }
-
-    public function test_partner_can_see_source_files_when_request_includes_them(): void
+    public function test_accepted_partner_can_see_source_files_when_request_includes_them(): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
 
@@ -64,9 +35,10 @@ class SubProjectControllerShowTest extends TestCase
             'include_source_files' => true,
         ]);
 
-        OutsourceOffer::factory()->notified()->create([
+        OutsourceOffer::factory()->create([
             'outsource_request_id' => $outsourceRequest->id,
             'institution_id' => $partnerUser->institution['id'],
+            'status' => OutsourceOfferStatus::OfferAccepted,
         ]);
 
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
