@@ -5,8 +5,8 @@ namespace App\Services\OutsourceRequest;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Jobs\ExpireOutsourceOfferJob;
-use App\Models\OutsourceRequest;
 use App\Models\OutsourceOffer;
+use App\Models\OutsourceRequest;
 use DomainException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -15,16 +15,16 @@ use Illuminate\Support\Facades\DB;
 readonly class OutsourceRequestStateMachine
 {
     public function acceptOffer(
-        OutsourceOffer $recipient,
+        OutsourceOffer $offer,
         ?float         $proposedPrice,
         ?string        $responseComment,
     ): void
     {
-        DB::transaction(function () use ($recipient, $proposedPrice, $responseComment) {
-            [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
-            $this->assertOfferActionable($lockedRecipient, $request);
+        DB::transaction(function () use ($offer, $proposedPrice, $responseComment) {
+            [$lockedOffer, $request] = $this->lockOfferAndRequest($offer);
+            $this->assertOfferActionable($lockedOffer, $request);
 
-            $lockedRecipient->update([
+            $lockedOffer->update([
                 'status' => OutsourceOfferStatus::RequestAccepted,
                 'responded_at' => now(),
                 'proposed_price' => $proposedPrice,
@@ -34,15 +34,15 @@ readonly class OutsourceRequestStateMachine
     }
 
     public function declineOffer(
-        OutsourceOffer $recipient,
+        OutsourceOffer $offer,
         string         $declineComment,
     ): void
     {
-        DB::transaction(function () use ($recipient, $declineComment) {
-            [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
-            $this->assertOfferActionable($lockedRecipient, $request);
+        DB::transaction(function () use ($offer, $declineComment) {
+            [$lockedOffer, $request] = $this->lockOfferAndRequest($offer);
+            $this->assertOfferActionable($lockedOffer, $request);
 
-            $lockedRecipient->update([
+            $lockedOffer->update([
                 'status' => OutsourceOfferStatus::RequestDeclined,
                 'responded_at' => now(),
                 'decline_comment' => $declineComment,
@@ -57,12 +57,12 @@ readonly class OutsourceRequestStateMachine
     /**
      * Idempotent — safe to call from both the delayed job and the sweeper.
      */
-    public function expireOffer(OutsourceOffer $recipient): void
+    public function expireOffer(OutsourceOffer $offer): void
     {
-        DB::transaction(function () use ($recipient) {
-            [$lockedRecipient, $request] = $this->lockOfferAndRequest($recipient);
+        DB::transaction(function () use ($offer) {
+            [$lockedOffer, $request] = $this->lockOfferAndRequest($offer);
 
-            if ($lockedRecipient->status !== OutsourceOfferStatus::RequestSent) {
+            if ($lockedOffer->status !== OutsourceOfferStatus::RequestSent) {
                 return;
             }
 
@@ -70,11 +70,11 @@ readonly class OutsourceRequestStateMachine
                 return;
             }
 
-            if (!$this->hasResponseDeadlinePassed($lockedRecipient)) {
+            if (!$this->hasResponseDeadlinePassed($lockedOffer)) {
                 return;
             }
 
-            $lockedRecipient->update(['status' => OutsourceOfferStatus::RequestExpired]);
+            $lockedOffer->update(['status' => OutsourceOfferStatus::RequestExpired]);
 
             if ($request->isCascade()) {
                 $this->activateNextCascadeOffer($request);
@@ -87,11 +87,11 @@ readonly class OutsourceRequestStateMachine
      */
     public function selectOffer(
         OutsourceRequest $request,
-        OutsourceOffer   $recipient,
+        OutsourceOffer   $offer,
         array            $rejectionComments,
     ): void
     {
-        DB::transaction(function () use ($request, $recipient, $rejectionComments) {
+        DB::transaction(function () use ($request, $offer, $rejectionComments) {
             $lockedRequest = OutsourceRequest::query()
                 ->where('id', $request->id)
                 ->lockForUpdate()
@@ -101,18 +101,18 @@ readonly class OutsourceRequestStateMachine
                 throw new DomainException("Request is not ACTIVE.");
             }
 
-            /** @var OutsourceOffer $lockedRecipient */
-            $lockedRecipient = $lockedRequest->offers()
-                ->where('id', $recipient->id)
+            /** @var OutsourceOffer $lockedOffer */
+            $lockedOffer = $lockedRequest->offers()
+                ->where('id', $offer->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedRecipient->status !== OutsourceOfferStatus::RequestAccepted) {
+            if ($lockedOffer->status !== OutsourceOfferStatus::RequestAccepted) {
                 throw new DomainException("Recipient is not in REQUEST_ACCEPTED state.");
             }
 
             /** @var Collection<OutsourceOffer> $rejectedOffers */
-            $rejectedRecipients = $lockedRequest->offers()
+            $rejectedOffers = $lockedRequest->offers()
                 ->whereIn('id', array_keys($rejectionComments))
                 ->whereIn('status', [
                     OutsourceOfferStatus::RequestPending,
@@ -122,45 +122,41 @@ readonly class OutsourceRequestStateMachine
                 ->lockForUpdate()
                 ->get();
 
-            if ($rejectedRecipients->count() !== count($rejectionComments)) {
+            if ($rejectedOffers->count() !== count($rejectionComments)) {
                 throw new DomainException("One or more rejected recipients are no longer in-play.");
             }
 
-            $lockedRecipient->update(['status' => OutsourceOfferStatus::OfferAccepted]);
+            $lockedOffer->update(['status' => OutsourceOfferStatus::OfferAccepted]);
 
-            foreach ($rejectedRecipients as $rejectedRecipient) {
-                $rejectedRecipient->update([
+            foreach ($rejectedOffers as $rejectedOffer) {
+                $rejectedOffer->update([
                     'status' => OutsourceOfferStatus::OfferDeclined,
-                    'rejection_comment' => $rejectionComments[$rejectedRecipient->id],
-                    'responded_at' => $rejectedRecipient->responded_at ?? now(),
+                    'rejection_comment' => $rejectionComments[$rejectedOffer->id],
+                    'responded_at' => $rejectedOffer->responded_at ?? now(),
                 ]);
             }
 
             $lockedRequest->update(['status' => OutsourceRequestStatus::Fulfilled]);
 
-            $finalPrice = $lockedRecipient->proposed_price ?? $lockedRequest->price ?? $lockedRecipient->calculated_price;
+            $finalPrice = $lockedOffer->proposed_price ?? $lockedRequest->price ?? $lockedOffer->calculated_price;
             $lockedRequest->assignment->update([
                 'price' => $finalPrice,
             ]);
         });
     }
 
-    public function cancelRequest(OutsourceRequest $request): void
+    public function cancelRequest(OutsourceRequest $request, string $cancellationReason): void
     {
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $cancellationReason) {
             $lockedRequest = OutsourceRequest::query()
                 ->where('id', $request->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $lockedRequest->offers()
-                ->whereIn('status', [
-                    OutsourceOfferStatus::RequestPending,
-                    OutsourceOfferStatus::RequestSent,
-                ])
-                ->update(['status' => OutsourceOfferStatus::RequestExpired]);
-
-            $lockedRequest->update(['status' => OutsourceRequestStatus::Cancelled]);
+            $lockedRequest->update([
+                'status' => OutsourceRequestStatus::Cancelled,
+                'cancellation_reason' => $cancellationReason,
+            ]);
         });
     }
 
@@ -170,7 +166,7 @@ readonly class OutsourceRequestStateMachine
             return;
         }
 
-        /** @var OutsourceOffer $next */
+        /** @var OutsourceOffer|null $next */
         $next = $request->offers()
             ->where('status', OutsourceOfferStatus::RequestPending)
             ->orderBy('position')
@@ -195,15 +191,15 @@ readonly class OutsourceRequestStateMachine
     /**
      * @return array{OutsourceOffer, OutsourceRequest}
      */
-    private function lockOfferAndRequest(OutsourceOffer $recipient): array
+    private function lockOfferAndRequest(OutsourceOffer $offer): array
     {
         $request = OutsourceRequest::query()
-            ->where('id', $recipient->outsource_request_id)
+            ->where('id', $offer->outsource_request_id)
             ->lockForUpdate()
             ->firstOrFail();
 
         $lockedOffer = $request->offers()
-            ->where('id', $recipient->id)
+            ->where('id', $offer->id)
             ->lockForUpdate()
             ->firstOrFail();
 
@@ -211,11 +207,11 @@ readonly class OutsourceRequestStateMachine
     }
 
     private function assertOfferActionable(
-        OutsourceOffer   $recipient,
+        OutsourceOffer   $offer,
         OutsourceRequest $request,
     ): void
     {
-        if ($recipient->status !== OutsourceOfferStatus::RequestSent) {
+        if ($offer->status !== OutsourceOfferStatus::RequestSent) {
             throw new DomainException("Recipient is not in REQUEST_SENT state.");
         }
 
@@ -223,14 +219,14 @@ readonly class OutsourceRequestStateMachine
             throw new DomainException("Request is not ACTIVE.");
         }
 
-        if ($this->hasResponseDeadlinePassed($recipient)) {
+        if ($this->hasResponseDeadlinePassed($offer)) {
             throw new DomainException("Recipient response deadline has passed.");
         }
     }
 
-    private function hasResponseDeadlinePassed(OutsourceOffer $recipient): bool
+    private function hasResponseDeadlinePassed(OutsourceOffer $offer): bool
     {
-        return $recipient->expires_at instanceof Carbon
-            && $recipient->expires_at->lte(now());
+        return $offer->expires_at instanceof Carbon
+            && $offer->expires_at->lte(now());
     }
 }

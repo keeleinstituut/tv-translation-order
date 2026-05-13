@@ -33,13 +33,14 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property bool $include_price
  * @property bool $include_source_files
  * @property OutsourceRequestStatus $status
+ * @property string|null $cancellation_reason
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Assignment $assignment
  * @property-read InstitutionUser $institutionUser
  * @property-read Collection<int, OutsourceOffer> $offers
- * @property-read OutsourceOffer|null $selectedOffer
+ * @property-read OutsourceOffer|null $acceptedOffer
  * @property-read Institution|null $ownerInstitution
  */
 class OutsourceRequest extends Model implements HasMedia
@@ -78,7 +79,7 @@ class OutsourceRequest extends Model implements HasMedia
         return $this->hasMany(OutsourceOffer::class);
     }
 
-    public function selectedOffer(): HasOne
+    public function acceptedOffer(): HasOne
     {
         return $this->hasOne(OutsourceOffer::class)
             ->where('status', OutsourceOfferStatus::OfferAccepted);

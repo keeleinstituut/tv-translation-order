@@ -85,6 +85,8 @@ use Throwable;
  * @property-read Collection<int, Assignment> $assignments
  * @property-read Collection<int, Volume> $volumes
  * @property-read Collection<int, Candidate> $candidates
+ * @property-read Collection<int, OutsourceOffer> $outsourceOffers
+ * @property-read int|null $outsource_offers_count
  * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  * @property-read InstitutionUser|null $clientInstitutionUser
  * @property-read InstitutionUser|null $managerInstitutionUser
@@ -243,6 +245,24 @@ class Project extends Model implements AuditLoggable, HasMedia
         return $this->hasManyDeepFromRelations(
             $this->assignments(),
             (new Assignment())->candidates(),
+        );
+    }
+
+    public function outsourceOffers(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            new Assignment()->outsourceRequest(),
+            new OutsourceRequest()->offers(),
+        );
+    }
+
+    public function acceptedOutsourceOffers(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            new Assignment()->outsourceRequest(),
+            new OutsourceRequest()->acceptedOffer(),
         );
     }
 

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
+use App\Enums\OutsourceRequestStatus;
 use App\Enums\SubProjectStatus;
 use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Models\Assignment;
@@ -108,9 +109,15 @@ class SubProjectObserver
         }
 
         if ($subProject->wasChanged('status') && $subProject->status === SubProjectStatus::Cancelled) {
-            $subProject->assignments->each(function (Assignment $assignment) {
+            $subProject->assignments->each(function (Assignment $assignment) use ($subProject) {
                 if (filled($assignment->calendarEntry)) {
                     $assignment->calendarEntry->delete();
+                }
+
+                if (filled($assignment->outsourceRequest)) {
+                    $assignment->outsourceRequest->status = OutsourceRequestStatus::Cancelled;
+                    $assignment->outsourceRequest->cancellation_reason = $subProject->project->cancellation_reason;
+                    $assignment->outsourceRequest->saveOrFail();
                 }
             });
         }

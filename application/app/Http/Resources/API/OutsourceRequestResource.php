@@ -30,6 +30,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'include_price', type: 'boolean'),
         new OA\Property(property: 'include_source_files', type: 'boolean'),
         new OA\Property(property: 'status', type: 'string', enum: OutsourceRequestStatus::class),
+        new OA\Property(property: 'cancellation_reason', type: 'string', nullable: true),
         new OA\Property(property: 'is_cascade_exhausted', type: 'boolean'),
         new OA\Property(property: 'assignment', ref: AssignmentResource::class, nullable: true),
         new OA\Property(property: 'offers', type: 'array', items: new OA\Items(ref: OutsourceOfferResource::class), nullable: true),
@@ -53,6 +54,7 @@ class OutsourceRequestResource extends JsonResource
             'include_price' => $this->include_price,
             'include_source_files' => $this->include_source_files,
             'status' => $this->status,
+            'cancellation_reason' => $this->cancellation_reason,
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
             'offers' => $this->whenLoaded('offers', fn() => OutsourceOfferResource::collection(
                 $this->visibleOffers($request)

@@ -45,6 +45,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
  * @property-read SubProject $subProject
+ * @property-read OutsourceRequest|null $outsourceRequest
  * @property-read Project $project
  * @property-read JobDefinition $jobDefinition
  * @property-read Collection<int, Volume> $volumes

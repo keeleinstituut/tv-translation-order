@@ -7,6 +7,7 @@ use App\Enums\OutsourceRequestStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\OutsourceRequestAcceptRequest;
+use App\Http\Requests\API\OutsourceRequestCancelRequest;
 use App\Http\Requests\API\OutsourceRequestCreateRequest;
 use App\Http\Requests\API\OutsourceRequestDeclineRequest;
 use App\Http\Requests\API\OutsourceRequestListRequest;
@@ -35,7 +36,7 @@ use Throwable;
 class OutsourceRequestController extends Controller
 {
     public function __construct(
-        AuditLogPublisher                          $auditLogPublisher,
+        AuditLogPublisher                             $auditLogPublisher,
         private readonly OutsourceRequestStateMachine $stateMachine,
     )
     {
@@ -254,6 +255,7 @@ class OutsourceRequestController extends Controller
     #[OA\Post(
         path: '/outsource-requests/{id}/cancel',
         summary: 'Cancel an outsource request',
+        requestBody: new OAH\RequestBody(OutsourceRequestCancelRequest::class),
         tags: ['Outsource requests'],
         parameters: [
             new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
@@ -261,14 +263,14 @@ class OutsourceRequestController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: OutsourceRequestResource::class, description: 'Cancelled outsource request')]
-    public function cancel(string $id): OutsourceRequestResource
+    public function cancel(OutsourceRequestCancelRequest $request, string $id): OutsourceRequestResource
     {
         /** @var OutsourceRequest $outsourceRequest */
         $outsourceRequest = $this->getBaseQuery()->findOrFail($id);
         $this->authorize('cancel', $outsourceRequest);
 
         try {
-            $this->stateMachine->cancelRequest($outsourceRequest);
+            $this->stateMachine->cancelRequest($outsourceRequest, $request->validated('cancellation_reason'));
         } catch (DomainException $exception) {
             abort(Response::HTTP_CONFLICT, $exception->getMessage());
         }
