@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
+use App\Enums\OutsourceRequestType;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\OutsourceRequestAcceptRequest;
@@ -54,6 +55,7 @@ class OutsourceRequestController extends Controller
             new OA\QueryParameter(name: 'assignment_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'sub_project_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
+            new OA\QueryParameter(name: 'type', schema: new OA\Schema(type: 'string', enum: OutsourceRequestType::class, nullable: true)),
             new OA\QueryParameter(name: 'status[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', enum: OutsourceRequestStatus::class), nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at'])),
@@ -88,6 +90,18 @@ class OutsourceRequestController extends Controller
 
         if ($param = $params->get('status')) {
             $query->whereIn('status', $param);
+        }
+
+        if ($param = $params->get('type')) {
+            $institutionId = Auth::user()->institutionId;
+            $type = OutsourceRequestType::tryFrom($param);
+            if ($type === OutsourceRequestType::Outgoing) {
+                $query->whereHas('assignment.project',
+                    fn(Builder $q) => $q->where('institution_id', $institutionId));
+            } else {
+                $query->whereHas('offers',
+                    fn(Builder $q) => $q->where('institution_id', $institutionId));
+            }
         }
 
         $sortBy = $params->get('sort_by', 'created_at');

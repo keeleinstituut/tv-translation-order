@@ -7,6 +7,7 @@ use App\Enums\ExternalRequestMode;
 use App\Enums\InstitutionType;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
+use App\Enums\OutsourceRequestType;
 use App\Enums\PrivilegeKey;
 use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\Assignment;
@@ -456,6 +457,59 @@ class OutsourceRequestControllerTest extends TestCase
             ->assertJsonMissing(['id' => $newerRequest->id])
             ->assertJsonPath('meta.per_page', 1);
         $this->assertCount(1, $response->json('data'));
+    }
+
+    public function test_index_type_outgoing_returns_only_owned_requests(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+
+        $ownedAssignment = $this->createAssignmentForOwner($ownerUser);
+        $ownedRequest = $this->createTranslationRequest($ownedAssignment);
+
+        // A request from another owner where ownerUser's institution is a partner
+        $partnerAssignment = $this->createAssignmentForOwner($partnerUser);
+        $incomingRequest = $this->createTranslationRequest($partnerAssignment);
+        $this->createNotifiedRecipient($incomingRequest, $ownerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'type' => OutsourceRequestType::Outgoing->value,
+            ]));
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $ownedRequest->id])
+            ->assertJsonMissing(['id' => $incomingRequest->id]);
+    }
+
+    public function test_index_type_incoming_returns_only_partner_requests(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+
+        // A request the partnerUser owns (outgoing from their perspective)
+        $ownedAssignment = $this->createAssignmentForOwner($partnerUser);
+        $ownedRequest = $this->createTranslationRequest($ownedAssignment);
+
+        // A request where partnerUser's institution received an offer
+        $incomingAssignment = $this->createAssignmentForOwner($ownerUser);
+        $incomingRequest = $this->createTranslationRequest($incomingAssignment);
+        $this->createNotifiedRecipient($incomingRequest, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson('/api/outsource-requests?' . http_build_query([
+                'type' => OutsourceRequestType::Incoming->value,
+            ]));
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $incomingRequest->id])
+            ->assertJsonMissing(['id' => $ownedRequest->id]);
     }
 
     // --- show ---
