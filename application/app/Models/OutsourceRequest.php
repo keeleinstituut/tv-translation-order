@@ -100,7 +100,7 @@ class OutsourceRequest extends Model implements HasMedia
         return $this->mode === OutsourceRequestMode::Cascade;
     }
 
-    public function effectiveDeadlineAt(): ?Carbon
+    public function getDeadlineAtAttribute(): ?Carbon
     {
         if ($this->isCascade() || $this->created_at === null) {
             return null;

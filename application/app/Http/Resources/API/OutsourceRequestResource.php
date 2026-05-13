@@ -48,7 +48,7 @@ class OutsourceRequestResource extends JsonResource
             'assignment_id' => $this->assignment_id,
             'mode' => $this->mode,
             'reaction_time_minutes' => $this->reaction_time_minutes,
-            'deadline_at' => $this->effectiveDeadlineAt(),
+            'deadline_at' => $this->deadline_at,
             'special_instructions' => $this->special_instructions,
             'price' => $this->price,
             'include_price' => $this->include_price,

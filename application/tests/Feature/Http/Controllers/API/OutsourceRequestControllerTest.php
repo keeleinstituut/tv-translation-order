@@ -131,7 +131,7 @@ class OutsourceRequestControllerTest extends TestCase
         $expectedDeadline = $outsourceRequest->created_at->copy()->addMinutes($reactionTimeMinutes);
         $this->assertSame(OutsourceRequestMode::Parallel, $outsourceRequest->mode);
         $this->assertSame($reactionTimeMinutes, $outsourceRequest->reaction_time_minutes);
-        $this->assertTrue($expectedDeadline->equalTo($outsourceRequest->effectiveDeadlineAt()));
+        $this->assertTrue($expectedDeadline->equalTo($outsourceRequest->deadline_at));
         $this->assertCount(2, $offers);
         $offers->each(function (OutsourceOffer $offer) use ($expectedDeadline): void {
             $this->assertSame(OutsourceOfferStatus::RequestSent, $offer->status);
