@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\OutsourceOfferStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -138,7 +139,8 @@ class Assignment extends Model implements AuditLoggable
 
         $query->where(function (Builder $sharedQuery) use ($institutionId) {
             $sharedQuery->whereHas('outsourceRequest.offers', function (Builder $q) use ($institutionId) {
-                    $q->where('institution_id', $institutionId);
+                    $q->where('institution_id', $institutionId)
+                        ->where('status', OutsourceOfferStatus::OfferAccepted);
             });
         });
     }
