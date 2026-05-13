@@ -37,6 +37,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property Carbon|null $deadline_at
  * @property-read Assignment $assignment
  * @property-read InstitutionUser $institutionUser
  * @property-read Collection<int, OutsourceOffer> $offers
