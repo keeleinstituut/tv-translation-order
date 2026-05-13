@@ -132,14 +132,8 @@ class OutsourceRequestController extends Controller
 
         /** @var OutsourceRequest $outsourceRequest */
         $outsourceRequest = $this->getBaseQuery()
-            ->with([
-                'ownerInstitution',
-                'assignment.subProject.project.sourceFiles',
-                'assignment.subProject.project.helpFiles',
-                'assignment.jobDefinition',
-                'offers.institution',
-                'media'
-            ])->findOrFail($id);
+            ->with($this->relationsToLoad())
+            ->findOrFail($id);
 
         $this->authorize('view', $outsourceRequest);
 
@@ -223,7 +217,7 @@ class OutsourceRequestController extends Controller
             return $outsourceRequest;
         });
 
-        return OutsourceRequestResource::make($outsourceRequest->load(['offers.institution']));
+        return OutsourceRequestResource::make($outsourceRequest->load($this->relationsToLoad()));
     }
 
     /**
@@ -259,7 +253,7 @@ class OutsourceRequestController extends Controller
         });
 
         return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load(['offers.institution'])
+            $outsourceRequest->fresh()->load($this->relationsToLoad())
         );
     }
 
@@ -290,7 +284,7 @@ class OutsourceRequestController extends Controller
         }
 
         return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load(['offers.institution'])
+            $outsourceRequest->fresh()->load($this->relationsToLoad())
         );
     }
 
@@ -337,7 +331,7 @@ class OutsourceRequestController extends Controller
         }
 
         return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load(['offers.institution'])
+            $outsourceRequest->fresh()->load($this->relationsToLoad())
         );
     }
 
@@ -362,7 +356,7 @@ class OutsourceRequestController extends Controller
         $this->authorize('accept', $outsourceRequest);
 
         /** @var OutsourceOffer $offer */
-        $offer = $outsourceRequest->offers
+        $offer = $outsourceRequest->offers()
             ->firstWhere('institution_id', Auth::user()->institutionId);
 
         $validated = $request->validated();
@@ -377,7 +371,7 @@ class OutsourceRequestController extends Controller
         }
 
         return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load(['offers.institution'])
+            $outsourceRequest->fresh()->load($this->relationsToLoad())
         );
     }
 
@@ -412,7 +406,7 @@ class OutsourceRequestController extends Controller
         }
 
         return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load(['offers.institution'])
+            $outsourceRequest->fresh()->load($this->relationsToLoad())
         );
     }
 
@@ -420,5 +414,21 @@ class OutsourceRequestController extends Controller
     {
         return OutsourceRequest::query()
             ->withGlobalScope('policy', OutsourceRequestPolicy::scope());
+    }
+
+    /**
+     * OutsourceRequest relations to eager load.
+     * @return string[]
+     */
+    private function relationsToLoad(): array
+    {
+        return [
+            'ownerInstitution',
+            'assignment.subProject.project.sourceFiles',
+            'assignment.subProject.project.helpFiles',
+            'assignment.jobDefinition',
+            'offers.institution',
+            'media'
+        ];
     }
 }
