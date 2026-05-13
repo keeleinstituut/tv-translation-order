@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Services\OutsourceRequest;
 
-use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Jobs\ExpireOutsourceOfferJob;
@@ -295,7 +295,7 @@ class OutsourceRequestStateMachineTest extends TestCase
     {
         return OutsourceRequest::factory()->create(array_merge([
             'assignment_id' => $this->createAssignment()->id,
-            'mode' => ExternalRequestMode::Parallel,
+            'mode' => OutsourceRequestMode::Parallel,
             'reaction_time_minutes' => 24 * 60,
             'status' => OutsourceRequestStatus::Active,
         ], $overrides));
@@ -304,7 +304,7 @@ class OutsourceRequestStateMachineTest extends TestCase
     private function createCascadeRequest(array $overrides = []): OutsourceRequest
     {
         return $this->createRequest(array_merge([
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
         ], $overrides));
     }

@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum ExternalRequestMode: string
+enum OutsourceRequestMode: string
 {
     case Cascade = 'CASCADE';
     case Parallel = 'PARALLEL';

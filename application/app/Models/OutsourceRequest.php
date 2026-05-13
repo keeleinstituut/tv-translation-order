@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Models\CachedEntities\Institution;
@@ -26,7 +26,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string $id
  * @property string $assignment_id
  * @property string $institution_user_id
- * @property ExternalRequestMode $mode
+ * @property OutsourceRequestMode $mode
  * @property int $reaction_time_minutes
  * @property string|null $special_instructions
  * @property string|null $price
@@ -57,7 +57,7 @@ class OutsourceRequest extends Model implements HasMedia
     protected $guarded = [];
 
     protected $casts = [
-        'mode' => ExternalRequestMode::class,
+        'mode' => OutsourceRequestMode::class,
         'status' => OutsourceRequestStatus::class,
         'price' => 'decimal:3',
         'include_price' => 'boolean',
@@ -97,7 +97,7 @@ class OutsourceRequest extends Model implements HasMedia
 
     public function isCascade(): bool
     {
-        return $this->mode === ExternalRequestMode::Cascade;
+        return $this->mode === OutsourceRequestMode::Cascade;
     }
 
     public function effectiveDeadlineAt(): ?Carbon

@@ -3,7 +3,7 @@
 namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\CandidateStatus;
-use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestMode;
 use App\Enums\InstitutionType;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
@@ -47,7 +47,7 @@ class OutsourceRequestControllerTest extends TestCase
         $response = $this->withHeaders($this->jsonHeadersFor($ownerUser))
             ->post('/api/outsource-requests', [
                 'assignment_id' => $assignment->id,
-                'mode' => ExternalRequestMode::Cascade->value,
+                'mode' => OutsourceRequestMode::Cascade->value,
                 'reaction_time_minutes' => 30,
                 'offers' => [
                     ['institution_id' => $partnerA->institution['id']],
@@ -71,7 +71,7 @@ class OutsourceRequestControllerTest extends TestCase
         $offers = $outsourceRequest->offers()->orderBy('position')->get();
 
         $this->assertSame(OutsourceRequestStatus::Active, $outsourceRequest->status);
-        $this->assertSame(ExternalRequestMode::Cascade, $outsourceRequest->mode);
+        $this->assertSame(OutsourceRequestMode::Cascade, $outsourceRequest->mode);
         $this->assertSame(30, $outsourceRequest->reaction_time_minutes);
         $this->assertSame('Please preserve formatting.', $outsourceRequest->special_instructions);
         $this->assertSame('123.456', $outsourceRequest->price);
@@ -112,7 +112,7 @@ class OutsourceRequestControllerTest extends TestCase
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson('/api/outsource-requests', [
                 'assignment_id' => $assignment->id,
-                'mode' => ExternalRequestMode::Parallel->value,
+                'mode' => OutsourceRequestMode::Parallel->value,
                 'reaction_time_minutes' => $reactionTimeMinutes,
                 'offers' => [
                     ['institution_id' => $partnerA->institution['id']],
@@ -129,7 +129,7 @@ class OutsourceRequestControllerTest extends TestCase
         $offers = $outsourceRequest->offers()->orderBy('position')->get();
 
         $expectedDeadline = $outsourceRequest->created_at->copy()->addMinutes($reactionTimeMinutes);
-        $this->assertSame(ExternalRequestMode::Parallel, $outsourceRequest->mode);
+        $this->assertSame(OutsourceRequestMode::Parallel, $outsourceRequest->mode);
         $this->assertSame($reactionTimeMinutes, $outsourceRequest->reaction_time_minutes);
         $this->assertTrue($expectedDeadline->equalTo($outsourceRequest->effectiveDeadlineAt()));
         $this->assertCount(2, $offers);
@@ -878,7 +878,7 @@ class OutsourceRequestControllerTest extends TestCase
         $ownerUser = $this->createOwnerUser();
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, [
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
         ]);
         $notified = OutsourceOffer::factory()->notified()->create([
@@ -919,7 +919,7 @@ class OutsourceRequestControllerTest extends TestCase
         $partnerUser = $this->createPartnerUser(PrivilegeKey::ManageOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, [
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
         ]);
         $this->createNotifiedRecipient($translationRequest, $partnerUser);
@@ -948,7 +948,7 @@ class OutsourceRequestControllerTest extends TestCase
         $ownerUser = $this->createOwnerUser();
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, [
-            'mode' => ExternalRequestMode::Parallel,
+            'mode' => OutsourceRequestMode::Parallel,
         ]);
         $pending = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
@@ -975,7 +975,7 @@ class OutsourceRequestControllerTest extends TestCase
         $ownerUser = $this->createOwnerUser();
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, [
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
             'status' => OutsourceRequestStatus::Fulfilled,
         ]);
@@ -1004,7 +1004,7 @@ class OutsourceRequestControllerTest extends TestCase
         $ownerUser = $this->createOwnerUser();
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, [
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
         ]);
         $pendingA = OutsourceOffer::factory()->create([
@@ -1039,7 +1039,7 @@ class OutsourceRequestControllerTest extends TestCase
         $ownerUser = $this->createOwnerUser();
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment, [
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
         ]);
         $pendingA = OutsourceOffer::factory()->create([
@@ -1594,7 +1594,7 @@ class OutsourceRequestControllerTest extends TestCase
     {
         return [
             'assignment_id' => $assignment->id,
-            'mode' => ExternalRequestMode::Cascade->value,
+            'mode' => OutsourceRequestMode::Cascade->value,
             'reaction_time_minutes' => 60,
             'offers' => collect($offers)
                 ->map(fn (InstitutionUser $offer): array => [

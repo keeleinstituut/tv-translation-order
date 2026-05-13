@@ -3,7 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\CandidateStatus;
-use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
@@ -23,7 +23,7 @@ use OpenApi\Attributes as OA;
         required: ['assignment_id', 'mode', 'reaction_time_minutes', 'offers'],
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-            new OA\Property(property: 'mode', type: 'string', enum: ExternalRequestMode::class),
+            new OA\Property(property: 'mode', type: 'string', enum: OutsourceRequestMode::class),
             new OA\Property(property: 'reaction_time_minutes', type: 'integer', maximum: 525600, minimum: 1),
             new OA\Property(
                 property: 'offers',

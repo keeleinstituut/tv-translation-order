@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
@@ -19,7 +19,7 @@ class OutsourceRequestFactory extends Factory
         return [
             'assignment_id' => Assignment::factory(),
             'institution_user_id' => InstitutionUser::factory(),
-            'mode' => ExternalRequestMode::Parallel,
+            'mode' => OutsourceRequestMode::Parallel,
             'reaction_time_minutes' => 4320,
             'special_instructions' => null,
             'price' => null,
@@ -32,7 +32,7 @@ class OutsourceRequestFactory extends Factory
     public function cascade(): static
     {
         return $this->state([
-            'mode' => ExternalRequestMode::Cascade,
+            'mode' => OutsourceRequestMode::Cascade,
             'reaction_time_minutes' => 60,
         ]);
     }

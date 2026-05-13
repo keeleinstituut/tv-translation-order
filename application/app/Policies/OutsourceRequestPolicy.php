@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Enums\PrivilegeKey;
@@ -64,7 +64,7 @@ class OutsourceRequestPolicy
         }
 
         return $request->status === OutsourceRequestStatus::Active
-            && $request->mode === ExternalRequestMode::Cascade;
+            && $request->mode === OutsourceRequestMode::Cascade;
     }
 
     public function cancel(AuthUser $user, OutsourceRequest $request): bool
