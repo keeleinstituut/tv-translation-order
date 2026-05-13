@@ -165,7 +165,7 @@ class OutsourceRequestController extends Controller
                 'status' => OutsourceRequestStatus::Active,
             ]);
 
-            $offerInstitutionIds = collect($validated['recipients'])->pluck('institution_id');
+            $offerInstitutionIds = collect($validated['offers'])->pluck('institution_id');
             $partnersByInstitutionId = InstitutionPartner::query()
                 ->where('institution_id', $institutionId)
                 ->whereIn('partner_institution_id', $offerInstitutionIds)
@@ -174,7 +174,7 @@ class OutsourceRequestController extends Controller
 
             $isCascade = $outsourceRequest->isCascade();
 
-            foreach ($validated['recipients'] as $index => $row) {
+            foreach ($validated['offers'] as $index => $row) {
                 /** @var InstitutionPartner $partner */
                 $partner = $partnersByInstitutionId->get($row['institution_id']);
                 $calculatedPrice = new OutsourcePartnerPriceCalculator($assignment, $partner)->getPrice();

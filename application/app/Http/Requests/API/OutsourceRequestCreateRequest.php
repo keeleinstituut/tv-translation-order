@@ -4,6 +4,7 @@ namespace App\Http\Requests\API;
 
 use App\Enums\CandidateStatus;
 use App\Enums\ExternalRequestMode;
+use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\OutsourceRequest;
@@ -19,13 +20,13 @@ use OpenApi\Attributes as OA;
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['assignment_id', 'mode', 'reaction_time_minutes', 'recipients'],
+        required: ['assignment_id', 'mode', 'reaction_time_minutes', 'offers'],
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
             new OA\Property(property: 'mode', type: 'string', enum: ExternalRequestMode::class),
             new OA\Property(property: 'reaction_time_minutes', type: 'integer', maximum: 525600, minimum: 1),
             new OA\Property(
-                property: 'recipients',
+                property: 'offers',
                 type: 'array',
                 items: new OA\Items(
                     required: ['institution_id'],
@@ -49,8 +50,8 @@ class OutsourceRequestCreateRequest extends FormRequest
             'assignment_id' => 'required|uuid|exists:assignments,id',
             'mode' => 'required|string|in:CASCADE,PARALLEL',
             'reaction_time_minutes' => 'required|integer|min:1|max:525600',
-            'recipients' => 'required|array|min:1',
-            'recipients.*.institution_id' => 'required|uuid',
+            'offers' => 'required|array|min:1',
+            'offers.*.institution_id' => 'required|uuid',
             'special_instructions' => 'nullable|string',
             'include_source_files' => 'nullable|boolean',
             'include_price' => 'nullable|boolean',
@@ -85,13 +86,14 @@ class OutsourceRequestCreateRequest extends FormRequest
 
                 if (OutsourceRequest::query()
                     ->where('assignment_id', $assignmentId)
+                    ->whereNot('status', OutsourceRequestStatus::Cancelled)
                     ->exists()
                 ) {
                     $validator->errors()->add('assignment_id', 'An external translation request already exists for this assignment.');
                 }
 
                 $callerInstitutionId = Auth::user()->institutionId;
-                $recipientIds = collect($this->input('recipients', []))->pluck('institution_id')->filter();
+                $recipientIds = collect($this->input('offers', []))->pluck('institution_id')->filter();
 
                 $validPartnerIds = InstitutionPartner::query()
                     ->where('institution_id', $callerInstitutionId)
@@ -103,7 +105,7 @@ class OutsourceRequestCreateRequest extends FormRequest
                 foreach ($recipientIds as $index => $institutionId) {
                     if (!in_array($institutionId, $validPartnerIds, true)) {
                         $validator->errors()->add(
-                            "recipients.{$index}.institution_id",
+                            "offers.{$index}.institution_id",
                             'Institution is not an active partner of your institution.'
                         );
                     }
@@ -111,7 +113,7 @@ class OutsourceRequestCreateRequest extends FormRequest
 
                 $duplicates = $recipientIds->duplicates();
                 if ($duplicates->isNotEmpty()) {
-                    $validator->errors()->add('recipients', 'Recipient institution IDs must be unique.');
+                    $validator->errors()->add('offers', 'Offer institution IDs must be unique.');
                 }
             },
         ];

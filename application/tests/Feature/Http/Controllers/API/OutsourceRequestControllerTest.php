@@ -48,7 +48,7 @@ class OutsourceRequestControllerTest extends TestCase
                 'assignment_id' => $assignment->id,
                 'mode' => ExternalRequestMode::Cascade->value,
                 'reaction_time_minutes' => 30,
-                'recipients' => [
+                'offers' => [
                     ['institution_id' => $partnerA->institution['id']],
                     ['institution_id' => $partnerB->institution['id']],
                 ],
@@ -113,7 +113,7 @@ class OutsourceRequestControllerTest extends TestCase
                 'assignment_id' => $assignment->id,
                 'mode' => ExternalRequestMode::Parallel->value,
                 'reaction_time_minutes' => $reactionTimeMinutes,
-                'recipients' => [
+                'offers' => [
                     ['institution_id' => $partnerA->institution['id']],
                     ['institution_id' => $partnerB->institution['id']],
                 ],
@@ -222,7 +222,7 @@ class OutsourceRequestControllerTest extends TestCase
             ->assertJsonValidationErrors('reaction_time_minutes');
     }
 
-    public function test_create_request_rejects_duplicate_recipients(): void
+    public function test_create_request_rejects_duplicate_offers(): void
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
@@ -234,7 +234,7 @@ class OutsourceRequestControllerTest extends TestCase
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson('/api/outsource-requests', [
                 ...$this->validCreatePayload($assignment, [$recipientUser]),
-                'recipients' => [
+                'offers' => [
                     ['institution_id' => $recipientUser->institution['id']],
                     ['institution_id' => $recipientUser->institution['id']],
                 ],
@@ -242,7 +242,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN
         $response->assertUnprocessable()
-            ->assertJsonValidationErrors('recipients');
+            ->assertJsonValidationErrors('offers');
     }
 
     public function test_create_request_rejects_non_partner_recipient(): void
@@ -258,7 +258,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN
         $response->assertUnprocessable()
-            ->assertJsonValidationErrors('recipients.0.institution_id');
+            ->assertJsonValidationErrors('offers.0.institution_id');
     }
 
     public function test_create_request_rejects_assignment_that_already_has_vendor(): void
@@ -1533,18 +1533,18 @@ class OutsourceRequestControllerTest extends TestCase
     }
 
     /**
-     * @param array<int, InstitutionUser> $recipients
+     * @param array<int, InstitutionUser> $offers
      * @return array<string, mixed>
      */
-    private function validCreatePayload(Assignment $assignment, array $recipients): array
+    private function validCreatePayload(Assignment $assignment, array $offers): array
     {
         return [
             'assignment_id' => $assignment->id,
             'mode' => ExternalRequestMode::Cascade->value,
             'reaction_time_minutes' => 60,
-            'recipients' => collect($recipients)
-                ->map(fn (InstitutionUser $recipient): array => [
-                    'institution_id' => $recipient->institution['id'],
+            'offers' => collect($offers)
+                ->map(fn (InstitutionUser $offer): array => [
+                    'institution_id' => $offer->institution['id'],
                 ])
                 ->all(),
         ];
