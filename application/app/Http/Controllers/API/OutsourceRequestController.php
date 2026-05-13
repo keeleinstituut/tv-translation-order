@@ -306,14 +306,14 @@ class OutsourceRequestController extends Controller
         }
 
         /** @var OutsourceOffer $offer */
-        $offer = $outsourceRequest->offers()->findOrFail($request->validated('recipient_id'));
+        $offer = $outsourceRequest->offers()->findOrFail($request->validated('offer_id'));
 
         if ($offer->status !== OutsourceOfferStatus::RequestAccepted) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Recipient is not in REQUEST_ACCEPTED state.');
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Offer is not in REQUEST_ACCEPTED state.');
         }
 
         $rejectionComments = collect($request->validated('rejection_comments', []))
-            ->pluck('rejection_comment', 'recipient_id')
+            ->pluck('rejection_comment', 'offer_id')
             ->all();
 
         try {

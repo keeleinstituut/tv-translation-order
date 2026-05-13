@@ -1112,11 +1112,11 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [
-                    ['recipient_id' => $loserAccepted->id, 'rejection_comment' => 'price too high'],
-                    ['recipient_id' => $loserNotified->id, 'rejection_comment' => 'no answer in time window'],
-                    ['recipient_id' => $loserPending->id, 'rejection_comment' => 'not needed'],
+                    ['offer_id' => $loserAccepted->id, 'rejection_comment' => 'price too high'],
+                    ['offer_id' => $loserNotified->id, 'rejection_comment' => 'no answer in time window'],
+                    ['offer_id' => $loserPending->id, 'rejection_comment' => 'not needed'],
                 ],
             ]);
 
@@ -1160,7 +1160,7 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [],
             ]);
 
@@ -1195,7 +1195,7 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN — omit $loser from rejection_comments
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [],
             ]);
 
@@ -1227,9 +1227,9 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN — DECLINED recipient must not appear in rejection_comments
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [
-                    ['recipient_id' => $declined->id, 'rejection_comment' => 'no'],
+                    ['offer_id' => $declined->id, 'rejection_comment' => 'no'],
                 ],
             ]);
 
@@ -1256,9 +1256,9 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [
-                    ['recipient_id' => $selected->id, 'rejection_comment' => 'self'],
+                    ['offer_id' => $selected->id, 'rejection_comment' => 'self'],
                 ],
             ]);
 
@@ -1289,9 +1289,9 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [
-                    ['recipient_id' => $foreignRecipient->id, 'rejection_comment' => 'foreign'],
+                    ['offer_id' => $foreignRecipient->id, 'rejection_comment' => 'foreign'],
                 ],
             ]);
 
@@ -1320,10 +1320,10 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [
-                    ['recipient_id' => $loser->id, 'rejection_comment' => 'first'],
-                    ['recipient_id' => $loser->id, 'rejection_comment' => 'duplicate'],
+                    ['offer_id' => $loser->id, 'rejection_comment' => 'first'],
+                    ['offer_id' => $loser->id, 'rejection_comment' => 'duplicate'],
                 ],
             ]);
 
@@ -1352,9 +1352,9 @@ class OutsourceRequestControllerTest extends TestCase
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/select", [
-                'recipient_id' => $selected->id,
+                'offer_id' => $selected->id,
                 'rejection_comments' => [
-                    ['recipient_id' => $loser->id, 'rejection_comment' => ''],
+                    ['offer_id' => $loser->id, 'rejection_comment' => ''],
                 ],
             ]);
 
