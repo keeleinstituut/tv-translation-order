@@ -268,6 +268,100 @@ class AssignmentControllerShowTest extends TestCase
         $response->assertNotFound();
     }
 
+    public function test_partner_vendor_candidate_can_view_assignment_without_view_etr_privilege(): void
+    {
+        // GIVEN — partner institution vendor is a candidate but has no ViewOutsourceRequest privilege
+        $ownerInstitution = Institution::factory()->create();
+        $partnerInstitution = Institution::factory()->create();
+        $partnerInstitutionUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $partnerInstitution->id])
+            ->create();
+        $partnerVendor = Vendor::factory()->create(['institution_user_id' => $partnerInstitutionUser->id]);
+
+        $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $assignment = Assignment::factory()->create([
+            'sub_project_id' => $subProject->id,
+            'assigned_vendor_id' => null,
+        ]);
+
+        $outsourceRequest = OutsourceRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => OutsourceRequestStatus::Active,
+        ]);
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $outsourceRequest->id,
+            'institution_id' => $partnerInstitution->id,
+            'status' => OutsourceOfferStatus::OfferAccepted,
+        ]);
+        Candidate::factory()->create([
+            'assignment_id' => $assignment->id,
+            'vendor_id' => $partnerVendor->id,
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $partnerInstitutionUser->id,
+            'selectedInstitution' => ['id' => $partnerInstitution->id],
+            'privileges' => [],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson("/api/assignments/{$assignment->id}");
+
+        // THEN — vendor is a candidate so can view even without ViewOutsourceRequest privilege
+        $response->assertOk()->assertJsonPath('data.id', $assignment->id);
+    }
+
+    public function test_partner_vendor_assignee_can_view_assignment_without_view_etr_privilege(): void
+    {
+        // GIVEN — partner institution vendor is the assignee but has no ViewOutsourceRequest privilege
+        $ownerInstitution = Institution::factory()->create();
+        $partnerInstitution = Institution::factory()->create();
+        $partnerInstitutionUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $partnerInstitution->id])
+            ->create();
+        $partnerVendor = Vendor::factory()->create(['institution_user_id' => $partnerInstitutionUser->id]);
+
+        $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $assignment = Assignment::factory()->create([
+            'sub_project_id' => $subProject->id,
+            'assigned_vendor_id' => $partnerVendor->id,
+        ]);
+
+        $outsourceRequest = OutsourceRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => OutsourceRequestStatus::Active,
+        ]);
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $outsourceRequest->id,
+            'institution_id' => $partnerInstitution->id,
+            'status' => OutsourceOfferStatus::OfferAccepted,
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $partnerInstitutionUser->id,
+            'selectedInstitution' => ['id' => $partnerInstitution->id],
+            'privileges' => [],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson("/api/assignments/{$assignment->id}");
+
+        // THEN — vendor is the assignee so can view even without ViewOutsourceRequest privilege
+        $response->assertOk()->assertJsonPath('data.id', $assignment->id);
+    }
+
     public function test_response_includes_sub_project_with_languages_and_project(): void
     {
         // GIVEN

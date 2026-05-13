@@ -35,10 +35,10 @@ class AssignmentPolicy
             return $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
         }
 
-        return $user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) && (
+        return ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) && (
                 $user->hasSharedPartnerAccessToAssignment($assignment) ||
                 $user->hasActivePartnerAccessToAssignment($assignment)
-            );
+            )) || $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
     }
 
     /**
@@ -106,7 +106,7 @@ class AssignmentPolicy
                 $this->isAssignedTo($user, $assignment);
         }
 
-        return $user->hasSharedPartnerAccessToAssignment($assignment) &&
+        return $user->hasActivePartnerAccessToAssignment($assignment) &&
             $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
