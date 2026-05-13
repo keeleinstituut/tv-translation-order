@@ -22,7 +22,7 @@ use App\Models\InstitutionPartner;
 use App\Policies\OutsourceRequestPolicy;
 use App\Services\OutsourceRequest\OutsourceRequestStateMachine;
 use App\Jobs\ExpireOutsourceOfferJob;
-use App\Services\Prices\OutsourcePartnerPriceCalculator;
+use App\Services\Prices\OutsourceOfferPriceCalculator;
 use AuditLogClient\Services\AuditLogPublisher;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -185,7 +185,7 @@ class OutsourceRequestController extends Controller
             foreach ($validated['offers'] as $index => $row) {
                 /** @var InstitutionPartner $partner */
                 $partner = $partnersByInstitutionId->get($row['institution_id']);
-                $calculatedPrice = new OutsourcePartnerPriceCalculator($assignment, $partner)->getPrice();
+                $calculatedPrice = new OutsourceOfferPriceCalculator($assignment, $partner)->getPrice();
 
                 $notified = !$isCascade || $index === 0;
 
