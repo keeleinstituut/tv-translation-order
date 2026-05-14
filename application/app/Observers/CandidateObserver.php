@@ -59,8 +59,8 @@ class CandidateObserver
     {
         if ($candidate->wasChanged('status') && in_array($candidate->status, [CandidateStatus::Declined, CandidateStatus::Rejected])) {
             $this->deleteCandidateFromWorkflow($candidate);
-            if (filled($candidate->notified_at)) {
-                $this->publishTaskDeclinedEmailNotification($candidate->assignment, $candidate->vendor);
+            if ($candidate->status === CandidateStatus::Declined && filled($candidate->notified_at)) {
+                $this->publishTaskDeclinedByVendorEmailNotification($candidate->assignment, $candidate->vendor);
             }
         }
     }
@@ -93,7 +93,7 @@ class CandidateObserver
     /**
      * @throws Throwable
      */
-    private function publishTaskDeclinedEmailNotification(Assignment $assignment, Vendor $vendor): void
+    private function publishTaskDeclinedByVendorEmailNotification(Assignment $assignment, Vendor $vendor): void
     {
         $project = $assignment->subProject?->project;
         if (filled($project)) {
