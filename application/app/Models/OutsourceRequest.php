@@ -29,7 +29,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property OutsourceRequestMode $mode
  * @property int $reaction_time_minutes
  * @property string|null $special_instructions
- * @property string|null $price
+ * @property string|null $fixed_price
  * @property bool $include_price
  * @property bool $include_source_files
  * @property OutsourceRequestStatus $status
@@ -60,7 +60,7 @@ class OutsourceRequest extends Model implements HasMedia
     protected $casts = [
         'mode' => OutsourceRequestMode::class,
         'status' => OutsourceRequestStatus::class,
-        'price' => 'decimal:3',
+        'fixed_price' => 'decimal:3',
         'include_price' => 'boolean',
         'include_source_files' => 'boolean',
     ];

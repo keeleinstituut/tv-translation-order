@@ -35,6 +35,11 @@ use OpenApi\Attributes as OA;
 )]
 class OutsourceOfferResource extends JsonResource
 {
+    public function __construct($resource, private readonly bool $hideCalculatedPrice = false)
+    {
+        parent::__construct($resource);
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -45,7 +50,7 @@ class OutsourceOfferResource extends JsonResource
             'notified_at' => $this->notified_at,
             'responded_at' => $this->responded_at,
             'expires_at' => $this->expires_at,
-            'calculated_price' => $this->calculated_price,
+            'calculated_price' => $this->hideCalculatedPrice ? null : $this->calculated_price,
             'proposed_price' => $this->proposed_price,
             'decline_comment' => $this->decline_comment,
             'rejection_comment' => $this->rejection_comment,

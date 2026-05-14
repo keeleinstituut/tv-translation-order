@@ -24,6 +24,10 @@ readonly class OutsourceRequestStateMachine
             [$lockedOffer, $request] = $this->lockOfferAndRequest($offer);
             $this->assertOfferActionable($lockedOffer, $request);
 
+            if ($request->fixed_price !== null && $proposedPrice !== null) {
+                throw new DomainException('Cannot set proposed price when request has a fixed price.');
+            }
+
             $lockedOffer->update([
                 'status' => OutsourceOfferStatus::RequestAccepted,
                 'responded_at' => now(),
@@ -138,7 +142,7 @@ readonly class OutsourceRequestStateMachine
 
             $lockedRequest->update(['status' => OutsourceRequestStatus::Fulfilled]);
 
-            $finalPrice = $lockedOffer->proposed_price ?? $lockedRequest->price ?? $lockedOffer->calculated_price;
+            $finalPrice = $lockedOffer->proposed_price ?? $lockedRequest->fixed_price ?? $lockedOffer->calculated_price;
             $lockedRequest->assignment->update([
                 'price' => $finalPrice,
             ]);

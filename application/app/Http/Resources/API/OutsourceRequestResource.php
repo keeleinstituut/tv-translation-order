@@ -26,7 +26,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'reaction_time_minutes', type: 'integer'),
         new OA\Property(property: 'deadline_at', description: 'Computed for PARALLEL mode (created_at + reaction_time_minutes); null for CASCADE.', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
-        new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
+        new OA\Property(property: 'fixed_price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'include_price', type: 'boolean'),
         new OA\Property(property: 'include_source_files', type: 'boolean'),
         new OA\Property(property: 'status', type: 'string', enum: OutsourceRequestStatus::class),
@@ -43,6 +43,11 @@ class OutsourceRequestResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        /** @var AuthUser|null $user */
+        $user = $request->user();
+        $isOwner = $this->ownerInstitution->id === $user?->institutionId;
+        $hideCalculatedPrice = $this->fixed_price !== null || (!$isOwner && !$this->include_price);
+
         return [
             'id' => $this->id,
             'assignment_id' => $this->assignment_id,
@@ -50,15 +55,15 @@ class OutsourceRequestResource extends JsonResource
             'reaction_time_minutes' => $this->reaction_time_minutes,
             'deadline_at' => $this->deadline_at,
             'special_instructions' => $this->special_instructions,
-            'price' => $this->price,
+            'fixed_price' => $this->fixed_price,
             'include_price' => $this->include_price,
             'include_source_files' => $this->include_source_files,
             'status' => $this->status,
             'cancellation_reason' => $this->cancellation_reason,
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
-            'offers' => $this->whenLoaded('offers', fn() => OutsourceOfferResource::collection(
-                $this->visibleOffers($request)
-            )),
+            'offers' => $this->whenLoaded('offers', fn() =>
+                $this->visibleOffers($request)->map(fn($offer) => new OutsourceOfferResource($offer, $hideCalculatedPrice))
+            ),
             'media' => $this->whenLoaded('media', fn() => MediaResource::collection($this->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION))),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

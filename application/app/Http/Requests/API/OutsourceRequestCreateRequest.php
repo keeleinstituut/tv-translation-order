@@ -37,8 +37,8 @@ use OpenApi\Attributes as OA;
             new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
             new OA\Property(property: 'include_source_files', type: 'boolean', nullable: true),
             new OA\Property(property: 'include_price', type: 'boolean', nullable: true),
-            new OA\Property(property: 'override_price', type: 'number', format: 'double', nullable: true),
-            new OA\Property(property: 'request_files', type: 'array', nullable: true, items: new OA\Items(type: 'string', format: 'binary')),
+            new OA\Property(property: 'fixed_price', type: 'number', format: 'double', nullable: true),
+            new OA\Property(property: 'request_files', type: 'array', items: new OA\Items(type: 'string', format: 'binary'), nullable: true),
         ]
     )
 )]
@@ -55,7 +55,7 @@ class OutsourceRequestCreateRequest extends FormRequest
             'special_instructions' => 'nullable|string',
             'include_source_files' => 'nullable|boolean',
             'include_price' => 'nullable|boolean',
-            'override_price' => 'nullable|numeric|min:0',
+            'fixed_price' => 'nullable|numeric|min:0',
             'request_files' => 'nullable|array',
             'request_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
         ];

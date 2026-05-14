@@ -56,7 +56,7 @@ class OutsourceRequestControllerTest extends TestCase
                 'special_instructions' => 'Please preserve formatting.',
                 'include_price' => false,
                 'include_source_files' => true,
-                'override_price' => 123.456,
+                'fixed_price' => 123.456,
                 'request_files' => [
                     UploadedFile::fake()->create('source.docx'),
                 ],
@@ -74,7 +74,7 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertSame(OutsourceRequestMode::Cascade, $outsourceRequest->mode);
         $this->assertSame(30, $outsourceRequest->reaction_time_minutes);
         $this->assertSame('Please preserve formatting.', $outsourceRequest->special_instructions);
-        $this->assertSame('123.456', $outsourceRequest->price);
+        $this->assertSame('123.456', $outsourceRequest->fixed_price);
         $this->assertFalse($outsourceRequest->include_price);
         $this->assertTrue($outsourceRequest->include_source_files);
         $this->assertCount(1, $outsourceRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION));
@@ -89,6 +89,8 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertSame(OutsourceOfferStatus::RequestPending, $offers[1]->status);
         $this->assertNull($offers[1]->notified_at);
         $this->assertNull($offers[1]->expires_at);
+        $this->assertSame('123.456', $offers[0]->proposed_price);
+        $this->assertSame('123.456', $offers[1]->proposed_price);
         Queue::assertPushed(ExpireOutsourceOfferJob::class, 1);
         Queue::assertPushed(
             ExpireOutsourceOfferJob::class,
@@ -1526,6 +1528,84 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN — decline policy requires the caller's institution to be among recipients
         $response->assertForbidden();
+    }
+
+    // --- price visibility ---
+
+    public function test_owner_always_sees_calculated_price_regardless_of_include_price(): void
+    {
+        // GIVEN — request with include_price = false but a known calculated_price on the offer
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, ['include_price' => false]);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '99.000']);
+
+        // WHEN owner reads the request
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
+
+        // THEN owner sees the real calculated_price
+        $response->assertOk()
+            ->assertJsonPath('data.offers.0.calculated_price', 99.0);
+    }
+
+    public function test_partner_sees_calculated_price_when_include_price_is_true(): void
+    {
+        // GIVEN — request with include_price = true
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, ['include_price' => true, 'fixed_price' => null]);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '88.000']);
+
+        // WHEN partner reads the request
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
+
+        // THEN partner sees calculated_price
+        $response->assertOk()
+            ->assertJsonPath('data.offers.0.calculated_price', 88.0);
+    }
+
+    public function test_partner_sees_null_calculated_price_when_include_price_is_false(): void
+    {
+        // GIVEN — request with include_price = false
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, ['include_price' => false, 'fixed_price' => null]);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '77.000']);
+
+        // WHEN partner reads the request
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
+
+        // THEN partner sees null for calculated_price (open bid — they must propose their own price)
+        $response->assertOk()
+            ->assertJsonPath('data.offers.0.calculated_price', null);
+    }
+
+    public function test_calculated_price_is_null_in_response_when_fixed_price_is_set(): void
+    {
+        // GIVEN — request with fixed_price set (calculated_price is irrelevant)
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, ['fixed_price' => '55.000']);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '66.000']);
+
+        // WHEN owner reads the request
+        $ownerResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
+
+        // WHEN partner reads the request
+        $partnerResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
+
+        // THEN both owner and partner see null for calculated_price
+        $ownerResponse->assertOk()->assertJsonPath('data.offers.0.calculated_price', null);
+        $partnerResponse->assertOk()->assertJsonPath('data.offers.0.calculated_price', null);
     }
 
     // --- helpers ---

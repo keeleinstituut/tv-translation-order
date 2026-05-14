@@ -161,13 +161,14 @@ class OutsourceRequestController extends Controller
         $this->authorize('create', [OutsourceRequest::class, $assignment]);
 
         $outsourceRequest = DB::transaction(function () use ($validated, $assignment, $institutionUserId, $institutionId) {
+            /** @var OutsourceRequest $outsourceRequest */
             $outsourceRequest = OutsourceRequest::create([
                 'assignment_id' => $assignment->id,
                 'institution_user_id' => $institutionUserId,
                 'mode' => $validated['mode'],
                 'reaction_time_minutes' => $validated['reaction_time_minutes'],
                 'special_instructions' => $validated['special_instructions'] ?? null,
-                'price' => $validated['override_price'] ?? null,
+                'fixed_price' => $validated['fixed_price'] ?? null,
                 'include_price' => $validated['include_price'] ?? true,
                 'include_source_files' => $validated['include_source_files'] ?? true,
                 'status' => OutsourceRequestStatus::Active,
@@ -201,6 +202,7 @@ class OutsourceRequestController extends Controller
                         default => null,
                     },
                     'calculated_price' => $calculatedPrice,
+                    'proposed_price' => $outsourceRequest->fixed_price,
                 ]);
 
                 if ($notified) {

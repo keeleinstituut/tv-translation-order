@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
     required: false,
     content: new OA\JsonContent(
         properties: [
-            new OA\Property(property: 'proposed_price', type: 'number', format: 'double', nullable: true),
+            new OA\Property(property: 'proposed_price', description: 'Must be omitted when the outsource request has a fixed_price set — the price is already determined and cannot be overridden by the partner.', type: 'number', format: 'double', nullable: true),
             new OA\Property(property: 'response_comment', type: 'string', nullable: true),
         ]
     )

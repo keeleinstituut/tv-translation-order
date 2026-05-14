@@ -22,7 +22,7 @@ class OutsourceRequestFactory extends Factory
             'mode' => OutsourceRequestMode::Parallel,
             'reaction_time_minutes' => 4320,
             'special_instructions' => null,
-            'price' => null,
+            'fixed_price' => null,
             'include_price' => true,
             'include_source_files' => true,
             'status' => OutsourceRequestStatus::Active,
