@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\CandidateStatus;
 use App\Models\Candidate;
+use App\Models\VendorCalendarEntry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -44,6 +45,14 @@ class AutoDeclineVendorTaskProposal implements ShouldQueue
             $candidate->saveOrFail();
 
             if ($candidate->assignment->subProject->project->is_calendar_project) {
+                $calendarEntry = VendorCalendarEntry::where('assignment_id', $candidate->assignment_id)
+                    ->where('vendor_id', $candidate->vendor_id)
+                    ->first();
+
+                if (filled($calendarEntry)) {
+                    $calendarEntry->delete();
+                }
+
                 ProcessCandidatesNotificationCycle::dispatch($candidate->assignment)
                     ->afterCommit();
             }
