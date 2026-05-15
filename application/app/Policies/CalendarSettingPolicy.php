@@ -9,7 +9,7 @@ class CalendarSettingPolicy
 {
     public function viewAny(AuthUser $user): bool
     {
-        return $user->hasPrivilege(PrivilegeKey::EditInstitution);
+        return true;
     }
 
     public function update(AuthUser $user): bool
