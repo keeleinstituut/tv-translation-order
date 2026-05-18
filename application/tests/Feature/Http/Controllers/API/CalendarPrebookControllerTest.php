@@ -9,7 +9,7 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
@@ -349,7 +349,7 @@ class CalendarPrebookControllerTest extends TestCase
 
         $language = ClassifierValue::factory()->language()->create();
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -369,7 +369,6 @@ class CalendarPrebookControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         return [$institution, $language, $vendor];
     }

@@ -13,7 +13,7 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Policies\VendorCalendarEntryPolicy;
 use App\Policies\VendorPolicy;
-use App\Repositories\Calendar\VendorLanguageCoverageRepository;
+use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,7 +29,7 @@ class VendorCalendarEntryController extends Controller
     const int DEFAULT_PAGE_SIZE = 1000;
 
     public function __construct(
-        private readonly VendorLanguageCoverageRepository $languageCoverage,
+        private readonly VendorLanguageCoverageRepositoryInterface $languageCoverage,
         AuditLogPublisher                                 $auditLogPublisher,
     )
     {
@@ -173,7 +173,8 @@ class VendorCalendarEntryController extends Controller
             return $query->whereIn('vendor_id', $vendorIds);
         }
 
-        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
+            && ! Auth::user()->belongsToTranslationAgency()) {
             return $query->forClient($institutionUserId);
         }
 

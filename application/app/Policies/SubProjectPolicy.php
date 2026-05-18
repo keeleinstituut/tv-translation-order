@@ -13,6 +13,7 @@ class SubProjectPolicy
 {
     /**
      * Determine whether the user can view any models.
+     * partner access deliberately excluded
      */
     public function viewAny(AuthUser $user, bool $onlyPersonalSubProjectsRequested): bool
     {
@@ -24,6 +25,7 @@ class SubProjectPolicy
      * @return mixed
      *
      * TODO: add correct privilege check
+     * partner access deliberately excluded
      */
     public function viewAnyByTmKey(AuthUser $user)
     {
@@ -40,16 +42,25 @@ class SubProjectPolicy
         }
 
         $project = $subProject->project;
-        if ($user->isClientOf($project)
-            || $user->isManagerOf($project)) {
+        if ($user->isClientOfProject($project)
+            || $user->isManagerOfProject($project)) {
             return $user->hasAtLeastOnePrivilege([PrivilegeKey::ViewPersonalProject, PrivilegeKey::ViewInstitutionProjectDetail]);
         }
 
-        return $user->hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail);
+        if ($user->hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail) && $user->isInSameInstitutionAsProject($project)) {
+            return true;
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
+            return $user->hasActivePartnerAccessToSubProject($subProject);
+        }
+
+        return false;
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function update(AuthUser $user, SubProject $subProject): bool
     {
@@ -58,18 +69,21 @@ class SubProjectPolicy
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function manageCatTool(AuthUser $user, SubProject $subProject): bool
     {
-        return $user->isInSameInstitutionAs($subProject->project) &&
+        return $user->isInSameInstitutionAsProject($subProject->project) &&
             $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
+    // partner access deliberately excluded
     public function downloadXliff(AuthUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
     }
 
+    // partner access deliberately excluded
     public function downloadTranslations(AuthUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
@@ -77,26 +91,38 @@ class SubProjectPolicy
 
     public function downloadMedia(AuthUser $user, SubProject $subProject): bool
     {
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
+            (
+                $user->hasActivePartnerAccessToSubProject($subProject)
+                || $user->hasSharedPartnerAccessToSubProject($subProject, true)
+            )) {
+            return true;
+        }
+
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject) ||
-            $user->isClientOf($subProject->project);
+            $user->isClientOfProject($subProject->project);
     }
 
+    // partner access deliberately excluded
     public function editSourceFiles(AuthUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($user, $subProject) ||
-            $user->isClientOf($subProject->project);
+            $user->isClientOfProject($subProject->project);
     }
 
+    // partner access deliberately excluded
     public function editFinalFiles(AuthUser $user, SubProject $subProject, ?string $assignmentId = null): bool
     {
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject, $assignmentId);
     }
 
+    // partner access deliberately excluded
     public function startWorkflow(AuthUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($user, $subProject);
     }
 
+    // partner access deliberately excluded
     public function markFilesAsProjectFinalFiles(AuthUser $user, SubProject $subProject): bool
     {
         return $this->hasManageProjectPrivilege($user, $subProject);
@@ -104,7 +130,7 @@ class SubProjectPolicy
 
     private function hasManageProjectPrivilege(AuthUser $user, SubProject $subProject): bool
     {
-        if (! $user->isInSameInstitutionAs($subProject->project)) {
+        if (! $user->isInSameInstitutionAsProject($subProject->project)) {
             return false;
         }
 
@@ -165,8 +191,10 @@ class SubProjectScope implements IScope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->whereRelation('project', function (Builder $query) {
-            $query->where('institution_id', Auth::user()->institutionId);
+        $institutionId = Auth::user()->institutionId;
+        $builder->where(function (Builder $outer) use ($institutionId) {
+            $outer->whereRelation('project', fn (Builder $p) => $p->where('institution_id', $institutionId))
+                ->orWhereHas('assignments', fn (Builder $a) => $a->sharedWithInstitution($institutionId));
         });
     }
 }

@@ -368,7 +368,7 @@ class ProjectController extends Controller
                 'tags',
             ]);
 
-            return new ProjectResource($project);
+            return ProjectResource::make($project);
         });
     }
 
@@ -444,7 +444,7 @@ class ProjectController extends Controller
 
         $this->authorize('view', $project);
 
-        return new ProjectResource($project);
+        return ProjectResource::make($project);
     }
 
     /**
@@ -583,7 +583,7 @@ class ProjectController extends Controller
                 'projectComments.institutionUser',
             ]);
 
-            return new ProjectResource($project);
+            return ProjectResource::make($project);
         });
     }
 

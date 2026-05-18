@@ -54,7 +54,8 @@ class CalendarRoleResolver
             return;
         }
 
-        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
+            && ! Auth::user()->belongsToTranslationAgency()) {
             $this->role = CalendarRole::Client;
             return;
         }

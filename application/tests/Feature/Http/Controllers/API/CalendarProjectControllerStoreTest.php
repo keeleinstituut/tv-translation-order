@@ -12,7 +12,7 @@ use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\CalendarSetting;
 use App\Models\Candidate;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
@@ -124,7 +124,6 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->create();
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
-        $this->refreshView();
 
         $dayName = strtolower(Carbon::tomorrow()->utc()->format('l'));
         $this->institution->forceFill([
@@ -456,7 +455,6 @@ class CalendarProjectControllerStoreTest extends TestCase
         // calendar imported, no conflicting entries, no emergency schedule.
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor, $eventDate);
-        $this->refreshView();
 
         $actingUser = InstitutionUser::factory()
             ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
@@ -505,7 +503,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->create();
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
-        $this->refreshView();
+
         // Block the vendor so auto matching finds nothing
         VendorCalendarEntry::create([
             'vendor_id' => $vendor->id,
@@ -1034,7 +1032,7 @@ class CalendarProjectControllerStoreTest extends TestCase
         ]);
 
         $skill = Skill::findByCode(SkillCode::OralInterpretation);
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'src_lang_classifier_value_id' => $this->sourceLanguageET->id,
@@ -1056,10 +1054,5 @@ class CalendarProjectControllerStoreTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
-
-    private function refreshView(): void
-    {
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
     }
 }

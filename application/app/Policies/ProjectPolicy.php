@@ -12,6 +12,7 @@ class ProjectPolicy
 {
     /**
      * Determine whether the user can view any models.
+     * partner access deliberately excluded
      */
     public function viewAny(AuthUser $user, bool $onlyPersonalProjectsRequested, bool $onlyUnclaimedProjectsRequested): bool
     {
@@ -37,8 +38,8 @@ class ProjectPolicy
             return true;
         }
 
-        if ($user->isClientOf($project)
-            || $user->isManagerOf($project)) {
+        if ($user->isClientOfProject($project)
+            || $user->isManagerOfProject($project)) {
             return $user->hasPrivilege(PrivilegeKey::ViewPersonalProject);
         }
 
@@ -48,11 +49,16 @@ class ProjectPolicy
             }
         }
 
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
+            return $user->hasActivePartnerAccessToProject($project);
+        }
+
         return false;
     }
 
     /**
      * Determine whether the user can create models.
+     * partner access deliberately excluded
      */
     public function create(AuthUser $user, Project $project): bool
     {
@@ -60,81 +66,106 @@ class ProjectPolicy
             return false;
         }
 
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->hasPrivilege(PrivilegeKey::CreateProject) &&
-            ($user->isClientOf($project) || $user->hasPrivilege(PrivilegeKey::ChangeClient)) &&
-            ($project->manager_institution_user_id === null || $user->isManagerOf($project) ||
+            ($user->isClientOfProject($project) || $user->hasPrivilege(PrivilegeKey::ChangeClient)) &&
+            ($project->manager_institution_user_id === null || $user->isManagerOfProject($project) ||
                 $user->hasPrivilege(PrivilegeKey::ChangeProjectManager)
             );
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function update(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) &&
+        return $user->isInSameInstitutionAsProject($project) &&
             $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function changeClient(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) &&
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->isInSameInstitutionAsProject($project) &&
             ($user->hasPrivilege(PrivilegeKey::ChangeClient) || empty($project->client_institution_user_id));
     }
 
+    // partner access deliberately excluded
     public function changeProjectManager(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) &&
+        return $user->isInSameInstitutionAsProject($project) &&
             ($user->hasPrivilege(PrivilegeKey::ChangeProjectManager) || empty($project->manager_institution_user_id));
     }
 
+    // partner access deliberately excluded
     public function editSourceFiles(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) && (
+        return $user->isInSameInstitutionAsProject($project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isClientOf($project)
+                $user->isClientOfProject($project)
             );
     }
 
+    // partner access deliberately excluded
     public function editHelpFiles(AuthUser $user, Project $project): bool
     {
-        return $user->isInSameInstitutionAs($project) && (
+        return $user->isInSameInstitutionAsProject($project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isClientOf($project)
+                $user->isClientOfProject($project)
             );
     }
 
     public function downloadMedia(AuthUser $user, Project $project): bool
     {
-        if (! $user->isInSameInstitutionAs($project)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
+            (
+                $user->hasActivePartnerAccessToProject($project)
+                || $user->hasSharedPartnerAccessToProject($project, true)
+            )) {
+            return true;
+        }
+
+        if (! $user->isInSameInstitutionAsProject($project)) {
             return false;
         }
 
         return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-            $user->isClientOf($project) ||
-            $user->isAssignmentsCandidate($project);
+            $user->isClientOfProject($project) ||
+            $user->hasAssignmentCandidateAccessToProject($project);
     }
 
+    // partner access deliberately excluded
     public function cancel(AuthUser $user, Project $project): bool
     {
-        return $user->hasPrivilege(PrivilegeKey::ManageProject) || $user->isClientOf($project);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject) || $user->isClientOfProject($project);
     }
 
+    // partner access deliberately excluded
     public function review(AuthUser $user, Project $project): bool
     {
-        return $user->isClientOf($project);
+        return $user->isClientOfProject($project);
     }
 
-    public function export(AuthUser $user)
+    // partner access deliberately excluded
+    public function export(AuthUser $user): bool
     {
         return $user->hasPrivilege(PrivilegeKey::ExportInstitutionGeneralReport);
     }
 
     /**
      * Determine whether the user can delete the model.
+     * partner access deliberately excluded
      */
     public function delete(AuthUser $user, Project $project): bool
     {
@@ -143,6 +174,7 @@ class ProjectPolicy
 
     /**
      * Determine whether the user can restore the model.
+     * partner access deliberately excluded
      */
     public function restore(AuthUser $user, Project $project): bool
     {
@@ -151,6 +183,7 @@ class ProjectPolicy
 
     /**
      * Determine whether the user can permanently delete the model.
+     * partner access deliberately excluded
      */
     public function forceDelete(AuthUser $user, Project $project): bool
     {
@@ -171,7 +204,7 @@ class ProjectPolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope()
+    public static function scope(): Scope\ProjectScope
     {
         return new Scope\ProjectScope();
     }
@@ -193,6 +226,11 @@ class ProjectScope implements IScope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->where('institution_id', Auth::user()->institutionId);
+        $institutionId = Auth::user()->institutionId;
+        $builder->where(function (Builder $q) use ($institutionId) {
+            $q->where('institution_id', $institutionId)
+                ->orWhereHas('subProjects.assignments',
+                    fn (Builder $a) => $a->sharedWithInstitution($institutionId));
+        });
     }
 }

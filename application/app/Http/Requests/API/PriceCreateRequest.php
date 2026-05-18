@@ -79,10 +79,10 @@ class PriceCreateRequest extends FormRequest
         return [
             function (Validator $validator) {
                 $existing = Price::getModel()
-                    ->where('vendor_id', $this->vendor_id)
-                    ->where('skill_id', $this->skill_id)
-                    ->where('src_lang_classifier_value_id', $this->src_lang_classifier_value_id)
-                    ->where('dst_lang_classifier_value_id', $this->dst_lang_classifier_value_id)
+                    ->where('vendor_id', $this->input('vendor_id'))
+                    ->where('skill_id', $this->input('skill_id'))
+                    ->where('src_lang_classifier_value_id', $this->input('src_lang_classifier_value_id'))
+                    ->where('dst_lang_classifier_value_id', $this->input('dst_lang_classifier_value_id'))
                     ->get();
 
                 if ($existing->isNotEmpty()) {

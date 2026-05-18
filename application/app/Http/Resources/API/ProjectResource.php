@@ -85,6 +85,8 @@ class ProjectResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $user = $request->user();
+        $isInSameInstitutionAsProject = $user->isInSameInstitutionAsProject($this->resource);
         return [
             ...$this->only(
                 'id',
@@ -113,19 +115,30 @@ class ProjectResource extends JsonResource
                 'updated_at',
             ),
             'manager_institution_user' => InstitutionUserResource::make($this->whenLoaded('managerInstitutionUser')),
-            'client_institution_user' => InstitutionUserResource::make($this->whenLoaded('clientInstitutionUser')),
             'type_classifier_value' => ClassifierValueResource::make($this->whenLoaded('typeClassifierValue')),
             'translation_domain_classifier_value' => ClassifierValueResource::make($this->whenLoaded('translationDomainClassifierValue')),
-            'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
-            'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
-            'price' => $this->price,
-            'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
-            'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
-            'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
             'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
-            'project_comments' => ProjectCommentResource::collection($this->whenLoaded('projectComments')),
-            'workflow_started' => $this->workflow()->isStarted()
+            'workflow_started' => $this->workflow()->isStarted(),
+            $this->mergeWhen($isInSameInstitutionAsProject, [
+                'client_institution_user' => InstitutionUserResource::make($this->whenLoaded('clientInstitutionUser')),
+                'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
+                'price' => $this->price,
+                'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
+            ]),
+            $this->mergeWhen($isInSameInstitutionAsProject || $user->hasActivePartnerAccessToProject($this->resource), [
+                'project_comments' => ProjectCommentResource::collection($this->whenLoaded('projectComments')),
+                'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
+            ]),
+            $this->mergeWhen(
+                $isInSameInstitutionAsProject
+                || $user->hasActivePartnerAccessToProject($this->resource)
+                || $user->hasSharedPartnerAccessToProject($this->resource, true),
+                [
+                'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
+                'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
+                ]
+            ),
         ];
     }
 }

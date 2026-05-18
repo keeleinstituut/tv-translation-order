@@ -121,6 +121,20 @@ class InstitutionUser extends Model
         return $this->hasOne(InstitutionDiscount::class, 'institution_id', 'institution_id');
     }
 
+    public function institutionEntity(): ?Institution
+    {
+        if (empty($this->institution_id)) {
+            return null;
+        }
+
+        return Institution::query()->find($this->institution_id);
+    }
+
+    public function belongsToTranslationAgency(): bool
+    {
+        return $this->institutionEntity()?->isTranslationAgency() === true;
+    }
+
     public function getInstitutionIdAttribute()
     {
         return $this->institution['id'] ?? null;

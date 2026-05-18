@@ -64,6 +64,8 @@ class SubProjectResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $user = $request->user();
+        $isInSameInstitutionAsSubProject = $user->isInSameInstitutionAsSubProject($this->resource);
         return [
             ...$this->only([
                 'id',
@@ -72,26 +74,37 @@ class SubProjectResource extends JsonResource
                 'deadline_at',
                 'created_at',
                 'updated_at',
-                'price',
                 'status',
                 'workflow_started',
             ]),
             // 'features' logic was changed and currently not in use.
             'features' => [], //$this->project->typeClassifierValue->projectTypeConfig->features,
-            'project' => new ProjectResource($this->whenLoaded('project')),
+            'project' => ProjectResource::make($this->whenLoaded('project')),
             'source_language_classifier_value_id' => $this->source_language_classifier_value_id,
-            'source_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('sourceLanguageClassifierValue')),
+            'source_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('sourceLanguageClassifierValue')),
             'destination_language_classifier_value_id' => $this->destination_language_classifier_value_id,
-            'destination_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('destinationLanguageClassifierValue')),
-            'translation_domain_classifier_value' => new ClassifierValueResource($this->whenLoaded('translationDomainClassifierValue')),
-            'assignments' => AssignmentResource::collection($this->whenLoaded('assignments')),
-            'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
-            'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
-            'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
+            'destination_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('destinationLanguageClassifierValue')),
+            'translation_domain_classifier_value' => ClassifierValueResource::make($this->whenLoaded('translationDomainClassifierValue')),
             'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
             'cat_tm_keys' => CatToolTmKeyResource::collection($this->whenLoaded('catToolTmKeys')),
             'active_job_definition' => JobDefinitionResource::make($this->whenLoaded('activeJobDefinition')),
             'mt_enabled' => $this->cat()->hasMtEnabled(),
+            $this->mergeWhen($isInSameInstitutionAsSubProject, [
+                'assignments' => AssignmentResource::collection($this->whenLoaded('assignments')),
+                'price' => $this->price,
+            ]),
+            $this->mergeWhen($isInSameInstitutionAsSubProject || $user->hasActivePartnerAccessToSubProject($this->resource), [
+                'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
+            ]),
+            $this->mergeWhen(
+                $isInSameInstitutionAsSubProject
+                || $user->hasActivePartnerAccessToSubProject($this->resource)
+                || $user->hasSharedPartnerAccessToSubProject($this->resource, true),
+                [
+                    'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
+                    'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
+                ]
+            ),
         ];
     }
 }

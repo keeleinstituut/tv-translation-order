@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Dto\VolumeAnalysisDiscount;
-use App\Repositories\Calendar\VendorLanguageCoverageRepository;
+use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Models\AuditLoggable;
 use Barryvdh\LaravelIdeHelper\Eloquent;
@@ -160,7 +160,7 @@ class Vendor extends Model implements AuditLoggable
     /** Vendors who serve a language at an institution. */
     public function scopeServingLanguage(Builder $query, string $languageId, string $institutionId): Builder
     {
-        $repo = app(VendorLanguageCoverageRepository::class);
+        $repo = app(VendorLanguageCoverageRepositoryInterface::class);
         $vendorIds = $repo->getVendorIdsForLanguage($languageId, $institutionId);
 
         return $query->whereIn('id', $vendorIds);

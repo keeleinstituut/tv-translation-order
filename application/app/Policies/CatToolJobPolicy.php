@@ -99,10 +99,12 @@ class CatToolJobScope implements IScope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->whereHas('subProject', function (Builder $subProjectQuery) {
-            $subProjectQuery->whereHas('project', function (Builder $projectQuery) {
-                $projectQuery->where('institution_id', Auth::user()->institutionId);
-            });
+        $institutionId = Auth::user()->institutionId;
+        $builder->where(function (Builder $outer) use ($institutionId) {
+            $outer->whereHas('subProject.project',
+                    fn (Builder $p) => $p->where('institution_id', $institutionId))
+                ->orWhereHas('subProject.assignments',
+                    fn (Builder $a) => $a->sharedWithInstitution($institutionId));
         });
     }
 }

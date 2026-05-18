@@ -52,8 +52,6 @@ class EventServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Models\Vendor::observe(Observers\VendorObserver::class);
-        Models\Price::observe(Observers\PriceObserver::class);
-        Models\CachedEntities\InstitutionUser::observe(Observers\InstitutionUserObserver::class);
         Models\Project::observe(Observers\ProjectObserver::class);
         Models\SubProject::observe(Observers\SubProjectObserver::class);
         Models\Assignment::observe(Observers\AssignmentObserver::class);
@@ -64,6 +62,8 @@ class EventServiceProvider extends ServiceProvider
         Models\ProjectReviewRejection::observe(Observers\ProjectReviewRejectionObserver::class);
         Models\Media::observe(Observers\MediaObserver::class);
         Models\Candidate::observe(Observers\CandidateObserver::class);
+        Models\OutsourceRequest::observe(Observers\OutsourceRequestObserver::class);
+        Models\OutsourceOffer::observe(Observers\OutsourceOfferObserver::class);
     }
 
     /**

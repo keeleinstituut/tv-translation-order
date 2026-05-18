@@ -9,6 +9,7 @@ use App\Jobs\Workflows\UpdateProjectDeadlineInsideWorkflow;
 use App\Jobs\Workflows\UpdateProjectManagerInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\OutsourceOffer;
 use App\Models\Project;
 use App\Models\Sequence;
 use App\Models\SubProject;
@@ -182,6 +183,11 @@ class ProjectObserver
                 $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser, true);
                 filled($project->clientInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->clientInstitutionUser);
                 $this->publishProjectCancelledEmailNotificationForVendors($project);
+
+                $project->acceptedOutsourceOffers()->each(function (OutsourceOffer $offer) use ($project) {
+                    $this->publishProjectCancelledEmailNotificationForAcceptedOffer($project, $offer);
+                });
+
             } elseif ($project->status === ProjectStatus::SubmittedToClient || $project->status === ProjectStatus::Corrected) {
                 $this->publishProjectSubmittedToClientEmailNotification($project);
                 $this->publishProjectIsReadyForReviewEmailNotification($project);
@@ -312,6 +318,32 @@ class ProjectObserver
                         ]
                     ]),
                     $project->institution_id
+                );
+            });
+        }
+    }
+
+    private function publishProjectCancelledEmailNotificationForAcceptedOffer(Project $project, OutsourceOffer $offer): void
+    {
+        $receiverEmail = $offer->institution?->email;
+        $receiverName = $offer->institution?->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $offer, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectCancelled,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id',
+                                'cancellation_reason',
+                                'cancellation_comment'
+                            ]),
+                        ]
+                    ]),
+                    $offer->institution_id
                 );
             });
         }

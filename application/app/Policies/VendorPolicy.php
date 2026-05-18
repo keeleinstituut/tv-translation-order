@@ -23,7 +23,7 @@ class VendorPolicy
     public function view(AuthUser $user, Vendor $vendor): bool
     {
         return $user->hasPrivilege(PrivilegeKey::ViewVendorDatabase) ||
-            $user->ownsVendor($vendor);
+            $this->ownsVendor($user, $vendor);
     }
 
     /**
@@ -67,6 +67,11 @@ class VendorPolicy
     public function forceDelete(AuthUser $user, Vendor $vendor): bool
     {
         throw new BadMethodCallException();
+    }
+
+    public function ownsVendor(AuthUser $user, Vendor $vendor): bool
+    {
+        return $vendor->institution_user_id === $user->institutionUserId;
     }
 
     // Should serve as an query enhancement to Eloquent queries

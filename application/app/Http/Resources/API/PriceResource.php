@@ -56,10 +56,10 @@ class PriceResource extends JsonResource
             'minute_fee' => $this->minute_fee,
             'hour_fee' => $this->hour_fee,
             'minimal_fee' => $this->minimal_fee,
-            'vendor' => new VendorResource($this->whenLoaded('vendor')),
-            'source_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('sourceLanguageClassifierValue')),
-            'destination_language_classifier_value' => new ClassifierValueResource($this->whenLoaded('destinationLanguageClassifierValue')),
-            'skill' => new SkillResource($this->whenLoaded('skill')),
+            'vendor' => VendorResource::make($this->whenLoaded('vendor')),
+            'source_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('sourceLanguageClassifierValue')),
+            'destination_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('destinationLanguageClassifierValue')),
+            'skill' => SkillResource::make($this->whenLoaded('skill')),
         ];
     }
 }

@@ -14,7 +14,7 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\CalendarSetting;
 use App\Models\Assignment;
 use App\Models\Candidate;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
@@ -164,7 +164,6 @@ class CalendarProjectControllerUpdateTest extends TestCase
         // Create an external vendor with coverage and pricing
         $externalVendor = $this->createVendorWithCoverage(internal: false);
         $this->createCalendarImport($externalVendor);
-        $this->refreshView();
 
         // WHEN: toggle use_external_vendor to true
         $payload = $this->createUpdatePayload($project, [
@@ -323,7 +322,7 @@ class CalendarProjectControllerUpdateTest extends TestCase
         ]);
 
         $skill = Skill::findByCode(SkillCode::OralInterpretation);
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'src_lang_classifier_value_id' => $this->sourceLanguageET->id,
@@ -345,11 +344,6 @@ class CalendarProjectControllerUpdateTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
-
-    private function refreshView(): void
-    {
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
     }
 
     public function test_update_auto_assigns_manager_when_null_and_acting_user_has_receive_project(): void

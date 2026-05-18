@@ -3,13 +3,37 @@
 namespace App\Models;
 
 use App\Enums\PrivilegeKey;
+use App\Enums\OutsourceOfferStatus;
+use App\Models\CachedEntities\Institution;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
+/**
+ * @property string|null $id
+ * @property string|null $institutionId
+ * @property string|null $institutionUserId
+ * @property array<int, string> $privileges
+ */
 class AuthUser extends JwtPayloadUser
 {
     private bool|null $isVendor = null;
 
     private Vendor|null $vendor = null;
+    private Institution|null $institution = null;
+
+    public function institution(): Institution|null
+    {
+        if (is_null($this->institution)) {
+            $this->institution = Institution::query()
+                ->find($this->institutionId);
+        }
+
+        return $this->institution;
+    }
+
+    public function belongsToTranslationAgency(): bool
+    {
+        return $this->institution()?->isTranslationAgency() === true;
+    }
 
     public function isVendor(): bool
     {
@@ -37,16 +61,6 @@ class AuthUser extends JwtPayloadUser
         return $this->vendor;
     }
 
-    public function isProjectManager(): bool
-    {
-        return $this->hasPrivilege(PrivilegeKey::ReceiveProject);
-    }
-
-    public function isClient(): bool
-    {
-        return $this->hasPrivilege(PrivilegeKey::CreateProject);
-    }
-
     public function hasPrivilege(PrivilegeKey | string $privilege): bool
     {
         if (empty($this->privileges)) {
@@ -66,13 +80,13 @@ class AuthUser extends JwtPayloadUser
 
     }
 
-    public function isClientOf(Project $project): bool
+    public function isClientOfProject(Project $project): bool
     {
         return filled($this->institutionUserId) &&
             $project->client_institution_user_id === $this->institutionUserId;
     }
 
-    public function isAssignmentsCandidate(Project $project): bool
+    public function hasAssignmentCandidateAccessToProject(Project $project): bool
     {
         if (!$this->isVendor()) {
             return false;
@@ -85,42 +99,113 @@ class AuthUser extends JwtPayloadUser
         return $project->candidates()->where('vendor_id', $vendor->id)->exists();
     }
 
-    public function isInSameInstitutionAs(Project $project): bool
+    public function isInSameInstitutionAsProject(Project $project): bool
     {
         return filled($this->institutionId)
             && $this->institutionId === $project->institution_id;
     }
 
-    public function isManagerOf(Project $project): bool
+    public function isInSameInstitutionAsSubProject(SubProject $subProject): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return Project::query()
+            ->where('id', $subProject->project_id)
+            ->where('institution_id', $this->institutionId)
+            ->exists();
+    }
+
+    public function isManagerOfProject(Project $project): bool
     {
         return filled($this->institutionUserId)
             && $project->manager_institution_user_id === $this->institutionUserId;
     }
 
-    public function isAssignedTo(Assignment $assignment): bool
+    public function hasSharedPartnerAccessToAssignment(Assignment $assignment): bool
     {
-        return filled($assignment->assigned_vendor_id)
-            && $this->isVendor()
-            && $assignment->assigned_vendor_id === $this->vendor()?->id;
-    }
-
-    public function isCandidateOf(Assignment $assignment)
-    {
-        return $this->isVendor() && filled($vendor = $this->vendor()) &&
-            $assignment->candidates()->where('vendor_id', $vendor->id)->exists();
-    }
-
-    public function ownsVendor(Vendor $vendor): bool
-    {
-        return $vendor->institution_user_id === $this->institutionUserId;
-    }
-
-    public function isSharedProjectFromExternalInstitution(Project $project): bool
-    {
-        // Example of how to implement checks that will be needed for sharing projects with external translation agencies
-        if ($project->institution_id !== $this->institutionId) {
-            // check that it's a shared project via lookup of relation.
+        if (empty($this->institutionId)) {
+            return false;
         }
-        return false;
+
+        return OutsourceOffer::query()
+            ->where('institution_id', $this->institutionId)
+            ->whereHas('outsourceRequest', fn ($q) => $q->where('assignment_id', $assignment->id))
+            ->exists();
+    }
+
+    public function hasActivePartnerAccessToAssignment(Assignment $assignment): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return OutsourceOffer::query()
+            ->where('institution_id', $this->institutionId)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
+            ->whereHas('outsourceRequest', fn ($q) => $q->where('assignment_id', $assignment->id))
+            ->exists();
+    }
+
+    public function hasSharedPartnerAccessToSubProject(SubProject $subProject, bool $requireSourceFiles = false): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return OutsourceOffer::query()
+            ->where('institution_id', $this->institutionId)
+            ->whereHas('outsourceRequest.assignment.subProject',
+                fn ($q) => $q->where('id', $subProject->id))
+            ->whereHas('outsourceRequest', function ($q) use ($requireSourceFiles) {
+                if ($requireSourceFiles) {
+                    $q->where('include_source_files', true);
+                }
+            })
+            ->exists();
+    }
+
+    public function hasActivePartnerAccessToSubProject(SubProject $subProject): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return OutsourceOffer::query()
+            ->where('institution_id', $this->institutionId)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
+            ->whereHas('outsourceRequest.assignment.subProject', fn ($q) => $q->where('id', $subProject->id))
+            ->exists();
+    }
+
+    public function hasSharedPartnerAccessToProject(Project $project, bool $requireSourceFiles = false): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return OutsourceOffer::query()
+            ->where('institution_id', $this->institutionId)
+            ->whereHas('outsourceRequest.assignment.subProject',
+                fn ($q) => $q->where('project_id', $project->id))
+            ->whereHas('outsourceRequest', function ($q) use ($requireSourceFiles) {
+                if ($requireSourceFiles) {
+                    $q->where('include_source_files', true);
+                }
+            })->exists();
+    }
+
+    public function hasActivePartnerAccessToProject(Project $project): bool
+    {
+        if (empty($this->institutionId)) {
+            return false;
+        }
+
+        return OutsourceOffer::query()
+            ->where('institution_id', $this->institutionId)
+            ->where('status', OutsourceOfferStatus::OfferAccepted)
+            ->whereHas('outsourceRequest.assignment.subProject', fn ($q) => $q->where('project_id', $project->id))
+            ->exists();
     }
 }

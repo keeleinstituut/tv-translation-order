@@ -9,12 +9,19 @@ class InstitutionMainLanguagePolicy
 {
     public function viewAny(AuthUser $user): bool
     {
-        return $user->hasAtLeastOnePrivilege([
+        if ($user->hasAtLeastOnePrivilege([
             PrivilegeKey::EditInstitution,
             PrivilegeKey::ReceiveProject,
             PrivilegeKey::ManageProject,
-            PrivilegeKey::CreateProject
-        ]) || $user->isVendor();
+        ])) {
+            return true;
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency()) {
+            return true;
+        }
+
+        return $user->isVendor();
     }
 
     public function sync(AuthUser $user): bool

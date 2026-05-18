@@ -10,8 +10,15 @@ class VendorCalendarEntryPolicy
 {
     public function viewAny(AuthUser $user): bool
     {
-        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ReceiveProject, PrivilegeKey::ManageProject, PrivilegeKey::CreateProject]) ||
-            $user->isVendor();
+        if ($user->hasAtLeastOnePrivilege([PrivilegeKey::ReceiveProject, PrivilegeKey::ManageProject])) {
+            return true;
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency()) {
+            return true;
+        }
+
+        return $user->isVendor();
     }
 
     public function create(AuthUser $user): bool
@@ -31,7 +38,11 @@ class VendorCalendarEntryPolicy
 
     public function prebook(AuthUser $user): bool
     {
-        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ReceiveProject, PrivilegeKey::CreateProject]);
+        if ($user->hasPrivilege(PrivilegeKey::ReceiveProject)) {
+            return true;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency();
     }
 
     public static function scope(): Scope\VendorCalendarEntryScope

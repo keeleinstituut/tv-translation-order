@@ -25,46 +25,56 @@ class AssignmentPolicy
      */
     public function view(AuthUser $user, Assignment $assignment): bool
     {
-        if (Gate::allows('view', $assignment->subProject->project)) {
-            return true;
+        $project = $assignment->project;
+
+        if ($user->isInSameInstitutionAsProject($project)) {
+            if (Gate::allows('view', $project)) {
+                return true;
+            }
+
+            return $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
         }
 
-        if (!$user->isInSameInstitutionAs($assignment->subProject->project)) {
-            return false;
-        }
-
-        return $user->isAssignedTo($assignment) || $user->isCandidateOf($assignment);
+        return ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) && (
+                $user->hasSharedPartnerAccessToAssignment($assignment) ||
+                $user->hasActivePartnerAccessToAssignment($assignment)
+            )) || $this->isAssignedTo($user, $assignment) || $this->isCandidateOf($user, $assignment);
     }
 
     /**
      * Determine whether the user can create models.
+     * partner access deliberately excluded
      */
     public function create(AuthUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return Gate::allows('update', [$assignment->project]);
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function update(AuthUser $user, Assignment $assignment): bool
     {
-        return Gate::allows('update', [$assignment->subProject->project]);
+        return $user->hasActivePartnerAccessToAssignment($assignment) ||
+            Gate::allows('update', [$assignment->project]);
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
     public function updateAssigneeComment(AuthUser $user, Assignment $assignment): bool
     {
-        return $user->isInSameInstitutionAs($assignment->subProject->project) && (
+        return $user->isInSameInstitutionAsProject($assignment->project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isAssignedTo($assignment)
+                $this->isAssignedTo($user, $assignment)
             );
     }
 
     /**
      * Determine whether the user can delete the model.
+     * partner access deliberately excluded
      */
     public function delete(AuthUser $user, Assignment $assignment): bool
     {
@@ -89,10 +99,28 @@ class AssignmentPolicy
 
     public function markAsCompleted(AuthUser $user, Assignment $assignment): bool
     {
-        return $user->isInSameInstitutionAs($assignment->subProject->project) && (
-                $user->hasPrivilege(PrivilegeKey::ManageProject) ||
-                $user->isAssignedTo($assignment)
-            );
+        $project = $assignment->project;
+
+        if ($user->isInSameInstitutionAsProject($project)) {
+            return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+                $this->isAssignedTo($user, $assignment);
+        }
+
+        return $user->hasActivePartnerAccessToAssignment($assignment) &&
+            $user->hasPrivilege(PrivilegeKey::ManageProject);
+    }
+
+    public function isCandidateOf(AuthUser $user, Assignment $assignment): bool
+    {
+        return $user->isVendor() && filled($vendor = $user->vendor()) &&
+            $assignment->candidates()->where('vendor_id', $vendor->id)->exists();
+    }
+
+    public function isAssignedTo(AuthUser $user, Assignment $assignment): bool
+    {
+        return filled($assignment->assigned_vendor_id)
+            && $user->isVendor()
+            && $assignment->assigned_vendor_id === $user->vendor()?->id;
     }
 
     // Should serve as an query enhancement to Eloquent queries
@@ -109,7 +137,7 @@ class AssignmentPolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope()
+    public static function scope(): Scope\AssignmentScope
     {
         return new Scope\AssignmentScope();
     }
@@ -131,10 +159,11 @@ class AssignmentScope implements IScope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->whereHas('subProject', function (Builder $subProjectQuery) {
-            $subProjectQuery->whereHas('project', function (Builder $projectQuery) {
-                $projectQuery->where('institution_id', Auth::user()->institutionId);
-            });
+        $institutionId = Auth::user()->institutionId;
+        $builder->where(function (Builder $outer) use ($institutionId) {
+            $outer->whereHas('project',
+                fn(Builder $p) => $p->where('institution_id', $institutionId))
+                ->orWhere(fn(Builder $self) => $self->sharedWithInstitution($institutionId));
         });
     }
 }

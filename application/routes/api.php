@@ -88,6 +88,53 @@ Route::post('/prices/bulk', [API\PriceController::class, 'bulkStore'])->name('tr
 Route::put('/prices/bulk', [API\PriceController::class, 'bulkUpdate'])->name('translation-order.prices.bulkUpdate');
 Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy'])->name('translation-order.prices.bulkDestroy');
 
+Route::get('/vendor-skill-languages', [API\VendorSkillLanguageController::class, 'index'])->name('translation-order.vendor_skill_languages.index');
+Route::post('/vendor-skill-languages', [API\VendorSkillLanguageController::class, 'store'])->name('translation-order.vendor_skill_languages.store');
+Route::post('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkStore'])->name('translation-order.vendor_skill_languages.bulkStore');
+Route::put('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkUpdate'])->name('translation-order.vendor_skill_languages.bulkUpdate');
+Route::delete('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkDestroy'])->name('translation-order.vendor_skill_languages.bulkDestroy');
+
+Route::get('/institution-prices', [API\InstitutionPriceController::class, 'index'])->name('translation-order.institution_prices.index');
+Route::post('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkStore'])->name('translation-order.institution_prices.bulkStore');
+Route::put('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkUpdate'])->name('translation-order.institution_prices.bulkUpdate');
+Route::delete('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkDestroy'])->name('translation-order.institution_prices.bulkDestroy');
+
+Route::get('/institutions', [API\InstitutionController::class, 'index'])->name('translation-order.institutions.index');
+
+Route::prefix('/institution-partners')
+    ->controller(API\InstitutionPartnerController::class)
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.institution_partners.index');
+        Route::post('/', 'store')->name('translation-order.institution_partners.store');
+        Route::get('/{id}', 'show')->whereUuid('id')->name('translation-order.institution_partners.show');
+        Route::put('/{id}', 'update')->whereUuid('id')->name('translation-order.institution_partners.update');
+        Route::delete('/{id}', 'destroy')->whereUuid('id')->name('translation-order.institution_partners.destroy');
+    });
+
+Route::prefix('/institution-partner-prices')
+    ->controller(API\InstitutionPartnerPriceController::class)
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.institution_partner_prices.index');
+        Route::post('/', 'store')->name('translation-order.institution_partner_prices.store');
+        Route::post('/bulk', 'bulkStore')->name('translation-order.institution_partner_prices.bulkStore');
+        Route::put('/bulk', 'bulkUpdate')->name('translation-order.institution_partner_prices.bulkUpdate');
+        Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partner_prices.bulkDestroy');
+    });
+
+Route::prefix('/outsource-requests')
+    ->controller(API\OutsourceRequestController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.outsource_requests.index');
+        Route::post('/', 'store')->name('translation-order.outsource_requests.store');
+        Route::get('/{id}', 'show')->name('translation-order.outsource_requests.show');
+        Route::put('/{id}', 'update')->name('translation-order.outsource_requests.update');
+        Route::post('/{id}/cancel', 'cancel')->name('translation-order.outsource_requests.cancel');
+        Route::post('/{id}/select', 'select')->name('translation-order.outsource_requests.select');
+        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_requests.accept');
+        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_requests.decline');
+    });
+
 Route::prefix('/projects')
     ->controller(API\ProjectController::class)
     ->whereUuid('id')->group(function (): void {
