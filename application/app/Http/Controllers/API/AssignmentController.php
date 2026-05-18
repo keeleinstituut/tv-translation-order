@@ -313,12 +313,14 @@ class AssignmentController extends Controller
                         return $candidate->vendor?->institution_user_id;
                     })->filter()->values();
 
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
-                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
+                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray())
+                            ->afterCommit();
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
@@ -363,16 +365,26 @@ class AssignmentController extends Controller
                             $candidate->deleteQuietly();
                         });
 
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
-                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
+                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray())
+                            ->afterCommit();
+                    }
+
+                    if ($vendorIds->contains($assignment->assigned_vendor_id)) {
+                        $assignment->assigned_vendor_id = null;
+                        $assignment->saveOrFail();
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
-                    $this->syncCalendarReservationWithCandidates($assignment);
                 }
             );
 
-            $assignment->load('candidates.vendor.institutionUser');
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+            ]);
             return AssignmentResource::make($assignment);
         });
     }
@@ -573,16 +585,23 @@ class AssignmentController extends Controller
     private function syncCalendarReservationWithCandidates(Assignment $assignment): void
     {
         $assignment->loadMissing('subProject.project');
-        $project = $assignment->project;
+        $project = $assignment->subProject->project;
 
         if (blank($project) || !$project->is_calendar_project) {
             return;
         }
 
-        $currentCalendarVendorId = VendorCalendarEntry::where('assignment_id', $assignment->id)
-            ->value('vendor_id');
+        $statusPriority = sprintf(
+            "CASE status WHEN '%s' THEN 1 WHEN '%s' THEN 2 WHEN '%s' THEN 3 WHEN '%s' THEN 4 ELSE 5 END",
+            CandidateStatus::Done->value,
+            CandidateStatus::Accepted->value,
+            CandidateStatus::SubmittedToVendor->value,
+            CandidateStatus::New->value,
+        );
+
         $nextCandidate = $assignment->candidates()
-            ->where('status', '!=', CandidateStatus::Declined)
+            ->whereNotIn('status', [CandidateStatus::Declined, CandidateStatus::Rejected])
+            ->orderByRaw($statusPriority)
             ->ordered()
             ->first();
 
@@ -591,14 +610,10 @@ class AssignmentController extends Controller
             return;
         }
 
-        if ($currentCalendarVendorId === $nextCandidate->vendor_id) {
-            return;
-        }
-
         $timeSlot = $this->calendarSettings->resolveTimeSlotForProject($project);
 
         try {
-            $this->vendorReservation->rotate(
+            $this->vendorReservation->rotateToVendor(
                 $assignment,
                 $nextCandidate->vendor_id,
                 $timeSlot->bufferedStartAt,

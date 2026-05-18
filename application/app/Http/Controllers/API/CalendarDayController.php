@@ -140,7 +140,6 @@ class CalendarDayController extends Controller
         $availableSlots = $this->discretizationService->discretizeLanguageSlots($perLanguageIntervals);
 
         $entries = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->whereIn('vendor_id', $data->importedCalendarVendorIds)
             ->overlapping($dayStart, $dayEnd)
             ->forClient($actingUserId)
             ->with([

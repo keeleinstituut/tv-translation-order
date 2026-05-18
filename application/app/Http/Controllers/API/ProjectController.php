@@ -40,6 +40,7 @@ use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -1058,7 +1059,7 @@ class ProjectController extends Controller
     {
         $currentCandidate = Candidate::with('vendor.institutionUser')
             ->where('assignment_id', $assignment->id)
-            ->whereNot('status', [CandidateStatus::Declined])
+            ->whereNot('status', [CandidateStatus::Declined, CandidateStatus::Rejected])
             ->orderBy('position')
             ->first();
 
@@ -1083,13 +1084,11 @@ class ProjectController extends Controller
         }
 
         try {
-            $this->vendorReservation->rotate(
-                $assignment,
-                $currentCandidate->vendor_id,
-                $timeSlot->bufferedStartAt,
-                $timeSlot->bufferedEndAt,
-            );
-        } catch (CalendarSlotConflictException) {
+            $assignment->calendarEntry?->update([
+                'start_at' => $timeSlot->bufferedStartAt,
+                'end_at' => $timeSlot->bufferedEndAt,
+            ]);
+        } catch (QueryException) {
             throw ValidationException::withMessages([
                 'event_start_at' => 'Määratud teostaja ei ole saadaval uuendatud ajavahemikul.',
             ]);

@@ -331,7 +331,7 @@ class CalendarProjectBufferTimeTest extends TestCase
             [
                 'buffer_before_minutes' => $before,
                 'buffer_after_minutes' => $after,
-                'reaction_time_seconds' => 30,
+                'reaction_time_minutes' => 30,
                 'default_project_type_id' => ClassifierValue::where('type', ClassifierValueType::ProjectType)
                     ->where('value', 'ORAL_TRANSLATION')
                     ->firstOrFail()->id,

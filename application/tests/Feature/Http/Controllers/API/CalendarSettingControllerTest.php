@@ -40,7 +40,7 @@ class CalendarSettingControllerTest extends TestCase
     {
         CalendarSetting::create([
             'institution_id' => $this->institution->id,
-            'reaction_time_seconds' => 60,
+            'reaction_time_minutes' => 60,
             'buffer_before_minutes' => 15,
             'buffer_after_minutes' => 10,
             'default_project_type_id' => $this->oralTranslationTypeId,
@@ -51,7 +51,7 @@ class CalendarSettingControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonFragment([
-                'reaction_time_seconds' => 60,
+                'reaction_time_minutes' => 60,
                 'buffer_before_minutes' => 15,
                 'buffer_after_minutes' => 10,
                 'default_project_type_id' => $this->oralTranslationTypeId,
@@ -93,7 +93,7 @@ class CalendarSettingControllerTest extends TestCase
     {
         $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
             ->putJson('/api/calendar/settings', [
-                'reaction_time_seconds' => 45,
+                'reaction_time_minutes' => 45,
                 'buffer_before_minutes' => 20,
                 'buffer_after_minutes' => 10,
                 'default_project_type_id' => $this->oralTranslationTypeId,
@@ -101,7 +101,7 @@ class CalendarSettingControllerTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonFragment([
-                'reaction_time_seconds' => 45,
+                'reaction_time_minutes' => 45,
                 'buffer_before_minutes' => 20,
                 'buffer_after_minutes' => 10,
                 'default_project_type_id' => $this->oralTranslationTypeId,
@@ -112,7 +112,7 @@ class CalendarSettingControllerTest extends TestCase
     {
         CalendarSetting::create([
             'institution_id' => $this->institution->id,
-            'reaction_time_seconds' => 30,
+            'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 10,
             'buffer_after_minutes' => 5,
             'default_project_type_id' => $this->oralTranslationTypeId,
@@ -125,7 +125,7 @@ class CalendarSettingControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonFragment([
-                'reaction_time_seconds' => 30,
+                'reaction_time_minutes' => 30,
                 'buffer_before_minutes' => 99,
                 'buffer_after_minutes' => 5,
                 'default_project_type_id' => $this->oralTranslationTypeId,
@@ -177,7 +177,7 @@ class CalendarSettingControllerTest extends TestCase
         $otherInstitution = Institution::factory()->create();
         CalendarSetting::create([
             'institution_id' => $otherInstitution->id,
-            'reaction_time_seconds' => 999,
+            'reaction_time_minutes' => 999,
             'buffer_before_minutes' => 999,
             'buffer_after_minutes' => 999,
             'default_project_type_id' => $this->oralTranslationTypeId,

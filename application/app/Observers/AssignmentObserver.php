@@ -73,9 +73,9 @@ readonly class AssignmentObserver
                 true
             );
 
-            if (filled($vendorInstitutionUser = $assignment->assignee?->institutionUser)) {
-                $this->publishTaskAcceptedEmailNotification($assignment, $vendorInstitutionUser);
-            }
+//            if (filled($vendorInstitutionUser = $assignment->assignee?->institutionUser)) {
+//                $this->publishTaskAcceptedEmailNotification($assignment, $vendorInstitutionUser);
+//            }
         }
     }
 

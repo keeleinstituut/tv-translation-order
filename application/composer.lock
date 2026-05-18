@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c8681248cd6bc0d117262bb6c8bb2bf1",
+    "content-hash": "1b24b10d59dc67f6a6889e2894dc10d2",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1427,16 +1427,16 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-amqp",
-            "version": "0.0.85",
+            "version": "0.0.86",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-amqp.git",
-                "reference": "e3dcd9af9a25c75fde6053ed50208be9838e3c25"
+                "reference": "8f03a337f2ac1366f9f2572d1d67cb8e1b717cf5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/e3dcd9af9a25c75fde6053ed50208be9838e3c25",
-                "reference": "e3dcd9af9a25c75fde6053ed50208be9838e3c25",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/8f03a337f2ac1366f9f2572d1d67cb8e1b717cf5",
+                "reference": "8f03a337f2ac1366f9f2572d1d67cb8e1b717cf5",
                 "shasum": ""
             },
             "require": {
@@ -1485,10 +1485,10 @@
                 "rabbitmq"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.85",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.86",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-amqp/issues"
             },
-            "time": "2026-05-11T09:10:58+00:00"
+            "time": "2026-05-14T10:00:01+00:00"
         },
         {
             "name": "keeleinstituut/tv-common-laravel-security",
