@@ -28,12 +28,15 @@ readonly class OutsourceRequestStateMachine
                 throw new DomainException('Cannot set proposed price when request has a fixed price.');
             }
 
-            $lockedOffer->update([
+            $data = [
                 'status' => OutsourceOfferStatus::RequestAccepted,
                 'responded_at' => now(),
-                'proposed_price' => $proposedPrice,
                 'response_comment' => $responseComment,
-            ]);
+            ];
+            if ($proposedPrice !== null) {
+                $data['proposed_price'] = $proposedPrice;
+            }
+            $lockedOffer->update($data);
         });
     }
 

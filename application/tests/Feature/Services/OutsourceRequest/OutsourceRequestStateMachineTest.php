@@ -291,7 +291,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         $this->assertEquals(111.11, $request->assignment->fresh()->price);
     }
 
-    public function test_cancel_request_expires_only_pending_and_notified_offers(): void
+    public function test_cancel_request_leaves_offers_unchanged(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
@@ -318,12 +318,12 @@ class OutsourceRequestStateMachineTest extends TestCase
         ]);
 
         // WHEN
-        $stateMachine->cancelRequest($request);
+        $stateMachine->cancelRequest($request, 'Test cancellation.');
 
         // THEN
         $this->assertSame(OutsourceRequestStatus::Cancelled, $request->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestExpired, $pending->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestExpired, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $notified->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $accepted->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);

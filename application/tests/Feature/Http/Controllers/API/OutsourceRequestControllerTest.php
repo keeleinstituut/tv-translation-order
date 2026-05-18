@@ -58,7 +58,7 @@ class OutsourceRequestControllerTest extends TestCase
                 'include_source_files' => true,
                 'fixed_price' => 123.456,
                 'request_files' => [
-                    UploadedFile::fake()->create('source.docx'),
+                    UploadedFile::fake()->createWithContent('source.docx', "PK\x03\x04" . str_repeat("\0", 22)),
                 ],
             ]);
 
@@ -1104,13 +1104,15 @@ class OutsourceRequestControllerTest extends TestCase
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel");
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel", [
+                'cancellation_reason' => 'Test cancellation reason',
+            ]);
 
         // THEN
         $response->assertOk();
         $this->assertSame(OutsourceRequestStatus::Cancelled, $translationRequest->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestExpired, $pending->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestExpired, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $notified->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $accepted->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
@@ -1128,7 +1130,9 @@ class OutsourceRequestControllerTest extends TestCase
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel");
+            ->postJson("/api/outsource-requests/{$translationRequest->id}/cancel", [
+                'cancellation_reason' => 'Test cancellation reason',
+            ]);
 
         // THEN
         $response->assertForbidden();
@@ -1547,7 +1551,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN owner sees the real calculated_price
         $response->assertOk()
-            ->assertJsonPath('data.offers.0.calculated_price', 99.0);
+            ->assertJsonPath('data.offers.0.calculated_price', 99);
     }
 
     public function test_partner_sees_calculated_price_when_include_price_is_true(): void
@@ -1565,7 +1569,7 @@ class OutsourceRequestControllerTest extends TestCase
 
         // THEN partner sees calculated_price
         $response->assertOk()
-            ->assertJsonPath('data.offers.0.calculated_price', 88.0);
+            ->assertJsonPath('data.offers.0.calculated_price', 88);
     }
 
     public function test_partner_sees_null_calculated_price_when_include_price_is_false(): void

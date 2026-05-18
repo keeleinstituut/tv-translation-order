@@ -39,4 +39,13 @@ class OutsourceOfferFactory extends Factory
             'expires_at' => now()->addHour(),
         ]);
     }
+
+    public function accepted(): static
+    {
+        return $this->state([
+            'status' => OutsourceOfferStatus::OfferAccepted,
+            'notified_at' => now(),
+            'responded_at' => now(),
+        ]);
+    }
 }

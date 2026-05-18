@@ -96,7 +96,7 @@ class VolumeControllerCrossInstitutionTest extends TestCase
             'status' => OutsourceRequestStatus::Active,
         ]);
 
-        return OutsourceOffer::factory()->notified()->create([
+        return OutsourceOffer::factory()->accepted()->create([
             'outsource_request_id' => $translationRequest->id,
             'institution_id' => $partnerUser->institution['id'],
         ]);
