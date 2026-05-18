@@ -3,7 +3,7 @@
 namespace App\Services\Calendar;
 
 use App\Repositories\Calendar\CalendarVendorRepository;
-use App\Repositories\Calendar\VendorLanguageCoverageRepository;
+use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
 use App\Repositories\Calendar\WorktimeRepository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 readonly class CalendarDataLoader
 {
     public function __construct(
-        private VendorLanguageCoverageRepository $coverageRepo,
+        private VendorLanguageCoverageRepositoryInterface $coverageRepo,
         private CalendarVendorRepository         $vendorRepo,
         private WorktimeRepository               $worktimeRepo,
     )

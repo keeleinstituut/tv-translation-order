@@ -8,29 +8,26 @@ use App\Services\Calendar\CalendarSettingsResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
-readonly class VendorLanguageCoverageRepository
+readonly class VendorSkillLanguageCoverageRepository implements VendorLanguageCoverageRepositoryInterface
 {
     public function __construct(
         private CalendarSettingsResolver $calendarSettings,
     ) {}
 
-    /**
-     * Get all vendor IDs serving a language at an institution.
-     */
     public function getVendorIdsForLanguage(string $languageId, string $institutionId): Collection
     {
         return $this->baseQuery(
             institutionId: $institutionId,
             languageId: $languageId,
-        )->pluck('vendor_skill_languages.vendor_id');
+        )
+            ->distinct()
+            ->pluck('vendor_skill_languages.vendor_id');
     }
 
-    /**
-     * Get coverage rows (vendor_id, language_id, institution_user_id) for an institution's internal vendors.
-     */
     public function getCoverageForInstitution(string $institutionId): Collection
     {
         return $this->baseQuery(institutionId: $institutionId, isInternal: true)
+            ->distinct()
             ->get([
                 'vendor_skill_languages.vendor_id',
                 'vendor_skill_languages.dst_lang_classifier_value_id as language_id',
@@ -46,6 +43,7 @@ readonly class VendorLanguageCoverageRepository
 
         return $this->baseQuery(institutionId: $institutionId, isInternal: true)
             ->whereIn('vendor_skill_languages.dst_lang_classifier_value_id', $mainLanguageIds)
+            ->distinct()
             ->get([
                 'vendor_skill_languages.vendor_id',
                 'vendor_skill_languages.dst_lang_classifier_value_id as language_id',
