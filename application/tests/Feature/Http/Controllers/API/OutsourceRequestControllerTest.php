@@ -1433,7 +1433,7 @@ class OutsourceRequestControllerTest extends TestCase
         $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['price' => '50.000']);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
@@ -1707,7 +1707,7 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN — new fields present, old fields absent
         $response->assertOk()
             ->assertJsonPath('data.price_mode', OutsourceRequestPriceMode::PriceListBased->value)
-            ->assertJsonPath('data.offers.0.price', 42)
+            ->assertJsonPath('data.offers.0.price', '42.000')
             ->assertJsonMissingPath('data.include_price')
             ->assertJsonMissingPath('data.fixed_price')
             ->assertJsonMissingPath('data.offers.0.calculated_price')

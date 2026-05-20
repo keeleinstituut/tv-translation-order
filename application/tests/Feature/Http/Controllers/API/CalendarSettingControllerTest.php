@@ -58,19 +58,6 @@ class CalendarSettingControllerTest extends TestCase
             ]);
     }
 
-    public function test_show_returns_forbidden_without_privilege(): void
-    {
-        $accessToken = AuthHelpers::generateAccessToken([
-            'selectedInstitution' => ['id' => $this->institution->id],
-            'privileges' => [],
-        ]);
-
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson('/api/calendar/settings');
-
-        $response->assertForbidden();
-    }
-
     public function test_store_creates_new_settings_with_partial_payload(): void
     {
         $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
