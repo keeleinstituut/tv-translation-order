@@ -252,7 +252,7 @@ class Project extends Model implements AuditLoggable, HasMedia
     {
         return $this->hasManyDeepFromRelations(
             $this->assignments(),
-            new Assignment()->outsourceRequest(),
+            new Assignment()->currentOutsourceRequest(),
             new OutsourceRequest()->offers(),
         );
     }
@@ -261,7 +261,7 @@ class Project extends Model implements AuditLoggable, HasMedia
     {
         return $this->hasManyDeepFromRelations(
             $this->assignments(),
-            new Assignment()->outsourceRequest(),
+            new Assignment()->currentOutsourceRequest(),
             new OutsourceRequest()->acceptedOffer(),
         );
     }

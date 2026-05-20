@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -46,7 +47,8 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
  * @property-read SubProject $subProject
- * @property-read OutsourceRequest|null $outsourceRequest
+ * @property-read Collection<int, OutsourceRequest> $outsourceRequests
+ * @property-read OutsourceRequest|null $currentOutsourceRequest
  * @property-read Project $project
  * @property-read JobDefinition $jobDefinition
  * @property-read Collection<int, Volume> $volumes
@@ -138,16 +140,21 @@ class Assignment extends Model implements AuditLoggable
         }
 
         $query->where(function (Builder $sharedQuery) use ($institutionId) {
-            $sharedQuery->whereHas('outsourceRequest.offers', function (Builder $q) use ($institutionId) {
+            $sharedQuery->whereHas('currentOutsourceRequest.offers', function (Builder $q) use ($institutionId) {
                     $q->where('institution_id', $institutionId)
                         ->where('status', OutsourceOfferStatus::OfferAccepted);
             });
         });
     }
 
-    public function outsourceRequest(): HasOne
+    public function outsourceRequests(): HasMany
     {
-        return $this->hasOne(OutsourceRequest::class);
+        return $this->hasMany(OutsourceRequest::class)->orderByDesc('created_at');
+    }
+
+    public function currentOutsourceRequest(): HasOne
+    {
+        return $this->hasOne(OutsourceRequest::class)->whereIn('status', [OutsourceRequestStatus::Active, OutsourceRequestStatus::Fulfilled]);
     }
 
     public function getPriceCalculator(): PriceCalculator
