@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\API;
 
+use App\Enums\OutsourceRequestPriceMode;
+use App\Models\OutsourceRequest;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
 
 #[OA\RequestBody(
@@ -10,7 +13,7 @@ use OpenApi\Attributes as OA;
     required: false,
     content: new OA\JsonContent(
         properties: [
-            new OA\Property(property: 'proposed_price', description: 'Must be omitted when the outsource request has a fixed_price set — the price is already determined and cannot be overridden by the partner.', type: 'number', format: 'double', nullable: true),
+            new OA\Property(property: 'price', description: 'Required for ASK_FOR_PRICE requests; must be omitted for FIXED_PRICE requests.', type: 'number', format: 'double', nullable: true),
             new OA\Property(property: 'response_comment', type: 'string', nullable: true),
         ]
     )
@@ -20,8 +23,31 @@ class OutsourceRequestAcceptRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'proposed_price' => 'nullable|numeric|min:0',
+            'price' => 'nullable|numeric|gt:0',
             'response_comment' => 'nullable|string',
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function (Validator $validator) {
+            /** @var OutsourceRequest $outsourceRequest */
+                $outsourceRequest = OutsourceRequest::find($this->route('id'));
+                if (!$outsourceRequest) {
+                    return;
+                }
+
+                $price = $this->input('price');
+
+                if ($outsourceRequest->price_mode === OutsourceRequestPriceMode::AskForPrice && $price === null) {
+                    $validator->errors()->add('price', 'Price is required.');
+                }
+
+                if ($outsourceRequest->price_mode === OutsourceRequestPriceMode::FixedPrice && $price !== null) {
+                    $validator->errors()->add('price', 'Price is not allowed.');
+                }
+            },
         ];
     }
 }

@@ -22,8 +22,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'notified_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'responded_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'expires_at', type: 'string', format: 'date-time', nullable: true),
-        new OA\Property(property: 'calculated_price', type: 'number', format: 'double', nullable: true),
-        new OA\Property(property: 'proposed_price', type: 'number', format: 'double', nullable: true),
+        new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'decline_comment', type: 'string', nullable: true),
         new OA\Property(property: 'rejection_comment', type: 'string', nullable: true),
         new OA\Property(property: 'response_comment', type: 'string', nullable: true),
@@ -35,11 +34,6 @@ use OpenApi\Attributes as OA;
 )]
 class OutsourceOfferResource extends JsonResource
 {
-    public function __construct($resource, private readonly bool $hideCalculatedPrice = false)
-    {
-        parent::__construct($resource);
-    }
-
     public function toArray(Request $request): array
     {
         return [
@@ -50,8 +44,7 @@ class OutsourceOfferResource extends JsonResource
             'notified_at' => $this->notified_at,
             'responded_at' => $this->responded_at,
             'expires_at' => $this->expires_at,
-            'calculated_price' => $this->hideCalculatedPrice ? null : $this->calculated_price,
-            'proposed_price' => $this->proposed_price,
+            'price' => $this->price,
             'decline_comment' => $this->decline_comment,
             'rejection_comment' => $this->rejection_comment,
             'response_comment' => $this->response_comment,

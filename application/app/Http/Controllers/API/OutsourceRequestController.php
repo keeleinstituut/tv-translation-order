@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Enums\OutsourceRequestType;
 use App\Http\Controllers\Controller;
@@ -161,15 +162,17 @@ class OutsourceRequestController extends Controller
         $this->authorize('create', [OutsourceRequest::class, $assignment]);
 
         $outsourceRequest = DB::transaction(function () use ($validated, $assignment, $institutionUserId, $institutionId) {
+            $priceMode = OutsourceRequestPriceMode::from($validated['price_mode']);
+
             /** @var OutsourceRequest $outsourceRequest */
             $outsourceRequest = OutsourceRequest::create([
                 'assignment_id' => $assignment->id,
                 'institution_user_id' => $institutionUserId,
                 'mode' => $validated['mode'],
+                'price_mode' => $priceMode,
                 'reaction_time_minutes' => $validated['reaction_time_minutes'],
                 'special_instructions' => $validated['special_instructions'] ?? null,
-                'fixed_price' => $validated['fixed_price'] ?? null,
-                'include_price' => $validated['include_price'] ?? true,
+                'price' => $validated['price'] ?? null,
                 'include_source_files' => $validated['include_source_files'] ?? true,
                 'status' => OutsourceRequestStatus::Active,
             ]);
@@ -186,10 +189,15 @@ class OutsourceRequestController extends Controller
             foreach ($validated['offers'] as $index => $row) {
                 /** @var InstitutionPartner $partner */
                 $partner = $partnersByInstitutionId->get($row['institution_id']);
-                $calculatedPrice = new OutsourceOfferPriceCalculator($assignment, $partner)->getPrice();
+
+                $offerPrice = match ($priceMode) {
+                    OutsourceRequestPriceMode::PriceListBased => new OutsourceOfferPriceCalculator($assignment, $partner)->getPrice(),
+                    OutsourceRequestPriceMode::FixedPrice => $outsourceRequest->price,
+                    OutsourceRequestPriceMode::AskForPrice => null,
+                };
 
                 $notified = !$isCascade || $index === 0;
-
+                /** @var OutsourceOffer $offer */
                 $offer = $outsourceRequest->offers()->create([
                     'institution_id' => $row['institution_id'],
                     'status' => $notified
@@ -201,8 +209,7 @@ class OutsourceRequestController extends Controller
                         !$isCascade => $outsourceRequest->created_at->copy()->addMinutes($outsourceRequest->reaction_time_minutes),
                         default => null,
                     },
-                    'calculated_price' => $calculatedPrice,
-                    'proposed_price' => $outsourceRequest->fixed_price,
+                    'price' => $offerPrice,
                 ]);
 
                 if ($notified) {
@@ -365,7 +372,7 @@ class OutsourceRequestController extends Controller
         try {
             $this->stateMachine->acceptOffer(
                 $offer,
-                isset($validated['proposed_price']) ? (float)$validated['proposed_price'] : null,
+                isset($validated['price']) ? (float)$validated['price'] : null,
                 $validated['response_comment'] ?? null,
             );
         } catch (DomainException $exception) {

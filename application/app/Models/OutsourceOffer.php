@@ -24,8 +24,7 @@ use Spatie\EloquentSortable\SortableTrait;
  * @property Carbon|null $notified_at
  * @property Carbon|null $responded_at
  * @property Carbon|null $expires_at
- * @property string|null $calculated_price
- * @property string|null $proposed_price
+ * @property string|null $price
  * @property string|null $decline_comment
  * @property string|null $rejection_comment
  * @property string|null $response_comment
@@ -57,8 +56,7 @@ class OutsourceOffer extends Model implements Sortable
         'notified_at' => 'datetime',
         'responded_at' => 'datetime',
         'expires_at' => 'datetime',
-        'calculated_price' => 'decimal:3',
-        'proposed_price' => 'decimal:3',
+        'price' => 'decimal:3',
     ];
 
     public function buildSortQuery(): Builder

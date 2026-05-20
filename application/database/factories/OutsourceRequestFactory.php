@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\OutsourceRequestMode;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
@@ -20,10 +21,10 @@ class OutsourceRequestFactory extends Factory
             'assignment_id' => Assignment::factory(),
             'institution_user_id' => InstitutionUser::factory(),
             'mode' => OutsourceRequestMode::Parallel,
+            'price_mode' => OutsourceRequestPriceMode::PriceListBased,
             'reaction_time_minutes' => 4320,
             'special_instructions' => null,
-            'fixed_price' => null,
-            'include_price' => true,
+            'price' => null,
             'include_source_files' => true,
             'status' => OutsourceRequestStatus::Active,
         ];

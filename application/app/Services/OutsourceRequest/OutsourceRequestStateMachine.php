@@ -3,6 +3,7 @@
 namespace App\Services\OutsourceRequest;
 
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\OutsourceOffer;
@@ -16,25 +17,27 @@ readonly class OutsourceRequestStateMachine
 {
     public function acceptOffer(
         OutsourceOffer $offer,
-        ?float         $proposedPrice,
+        ?float         $price,
         ?string        $responseComment,
     ): void
     {
-        DB::transaction(function () use ($offer, $proposedPrice, $responseComment) {
+        DB::transaction(function () use ($offer, $price, $responseComment) {
             [$lockedOffer, $request] = $this->lockOfferAndRequest($offer);
             $this->assertOfferActionable($lockedOffer, $request);
 
-            if ($request->fixed_price !== null && $proposedPrice !== null) {
-                throw new DomainException('Cannot set proposed price when request has a fixed price.');
-            }
+            match ($request->price_mode) {
+                OutsourceRequestPriceMode::FixedPrice => $this->assertNullPrice($price, 'Cannot set price when price mode is FIXED_PRICE.'),
+                OutsourceRequestPriceMode::PriceListBased => $this->assertPriceListBasedAccept($lockedOffer, $price),
+                OutsourceRequestPriceMode::AskForPrice => $this->assertNonNullPrice($price, 'Price is required when price mode is ASK_FOR_PRICE.'),
+            };
 
             $data = [
                 'status' => OutsourceOfferStatus::RequestAccepted,
                 'responded_at' => now(),
                 'response_comment' => $responseComment,
             ];
-            if ($proposedPrice !== null) {
-                $data['proposed_price'] = $proposedPrice;
+            if ($price !== null) {
+                $data['price'] = $price;
             }
             $lockedOffer->update($data);
         });
@@ -133,6 +136,8 @@ readonly class OutsourceRequestStateMachine
                 throw new DomainException("One or more rejected recipients are no longer in-play.");
             }
 
+            $finalPrice = $lockedOffer->price;
+
             $lockedOffer->update(['status' => OutsourceOfferStatus::OfferAccepted]);
 
             foreach ($rejectedOffers as $rejectedOffer) {
@@ -143,9 +148,11 @@ readonly class OutsourceRequestStateMachine
                 ]);
             }
 
-            $lockedRequest->update(['status' => OutsourceRequestStatus::Fulfilled]);
+            $lockedRequest->update([
+                'status' => OutsourceRequestStatus::Fulfilled,
+                'price' => $finalPrice,
+            ]);
 
-            $finalPrice = $lockedOffer->proposed_price ?? $lockedRequest->fixed_price ?? $lockedOffer->calculated_price;
             $lockedRequest->assignment->update([
                 'price' => $finalPrice,
             ]);
@@ -228,6 +235,33 @@ readonly class OutsourceRequestStateMachine
 
         if ($this->hasResponseDeadlinePassed($offer)) {
             throw new DomainException("Recipient response deadline has passed.");
+        }
+    }
+
+    private function assertNullPrice(?float $price, string $message): void
+    {
+        if ($price !== null) {
+            throw new DomainException($message);
+        }
+    }
+
+    private function assertNonNullPrice(?float $price, string $message): void
+    {
+        if ($price === null) {
+            throw new DomainException($message);
+        }
+    }
+
+    private function assertPriceListBasedAccept(OutsourceOffer $lockedOffer, ?float $price): void
+    {
+        if ($lockedOffer->price === null) {
+            if ($price === null) {
+                throw new DomainException('Price is required when the pricelist-based price is unavailable.');
+            }
+        } else {
+            if ($price !== null) {
+                throw new DomainException('Cannot override price when a pricelist-based price is already set.');
+            }
         }
     }
 
