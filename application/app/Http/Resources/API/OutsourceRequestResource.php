@@ -56,6 +56,7 @@ class OutsourceRequestResource extends JsonResource
             'status' => $this->status,
             'cancellation_reason' => $this->cancellation_reason,
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
+            'owner_institution' => InstitutionResource::make($this->whenLoaded('ownerInstitution')),
             'offers' => $this->whenLoaded('offers', fn() =>
                 $this->visibleOffers($request)->map(fn($offer) => OutsourceOfferResource::make($offer))
             ),

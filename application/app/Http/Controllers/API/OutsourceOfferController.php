@@ -53,9 +53,9 @@ class OutsourceOfferController extends Controller
 
         $params = collect($request->validated());
         $query = $this->getBaseQuery()->with([
-            'institution',
             'outsourceRequest.ownerInstitution',
-            'outsourceRequest.assignment.subProject',
+            'outsourceRequest.assignment.subProject.sourceLanguageClassifierValue',
+            'outsourceRequest.assignment.subProject.destinationLanguageClassifierValue',
             'outsourceRequest.assignment.jobDefinition',
         ]);
 
@@ -69,6 +69,16 @@ class OutsourceOfferController extends Controller
 
         if ($param = $params->get('project_id')) {
             $query->whereHas('outsourceRequest.assignment.subProject.project', fn(Builder $q) => $q->where('id', $param));
+        }
+
+        if ($param = $params->get('q')) {
+            $query->where(function (Builder $q) use ($param) {
+                $q->whereHas('outsourceRequest.assignment', fn(Builder $q) => $q->where('ext_id', 'ilike', "%$param%"))
+                    ->orWhereHas('outsourceRequest.assignment.subProject.project', fn(Builder $q) =>
+                        $q->where('ext_id', 'ilike', "%$param%")
+                            ->orWhere('reference_number', 'ilike', "%$param%")
+                    );
+            });
         }
 
         if ($param = $params->get('status')) {
@@ -183,10 +193,12 @@ class OutsourceOfferController extends Controller
     {
         return [
             'institution',
+            'outsourceRequest.media',
             'outsourceRequest.ownerInstitution',
+            'outsourceRequest.assignment.subProject.sourceLanguageClassifierValue',
+            'outsourceRequest.assignment.subProject.destinationLanguageClassifierValue',
             'outsourceRequest.assignment.subProject.project.sourceFiles',
             'outsourceRequest.assignment.jobDefinition',
-            'outsourceRequest.media',
         ];
     }
 }

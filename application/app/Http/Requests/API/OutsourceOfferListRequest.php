@@ -11,6 +11,7 @@ class OutsourceOfferListRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'q' => 'nullable|string',
             'assignment_id' => 'nullable|uuid',
             'sub_project_id' => 'nullable|uuid',
             'project_id' => 'nullable|uuid',
