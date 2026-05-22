@@ -1424,34 +1424,6 @@ class OutsourceRequestControllerTest extends TestCase
         $response->assertUnprocessable();
     }
 
-    // --- accept/decline routes removed (moved to OutsourceOfferController) ---
-
-    public function test_accept_route_no_longer_exists(): void
-    {
-        $ownerUser = $this->createOwnerUser();
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
-
-        $response->assertNotFound();
-    }
-
-    public function test_decline_route_no_longer_exists(): void
-    {
-        $ownerUser = $this->createOwnerUser();
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'gone',
-            ]);
-
-        $response->assertNotFound();
-    }
-
     // --- price mode validation ---
 
     public function test_create_request_with_fixed_price_mode_requires_price(): void
