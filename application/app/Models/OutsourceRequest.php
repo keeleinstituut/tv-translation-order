@@ -64,6 +64,7 @@ class OutsourceRequest extends Model implements HasMedia
         'status' => OutsourceRequestStatus::class,
         'price' => 'decimal:3',
         'include_source_files' => 'boolean',
+        'reaction_time_minutes' => 'integer',
     ];
 
     public function assignment(): BelongsTo

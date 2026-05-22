@@ -8,10 +8,8 @@ use App\Enums\OutsourceRequestStatus;
 use App\Enums\OutsourceRequestType;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
-use App\Http\Requests\API\OutsourceRequestAcceptRequest;
 use App\Http\Requests\API\OutsourceRequestCancelRequest;
 use App\Http\Requests\API\OutsourceRequestCreateRequest;
-use App\Http\Requests\API\OutsourceRequestDeclineRequest;
 use App\Http\Requests\API\OutsourceRequestListRequest;
 use App\Http\Requests\API\OutsourceRequestReorderRequest;
 use App\Http\Requests\API\OutsourceRequestSelectRequest;
@@ -335,81 +333,6 @@ class OutsourceRequestController extends Controller
 
         try {
             $this->stateMachine->selectOffer($outsourceRequest, $offer, $rejectionComments);
-        } catch (DomainException $exception) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
-        }
-
-        return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load($this->relationsToLoad())
-        );
-    }
-
-    /**
-     * @throws AuthorizationException
-     */
-    #[OA\Post(
-        path: '/outsource-requests/{id}/accept',
-        summary: 'Accept an outsource request',
-        requestBody: new OAH\RequestBody(OutsourceRequestAcceptRequest::class),
-        tags: ['Outsource requests'],
-        parameters: [
-            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
-        ],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: OutsourceRequestResource::class, description: 'Accepted outsource request')]
-    public function accept(OutsourceRequestAcceptRequest $request, string $id): OutsourceRequestResource
-    {
-        /** @var OutsourceRequest $outsourceRequest */
-        $outsourceRequest = $this->getBaseQuery()->findOrFail($id);
-        $this->authorize('accept', $outsourceRequest);
-
-        /** @var OutsourceOffer $offer */
-        $offer = $outsourceRequest->offers()
-            ->firstWhere('institution_id', Auth::user()->institutionId);
-
-        $validated = $request->validated();
-        try {
-            $this->stateMachine->acceptOffer(
-                $offer,
-                isset($validated['price']) ? (float)$validated['price'] : null,
-                $validated['response_comment'] ?? null,
-            );
-        } catch (DomainException $exception) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
-        }
-
-        return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load($this->relationsToLoad())
-        );
-    }
-
-    /**
-     * @throws AuthorizationException
-     */
-    #[OA\Post(
-        path: '/outsource-requests/{id}/decline',
-        summary: 'Decline an outsource request',
-        requestBody: new OAH\RequestBody(OutsourceRequestDeclineRequest::class),
-        tags: ['Outsource requests'],
-        parameters: [
-            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
-        ],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: OutsourceRequestResource::class, description: 'Declined outsource request')]
-    public function decline(OutsourceRequestDeclineRequest $request, string $id): OutsourceRequestResource
-    {
-        /** @var OutsourceRequest $outsourceRequest */
-        $outsourceRequest = $this->getBaseQuery()->findOrFail($id);
-        $this->authorize('decline', $outsourceRequest);
-
-        /** @var OutsourceOffer $offer */
-        $offer = $outsourceRequest->offers
-            ->firstWhere('institution_id', Auth::user()->institutionId);
-
-        try {
-            $this->stateMachine->declineOffer($offer, $request->validated('decline_comment'));
         } catch (DomainException $exception) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
         }

@@ -1424,116 +1424,32 @@ class OutsourceRequestControllerTest extends TestCase
         $response->assertUnprocessable();
     }
 
-    // --- accept ---
+    // --- accept/decline routes removed (moved to OutsourceOfferController) ---
 
-    public function test_partner_with_respond_privilege_can_accept_request(): void
+    public function test_accept_route_no_longer_exists(): void
     {
-        // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['price' => '50.000']);
 
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
-
-        // THEN
-        $response->assertOk();
-    }
-
-    public function test_partner_without_respond_privilege_cannot_accept(): void
-    {
-        // GIVEN — partner has ViewETR but not RespondETR
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
-
-        // THEN
-        $response->assertForbidden();
-    }
-
-    public function test_owner_institution_user_cannot_accept_their_own_request(): void
-    {
-        // GIVEN — owner has no recipient row, even with the Respond privilege
-        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
 
-        // THEN — accept policy requires the caller's institution to be among recipients
-        $response->assertForbidden();
+        $response->assertNotFound();
     }
 
-    // --- decline ---
-
-    public function test_partner_with_respond_privilege_can_decline_request(): void
+    public function test_decline_route_no_longer_exists(): void
     {
-        // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
 
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'Not available',
-            ]);
-
-        // THEN
-        $response->assertOk();
-    }
-
-    public function test_partner_without_respond_privilege_cannot_decline(): void
-    {
-        // GIVEN — partner has ViewETR but not RespondETR
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'Not available',
-            ]);
-
-        // THEN
-        $response->assertForbidden();
-    }
-
-    public function test_owner_institution_user_cannot_decline_their_own_request(): void
-    {
-        // GIVEN — owner has no recipient row, even with the Respond privilege
-        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
             ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'Not available',
+                'decline_comment' => 'gone',
             ]);
 
-        // THEN — decline policy requires the caller's institution to be among recipients
-        $response->assertForbidden();
+        $response->assertNotFound();
     }
 
     // --- price mode validation ---
@@ -1648,45 +1564,6 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertSame(OutsourceRequestPriceMode::AskForPrice, $outsourceRequest->price_mode);
         $this->assertNull($outsourceRequest->price);
         $this->assertNull($outsourceRequest->offers()->first()->price);
-    }
-
-    public function test_accept_request_with_ask_for_price_requires_price(): void
-    {
-        // GIVEN
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, [
-            'price_mode' => OutsourceRequestPriceMode::AskForPrice,
-        ]);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN — ASK_FOR_PRICE accept without price
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
-
-        // THEN
-        $response->assertUnprocessable()->assertJsonValidationErrors('price');
-    }
-
-    public function test_accept_request_with_fixed_price_rejects_price(): void
-    {
-        // GIVEN
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, [
-            'price_mode' => OutsourceRequestPriceMode::FixedPrice,
-            'price' => '100.000',
-        ]);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN — FIXED_PRICE accept with price
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept", ['price' => 99.0]);
-
-        // THEN
-        $response->assertUnprocessable()->assertJsonValidationErrors('price');
     }
 
     public function test_resource_shape_exposes_price_mode_and_unified_price_field(): void

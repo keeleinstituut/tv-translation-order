@@ -3,7 +3,7 @@
 namespace App\Http\Requests\API;
 
 use App\Enums\OutsourceRequestPriceMode;
-use App\Models\OutsourceRequest;
+use App\Models\OutsourceOffer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
@@ -18,7 +18,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class OutsourceRequestAcceptRequest extends FormRequest
+class OutsourceOfferAcceptRequest extends FormRequest
 {
     public function rules(): array
     {
@@ -32,8 +32,8 @@ class OutsourceRequestAcceptRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-            /** @var OutsourceRequest $outsourceRequest */
-                $outsourceRequest = OutsourceRequest::find($this->route('id'));
+                $offer = OutsourceOffer::with('outsourceRequest')->find($this->route('id'));
+                $outsourceRequest = $offer?->outsourceRequest;
                 if (!$outsourceRequest) {
                     return;
                 }

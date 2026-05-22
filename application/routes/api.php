@@ -131,8 +131,16 @@ Route::prefix('/outsource-requests')
         Route::put('/{id}', 'update')->name('translation-order.outsource_requests.update');
         Route::post('/{id}/cancel', 'cancel')->name('translation-order.outsource_requests.cancel');
         Route::post('/{id}/select', 'select')->name('translation-order.outsource_requests.select');
-        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_requests.accept');
-        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_requests.decline');
+    });
+
+Route::prefix('/outsource-offers')
+    ->controller(API\OutsourceOfferController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.outsource_offers.index');
+        Route::get('/{id}', 'show')->name('translation-order.outsource_offers.show');
+        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_offers.accept');
+        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_offers.decline');
     });
 
 Route::prefix('/projects')

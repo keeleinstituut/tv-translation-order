@@ -27,6 +27,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'rejection_comment', type: 'string', nullable: true),
         new OA\Property(property: 'response_comment', type: 'string', nullable: true),
         new OA\Property(property: 'institution', ref: InstitutionResource::class, type: 'object', nullable: true),
+        new OA\Property(property: 'outsource_request', ref: OutsourceRequestResource::class, type: 'object', nullable: true),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
     ],
@@ -49,6 +50,7 @@ class OutsourceOfferResource extends JsonResource
             'rejection_comment' => $this->rejection_comment,
             'response_comment' => $this->response_comment,
             'institution' => InstitutionResource::make($this->whenLoaded('institution')),
+            'outsource_request' => OutsourceRequestResource::make($this->whenLoaded('outsourceRequest')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

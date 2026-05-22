@@ -15,7 +15,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class OutsourceRequestDeclineRequest extends FormRequest
+class OutsourceOfferDeclineRequest extends FormRequest
 {
     public function rules(): array
     {
