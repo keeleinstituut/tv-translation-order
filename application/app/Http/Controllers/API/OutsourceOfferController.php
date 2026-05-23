@@ -41,8 +41,15 @@ class OutsourceOfferController extends Controller
             new OA\QueryParameter(name: 'project_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'status[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', enum: \App\Enums\OutsourceOfferStatus::class), nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
-            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at'])),
+            new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at', 'expires_at'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
+            new OA\QueryParameter(
+                name: 'type_classifier_value_ids',
+                description: 'Filter the result set to offers which have any of the specified project types.',
+                schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'))
+            ),
+            new OA\QueryParameter(name: 'institution_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
+            new OA\QueryParameter(name: 'language_directions[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string'), nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -77,12 +84,34 @@ class OutsourceOfferController extends Controller
                     ->orWhereHas('outsourceRequest.assignment.subProject.project', fn(Builder $q) =>
                         $q->where('ext_id', 'ilike', "%$param%")
                             ->orWhere('reference_number', 'ilike', "%$param%")
-                    );
+                    )
+                    ->orWhereHas('institution', fn(Builder $q) => $q->where('email', 'ilike', "%$param%"));
             });
+        }
+
+        if ($param = $params->get('type_classifier_value_ids')) {
+            $query->whereHas('outsourceRequest.assignment.subProject.project', fn(Builder $q) => $q->whereIn('type_classifier_value_id', $param));
         }
 
         if ($param = $params->get('status')) {
             $query->whereIn('status', $param);
+        }
+
+        if ($param = $params->get('institution_id')) {
+            $query->where('institution_id', $param);
+        }
+
+        if ($params->get('language_directions')) {
+            $query->where(function (Builder $q) use ($request) {
+                collect($request->getLanguagesZippedByDirections())->eachSpread(
+                    function (string $src, string $dst) use ($q) {
+                        $q->orWhereHas('outsourceRequest.assignment.subProject', fn(Builder $sq) => $sq->where([
+                            'source_language_classifier_value_id' => $src,
+                            'destination_language_classifier_value_id' => $dst,
+                        ]));
+                    }
+                );
+            });
         }
 
         $sortBy = $params->get('sort_by', 'created_at');

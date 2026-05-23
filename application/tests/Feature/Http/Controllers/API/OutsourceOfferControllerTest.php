@@ -13,6 +13,7 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\OutsourceOffer;
 use App\Models\OutsourceRequest;
 use App\Models\Project;
+use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -338,9 +339,15 @@ class OutsourceOfferControllerTest extends TestCase
         return InstitutionUser::factory()->createWithPrivileges(...$privileges);
     }
 
-    private function createAssignmentForOwner(InstitutionUser $ownerUser, array $overrides = []): Assignment
-    {
-        $project = Project::factory()->create(['institution_id' => $ownerUser->institution['id']]);
+    private function createAssignmentForOwner(
+        InstitutionUser $ownerUser,
+        array $overrides = [],
+        ?string $typeClassifierValueId = null
+    ): Assignment {
+        $project = Project::factory()->create(array_filter([
+            'institution_id' => $ownerUser->institution['id'],
+            'type_classifier_value_id' => $typeClassifierValueId,
+        ]));
         $subProject = SubProject::factory()->create([
             'project_id' => $project->id,
             'source_language_classifier_value_id' => ClassifierValue::factory()->language(),

@@ -56,7 +56,7 @@ class OutsourceOffer extends Model implements Sortable
         'notified_at' => 'datetime',
         'responded_at' => 'datetime',
         'expires_at' => 'datetime',
-        'price' => 'decimal:3',
+        'price' => 'float',
     ];
 
     public function buildSortQuery(): Builder

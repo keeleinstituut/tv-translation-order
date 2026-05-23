@@ -62,7 +62,7 @@ class OutsourceRequest extends Model implements HasMedia
         'mode' => OutsourceRequestMode::class,
         'price_mode' => OutsourceRequestPriceMode::class,
         'status' => OutsourceRequestStatus::class,
-        'price' => 'decimal:3',
+        'price' => 'float',
         'include_source_files' => 'boolean',
         'reaction_time_minutes' => 'integer',
     ];
