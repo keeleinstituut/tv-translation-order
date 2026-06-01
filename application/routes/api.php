@@ -106,6 +106,8 @@ Route::prefix('/institution-partners')
     ->group(function (): void {
         Route::get('/', 'index')->name('translation-order.institution_partners.index');
         Route::post('/', 'store')->name('translation-order.institution_partners.store');
+        Route::post('/bulk', 'bulkCreate')->name('translation-order.institution_partners.bulkCreate');
+        Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partners.bulkDestroy');
         Route::get('/{id}', 'show')->whereUuid('id')->name('translation-order.institution_partners.show');
         Route::put('/{id}', 'update')->whereUuid('id')->name('translation-order.institution_partners.update');
         Route::delete('/{id}', 'destroy')->whereUuid('id')->name('translation-order.institution_partners.destroy');

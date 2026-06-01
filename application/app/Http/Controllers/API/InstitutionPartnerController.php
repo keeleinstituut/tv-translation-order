@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
+use App\Http\Requests\API\InstitutionPartnerBulkCreateRequest;
+use App\Http\Requests\API\InstitutionPartnerBulkDeleteRequest;
 use App\Http\Requests\API\InstitutionPartnerCreateRequest;
 use App\Http\Requests\API\InstitutionPartnerListRequest;
 use App\Http\Requests\API\InstitutionPartnerUpdateRequest;
@@ -14,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -146,6 +149,64 @@ class InstitutionPartnerController extends Controller
         $partner->delete();
 
         return InstitutionPartnerResource::make($partner);
+    }
+
+    /**
+     * @throws Throwable
+     * @throws AuthorizationException
+     */
+    #[OA\Post(
+        path: '/institution-partners/bulk',
+        summary: 'Bulk create institution partners',
+        requestBody: new OAH\RequestBody(InstitutionPartnerBulkCreateRequest::class),
+        tags: ['External partners'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: InstitutionPartnerResource::class, description: 'Created institution partners', response: Response::HTTP_CREATED)]
+    public function bulkCreate(InstitutionPartnerBulkCreateRequest $request): AnonymousResourceCollection
+    {
+        $inputData = collect($request->validated('data'));
+
+        return DB::transaction(function () use ($inputData): AnonymousResourceCollection {
+            $data = $inputData->map(function (array $input): InstitutionPartner {
+                $partner = new InstitutionPartner();
+                $partner->fill(array_merge($input, ['institution_id' => Auth::user()->institutionId]));
+                $this->authorize('create', $partner);
+                $partner->saveOrFail();
+
+                return $partner;
+            });
+
+            return InstitutionPartnerResource::collection($data);
+        });
+    }
+
+    /**
+     * @throws Throwable
+     * @throws AuthorizationException
+     */
+    #[OA\Delete(
+        path: '/institution-partners/bulk',
+        summary: 'Bulk delete institution partners',
+        requestBody: new OAH\RequestBody(InstitutionPartnerBulkDeleteRequest::class),
+        tags: ['External partners'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: InstitutionPartnerResource::class, description: 'Deleted institution partners')]
+    public function bulkDestroy(InstitutionPartnerBulkDeleteRequest $request): AnonymousResourceCollection
+    {
+        $ids = collect($request->validated('id'));
+
+        $data = $this->getBaseQuery()->whereIn('id', $ids)->get();
+
+        return DB::transaction(function () use ($data): AnonymousResourceCollection {
+            $data->each(function (InstitutionPartner $partner): void {
+                $this->authorize('delete', $partner);
+                $partner->deleteOrFail();
+            });
+
+            return InstitutionPartnerResource::collection($data);
+        });
     }
 
     private function getBaseQuery(): Builder
