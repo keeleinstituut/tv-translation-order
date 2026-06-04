@@ -2,6 +2,7 @@
 
 namespace App\Services\Prices;
 
+use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\Price;
 use App\Models\Vendor;
@@ -16,6 +17,11 @@ class CandidatePriceCalculator extends BaseAssignmentPriceCalculator
 
     public function getPrice(): ?float
     {
+        // If the assignment is outsourced, use the price from the outsourced request
+        if ($this->assignment->currentOutsourceRequest?->status === OutsourceRequestStatus::Fulfilled && filled($this->assignment->currentOutsourceRequest?->price)) {
+            return $this->assignment->currentOutsourceRequest->price;
+        }
+
         if ($this->hasNoVolume()) {
             return null;
         }

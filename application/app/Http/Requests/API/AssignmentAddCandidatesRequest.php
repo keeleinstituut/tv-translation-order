@@ -5,6 +5,7 @@ namespace App\Http\Requests\API;
 use App\Models\Candidate;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use App\Rules\OutsourcedAssignmentCandidateInstitutionRule;
 use Exception;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -67,6 +68,16 @@ class AssignmentAddCandidatesRequest extends FormRequest
                     }
                 },
             ],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            new OutsourcedAssignmentCandidateInstitutionRule(
+                $this->route('id'),
+                'Kandidaatide haldamiseks eemaldage esmalt päringu.'
+            ),
         ];
     }
 }

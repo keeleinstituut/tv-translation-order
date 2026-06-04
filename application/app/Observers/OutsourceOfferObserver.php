@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\OutsourceOfferStatus;
+use App\Jobs\Workflows\SyncWorkflowVariables;
 use App\Models\OutsourceOffer;
 use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
@@ -37,6 +38,13 @@ readonly class OutsourceOfferObserver
             OutsourceOfferStatus::OfferDeclined => $this->publishOfferDeclinedEmailNotification($offer),
             default => null,
         };
+
+        $hadOfferAcceptedStatus = data_get($offer->getChanges(), 'status') === OutsourceOfferStatus::OfferAccepted;
+
+        if ($offer->status === OutsourceOfferStatus::OfferAccepted || $hadOfferAcceptedStatus) {
+            // We need to update institution_id for the task that belongs to the shared assignment
+            SyncWorkflowVariables::dispatchSync($offer->outsourceRequest->assignment);
+        }
     }
 
     private function publishRequestSentEmailNotification(OutsourceOffer $offer): void

@@ -3,6 +3,7 @@
 namespace App\Services\Prices;
 
 use App\Enums\JobKey;
+use App\Enums\OutsourceRequestStatus;
 use App\Enums\VolumeUnits;
 use App\Models\Assignment;
 use App\Models\Price;
@@ -15,6 +16,11 @@ class AssigneePriceCalculator extends BaseAssignmentPriceCalculator
         /** Overview tasks will not be payable and will be done by translation/project manager */
         if ($this->assignment->jobDefinition?->job_key === JobKey::JOB_OVERVIEW) {
             return 0;
+        }
+
+        // If the assignment is outsourced, use the price from the outsourced request
+        if ($this->assignment->currentOutsourceRequest?->status === OutsourceRequestStatus::Fulfilled && filled($this->assignment->currentOutsourceRequest?->price)) {
+            return $this->assignment->currentOutsourceRequest->price;
         }
 
         if ($this->hasNoVolume()) {

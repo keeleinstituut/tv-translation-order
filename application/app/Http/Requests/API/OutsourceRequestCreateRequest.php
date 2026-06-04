@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\CandidateStatus;
 use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
@@ -77,12 +76,8 @@ class OutsourceRequestCreateRequest extends FormRequest
                     $validator->errors()->add('assignment_id', 'Assignment already has a vendor assigned.');
                 }
 
-                if (Candidate::query()
-                    ->where('assignment_id', $assignmentId)
-                    ->whereIn('status', [CandidateStatus::New, CandidateStatus::SubmittedToVendor])
-                    ->exists()
-                ) {
-                    $validator->errors()->add('assignment_id', 'Assignment has active vendor candidates.');
+                if (Candidate::query()->where('assignment_id', $assignmentId)->exists()) {
+                    $validator->errors()->add('assignment_id', 'Päringut saab luua ainult ülesannetele, millel pole kandidaate.');
                 }
 
                 if (OutsourceRequest::query()
