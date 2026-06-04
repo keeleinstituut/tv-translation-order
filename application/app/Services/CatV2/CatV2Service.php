@@ -30,6 +30,12 @@ class CatV2Service {
             ->json();
     }    
 
+    public static function deleteTranslationMemory(string $translationMemoryId) {
+        return static::client()
+            ->delete("/api/translation-memories/$translationMemoryId")
+            ->json();
+    }
+
     public static function importTranslationMemory($data) {
         $request = static::client()->asMultipart();
 
