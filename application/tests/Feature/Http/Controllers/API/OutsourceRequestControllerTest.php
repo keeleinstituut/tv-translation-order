@@ -1563,6 +1563,125 @@ class OutsourceRequestControllerTest extends TestCase
             ->assertJsonMissingPath('data.offers.0.proposed_price');
     }
 
+    // --- previewPrices ---
+
+    public function test_preview_prices_returns_fixed_price_for_all_partners(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerA);
+        $this->createInstitutionPartner($ownerUser, $partnerB);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::FixedPrice->value,
+                'price' => 75.5,
+                'offers' => [
+                    ['institution_id' => $partnerA->institution['id']],
+                    ['institution_id' => $partnerB->institution['id']],
+                ],
+            ]);
+
+        // THEN
+        $response->assertOk();
+        $data = $response->json('data');
+        $this->assertCount(2, $data);
+        $this->assertSame(75.5, $data[0]['price']);
+        $this->assertSame(75.5, $data[1]['price']);
+        $this->assertEqualsCanonicalizing(
+            [$partnerA->institution['id'], $partnerB->institution['id']],
+            array_column($data, 'institution_id')
+        );
+    }
+
+    public function test_preview_prices_returns_null_price_for_ask_for_price_mode(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::AskForPrice->value,
+                'offers' => [['institution_id' => $partnerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonPath('data.0.institution_id', $partnerUser->institution['id'])
+            ->assertJsonPath('data.0.price', null);
+    }
+
+    public function test_preview_prices_returns_null_for_pricelist_based_when_no_matching_price_entry(): void
+    {
+        // GIVEN — partner has no InstitutionPartnerPrice for this language pair
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [['institution_id' => $partnerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonPath('data.0.price', null);
+    }
+
+    public function test_preview_prices_rejects_non_partner_institution(): void
+    {
+        // GIVEN — no InstitutionPartner relationship created
+        $ownerUser = $this->createOwnerUser();
+        $nonPartnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [['institution_id' => $nonPartnerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('offers.0.institution_id');
+    }
+
+    public function test_preview_prices_forbidden_for_user_from_different_institution(): void
+    {
+        // GIVEN — partnerUser's institution does not own the assignment's project
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ManageOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($partnerUser, $ownerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [['institution_id' => $ownerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertForbidden();
+    }
+
     // --- helpers ---
 
     private function createOwnerUser(PrivilegeKey ...$extra): InstitutionUser

@@ -44,6 +44,51 @@ class InstitutionPartnerControllerTest extends TestCase
             ->assertJsonCount($ownPartners->count(), 'data');
     }
 
+    public function test_index_filters_by_q(): void
+    {
+        // GIVEN
+        $institution = Institution::factory()->create();
+
+        $matchingPartner = Institution::factory()->create([
+            'name' => 'Unique Translation Agency',
+            'email' => 'contact@unique-agency.com',
+            'phone' => '+3725551234',
+            'short_name' => 'UTA',
+        ]);
+
+        $nonMatchingPartner = Institution::factory()->create([
+            'name' => 'Other Company',
+            'email' => 'info@other.com',
+            'phone' => '+3729999999',
+            'short_name' => 'OC',
+        ]);
+
+        $expectedPartner = InstitutionPartner::factory()->create([
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $matchingPartner->id,
+        ]);
+
+        InstitutionPartner::factory()->create([
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $nonMatchingPartner->id,
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [PrivilegeKey::ViewExternalPartner->value],
+            'selectedInstitution' => ['id' => $institution->id],
+        ]);
+
+        // WHEN — search by partial name match
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institution-partners?q=Unique');
+
+        // THEN
+        $response
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $expectedPartner->id);
+    }
+
     // -------------------------------------------------------------------------
     // store
     // -------------------------------------------------------------------------

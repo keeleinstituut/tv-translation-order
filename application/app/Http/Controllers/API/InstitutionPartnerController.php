@@ -32,6 +32,7 @@ class InstitutionPartnerController extends Controller
         tags: ['External partners'],
         parameters: [
             new OA\QueryParameter(name: 'partner_institution_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'q', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'created_at', enum: ['created_at'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'desc', enum: ['asc', 'desc'])),
@@ -49,6 +50,15 @@ class InstitutionPartnerController extends Controller
 
         if ($param = $params->get('partner_institution_id')) {
             $query->whereIn('partner_institution_id', $param);
+        }
+
+        if ($param = $params->get('q')) {
+            $query->whereHas('partnerInstitution', fn(Builder $q) => $q
+                ->where('phone', 'ilike', "%$param%")
+                ->orWhere('email', 'ilike', "%$param%")
+                ->orWhere('name', 'ilike', "%$param%")
+                ->orWhere('short_name', 'ilike', "%$param%")
+            );
         }
 
         $sortBy = $params->get('sort_by', 'created_at');

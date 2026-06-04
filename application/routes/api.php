@@ -129,6 +129,7 @@ Route::prefix('/outsource-requests')
     ->group(function (): void {
         Route::get('/', 'index')->name('translation-order.outsource_requests.index');
         Route::post('/', 'store')->name('translation-order.outsource_requests.store');
+        Route::put('/preview-prices', 'previewPrices')->name('translation-order.outsource_requests.previewPrices');
         Route::get('/{id}', 'show')->name('translation-order.outsource_requests.show');
         Route::put('/{id}', 'update')->name('translation-order.outsource_requests.update');
         Route::post('/{id}/cancel', 'cancel')->name('translation-order.outsource_requests.cancel');

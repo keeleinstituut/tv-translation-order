@@ -11,8 +11,10 @@ use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\OutsourceRequestCancelRequest;
 use App\Http\Requests\API\OutsourceRequestCreateRequest;
 use App\Http\Requests\API\OutsourceRequestListRequest;
+use App\Http\Requests\API\OutsourceRequestPreviewRequest;
 use App\Http\Requests\API\OutsourceRequestReorderRequest;
 use App\Http\Requests\API\OutsourceRequestSelectRequest;
+use App\Http\Resources\API\OutsourceRequestPreviewOfferResource;
 use App\Http\Resources\API\OutsourceRequestResource;
 use App\Models\Assignment;
 use App\Models\OutsourceOffer;
@@ -137,6 +139,50 @@ class OutsourceRequestController extends Controller
         $this->authorize('view', $outsourceRequest);
 
         return OutsourceRequestResource::make($outsourceRequest);
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    #[OA\Put(
+        path: '/outsource-requests/preview-prices',
+        summary: 'Preview prices for an outsource request without creating it',
+        requestBody: new OAH\RequestBody(OutsourceRequestPreviewRequest::class),
+        tags: ['Outsource requests'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: OutsourceRequestPreviewOfferResource::class)]
+    public function previewPrices(OutsourceRequestPreviewRequest $request): AnonymousResourceCollection
+    {
+        $validated = $request->validated();
+        $assignment = Assignment::with(['volumes', 'subProject', 'jobDefinition'])->findOrFail($validated['assignment_id']);
+        $this->authorize('create', [OutsourceRequest::class, $assignment]);
+
+        $institutionId = Auth::user()->institutionId;
+        $priceMode = OutsourceRequestPriceMode::from($validated['price_mode']);
+
+        $offerInstitutionIds = collect($validated['offers'])->pluck('institution_id');
+        $partnersByInstitutionId = InstitutionPartner::query()
+            ->where('institution_id', $institutionId)
+            ->whereIn('partner_institution_id', $offerInstitutionIds)
+            ->get()
+            ->keyBy('partner_institution_id');
+
+        $results = $offerInstitutionIds->map(function (string $offerInstitutionId) use ($priceMode, $assignment, $partnersByInstitutionId, $validated) {
+            /** @var InstitutionPartner|null $partner */
+            $partner = $partnersByInstitutionId->get($offerInstitutionId);
+
+            $price = match (true) {
+                $partner === null => null,
+                $priceMode === OutsourceRequestPriceMode::PriceListBased => (new OutsourceOfferPriceCalculator($assignment, $partner))->getPrice(),
+                $priceMode === OutsourceRequestPriceMode::FixedPrice => $validated['price'],
+                default => null,
+            };
+
+            return ['institution_id' => $offerInstitutionId, 'price' => $price];
+        })->all();
+
+        return OutsourceRequestPreviewOfferResource::collection($results);
     }
 
     /**
