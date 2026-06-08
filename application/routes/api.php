@@ -106,6 +106,8 @@ Route::prefix('/institution-partners')
     ->group(function (): void {
         Route::get('/', 'index')->name('translation-order.institution_partners.index');
         Route::post('/', 'store')->name('translation-order.institution_partners.store');
+        Route::post('/bulk', 'bulkCreate')->name('translation-order.institution_partners.bulkCreate');
+        Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partners.bulkDestroy');
         Route::get('/{id}', 'show')->whereUuid('id')->name('translation-order.institution_partners.show');
         Route::put('/{id}', 'update')->whereUuid('id')->name('translation-order.institution_partners.update');
         Route::delete('/{id}', 'destroy')->whereUuid('id')->name('translation-order.institution_partners.destroy');
@@ -127,12 +129,21 @@ Route::prefix('/outsource-requests')
     ->group(function (): void {
         Route::get('/', 'index')->name('translation-order.outsource_requests.index');
         Route::post('/', 'store')->name('translation-order.outsource_requests.store');
+        Route::put('/preview-prices', 'previewPrices')->name('translation-order.outsource_requests.previewPrices');
         Route::get('/{id}', 'show')->name('translation-order.outsource_requests.show');
         Route::put('/{id}', 'update')->name('translation-order.outsource_requests.update');
         Route::post('/{id}/cancel', 'cancel')->name('translation-order.outsource_requests.cancel');
         Route::post('/{id}/select', 'select')->name('translation-order.outsource_requests.select');
-        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_requests.accept');
-        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_requests.decline');
+    });
+
+Route::prefix('/outsource-offers')
+    ->controller(API\OutsourceOfferController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.outsource_offers.index');
+        Route::get('/{id}', 'show')->name('translation-order.outsource_offers.show');
+        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_offers.accept');
+        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_offers.decline');
     });
 
 Route::prefix('/projects')

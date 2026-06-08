@@ -163,7 +163,8 @@ readonly class SubProjectWorkflowProcessInstance
                     $variableName => $assignments->map(function (Assignment $assignment) {
                         return [
                             'sub_project_id' => $this->subProject->id,
-                            'institution_id' => $this->project->institution_id,
+                            'institution_id' => $assignment->currentOutsourceRequest?->acceptedOffer?->institution_id
+                                ?? $this->project->institution_id,
                             'assignee' => $assignment->assignee?->institution_user_id,
                             'candidateUsers' => $assignment->candidates->map(function (Candidate $candidate) {
                                 return $candidate->vendor?->institution_user_id;

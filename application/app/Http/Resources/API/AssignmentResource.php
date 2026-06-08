@@ -45,7 +45,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'volumes', type: 'array', items: new OA\Items(ref: VolumeResource::class), nullable: true),
         new OA\Property(property: 'cat_jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class), nullable: true),
         new OA\Property(property: 'subProject', ref: SubProjectResource::class, nullable: true),
-        new OA\Property(property: 'outsource_request', ref: OutsourceRequestResource::class, nullable: true),
+        new OA\Property(property: 'outsource_requests', type: 'array', items: new OA\Items(ref: OutsourceRequestResource::class)),
         new OA\Property(property: 'manager_candidates', type: 'array', items: new OA\Items(ref: ProjectManagerCandidateResource::class)),
     ],
     type: 'object'
@@ -79,7 +79,7 @@ class AssignmentResource extends JsonResource
             'volumes' => VolumeResource::collection($this->whenLoaded('volumes')),
             'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
             'subProject' => SubProjectResource::make($this->whenLoaded('subProject')),
-            'outsource_request' => OutsourceRequestResource::make($this->whenLoaded('outsourceRequest')),
+            'outsource_requests' => OutsourceRequestResource::collection($this->whenLoaded('outsourceRequests')),
             // Done in this way as we're expecting that in the future multiple PMs can be candidates for review tasks.
             'manager_candidates' => [
                 ProjectManagerCandidateResource::make(

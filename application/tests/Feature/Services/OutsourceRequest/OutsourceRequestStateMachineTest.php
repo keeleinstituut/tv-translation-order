@@ -4,6 +4,7 @@ namespace Tests\Feature\Services\OutsourceRequest;
 
 use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\Assignment;
@@ -19,11 +20,18 @@ use Tests\TestCase;
 
 class OutsourceRequestStateMachineTest extends TestCase
 {
-    public function test_accept_offer_persists_response_details(): void
+    // --- acceptOffer: ASK_FOR_PRICE ---
+
+    public function test_accept_offer_with_ask_for_price_mode_persists_price(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $offer = $this->createOffer(['status' => OutsourceOfferStatus::RequestSent]);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::AskForPrice]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestSent,
+            'price' => null,
+        ]);
 
         // WHEN
         $stateMachine->acceptOffer($offer, 123.456, 'We can do this.');
@@ -31,16 +39,16 @@ class OutsourceRequestStateMachineTest extends TestCase
         // THEN
         $offer->refresh();
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
-        $this->assertSame('123.456', $offer->proposed_price);
+        $this->assertSame('123.456', $offer->price);
         $this->assertSame('We can do this.', $offer->response_comment);
         $this->assertNotNull($offer->responded_at);
     }
 
-    public function test_accept_offer_rejects_proposed_price_when_request_has_fixed_price(): void
+    public function test_accept_offer_with_ask_for_price_mode_requires_price(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createRequest(['fixed_price' => '100.000']);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::AskForPrice]);
         $offer = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestSent,
@@ -48,51 +56,167 @@ class OutsourceRequestStateMachineTest extends TestCase
 
         // THEN
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('Cannot set proposed price when request has a fixed price.');
+        $this->expectExceptionMessage('Price is required when price mode is ASK_FOR_PRICE.');
+
+        // WHEN
+        $stateMachine->acceptOffer($offer, null, null);
+    }
+
+    // --- acceptOffer: FIXED_PRICE ---
+
+    public function test_accept_offer_with_fixed_price_mode_rejects_price(): void
+    {
+        // GIVEN
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createRequest([
+            'price_mode' => OutsourceRequestPriceMode::FixedPrice,
+            'price' => '100.000',
+        ]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestSent,
+            'price' => '100.000',
+        ]);
+
+        // THEN
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Cannot set price when price mode is FIXED_PRICE.');
 
         // WHEN
         $stateMachine->acceptOffer($offer, 99.000, null);
     }
 
-    public function test_accept_offer_allows_null_proposed_price_when_request_has_fixed_price(): void
+    public function test_accept_offer_with_fixed_price_mode_allows_null_price(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createRequest(['fixed_price' => '100.000']);
+        $request = $this->createRequest([
+            'price_mode' => OutsourceRequestPriceMode::FixedPrice,
+            'price' => '100.000',
+        ]);
         $offer = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestSent,
-            'proposed_price' => '100.000',
+            'price' => '100.000',
         ]);
 
         // WHEN
         $stateMachine->acceptOffer($offer, null, 'Confirmed.');
 
-        // THEN — proposed_price stays at the pre-populated fixed_price value
+        // THEN — price stays at the pre-populated fixed value
         $offer->refresh();
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
-        $this->assertSame('100.000', $offer->proposed_price);
+        $this->assertSame('100.000', $offer->price);
     }
+
+    // --- acceptOffer: PRICELIST_BASED ---
+
+    public function test_accept_offer_with_pricelist_based_and_null_offer_price_requires_price(): void
+    {
+        // GIVEN — calculator returned null at creation time
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::PriceListBased]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestSent,
+            'price' => null,
+        ]);
+
+        // THEN
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Price is required when the pricelist-based price is unavailable.');
+
+        // WHEN
+        $stateMachine->acceptOffer($offer, null, null);
+    }
+
+    public function test_accept_offer_with_pricelist_based_and_null_offer_price_persists_supplied_price(): void
+    {
+        // GIVEN — calculator returned null at creation time, partner now supplies their price
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::PriceListBased]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestSent,
+            'price' => null,
+        ]);
+
+        // WHEN
+        $stateMachine->acceptOffer($offer, 50.000, null);
+
+        // THEN
+        $offer->refresh();
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
+        $this->assertSame('50.000', $offer->price);
+    }
+
+    public function test_accept_offer_with_pricelist_based_and_existing_offer_price_rejects_override(): void
+    {
+        // GIVEN — calculator already set a price at creation time
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::PriceListBased]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestSent,
+            'price' => '100.000',
+        ]);
+
+        // THEN
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Cannot override price when a pricelist-based price is already set.');
+
+        // WHEN
+        $stateMachine->acceptOffer($offer, 50.000, null);
+    }
+
+    public function test_accept_offer_with_pricelist_based_and_existing_offer_price_allows_null(): void
+    {
+        // GIVEN — calculator set a price; no override needed
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::PriceListBased]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestSent,
+            'price' => '100.000',
+        ]);
+
+        // WHEN
+        $stateMachine->acceptOffer($offer, null, 'Looks good.');
+
+        // THEN — price unchanged
+        $offer->refresh();
+        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
+        $this->assertSame('100.000', $offer->price);
+    }
+
+    // --- acceptOffer: generic guards ---
 
     public function test_accept_offer_rejects_non_notified_offer(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $offer = $this->createOffer(['status' => OutsourceOfferStatus::RequestPending]);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::AskForPrice]);
+        $offer = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestPending,
+        ]);
 
         // THEN
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Recipient is not in REQUEST_SENT state.');
 
         // WHEN
-        $stateMachine->acceptOffer($offer, null, null);
+        $stateMachine->acceptOffer($offer, 1.0, null);
     }
 
     public function test_accept_offer_rejects_inactive_request(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createRequest(['status' => OutsourceRequestStatus::Cancelled]);
+        $request = $this->createRequest([
+            'status' => OutsourceRequestStatus::Cancelled,
+            'price_mode' => OutsourceRequestPriceMode::AskForPrice,
+        ]);
         $offer = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestSent,
@@ -103,14 +227,14 @@ class OutsourceRequestStateMachineTest extends TestCase
         $this->expectExceptionMessage('Request is not ACTIVE.');
 
         // WHEN
-        $stateMachine->acceptOffer($offer, null, null);
+        $stateMachine->acceptOffer($offer, 1.0, null);
     }
 
     public function test_accept_offer_rejects_expired_response_window(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createCascadeRequest();
+        $request = $this->createCascadeRequest(['price_mode' => OutsourceRequestPriceMode::AskForPrice]);
         $offer = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestSent,
@@ -122,8 +246,10 @@ class OutsourceRequestStateMachineTest extends TestCase
         $this->expectExceptionMessage('Recipient response deadline has passed.');
 
         // WHEN
-        $stateMachine->acceptOffer($offer, null, null);
+        $stateMachine->acceptOffer($offer, 1.0, null);
     }
+
+    // --- declineOffer ---
 
     public function test_decline_offer_activates_next_cascade_offer(): void
     {
@@ -160,6 +286,8 @@ class OutsourceRequestStateMachineTest extends TestCase
             fn (ExpireOutsourceOfferJob $job) => $job->recipientId === $next->id
         );
     }
+
+    // --- expireOffer ---
 
     public function test_expire_offer_activates_next_cascade_offer_when_deadline_passed(): void
     {
@@ -221,15 +349,17 @@ class OutsourceRequestStateMachineTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    // --- selectOffer ---
+
     public function test_select_offer_fulfills_request_rejects_other_in_play_offers_and_updates_assignment(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createRequest(['fixed_price' => '555.000']);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::AskForPrice]);
         $winner = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestAccepted,
-            'proposed_price' => '321.123',
+            'price' => '321.123',
         ]);
         $loser = $this->createOffer([
             'outsource_request_id' => $request->id,
@@ -247,49 +377,54 @@ class OutsourceRequestStateMachineTest extends TestCase
         $loser->refresh();
         $assignment = $request->assignment->fresh();
         $this->assertSame(OutsourceRequestStatus::Fulfilled, $request->status);
+        $this->assertSame('321.123', $request->price);
         $this->assertSame(OutsourceOfferStatus::OfferAccepted, $winner->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $loser->status);
         $this->assertSame('Price was higher.', $loser->rejection_comment);
         $this->assertEquals(321.12, $assignment->price);
     }
 
-    public function test_select_offer_uses_request_price_when_offer_has_no_proposed_price(): void
+    public function test_select_offer_writes_offer_price_to_both_request_and_assignment(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createRequest(['fixed_price' => '222.222']);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::PriceListBased]);
         $winner = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestAccepted,
-            'proposed_price' => null,
-            'calculated_price' => '111.111',
+            'price' => '111.111',
         ]);
 
         // WHEN
         $stateMachine->selectOffer($request, $winner, []);
 
         // THEN
-        $this->assertEquals(222.22, $request->assignment->fresh()->price);
-    }
-
-    public function test_select_offer_uses_calculated_price_when_offer_and_request_price_are_empty(): void
-    {
-        // GIVEN
-        $stateMachine = app(OutsourceRequestStateMachine::class);
-        $request = $this->createRequest(['fixed_price' => null]);
-        $winner = $this->createOffer([
-            'outsource_request_id' => $request->id,
-            'status' => OutsourceOfferStatus::RequestAccepted,
-            'proposed_price' => null,
-            'calculated_price' => '111.111',
-        ]);
-
-        // WHEN
-        $stateMachine->selectOffer($request, $winner, []);
-
-        // THEN
+        $request->refresh();
+        $this->assertSame('111.111', $request->price);
         $this->assertEquals(111.11, $request->assignment->fresh()->price);
     }
+
+    public function test_select_offer_with_null_price_sets_null_on_both_request_and_assignment(): void
+    {
+        // GIVEN
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createRequest(['price_mode' => OutsourceRequestPriceMode::PriceListBased]);
+        $winner = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'status' => OutsourceOfferStatus::RequestAccepted,
+            'price' => null,
+        ]);
+
+        // WHEN
+        $stateMachine->selectOffer($request, $winner, []);
+
+        // THEN
+        $request->refresh();
+        $this->assertNull($request->price);
+        $this->assertNull($request->assignment->fresh()->price);
+    }
+
+    // --- cancelRequest ---
 
     public function test_cancel_request_leaves_offers_unchanged(): void
     {

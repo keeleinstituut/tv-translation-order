@@ -44,6 +44,51 @@ class InstitutionPartnerControllerTest extends TestCase
             ->assertJsonCount($ownPartners->count(), 'data');
     }
 
+    public function test_index_filters_by_q(): void
+    {
+        // GIVEN
+        $institution = Institution::factory()->create();
+
+        $matchingPartner = Institution::factory()->create([
+            'name' => 'Unique Translation Agency',
+            'email' => 'contact@unique-agency.com',
+            'phone' => '+3725551234',
+            'short_name' => 'UTA',
+        ]);
+
+        $nonMatchingPartner = Institution::factory()->create([
+            'name' => 'Other Company',
+            'email' => 'info@other.com',
+            'phone' => '+3729999999',
+            'short_name' => 'OC',
+        ]);
+
+        $expectedPartner = InstitutionPartner::factory()->create([
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $matchingPartner->id,
+        ]);
+
+        InstitutionPartner::factory()->create([
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $nonMatchingPartner->id,
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [PrivilegeKey::ViewExternalPartner->value],
+            'selectedInstitution' => ['id' => $institution->id],
+        ]);
+
+        // WHEN — search by partial name match
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institution-partners?q=Unique');
+
+        // THEN
+        $response
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $expectedPartner->id);
+    }
+
     // -------------------------------------------------------------------------
     // store
     // -------------------------------------------------------------------------
@@ -202,6 +247,76 @@ class InstitutionPartnerControllerTest extends TestCase
             ->postJson('/api/institution-partners', ['partner_institution_id' => $partnerInstitution->id]);
 
         $response2->assertStatus(201);
+    }
+
+    // -------------------------------------------------------------------------
+    // bulkCreate
+    // -------------------------------------------------------------------------
+
+    public function test_bulk_create(): void
+    {
+        // GIVEN
+        $institution = Institution::factory()->create();
+        $partnerInstitution1 = Institution::factory()->create();
+        $partnerInstitution2 = Institution::factory()->create();
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [PrivilegeKey::ManageExternalPartner->value],
+            'selectedInstitution' => ['id' => $institution->id],
+        ]);
+
+        $payload = [
+            'data' => [
+                ['partner_institution_id' => $partnerInstitution1->id, 'discount_percentage_101' => 10.00],
+                ['partner_institution_id' => $partnerInstitution2->id],
+            ],
+        ];
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/institution-partners/bulk', $payload);
+
+        // THEN
+        $response->assertStatus(201)->assertJsonCount(2, 'data');
+
+        $this->assertDatabaseHas('institution_partners', [
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $partnerInstitution1->id,
+        ]);
+        $this->assertDatabaseHas('institution_partners', [
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $partnerInstitution2->id,
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // bulkDestroy
+    // -------------------------------------------------------------------------
+
+    public function test_bulk_destroy(): void
+    {
+        // GIVEN
+        $institution = Institution::factory()->create();
+        $partnerInstitutions = Institution::factory(2)->create();
+
+        $partners = $partnerInstitutions->map(fn ($pi) => InstitutionPartner::factory()->create([
+            'institution_id' => $institution->id,
+            'partner_institution_id' => $pi->id,
+        ]));
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'privileges' => [PrivilegeKey::ManageExternalPartner->value],
+            'selectedInstitution' => ['id' => $institution->id],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->deleteJson('/api/institution-partners/bulk', ['id' => $partners->pluck('id')->all()]);
+
+        // THEN
+        $response->assertStatus(200)->assertJsonCount(2, 'data');
+
+        $partners->each(fn ($partner) => $this->assertSoftDeleted('institution_partners', ['id' => $partner->id]));
     }
 
     // -------------------------------------------------------------------------

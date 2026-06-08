@@ -32,7 +32,7 @@ class InstitutionPartnerPriceController extends Controller
         summary: 'List institution partner prices (institution inferred from JWT)',
         tags: ['External partners'],
         parameters: [
-            new OA\QueryParameter(name: 'institution_partner_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
+            new OA\QueryParameter(name: 'institution_partner_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
             new OA\QueryParameter(name: 'src_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'dst_lang_classifier_value_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
             new OA\QueryParameter(name: 'skill_id[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)),
@@ -70,7 +70,7 @@ class InstitutionPartnerPriceController extends Controller
             ]);
 
         if ($param = $params->get('institution_partner_id')) {
-            $query->whereIn('institution_partner_id', $param);
+            $query->where('institution_partner_id', $param);
         }
 
         if ($param = $params->get('src_lang_classifier_value_id')) {
@@ -110,9 +110,17 @@ class InstitutionPartnerPriceController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
+        $minCreatedAt = $query->min('institution_partner_prices.created_at');
+        $maxUpdatedAt = $query->max('institution_partner_prices.updated_at');
+
         $data = $query->paginate($params->get('per_page', 10));
 
-        return InstitutionPartnerPriceResource::collection($data);
+        return InstitutionPartnerPriceResource::collection($data)->additional([
+            'aggregation' => [
+                'min_created_at' => $minCreatedAt,
+                'max_updated_at' => $maxUpdatedAt,
+            ],
+        ]);
     }
 
     /**

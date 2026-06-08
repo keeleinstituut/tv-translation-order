@@ -114,10 +114,10 @@ class SubProjectObserver
                     $assignment->calendarEntry->delete();
                 }
 
-                if (filled($assignment->outsourceRequest)) {
-                    $assignment->outsourceRequest->status = OutsourceRequestStatus::Cancelled;
-                    $assignment->outsourceRequest->cancellation_reason = $subProject->project->cancellation_reason;
-                    $assignment->outsourceRequest->saveOrFail();
+                if (filled($assignment->currentOutsourceRequest)) {
+                    $assignment->currentOutsourceRequest->status = OutsourceRequestStatus::Cancelled;
+                    $assignment->currentOutsourceRequest->cancellation_reason = $subProject->project->cancellation_reason;
+                    $assignment->currentOutsourceRequest->saveOrFail();
                 }
             });
         }

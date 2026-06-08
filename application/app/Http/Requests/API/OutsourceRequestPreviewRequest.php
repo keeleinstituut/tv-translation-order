@@ -2,15 +2,8 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceRequestPriceMode;
-use App\Enums\OutsourceRequestStatus;
-use App\Models\Assignment;
-use App\Models\Candidate;
-use App\Models\OutsourceRequest;
 use App\Models\InstitutionPartner;
-use App\Rules\ProjectFileValidator;
-use App\Rules\ScannedRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Validator;
@@ -20,12 +13,10 @@ use OpenApi\Attributes as OA;
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['assignment_id', 'mode', 'price_mode', 'reaction_time_minutes', 'offers'],
+        required: ['assignment_id', 'price_mode', 'offers'],
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-            new OA\Property(property: 'mode', type: 'string', enum: OutsourceRequestMode::class),
             new OA\Property(property: 'price_mode', type: 'string', enum: OutsourceRequestPriceMode::class),
-            new OA\Property(property: 'reaction_time_minutes', type: 'integer', maximum: 525600, minimum: 1),
             new OA\Property(
                 property: 'offers',
                 type: 'array',
@@ -35,29 +26,20 @@ use OpenApi\Attributes as OA;
                     type: 'object',
                 )
             ),
-            new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
-            new OA\Property(property: 'include_source_files', type: 'boolean', nullable: true),
             new OA\Property(property: 'price', description: 'Required when price_mode is FIXED_PRICE; must be omitted otherwise.', type: 'number', format: 'double', nullable: true),
-            new OA\Property(property: 'request_files', type: 'array', items: new OA\Items(type: 'string', format: 'binary'), nullable: true),
         ]
     )
 )]
-class OutsourceRequestCreateRequest extends FormRequest
+class OutsourceRequestPreviewRequest extends FormRequest
 {
     public function rules(): array
     {
         return [
             'assignment_id' => 'required|uuid|exists:assignments,id',
-            'mode' => 'required|string|in:CASCADE,PARALLEL',
             'price_mode' => 'required|string|in:PRICELIST_BASED,FIXED_PRICE,ASK_FOR_PRICE',
-            'reaction_time_minutes' => 'required|integer|min:1|max:525600',
             'offers' => 'required|array|min:1',
             'offers.*.institution_id' => 'required|uuid',
-            'special_instructions' => 'nullable|string',
-            'include_source_files' => 'nullable|boolean',
             'price' => 'nullable|numeric|gt:0',
-            'request_files' => 'nullable|array',
-            'request_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
         ];
     }
 
@@ -65,36 +47,13 @@ class OutsourceRequestCreateRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                $assignmentId = $this->input('assignment_id');
-                $assignment = Assignment::find($assignmentId);
-
-                if (!$assignment) {
-                    return;
-                }
-
-                if ($assignment->assigned_vendor_id !== null) {
-                    $validator->errors()->add('assignment_id', 'Assignment already has a vendor assigned.');
-                }
-
-                if (Candidate::query()->where('assignment_id', $assignmentId)->exists()) {
-                    $validator->errors()->add('assignment_id', 'Päringut saab luua ainult ülesannetele, millel pole kandidaate.');
-                }
-
-                if (OutsourceRequest::query()
-                    ->where('assignment_id', $assignmentId)
-                    ->whereNot('status', OutsourceRequestStatus::Cancelled)
-                    ->exists()
-                ) {
-                    $validator->errors()->add('assignment_id', 'An external translation request already exists for this assignment.');
-                }
-
                 $callerInstitutionId = Auth::user()->institutionId;
                 $recipientIds = collect($this->input('offers', []))->pluck('institution_id')->filter();
 
                 $validPartnerIds = InstitutionPartner::query()
                     ->where('institution_id', $callerInstitutionId)
                     ->whereIn('partner_institution_id', $recipientIds)
-                    ->whereHas('partnerInstitution', fn($q) => $q->whereNull('deleted_at'))
+                    ->whereHas('partnerInstitution', fn ($q) => $q->whereNull('deleted_at'))
                     ->pluck('partner_institution_id')
                     ->all();
 
@@ -105,11 +64,6 @@ class OutsourceRequestCreateRequest extends FormRequest
                             'Institution is not an active partner of your institution.'
                         );
                     }
-                }
-
-                $duplicates = $recipientIds->duplicates();
-                if ($duplicates->isNotEmpty()) {
-                    $validator->errors()->add('offers', 'Offer institution IDs must be unique.');
                 }
             },
             function (Validator $validator) {

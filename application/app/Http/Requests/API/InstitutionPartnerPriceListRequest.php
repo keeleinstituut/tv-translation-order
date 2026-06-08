@@ -10,8 +10,7 @@ class InstitutionPartnerPriceListRequest extends FormRequest
     {
         return [
             'per_page' => 'sometimes|integer|max:50',
-            'institution_partner_id' => 'sometimes|array',
-            'institution_partner_id.*' => 'uuid',
+            'institution_partner_id' => 'sometimes|uuid',
             'skill_id' => 'sometimes|array',
             'skill_id.*' => 'uuid',
             'src_lang_classifier_value_id' => 'sometimes|array',

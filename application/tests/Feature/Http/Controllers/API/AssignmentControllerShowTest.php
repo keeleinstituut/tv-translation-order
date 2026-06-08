@@ -77,13 +77,13 @@ class AssignmentControllerShowTest extends TestCase
                     'volumes',
                     'cat_jobs',
                     'subProject',
-                    'outsource_request',
+                    'outsource_requests',
                 ],
             ])
             ->assertJson([
                 'data' => [
                     'id' => $assignment->id,
-                    'outsource_request' => null,
+                    'outsource_requests' => [],
                 ],
             ]);
     }
@@ -236,7 +236,7 @@ class AssignmentControllerShowTest extends TestCase
         // THEN
         $response->assertOk()
             ->assertJson(['data' => ['id' => $assignment->id]])
-            ->assertJsonPath('data.outsource_request.id', $outsourceRequest->id);
+            ->assertJsonPath('data.outsource_requests.0.id', $outsourceRequest->id);
     }
 
     public function test_partner_cannot_view_assignment_when_not_a_recipient(): void
@@ -360,6 +360,99 @@ class AssignmentControllerShowTest extends TestCase
 
         // THEN — vendor is the assignee so can view even without ViewOutsourceRequest privilege
         $response->assertOk()->assertJsonPath('data.id', $assignment->id);
+    }
+
+    public function test_outsource_requests_returns_full_history_ordered_newest_first(): void
+    {
+        // GIVEN — owner creates an assignment, creates a request, cancels it, creates a new one
+        $institutionUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id])
+            ->create();
+
+        $project = Project::factory()->create(['institution_id' => $this->institution->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+
+        $cancelledRequest = OutsourceRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => OutsourceRequestStatus::Cancelled,
+            'created_at' => now()->subMinutes(5),
+        ]);
+        $activeRequest = OutsourceRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => OutsourceRequestStatus::Active,
+            'created_at' => now(),
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $institutionUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [PrivilegeKey::ViewInstitutionProjectDetail->value],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson("/api/assignments/{$assignment->id}");
+
+        // THEN — both requests returned, newest first
+        $response->assertOk()
+            ->assertJsonCount(2, 'data.outsource_requests')
+            ->assertJsonPath('data.outsource_requests.0.id', $activeRequest->id)
+            ->assertJsonPath('data.outsource_requests.0.status', OutsourceRequestStatus::Active->value)
+            ->assertJsonPath('data.outsource_requests.1.id', $cancelledRequest->id)
+            ->assertJsonPath('data.outsource_requests.1.status', OutsourceRequestStatus::Cancelled->value);
+    }
+
+    public function test_external_agency_only_sees_outsource_requests_with_their_offer(): void
+    {
+        // GIVEN — two outsource requests on the same assignment; partner has an offer only on one
+        $ownerInstitution = Institution::factory()->create();
+        $partnerUser = InstitutionUser::factory()
+            ->createWithPrivileges(PrivilegeKey::ViewOutsourceRequest);
+
+        $project = Project::factory()->create(['institution_id' => $ownerInstitution->id]);
+        $subProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $assignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+
+        $requestWithOffer = OutsourceRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => OutsourceRequestStatus::Active,
+            'created_at' => now(),
+        ]);
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $requestWithOffer->id,
+            'institution_id' => $partnerUser->institution['id'],
+            'status' => OutsourceOfferStatus::OfferAccepted,
+        ]);
+
+        OutsourceRequest::factory()->create([
+            'assignment_id' => $assignment->id,
+            'status' => OutsourceRequestStatus::Cancelled,
+            'created_at' => now()->subMinutes(5),
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $partnerUser->id,
+            'selectedInstitution' => ['id' => $partnerUser->institution['id']],
+            'privileges' => [PrivilegeKey::ViewOutsourceRequest->value],
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson("/api/assignments/{$assignment->id}");
+
+        // THEN — only the request with an offer for this partner is visible
+        $response->assertOk()
+            ->assertJsonCount(1, 'data.outsource_requests')
+            ->assertJsonPath('data.outsource_requests.0.id', $requestWithOffer->id);
     }
 
     public function test_response_includes_sub_project_with_languages_and_project(): void

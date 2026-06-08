@@ -93,6 +93,16 @@ class SubProjectResource extends JsonResource
                 'assignments' => AssignmentResource::collection($this->whenLoaded('assignments')),
                 'price' => $this->price,
             ]),
+            $this->mergeWhen(
+                !$isInSameInstitutionAsSubProject && $user->hasActivePartnerAccessToSubProject($this->resource),
+                [
+                    'assignments' => $this->whenLoaded('assignments', fn ($assignments) =>
+                        AssignmentResource::collection(
+                            $assignments->filter(fn ($a) => $user->hasActivePartnerAccessToAssignment($a))
+                        )
+                    ),
+                ]
+            ),
             $this->mergeWhen($isInSameInstitutionAsSubProject || $user->hasActivePartnerAccessToSubProject($this->resource), [
                 'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
             ]),

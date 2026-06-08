@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\OutsourceRequestMode;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -27,10 +28,10 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string $assignment_id
  * @property string $institution_user_id
  * @property OutsourceRequestMode $mode
+ * @property OutsourceRequestPriceMode $price_mode
  * @property int $reaction_time_minutes
  * @property string|null $special_instructions
- * @property string|null $fixed_price
- * @property bool $include_price
+ * @property string|null $price
  * @property bool $include_source_files
  * @property OutsourceRequestStatus $status
  * @property string|null $cancellation_reason
@@ -59,10 +60,11 @@ class OutsourceRequest extends Model implements HasMedia
 
     protected $casts = [
         'mode' => OutsourceRequestMode::class,
+        'price_mode' => OutsourceRequestPriceMode::class,
         'status' => OutsourceRequestStatus::class,
-        'fixed_price' => 'decimal:3',
-        'include_price' => 'boolean',
+        'price' => 'float',
         'include_source_files' => 'boolean',
+        'reaction_time_minutes' => 'integer',
     ];
 
     public function assignment(): BelongsTo

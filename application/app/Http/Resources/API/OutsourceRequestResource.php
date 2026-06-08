@@ -3,7 +3,7 @@
 namespace App\Http\Resources\API;
 
 use App\Enums\OutsourceRequestMode;
-use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Http\Resources\MediaResource;
 use App\Models\AuthUser;
@@ -18,16 +18,16 @@ use OpenApi\Attributes as OA;
  */
 #[OA\Schema(
     title: 'OutsourceRequest',
-    required: ['id', 'assignment_id', 'mode', 'reaction_time_minutes', 'status', 'include_price', 'include_source_files', 'is_cascade_exhausted'],
+    required: ['id', 'assignment_id', 'mode', 'price_mode', 'reaction_time_minutes', 'status', 'include_source_files', 'is_cascade_exhausted'],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'mode', type: 'string', enum: OutsourceRequestMode::class),
+        new OA\Property(property: 'price_mode', type: 'string', enum: OutsourceRequestPriceMode::class),
         new OA\Property(property: 'reaction_time_minutes', type: 'integer'),
         new OA\Property(property: 'deadline_at', description: 'Computed for PARALLEL mode (created_at + reaction_time_minutes); null for CASCADE.', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
-        new OA\Property(property: 'fixed_price', type: 'number', format: 'double', nullable: true),
-        new OA\Property(property: 'include_price', type: 'boolean'),
+        new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
         new OA\Property(property: 'include_source_files', type: 'boolean'),
         new OA\Property(property: 'status', type: 'string', enum: OutsourceRequestStatus::class),
         new OA\Property(property: 'cancellation_reason', type: 'string', nullable: true),
@@ -43,26 +43,22 @@ class OutsourceRequestResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        /** @var AuthUser|null $user */
-        $user = $request->user();
-        $isOwner = $this->ownerInstitution->id === $user?->institutionId;
-        $hideCalculatedPrice = $this->fixed_price !== null || (!$isOwner && !$this->include_price);
-
         return [
             'id' => $this->id,
             'assignment_id' => $this->assignment_id,
             'mode' => $this->mode,
+            'price_mode' => $this->price_mode,
             'reaction_time_minutes' => $this->reaction_time_minutes,
             'deadline_at' => $this->deadline_at,
             'special_instructions' => $this->special_instructions,
-            'fixed_price' => $this->fixed_price,
-            'include_price' => $this->include_price,
+            'price' => $this->price,
             'include_source_files' => $this->include_source_files,
             'status' => $this->status,
             'cancellation_reason' => $this->cancellation_reason,
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
+            'owner_institution' => InstitutionResource::make($this->whenLoaded('ownerInstitution')),
             'offers' => $this->whenLoaded('offers', fn() =>
-                $this->visibleOffers($request)->map(fn($offer) => new OutsourceOfferResource($offer, $hideCalculatedPrice))
+                $this->visibleOffers($request)->map(fn($offer) => OutsourceOfferResource::make($offer))
             ),
             'media' => $this->whenLoaded('media', fn() => MediaResource::collection($this->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION))),
             'created_at' => $this->created_at,

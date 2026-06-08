@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Enums\OutsourceRequestType;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
-use App\Http\Requests\API\OutsourceRequestAcceptRequest;
 use App\Http\Requests\API\OutsourceRequestCancelRequest;
 use App\Http\Requests\API\OutsourceRequestCreateRequest;
-use App\Http\Requests\API\OutsourceRequestDeclineRequest;
 use App\Http\Requests\API\OutsourceRequestListRequest;
+use App\Http\Requests\API\OutsourceRequestPreviewRequest;
 use App\Http\Requests\API\OutsourceRequestReorderRequest;
 use App\Http\Requests\API\OutsourceRequestSelectRequest;
+use App\Http\Resources\API\OutsourceRequestPreviewOfferResource;
 use App\Http\Resources\API\OutsourceRequestResource;
 use App\Models\Assignment;
 use App\Models\OutsourceOffer;
@@ -142,6 +143,50 @@ class OutsourceRequestController extends Controller
 
     /**
      * @throws AuthorizationException
+     */
+    #[OA\Put(
+        path: '/outsource-requests/preview-prices',
+        summary: 'Preview prices for an outsource request without creating it',
+        requestBody: new OAH\RequestBody(OutsourceRequestPreviewRequest::class),
+        tags: ['Outsource requests'],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\CollectionResponse(itemsRef: OutsourceRequestPreviewOfferResource::class)]
+    public function previewPrices(OutsourceRequestPreviewRequest $request): AnonymousResourceCollection
+    {
+        $validated = $request->validated();
+        $assignment = Assignment::with(['volumes', 'subProject', 'jobDefinition'])->findOrFail($validated['assignment_id']);
+        $this->authorize('create', [OutsourceRequest::class, $assignment]);
+
+        $institutionId = Auth::user()->institutionId;
+        $priceMode = OutsourceRequestPriceMode::from($validated['price_mode']);
+
+        $offerInstitutionIds = collect($validated['offers'])->pluck('institution_id');
+        $partnersByInstitutionId = InstitutionPartner::query()
+            ->where('institution_id', $institutionId)
+            ->whereIn('partner_institution_id', $offerInstitutionIds)
+            ->get()
+            ->keyBy('partner_institution_id');
+
+        $results = $offerInstitutionIds->map(function (string $offerInstitutionId) use ($priceMode, $assignment, $partnersByInstitutionId, $validated) {
+            /** @var InstitutionPartner|null $partner */
+            $partner = $partnersByInstitutionId->get($offerInstitutionId);
+
+            $price = match (true) {
+                $partner === null => null,
+                $priceMode === OutsourceRequestPriceMode::PriceListBased => (new OutsourceOfferPriceCalculator($assignment, $partner))->getPrice(),
+                $priceMode === OutsourceRequestPriceMode::FixedPrice => $validated['price'],
+                default => null,
+            };
+
+            return ['institution_id' => $offerInstitutionId, 'price' => $price];
+        })->all();
+
+        return OutsourceRequestPreviewOfferResource::collection($results);
+    }
+
+    /**
+     * @throws AuthorizationException
      * @throws Throwable
      */
     #[OA\Post(
@@ -161,15 +206,17 @@ class OutsourceRequestController extends Controller
         $this->authorize('create', [OutsourceRequest::class, $assignment]);
 
         $outsourceRequest = DB::transaction(function () use ($validated, $assignment, $institutionUserId, $institutionId) {
+            $priceMode = OutsourceRequestPriceMode::from($validated['price_mode']);
+
             /** @var OutsourceRequest $outsourceRequest */
             $outsourceRequest = OutsourceRequest::create([
                 'assignment_id' => $assignment->id,
                 'institution_user_id' => $institutionUserId,
                 'mode' => $validated['mode'],
+                'price_mode' => $priceMode,
                 'reaction_time_minutes' => $validated['reaction_time_minutes'],
                 'special_instructions' => $validated['special_instructions'] ?? null,
-                'fixed_price' => $validated['fixed_price'] ?? null,
-                'include_price' => $validated['include_price'] ?? true,
+                'price' => $validated['price'] ?? null,
                 'include_source_files' => $validated['include_source_files'] ?? true,
                 'status' => OutsourceRequestStatus::Active,
             ]);
@@ -186,10 +233,15 @@ class OutsourceRequestController extends Controller
             foreach ($validated['offers'] as $index => $row) {
                 /** @var InstitutionPartner $partner */
                 $partner = $partnersByInstitutionId->get($row['institution_id']);
-                $calculatedPrice = new OutsourceOfferPriceCalculator($assignment, $partner)->getPrice();
+
+                $offerPrice = match ($priceMode) {
+                    OutsourceRequestPriceMode::PriceListBased => new OutsourceOfferPriceCalculator($assignment, $partner)->getPrice(),
+                    OutsourceRequestPriceMode::FixedPrice => $outsourceRequest->price,
+                    OutsourceRequestPriceMode::AskForPrice => null,
+                };
 
                 $notified = !$isCascade || $index === 0;
-
+                /** @var OutsourceOffer $offer */
                 $offer = $outsourceRequest->offers()->create([
                     'institution_id' => $row['institution_id'],
                     'status' => $notified
@@ -201,8 +253,7 @@ class OutsourceRequestController extends Controller
                         !$isCascade => $outsourceRequest->created_at->copy()->addMinutes($outsourceRequest->reaction_time_minutes),
                         default => null,
                     },
-                    'calculated_price' => $calculatedPrice,
-                    'proposed_price' => $outsourceRequest->fixed_price,
+                    'price' => $offerPrice,
                 ]);
 
                 if ($notified) {
@@ -328,81 +379,6 @@ class OutsourceRequestController extends Controller
 
         try {
             $this->stateMachine->selectOffer($outsourceRequest, $offer, $rejectionComments);
-        } catch (DomainException $exception) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
-        }
-
-        return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load($this->relationsToLoad())
-        );
-    }
-
-    /**
-     * @throws AuthorizationException
-     */
-    #[OA\Post(
-        path: '/outsource-requests/{id}/accept',
-        summary: 'Accept an outsource request',
-        requestBody: new OAH\RequestBody(OutsourceRequestAcceptRequest::class),
-        tags: ['Outsource requests'],
-        parameters: [
-            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
-        ],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: OutsourceRequestResource::class, description: 'Accepted outsource request')]
-    public function accept(OutsourceRequestAcceptRequest $request, string $id): OutsourceRequestResource
-    {
-        /** @var OutsourceRequest $outsourceRequest */
-        $outsourceRequest = $this->getBaseQuery()->findOrFail($id);
-        $this->authorize('accept', $outsourceRequest);
-
-        /** @var OutsourceOffer $offer */
-        $offer = $outsourceRequest->offers()
-            ->firstWhere('institution_id', Auth::user()->institutionId);
-
-        $validated = $request->validated();
-        try {
-            $this->stateMachine->acceptOffer(
-                $offer,
-                isset($validated['proposed_price']) ? (float)$validated['proposed_price'] : null,
-                $validated['response_comment'] ?? null,
-            );
-        } catch (DomainException $exception) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
-        }
-
-        return OutsourceRequestResource::make(
-            $outsourceRequest->fresh()->load($this->relationsToLoad())
-        );
-    }
-
-    /**
-     * @throws AuthorizationException
-     */
-    #[OA\Post(
-        path: '/outsource-requests/{id}/decline',
-        summary: 'Decline an outsource request',
-        requestBody: new OAH\RequestBody(OutsourceRequestDeclineRequest::class),
-        tags: ['Outsource requests'],
-        parameters: [
-            new OA\PathParameter(name: 'id', schema: new OA\Schema(type: 'string', format: 'uuid')),
-        ],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: OutsourceRequestResource::class, description: 'Declined outsource request')]
-    public function decline(OutsourceRequestDeclineRequest $request, string $id): OutsourceRequestResource
-    {
-        /** @var OutsourceRequest $outsourceRequest */
-        $outsourceRequest = $this->getBaseQuery()->findOrFail($id);
-        $this->authorize('decline', $outsourceRequest);
-
-        /** @var OutsourceOffer $offer */
-        $offer = $outsourceRequest->offers
-            ->firstWhere('institution_id', Auth::user()->institutionId);
-
-        try {
-            $this->stateMachine->declineOffer($offer, $request->validated('decline_comment'));
         } catch (DomainException $exception) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, $exception->getMessage());
         }
