@@ -13,7 +13,6 @@ use App\Enums\PrivilegeKey;
 use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
-use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\InstitutionPartner;
@@ -183,10 +182,9 @@ class OutsourceRequestControllerTest extends TestCase
     public function test_translation_agency_user_cannot_create_request(): void
     {
         // GIVEN
-        $ownerUser = $this->createOwnerUser();
-        Institution::query()
-            ->whereKey($ownerUser->institution['id'])
-            ->update(['type' => InstitutionType::TranslationAgency]);
+        $ownerUser = InstitutionUser::factory()
+            ->setInstitution(['type' => InstitutionType::TranslationAgency->value])
+            ->createWithPrivileges(PrivilegeKey::ManageOutsourceRequest);
         $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $this->createInstitutionPartner($ownerUser, $recipientUser);

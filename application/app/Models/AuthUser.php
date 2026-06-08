@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\PrivilegeKey;
+use App\Enums\InstitutionType;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\Institution;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -15,10 +16,18 @@ use KeycloakAuthGuard\Models\JwtPayloadUser;
  */
 class AuthUser extends JwtPayloadUser
 {
+    public string $selectedInstitutionType;
+
     private bool|null $isVendor = null;
 
     private Vendor|null $vendor = null;
     private Institution|null $institution = null;
+
+    public function __construct(array $jwtPayloadData)
+    {
+        parent::__construct($jwtPayloadData);
+        $this->selectedInstitutionType = $jwtPayloadData['selectedInstitution']['type'] ?? InstitutionType::Institution->value;
+    }
 
     public function institution(): Institution|null
     {
@@ -32,7 +41,7 @@ class AuthUser extends JwtPayloadUser
 
     public function belongsToTranslationAgency(): bool
     {
-        return $this->institution()?->isTranslationAgency() === true;
+        return InstitutionType::tryFrom($this->selectedInstitutionType) === InstitutionType::TranslationAgency;
     }
 
     public function isVendor(): bool
