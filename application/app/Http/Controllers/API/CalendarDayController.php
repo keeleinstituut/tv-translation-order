@@ -116,7 +116,7 @@ class CalendarDayController extends Controller
 
     private function clientView(string $institutionId, string $actingUserId, Carbon $date): CalendarClientDayResource
     {
-        $unassignedProjects = $this->getClientUnassignedProjects($actingUserId, $date);
+        $unassignedProjects = $this->getUnassignedProjects($date, $actingUserId);
 
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
@@ -162,11 +162,13 @@ class CalendarDayController extends Controller
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
         $data = $this->dataLoader->loadFull($institutionId, $dayStart, $dayEnd);
+        $unassignedProjects = $this->getUnassignedProjects($date);
 
         if ($data->importedCalendarVendorIds->isEmpty()) {
             return CalendarDayProjectManagerResource::make([
                 'available_slots' => [],
                 'vendors' => [],
+                'unassigned_projects' => $unassignedProjects,
             ]);
         }
 
@@ -189,13 +191,14 @@ class CalendarDayController extends Controller
         return CalendarDayProjectManagerResource::make([
             'available_slots' => $availableSlots,
             'vendors' => $data->buildExpandedVendors($entriesByVendor),
+            'unassigned_projects' => $unassignedProjects,
         ]);
     }
 
-    private function getClientUnassignedProjects(string $institutionUserId, Carbon $date): Collection
+    private function getUnassignedProjects(Carbon $date, string|null $clientInstitutionUserId = null): Collection
     {
         return Project::withGlobalScope('policy', ProjectPolicy::scope())
-            ->where('client_institution_user_id', $institutionUserId)
+            ->when($clientInstitutionUserId, fn ($q) => $q->where('client_institution_user_id', $clientInstitutionUserId))
             ->where('is_calendar_project', true)
             ->whereNotNull('event_start_at')
             ->whereNotNull('event_end_at')
