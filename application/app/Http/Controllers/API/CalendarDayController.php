@@ -17,7 +17,7 @@ use App\Policies\ProjectPolicy;
 use App\Policies\VendorCalendarEntryPolicy;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
-use App\Services\Calendar\SlotDiscretizationService;
+use App\Services\Calendar\AvailableSlotsBuilder;
 use App\Services\Calendar\VendorsAvailabilityService;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -33,7 +33,7 @@ class CalendarDayController extends Controller
     public function __construct(
         private readonly CalendarDataLoader         $dataLoader,
         private readonly VendorsAvailabilityService $availabilityService,
-        private readonly SlotDiscretizationService  $discretizationService,
+        private readonly AvailableSlotsBuilder      $slotsBuilder,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
     )
@@ -136,8 +136,7 @@ class CalendarDayController extends Controller
         $excludeVendorIds = $data->vendorIdsWithEmergencySchedule();
         $vendorWindows = $this->availabilityService->computeVendorWindows($data, $date, $excludeVendorIds);
         $vendorFreeIntervals = $this->availabilityService->computeFreeIntervals($data, $date, $vendorWindows, $excludeVendorIds);
-        $perLanguageIntervals = $this->discretizationService->fanOutByLanguage($vendorFreeIntervals, $data);
-        $availableSlots = $this->discretizationService->discretizeLanguageSlots($perLanguageIntervals);
+        $availableSlots = $this->slotsBuilder->languageTaggedFreeSlots($vendorFreeIntervals, $data);
 
         $entries = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
             ->overlapping($dayStart, $dayEnd)
@@ -173,7 +172,7 @@ class CalendarDayController extends Controller
         }
 
         $vendorFreeIntervals = $this->availabilityService->computeFreeIntervals($data, $date);
-        $availableSlots = $this->discretizationService->discretizeWithVendorIds($vendorFreeIntervals);
+        $availableSlots = $this->slotsBuilder->vendorTaggedFreeSlots($vendorFreeIntervals);
         $entriesByVendor = $data->internalVendorIds->isNotEmpty()
             ? VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
                 ->whereIn('vendor_id', $data->internalVendorIds)

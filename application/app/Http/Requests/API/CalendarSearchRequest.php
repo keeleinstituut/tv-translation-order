@@ -11,7 +11,7 @@ class CalendarSearchRequest extends FormRequest
         return [
             'language_id' => ['required', 'uuid'],
             'datetime' => ['nullable', 'date', 'after_or_equal:now'],
-            'duration_minutes' => ['nullable', 'integer', 'min:15', 'max:480'],
+            'duration_minutes' => ['nullable', 'integer', 'min:10', 'max:480'],
         ];
     }
 }
