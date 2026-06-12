@@ -17,6 +17,7 @@ use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -326,6 +327,7 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    ProcessCandidatesNotificationCycle::dispatchAfterResponse($assignment);
                 }
             );
 
@@ -383,6 +385,7 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    ProcessCandidatesNotificationCycle::dispatchAfterResponse($assignment);
                 }
             );
 
