@@ -197,8 +197,10 @@ class ProjectObserver
             } elseif ($project->status === ProjectStatus::Registered) {
                 $this->publishProjectRegisteredEmailNotification($project);
             }
+        }
 
-
+        if ($project->wasChanged(['deadline_at', 'event_start_at', 'event_end_at'])) {
+            $this->publishProjectUpdatedEmailNotification($project);
         }
     }
 
@@ -411,6 +413,28 @@ class ProjectObserver
                 $this->notificationPublisher->publishEmailNotification(
                     EmailNotificationMessage::make([
                         'notification_type' => NotificationType::ProjectRegistered,
+                        'receiver_email' => $receiver->email,
+                        'receiver_name' => $receiver->getUserFullName(),
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
+        }
+    }
+
+    private function publishProjectUpdatedEmailNotification(Project $project): void
+    {
+        $receiver = $project->clientInstitutionUser;
+        if (filled($receiver?->email)) {
+            DB::afterCommit(function () use ($project, $receiver) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectUpdated,
                         'receiver_email' => $receiver->email,
                         'receiver_name' => $receiver->getUserFullName(),
                         'variables' => [
