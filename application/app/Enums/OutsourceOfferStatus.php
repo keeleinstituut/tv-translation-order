@@ -11,4 +11,5 @@ enum OutsourceOfferStatus: string
     case RequestExpired = 'REQUEST_EXPIRED';
     case OfferAccepted = 'OFFER_ACCEPTED';
     case OfferDeclined = 'OFFER_DECLINED';
+    case RequestCancelled = 'REQUEST_CANCELLED';
 }

@@ -76,7 +76,7 @@ class AssignmentAddCandidatesRequest extends FormRequest
         return [
             new OutsourcedAssignmentCandidateInstitutionRule(
                 $this->route('id'),
-                'Kandidaatide haldamiseks eemaldage esmalt päringu.'
+                'Teostajate haldamiseks eemaldage esmalt päring'
             ),
         ];
     }

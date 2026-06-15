@@ -426,7 +426,7 @@ class OutsourceRequestStateMachineTest extends TestCase
 
     // --- cancelRequest ---
 
-    public function test_cancel_request_leaves_offers_unchanged(): void
+    public function test_cancel_request_transitions_active_offers_to_request_cancelled(): void
     {
         // GIVEN
         $stateMachine = app(OutsourceRequestStateMachine::class);
@@ -447,7 +447,7 @@ class OutsourceRequestStateMachineTest extends TestCase
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::RequestDeclined,
         ]);
-        $rejected = $this->createOffer([
+        $offerDeclined = $this->createOffer([
             'outsource_request_id' => $request->id,
             'status' => OutsourceOfferStatus::OfferDeclined,
         ]);
@@ -457,11 +457,11 @@ class OutsourceRequestStateMachineTest extends TestCase
 
         // THEN
         $this->assertSame(OutsourceRequestStatus::Cancelled, $request->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestSent, $notified->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $accepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::OfferDeclined, $offerDeclined->fresh()->status);
     }
 
     private function createRequest(array $overrides = []): OutsourceRequest

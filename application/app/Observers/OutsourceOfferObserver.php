@@ -36,6 +36,7 @@ readonly class OutsourceOfferObserver
             OutsourceOfferStatus::RequestExpired => $this->publishRequestExpiredEmailNotification($offer),
             OutsourceOfferStatus::OfferAccepted => $this->publishOfferAcceptedEmailNotification($offer),
             OutsourceOfferStatus::OfferDeclined => $this->publishOfferDeclinedEmailNotification($offer),
+            OutsourceOfferStatus::RequestCancelled => $this->publishRequestCancelledEmailNotification($offer),
             default => null,
         };
 
@@ -192,6 +193,41 @@ readonly class OutsourceOfferObserver
                     ],
                 ]),
                 $institutionId
+            );
+        });
+    }
+
+    private function publishRequestCancelledEmailNotification(OutsourceOffer $offer): void
+    {
+        /**
+         * For the OutsourceOfferStatus::OfferAccepted email notifications are handled in ProjectObserver.
+         * @see ProjectObserver::publishProjectCancelledEmailNotificationForAcceptedOffer
+         */
+        $priorStatus = $offer->getOriginal('status');
+        if ($priorStatus !== OutsourceOfferStatus::RequestSent) {
+            return;
+        }
+
+        $institution = $offer->institution;
+        $request = $offer->outsourceRequest;
+        $assignment = $request->assignment;
+
+        DB::afterCommit(function () use ($institution, $assignment, $request) {
+            if (empty($institution->email)) {
+                return;
+            }
+
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::OutsourceRequestCancelled,
+                    'receiver_email' => $institution->email,
+                    'receiver_name' => $institution->name,
+                    'variables' => [
+                        'assignment' => $assignment->only(['ext_id']),
+                        'request' => $request->only(['cancellation_reason']),
+                    ],
+                ]),
+                $institution->id
             );
         });
     }
