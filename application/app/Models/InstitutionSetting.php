@@ -22,23 +22,23 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read ClassifierValue $defaultProjectType
  * @property-read Institution $institution
- * @method static Builder<static>|CalendarSetting newModelQuery()
- * @method static Builder<static>|CalendarSetting newQuery()
- * @method static Builder<static>|CalendarSetting query()
- * @method static Builder<static>|CalendarSetting whereCreatedAt($value)
- * @method static Builder<static>|CalendarSetting whereDefaultProjectTypeId($value)
- * @method static Builder<static>|CalendarSetting whereId($value)
- * @method static Builder<static>|CalendarSetting whereInstitutionId($value)
- * @method static Builder<static>|CalendarSetting whereReactionTimeMinutes($value)
- * @method static Builder<static>|CalendarSetting whereUpdatedAt($value)
+ * @method static Builder<static>|InstitutionSetting newModelQuery()
+ * @method static Builder<static>|InstitutionSetting newQuery()
+ * @method static Builder<static>|InstitutionSetting query()
+ * @method static Builder<static>|InstitutionSetting whereCreatedAt($value)
+ * @method static Builder<static>|InstitutionSetting whereDefaultProjectTypeId($value)
+ * @method static Builder<static>|InstitutionSetting whereId($value)
+ * @method static Builder<static>|InstitutionSetting whereInstitutionId($value)
+ * @method static Builder<static>|InstitutionSetting whereReactionTimeMinutes($value)
+ * @method static Builder<static>|InstitutionSetting whereUpdatedAt($value)
  * @mixin \Eloquent
  */
-class CalendarSetting extends Model
+class InstitutionSetting extends Model
 {
     use HasFactory;
     use HasUuids;
 
-    protected $table = 'calendar_settings';
+    protected $table = 'institution_settings';
 
     protected $guarded = [];
 

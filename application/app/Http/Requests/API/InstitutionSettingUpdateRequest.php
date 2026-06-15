@@ -22,7 +22,7 @@ use OpenApi\Attributes as OA;
         ]
     )
 )]
-class CalendarSettingUpdateRequest extends FormRequest
+class InstitutionSettingUpdateRequest extends FormRequest
 {
     /**
      * @return array<string, ValidationRule|array|string>
