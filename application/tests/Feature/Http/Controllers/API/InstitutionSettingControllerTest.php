@@ -119,6 +119,75 @@ class InstitutionSettingControllerTest extends TestCase
             ]);
     }
 
+    public function test_store_persists_auto_acceptance_thresholds(): void
+    {
+        $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
+            ->putJson('/api/institution/settings', [
+                'verbal_auto_acceptance_threshold_days' => 7,
+                'non_verbal_auto_acceptance_threshold_days' => 14,
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment([
+                'verbal_auto_acceptance_threshold_days' => 7,
+                'non_verbal_auto_acceptance_threshold_days' => 14,
+            ]);
+
+        $this->assertDatabaseHas('institution_settings', [
+            'institution_id' => $this->institution->id,
+            'verbal_auto_acceptance_threshold_days' => 7,
+            'non_verbal_auto_acceptance_threshold_days' => 14,
+        ]);
+    }
+
+    public function test_store_allows_null_to_disable_auto_acceptance(): void
+    {
+        InstitutionSetting::create([
+            'institution_id' => $this->institution->id,
+            'reaction_time_minutes' => 30,
+            'buffer_before_minutes' => 0,
+            'buffer_after_minutes' => 0,
+            'verbal_auto_acceptance_threshold_days' => 7,
+        ]);
+
+        $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
+            ->putJson('/api/institution/settings', [
+                'verbal_auto_acceptance_threshold_days' => null,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonFragment([
+                'verbal_auto_acceptance_threshold_days' => null,
+            ]);
+
+        $this->assertDatabaseHas('institution_settings', [
+            'institution_id' => $this->institution->id,
+            'verbal_auto_acceptance_threshold_days' => null,
+        ]);
+    }
+
+    public function test_store_validates_auto_acceptance_threshold_below_min(): void
+    {
+        $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
+            ->putJson('/api/institution/settings', [
+                'verbal_auto_acceptance_threshold_days' => 0,
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('verbal_auto_acceptance_threshold_days');
+    }
+
+    public function test_store_validates_auto_acceptance_threshold_above_max(): void
+    {
+        $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
+            ->putJson('/api/institution/settings', [
+                'non_verbal_auto_acceptance_threshold_days' => 366,
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('non_verbal_auto_acceptance_threshold_days');
+    }
+
     public function test_store_returns_forbidden_without_privilege(): void
     {
         $accessToken = AuthHelpers::generateAccessToken([

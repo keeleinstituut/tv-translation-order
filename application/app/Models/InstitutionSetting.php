@@ -17,6 +17,8 @@ use Illuminate\Support\Carbon;
  * @property int $reaction_time_minutes
  * @property int $buffer_before_minutes
  * @property int $buffer_after_minutes
+ * @property int|null $verbal_auto_acceptance_threshold_days
+ * @property int|null $non_verbal_auto_acceptance_threshold_days
  * @property string|null $default_project_type_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -46,6 +48,8 @@ class InstitutionSetting extends Model
         'reaction_time_minutes' => 'integer',
         'buffer_before_minutes' => 'integer',
         'buffer_after_minutes' => 'integer',
+        'verbal_auto_acceptance_threshold_days' => 'integer',
+        'non_verbal_auto_acceptance_threshold_days' => 'integer',
     ];
 
     public function institution(): BelongsTo
