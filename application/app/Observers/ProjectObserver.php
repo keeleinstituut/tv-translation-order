@@ -112,6 +112,7 @@ class ProjectObserver
                 $project->accepted_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::Corrected) {
                 $project->corrected_at = Carbon::now();
+                $project->auto_acceptance_notification_sent_at = null;
             } elseif ($project->status === ProjectStatus::Rejected) {
                 $project->rejected_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::SubmittedToClient) {

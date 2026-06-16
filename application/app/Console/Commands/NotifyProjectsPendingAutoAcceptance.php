@@ -38,7 +38,7 @@ class NotifyProjectsPendingAutoAcceptance extends Command
         }
 
         $query = Project::query()
-            ->where('status', ProjectStatus::SubmittedToClient)
+            ->whereIn('status', [ProjectStatus::SubmittedToClient, ProjectStatus::Corrected])
             ->whereIn('institution_id', $settingsByInstitution->keys())
             ->whereNull('auto_acceptance_notification_sent_at');
 
@@ -47,7 +47,7 @@ class NotifyProjectsPendingAutoAcceptance extends Command
             $setting = $settingsByInstitution->get($project->institution_id);
 
             if (empty($setting)) {
-                return;
+                continue;
             }
 
             $thresholdDays = ClassifierValue::isVerbalProjectType($project->type_classifier_value_id)
@@ -55,11 +55,19 @@ class NotifyProjectsPendingAutoAcceptance extends Command
                 : $setting->non_verbal_auto_acceptance_threshold_days;
 
             if ($thresholdDays === null) {
-                return;
+                continue;
             }
 
-            if ($project->submitted_to_client_review_at > Carbon::now()->subDays($thresholdDays)) {
-                return;
+            // We want to send the notification 24 hours before the threshold date
+            $thresholdDays = max(0, $thresholdDays - 1);
+            $threshold = $thresholdDays > 0 ? Carbon::now()->subDays($thresholdDays) : Carbon::now();
+
+            if ($project->submitted_to_client_review_at > $threshold) {
+                continue;
+            }
+
+            if (filled($project->corrected_at) && $project->corrected_at > $threshold) {
+                continue;
             }
 
 

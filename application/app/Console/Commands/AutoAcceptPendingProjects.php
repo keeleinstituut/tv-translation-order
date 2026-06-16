@@ -25,17 +25,17 @@ class AutoAcceptPendingProjects extends Command
     public function handle(): void
     {
         $query = Project::query()
-            ->where('status', ProjectStatus::SubmittedToClient)
+            ->whereIn('status', [ProjectStatus::SubmittedToClient, ProjectStatus::Corrected])
             ->whereNotNull('auto_acceptance_notification_sent_at')
             ->where('auto_acceptance_notification_sent_at', '<=', Carbon::now()->subDay());
 
         foreach ($query->cursor() as $project) {
             try {
                 $this->autoAccept($project);
-            } catch (Throwable $exception) {
+            } catch (Throwable $e) {
                 Log::error('Failed to auto-accept project', [
                     'project_id' => $project->id,
-                    'exception' => $exception->getMessage(),
+                    'exception' => $e->getMessage(),
                 ]);
             }
         }
@@ -59,7 +59,7 @@ class AutoAcceptPendingProjects extends Command
             ->first(fn($task) => data_get($task, 'variables.task_type') === TaskType::ClientReview->value);
 
         if (empty($task) || empty(data_get($task, 'task.id'))) {
-            throw new RuntimeException("Client review task not found for project $project->id");
+            throw new RuntimeException("Client review task not found for project: $project->id workflow ID: $project->workflow_instance_ref");
         }
 
         return $task;
