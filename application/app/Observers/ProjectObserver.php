@@ -431,13 +431,17 @@ class ProjectObserver
     private function publishProjectUpdatedEmailNotification(Project $project): void
     {
         $receiver = $project->clientInstitutionUser;
-        if (filled($receiver?->email)) {
-            DB::afterCommit(function () use ($project, $receiver) {
+
+        $receiverEmail = $receiver?->email ?: $project->institution?->email;
+        $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
                 $this->notificationPublisher->publishEmailNotification(
                     EmailNotificationMessage::make([
                         'notification_type' => NotificationType::ProjectUpdated,
-                        'receiver_email' => $receiver->email,
-                        'receiver_name' => $receiver->getUserFullName(),
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
                         'variables' => [
                             'project' => $project->only([
                                 'ext_id'
