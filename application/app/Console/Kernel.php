@@ -53,14 +53,16 @@ class Kernel extends ConsoleKernel
             ->timezone($timezone)
             ->onOneServer()
             ->weekdays()
-            ->hourlyBetween(9, 17);
+            ->hourly()
+            ->between('09:00', '17:00');
 
         $schedule
             ->command(AutoAcceptPendingProjects::class)
             ->timezone($timezone)
             ->onOneServer()
             ->weekdays()
-            ->hourlyBetween(9, 17);
+            ->hourly()
+            ->between('09:00', '17:00');
     }
 
     /**

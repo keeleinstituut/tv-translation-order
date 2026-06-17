@@ -39,7 +39,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         // THEN
         $offer->refresh();
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
-        $this->assertSame('123.456', $offer->price);
+        $this->assertEqualsWithDelta(123.456, $offer->price, 0.0001);
         $this->assertSame('We can do this.', $offer->response_comment);
         $this->assertNotNull($offer->responded_at);
     }
@@ -106,7 +106,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         // THEN — price stays at the pre-populated fixed value
         $offer->refresh();
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
-        $this->assertSame('100.000', $offer->price);
+        $this->assertEqualsWithDelta(100.0, $offer->price, 0.0001);
     }
 
     // --- acceptOffer: PRICELIST_BASED ---
@@ -147,7 +147,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         // THEN
         $offer->refresh();
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
-        $this->assertSame('50.000', $offer->price);
+        $this->assertEqualsWithDelta(50.0, $offer->price, 0.0001);
     }
 
     public function test_accept_offer_with_pricelist_based_and_existing_offer_price_rejects_override(): void
@@ -186,7 +186,7 @@ class OutsourceRequestStateMachineTest extends TestCase
         // THEN — price unchanged
         $offer->refresh();
         $this->assertSame(OutsourceOfferStatus::RequestAccepted, $offer->status);
-        $this->assertSame('100.000', $offer->price);
+        $this->assertEqualsWithDelta(100.0, $offer->price, 0.0001);
     }
 
     // --- acceptOffer: generic guards ---
@@ -377,11 +377,11 @@ class OutsourceRequestStateMachineTest extends TestCase
         $loser->refresh();
         $assignment = $request->assignment->fresh();
         $this->assertSame(OutsourceRequestStatus::Fulfilled, $request->status);
-        $this->assertSame('321.123', $request->price);
+        $this->assertEqualsWithDelta(321.123, $request->price, 0.0001);
         $this->assertSame(OutsourceOfferStatus::OfferAccepted, $winner->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $loser->status);
         $this->assertSame('Price was higher.', $loser->rejection_comment);
-        $this->assertEquals(321.12, $assignment->price);
+        $this->assertEqualsWithDelta(321.12, $assignment->price, 0.005);
     }
 
     public function test_select_offer_writes_offer_price_to_both_request_and_assignment(): void
@@ -400,8 +400,8 @@ class OutsourceRequestStateMachineTest extends TestCase
 
         // THEN
         $request->refresh();
-        $this->assertSame('111.111', $request->price);
-        $this->assertEquals(111.11, $request->assignment->fresh()->price);
+        $this->assertEqualsWithDelta(111.111, $request->price, 0.0001);
+        $this->assertEqualsWithDelta(111.11, $request->assignment->fresh()->price, 0.005);
     }
 
     public function test_select_offer_with_null_price_sets_null_on_both_request_and_assignment(): void

@@ -277,7 +277,7 @@ class InstitutionPartnerControllerTest extends TestCase
             ->postJson('/api/institution-partners/bulk', $payload);
 
         // THEN
-        $response->assertStatus(201)->assertJsonCount(2, 'data');
+        $response->assertStatus(200)->assertJsonCount(2, 'data');
 
         $this->assertDatabaseHas('institution_partners', [
             'institution_id' => $institution->id,

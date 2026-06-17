@@ -5,13 +5,25 @@ namespace Tests\Feature\Console\Commands;
 use App\Enums\ProjectStatus;
 use App\Models\CachedEntities\Institution;
 use App\Models\Project;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AutoAcceptPendingProjectsTest extends TestCase
 {
-    private const CAMUNDA_BASE_URL = 'http://process-definition';
+    private string $camundaBaseUrl;
+
+    public function setUp(): void
+    {
+        parent::setUp();
+        $this->camundaBaseUrl = rtrim(env('CAMUNDA_API_URL', 'http://process-definition'), '/');
+
+        // Reset stubs so these take priority over the base TestCase setUp stubs.
+        // Http::fake() appends stubs; setUp's broad '/*' pattern would otherwise
+        // match before the test-specific ones, returning the wrong response.
+        Http::swap(new Factory());
+    }
 
     public function test_auto_accepts_project_warned_over_a_day_ago(): void
     {
@@ -65,24 +77,22 @@ class AutoAcceptPendingProjectsTest extends TestCase
      */
     private function fakeClientReviewThenEmptyWorkflow(): void
     {
-        $base = self::CAMUNDA_BASE_URL;
         $listCall = 0;
 
         Http::fake([
-            "$base/task/count" => Http::sequence()->push(['count' => 1])->push(['count' => 0]),
-            "$base/variable-instance*" => Http::sequence()
+            "$this->camundaBaseUrl/task/count" => Http::sequence()->push(['count' => 1])->push(['count' => 0]),
+            "$this->camundaBaseUrl/variable-instance*" => Http::sequence()
                 ->push([['executionId' => 'exec-1', 'name' => 'task_type', 'value' => 'CLIENT_REVIEW']])
                 ->push([]),
-            "$base/*" => function ($request) use (&$listCall) {
+            "$this->camundaBaseUrl/*" => function ($request) use (&$listCall) {
                 if (str_contains($request->url(), '/complete')) {
-                    return Http::response([], 200);
+                    return Http::response([]);
                 }
 
                 $listCall++;
 
                 return Http::response(
-                    $listCall === 1 ? [['id' => 'task-1', 'executionId' => 'exec-1']] : [],
-                    200
+                    $listCall === 1 ? [['id' => 'task-1', 'executionId' => 'exec-1']] : []
                 );
             },
         ]);
@@ -90,11 +100,9 @@ class AutoAcceptPendingProjectsTest extends TestCase
 
     private function fakeEmptyWorkflow(): void
     {
-        $base = self::CAMUNDA_BASE_URL;
-
         Http::fake([
-            "$base/task/count" => Http::response(['count' => 0], 200),
-            "$base/*" => Http::response([], 200),
+            "$this->camundaBaseUrl/task/count" => Http::response(['count' => 0]),
+            "$this->camundaBaseUrl/*" => Http::response([]),
         ]);
     }
 }
