@@ -112,6 +112,7 @@ class ProjectObserver
                 $project->accepted_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::Corrected) {
                 $project->corrected_at = Carbon::now();
+                $project->auto_acceptance_notification_sent_at = null;
             } elseif ($project->status === ProjectStatus::Rejected) {
                 $project->rejected_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::SubmittedToClient) {
@@ -197,8 +198,10 @@ class ProjectObserver
             } elseif ($project->status === ProjectStatus::Registered) {
                 $this->publishProjectRegisteredEmailNotification($project);
             }
+        }
 
-
+        if ($project->wasChanged(['deadline_at', 'event_start_at', 'event_end_at'])) {
+            $this->publishProjectUpdatedEmailNotification($project);
         }
     }
 
@@ -413,6 +416,32 @@ class ProjectObserver
                         'notification_type' => NotificationType::ProjectRegistered,
                         'receiver_email' => $receiver->email,
                         'receiver_name' => $receiver->getUserFullName(),
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
+        }
+    }
+
+    private function publishProjectUpdatedEmailNotification(Project $project): void
+    {
+        $receiver = $project->clientInstitutionUser;
+
+        $receiverEmail = $receiver?->email ?: $project->institution?->email;
+        $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectUpdated,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
                         'variables' => [
                             'project' => $project->only([
                                 'ext_id'

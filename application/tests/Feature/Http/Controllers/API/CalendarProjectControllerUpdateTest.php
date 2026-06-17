@@ -11,7 +11,7 @@ use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\CalendarSetting;
+use App\Models\InstitutionSetting;
 use App\Models\Assignment;
 use App\Models\Candidate;
 use App\Models\VendorSkillLanguage;
@@ -20,7 +20,7 @@ use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Carbon;
@@ -44,12 +44,12 @@ class CalendarProjectControllerUpdateTest extends TestCase
     {
         parent::setUp();
         $this->seed(ClassifiersAndProjectTypesSeeder::class);
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
 
         $this->fakeCamundaWithActiveTasks();
 
         $this->institution = Institution::factory()->create();
-        CalendarSetting::create([
+        InstitutionSetting::create([
             'institution_id' => $this->institution->id,
             'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 0,

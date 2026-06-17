@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\CandidateStatus;
 use App\Jobs\AutoDeclineVendorTaskProposal;
 use App\Jobs\ProcessCandidatesNotificationCycle;
-use App\Models\CalendarSetting;
+use App\Models\InstitutionSetting;
 use App\Models\Candidate;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -21,7 +21,7 @@ class ExpireOverdueProposals extends Command
      */
     public function handle(): void
     {
-        $reactionTimes = CalendarSetting::pluck('reaction_time_minutes', 'institution_id');
+        $reactionTimes = InstitutionSetting::pluck('reaction_time_minutes', 'institution_id');
 
         $candidates = Candidate::query()
             ->where('status', CandidateStatus::SubmittedToVendor)

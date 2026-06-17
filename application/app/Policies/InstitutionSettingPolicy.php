@@ -5,7 +5,7 @@ namespace App\Policies;
 use App\Enums\PrivilegeKey;
 use App\Models\AuthUser;
 
-class CalendarSettingPolicy
+class InstitutionSettingPolicy
 {
     public function viewAny(AuthUser $user): bool
     {
@@ -17,9 +17,9 @@ class CalendarSettingPolicy
         return $user->hasPrivilege(PrivilegeKey::EditInstitution);
     }
 
-    public static function scope(): Scope\CalendarSettingScope
+    public static function scope(): Scope\InstitutionSettingScope
     {
-        return new Scope\CalendarSettingScope();
+        return new Scope\InstitutionSettingScope();
     }
 }
 
@@ -32,7 +32,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope as IScope;
 use Illuminate\Support\Facades\Auth;
 
-class CalendarSettingScope implements IScope
+class InstitutionSettingScope implements IScope
 {
     public function apply(Builder $builder, Model $model): void
     {

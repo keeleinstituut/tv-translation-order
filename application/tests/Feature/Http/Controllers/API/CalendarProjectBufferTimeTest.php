@@ -9,7 +9,7 @@ use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
-use App\Models\CalendarSetting;
+use App\Models\InstitutionSetting;
 use App\Models\Candidate;
 use App\Models\VendorSkillLanguage;
 use App\Models\Project;
@@ -17,7 +17,7 @@ use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +39,7 @@ class CalendarProjectBufferTimeTest extends TestCase
     {
         parent::setUp();
         $this->seed(ClassifiersAndProjectTypesSeeder::class);
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
 
         $this->institution = Institution::factory()->create();
         $this->destinationLanguage = ClassifierValue::where('type', ClassifierValueType::Language)
@@ -326,7 +326,7 @@ class CalendarProjectBufferTimeTest extends TestCase
 
     private function setBuffer(int $before, int $after): void
     {
-        CalendarSetting::updateOrCreate(
+        InstitutionSetting::updateOrCreate(
             ['institution_id' => $this->institution->id],
             [
                 'buffer_before_minutes' => $before,

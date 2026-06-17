@@ -2,7 +2,9 @@
 
 namespace App\Console;
 
+use App\Console\Commands\AutoAcceptPendingProjects;
 use App\Console\Commands\ExpireOverdueProposals;
+use App\Console\Commands\NotifyProjectsPendingAutoAcceptance;
 use App\Console\Commands\NotifyThatProjectDeadlineIsReached;
 use App\Console\Commands\NotifyThatProjectTimeslotPassedWithNoAssignee;
 use App\Console\Commands\SweepExpiredOutsourceOffers;
@@ -45,6 +47,22 @@ class Kernel extends ConsoleKernel
             ->command(SweepExpiredOutsourceOffers::class)
             ->onOneServer()
             ->everyFiveMinutes();
+
+        $schedule
+            ->command(NotifyProjectsPendingAutoAcceptance::class)
+            ->timezone($timezone)
+            ->onOneServer()
+            ->weekdays()
+            ->hourly()
+            ->between('09:00', '17:00');
+
+        $schedule
+            ->command(AutoAcceptPendingProjects::class)
+            ->timezone($timezone)
+            ->onOneServer()
+            ->weekdays()
+            ->hourly()
+            ->between('09:00', '17:00');
     }
 
     /**
