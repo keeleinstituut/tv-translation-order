@@ -39,7 +39,9 @@ class NotifyProjectsPendingAutoAcceptance extends Command
         $query = Project::query()
             ->whereIn('status', [ProjectStatus::SubmittedToClient, ProjectStatus::Corrected])
             ->whereIn('institution_id', $settingsByInstitution->keys())
-            ->whereNull('auto_acceptance_notification_sent_at');
+            ->whereNull('auto_acceptance_notification_sent_at')
+            ->whereNotNull('submitted_to_client_review_at')
+            ->orderBy('submitted_to_client_review_at');
 
         foreach ($query->cursor() as $project) {
             /** @var InstitutionSetting|null $setting */
