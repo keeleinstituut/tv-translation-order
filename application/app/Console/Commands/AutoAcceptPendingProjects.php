@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\ProjectStatus;
 use App\Enums\TaskType;
 use App\Jobs\Workflows\TrackProjectStatus;
+use App\Models\InstitutionSetting;
 use App\Models\Project;
 use App\Services\Workflows\WorkflowService;
 use Illuminate\Console\Command;
@@ -24,12 +25,24 @@ class AutoAcceptPendingProjects extends Command
      */
     public function handle(): void
     {
+        $settingsByInstitution = InstitutionSetting::query()
+            ->select(['institution_id', 'verbal_auto_acceptance_threshold_days', 'non_verbal_auto_acceptance_threshold_days'])
+            ->get()
+            ->keyBy('institution_id');
+
         $query = Project::query()
             ->whereIn('status', [ProjectStatus::SubmittedToClient, ProjectStatus::Corrected])
             ->whereNotNull('auto_acceptance_notification_sent_at')
             ->where('auto_acceptance_notification_sent_at', '<=', Carbon::now()->subDay());
 
         foreach ($query->cursor() as $project) {
+            /** @var InstitutionSetting|null $setting */
+            $setting = $settingsByInstitution->get($project->institution_id);
+
+            if (empty($setting) || $setting->autoAcceptanceThresholdDaysFor($project->type_classifier_value_id) === null) {
+                continue;
+            }
+
             try {
                 $this->autoAccept($project);
             } catch (Throwable $e) {

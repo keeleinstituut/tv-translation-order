@@ -61,4 +61,11 @@ class InstitutionSetting extends Model
     {
         return $this->belongsTo(ClassifierValue::class);
     }
+
+    public function autoAcceptanceThresholdDaysFor(?string $typeClassifierValueId): ?int
+    {
+        return ClassifierValue::isVerbalProjectType($typeClassifierValueId)
+            ? $this->verbal_auto_acceptance_threshold_days
+            : $this->non_verbal_auto_acceptance_threshold_days;
+    }
 }

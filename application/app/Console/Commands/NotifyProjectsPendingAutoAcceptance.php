@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Enums\ProjectStatus;
-use App\Models\CachedEntities\ClassifierValue;
 use App\Models\InstitutionSetting;
 use App\Models\Project;
 use Illuminate\Console\Command;
@@ -50,9 +49,7 @@ class NotifyProjectsPendingAutoAcceptance extends Command
                 continue;
             }
 
-            $thresholdDays = ClassifierValue::isVerbalProjectType($project->type_classifier_value_id)
-                ? $setting->verbal_auto_acceptance_threshold_days
-                : $setting->non_verbal_auto_acceptance_threshold_days;
+            $thresholdDays = $setting->autoAcceptanceThresholdDaysFor($project->type_classifier_value_id);
 
             if ($thresholdDays === null) {
                 continue;
