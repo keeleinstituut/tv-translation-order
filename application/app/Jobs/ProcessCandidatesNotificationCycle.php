@@ -28,6 +28,12 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
 
     public const int DEFAULT_REACTION_TIME_MINUTES = 30;
 
+    /**
+     * Delete the job if its models no longer exist.
+     */
+    public bool $deleteWhenMissingModels = true;
+
+
     public function __construct(private readonly Assignment $assignment)
     {
     }

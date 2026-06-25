@@ -35,7 +35,7 @@ readonly class OutsourceRequestObserver
 
             // We need to update institution_id for the task that belongs to the shared assignment
             SyncWorkflowVariables::dispatchSync($request->assignment);
-
+            // Bulk update is not used here to fire observer events
             $request->offers()
                 ->whereIn('status', [
                     OutsourceOfferStatus::RequestPending,

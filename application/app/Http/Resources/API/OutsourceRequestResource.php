@@ -60,7 +60,10 @@ class OutsourceRequestResource extends JsonResource
             'offers' => $this->whenLoaded('offers', fn() =>
                 $this->visibleOffers($request)->map(fn($offer) => OutsourceOfferResource::make($offer))
             ),
-            'media' => $this->whenLoaded('media', fn() => MediaResource::collection($this->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION))),
+            'media' => $this->when(
+                $this->status !== OutsourceRequestStatus::Cancelled,
+                $this->whenLoaded('media', fn() => MediaResource::collection($this->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)))
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

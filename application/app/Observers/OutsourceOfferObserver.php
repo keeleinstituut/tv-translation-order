@@ -209,22 +209,22 @@ readonly class OutsourceOfferObserver
         }
 
         $institution = $offer->institution;
-        $request = $offer->outsourceRequest;
-        $assignment = $request->assignment;
+        $requestCancellationReason = $offer->outsourceRequest?->only(['cancellation_reason']);
+        $assignmentExtId = $offer->outsourceRequest?->assignment?->only(['ext_id']);
 
-        DB::afterCommit(function () use ($institution, $assignment, $request) {
-            if (empty($institution->email)) {
-                return;
-            }
+        if (empty($institution->email) || empty($assignmentExtId)) {
+            return;
+        }
 
+        DB::afterCommit(function () use ($institution, $assignmentExtId, $requestCancellationReason) {
             $this->notificationPublisher->publishEmailNotification(
                 EmailNotificationMessage::make([
                     'notification_type' => NotificationType::OutsourceRequestCancelled,
                     'receiver_email' => $institution->email,
                     'receiver_name' => $institution->name,
                     'variables' => [
-                        'assignment' => $assignment->only(['ext_id']),
-                        'request' => $request->only(['cancellation_reason']),
+                        'assignment' => $assignmentExtId,
+                        'request' => $requestCancellationReason,
                     ],
                 ]),
                 $institution->id

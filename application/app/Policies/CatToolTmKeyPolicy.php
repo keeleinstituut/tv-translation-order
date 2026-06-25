@@ -3,9 +3,11 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\Assignment;
 use App\Models\AuthUser;
 use App\Models\CatToolTmKey;
 use App\Models\SubProject;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 
 class CatToolTmKeyPolicy
@@ -16,7 +18,7 @@ class CatToolTmKeyPolicy
      */
     public function viewAny(AuthUser $user, SubProject $subProject): bool
     {
-        return Gate::allows('update', [$subProject->project]);
+        return Gate::allows('viewCatToolJobs', $subProject);
     }
 
     /**
