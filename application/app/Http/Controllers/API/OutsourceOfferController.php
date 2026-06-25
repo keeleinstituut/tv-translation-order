@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\OutsourceOfferStatus;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\OutsourceOfferListRequest;
@@ -139,7 +140,10 @@ class OutsourceOfferController extends Controller
     public function show(string $id): OutsourceOfferResource
     {
         /** @var OutsourceOffer $offer */
-        $offer = $this->getBaseQuery()->with($this->relationsToLoad())->findOrFail($id);
+        $offer = $this->getBaseQuery()
+            ->with($this->relationsToLoad())
+            ->findOrFail($id);
+
         $this->authorize('view', $offer);
 
         return OutsourceOfferResource::make($offer);
@@ -211,7 +215,8 @@ class OutsourceOfferController extends Controller
     private function getBaseQuery(): Builder
     {
         return OutsourceOffer::query()
-            ->withGlobalScope('policy', OutsourceOfferPolicy::scope());
+            ->withGlobalScope('policy', OutsourceOfferPolicy::scope())
+            ->whereNot('status', OutsourceOfferStatus::RequestPending);
     }
 
     /**

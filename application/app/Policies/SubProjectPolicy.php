@@ -77,6 +77,16 @@ class SubProjectPolicy
             $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
+    public function viewCatToolJobs(AuthUser $user, SubProject $subProject): bool
+    {
+        return ($user->isInSameInstitutionAsProject($subProject->project) &&
+                $user->hasPrivilege(PrivilegeKey::ManageProject)) || (
+                $user->hasActivePartnerAccessToSubProject($subProject) &&
+                $this->hasManageProjectPrivilegeOrAssigned($user, $subProject)
+            );
+    }
+
+
     // partner access deliberately excluded
     public function downloadXliff(AuthUser $user, SubProject $subProject): bool
     {
