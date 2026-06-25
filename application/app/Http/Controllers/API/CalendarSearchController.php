@@ -44,7 +44,7 @@ class CalendarSearchController extends Controller
         parameters: [
             new OA\QueryParameter(name: 'language_id', required: true, schema: new OA\Schema(type: 'string', format: 'uuid')),
             new OA\QueryParameter(name: 'datetime', schema: new OA\Schema(type: 'string', format: 'date-time', nullable: true)),
-            new OA\QueryParameter(name: 'duration_minutes', schema: new OA\Schema(type: 'integer', minimum: 15, maximum: 480, nullable: true)),
+            new OA\QueryParameter(name: 'duration_minutes', schema: new OA\Schema(type: 'integer', minimum: 10, maximum: 480, nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]

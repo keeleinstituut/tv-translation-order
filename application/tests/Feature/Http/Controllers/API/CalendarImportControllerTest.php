@@ -152,6 +152,8 @@ class CalendarImportControllerTest extends TestCase
             'privileges' => [],
         ]);
 
+        $importEndDate = Carbon::now()->utc()->addMonth()->toDateString();
+
         $file = $this->makeIcsFile([
             ['dtstart' => '20260401T090000Z', 'dtend' => '20260401T100000Z'],
         ]);
@@ -159,7 +161,7 @@ class CalendarImportControllerTest extends TestCase
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->postJson('/api/calendar/import', [
-                'import_end_date' => '2026-06-01',
+                'import_end_date' => $importEndDate,
                 'file' => $file,
             ]);
 
@@ -209,8 +211,12 @@ class CalendarImportControllerTest extends TestCase
 
         $importEndDate = Carbon::now()->utc()->addYear()->toDateString();
 
-        // Event at 11:30-12:30 Tallinn time on a summer date (UTC+3)
-        // Should be stored as 08:30-09:30 UTC
+        $eventDate = Carbon::now('Europe/Tallinn')->addMonth()->startOfDay();
+        $eventDateIcal = $eventDate->format('Ymd');
+        $expectedStartUtc = $eventDate->copy()->setTime(11, 30)->utc();
+        $expectedEndUtc = $eventDate->copy()->setTime(12, 30)->utc();
+
+        // Event at 11:30-12:30 Tallinn time; stored as UTC
         $content = "BEGIN:VCALENDAR\r\n"
             . "VERSION:2.0\r\n"
             . "PRODID:-//Test//Test//EN\r\n"
@@ -231,8 +237,8 @@ class CalendarImportControllerTest extends TestCase
             . "END:STANDARD\r\n"
             . "END:VTIMEZONE\r\n"
             . "BEGIN:VEVENT\r\n"
-            . "DTSTART;TZID=Europe/Tallinn:20260615T113000\r\n"
-            . "DTEND;TZID=Europe/Tallinn:20260615T123000\r\n"
+            . "DTSTART;TZID=Europe/Tallinn:{$eventDateIcal}T113000\r\n"
+            . "DTEND;TZID=Europe/Tallinn:{$eventDateIcal}T123000\r\n"
             . "SUMMARY:Morning meeting\r\n"
             . "END:VEVENT\r\n"
             . "END:VCALENDAR\r\n";
@@ -253,10 +259,8 @@ class CalendarImportControllerTest extends TestCase
         $entry = VendorCalendarEntry::where('vendor_id', $vendor->id)->first();
         $this->assertNotNull($entry);
 
-        // 11:30 Tallinn (UTC+3) = 08:30 UTC
-        $this->assertEquals('2026-06-15 08:30:00', $entry->start_at->format('Y-m-d H:i:s'));
-        // 12:30 Tallinn (UTC+3) = 09:30 UTC
-        $this->assertEquals('2026-06-15 09:30:00', $entry->end_at->format('Y-m-d H:i:s'));
+        $this->assertEquals($expectedStartUtc->format('Y-m-d H:i:s'), $entry->start_at->format('Y-m-d H:i:s'));
+        $this->assertEquals($expectedEndUtc->format('Y-m-d H:i:s'), $entry->end_at->format('Y-m-d H:i:s'));
     }
 
     public function test_index_returns_vendor_imports_newest_first_with_events_count(): void
@@ -518,12 +522,13 @@ class CalendarImportControllerTest extends TestCase
         // GIVEN
         [$vendor, $accessToken] = $this->createVendorWithAuth();
 
+        $importEndDate = Carbon::now()->utc()->addMonth()->toDateString();
         $file = UploadedFile::fake()->create('document.txt', 100, 'text/plain');
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->postJson('/api/calendar/import', [
-                'import_end_date' => '2026-06-01',
+                'import_end_date' => $importEndDate,
                 'file' => $file,
             ]);
 

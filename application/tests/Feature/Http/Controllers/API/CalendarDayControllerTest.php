@@ -14,7 +14,7 @@ use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Models\VendorEmergencySchedule;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,7 +27,7 @@ class CalendarDayControllerTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_day_accepts_request_without_parameters(): void
@@ -336,8 +336,8 @@ class CalendarDayControllerTest extends TestCase
 
     public function test_day_project_manager_partial_hour_vendor_gets_own_slot(): void
     {
-        // GIVEN — vendor A free 10:00–10:30 only; vendor B free 10:00–11:00 (full)
-        // Vendor B gets the full-hour 10:00–11:00 slot; vendor A gets a partial 10:00–10:30 slot
+        // GIVEN — vendor A free 10:00–10:30; vendor B free 10:00–11:00
+        // Each vendor gets a separate continuous slot tagged with their own vendor_id
         $today = Carbon::today()->utc();
         $dayName = strtolower($today->format('l'));
 
@@ -399,7 +399,16 @@ class CalendarDayControllerTest extends TestCase
             'start_at' => $today->copy()->setTime(10, 30),
             'end_at' => $today->copy()->setTime(17, 0),
         ]);
-
+        VendorCalendarEntry::create([
+            'vendor_id' => $vendorB->id,
+            'start_at' => $today->copy()->setTime(8, 0),
+            'end_at' => $today->copy()->setTime(10, 0),
+        ]);
+        VendorCalendarEntry::create([
+            'vendor_id' => $vendorB->id,
+            'start_at' => $today->copy()->setTime(11, 0),
+            'end_at' => $today->copy()->setTime(17, 0),
+        ]);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
@@ -410,8 +419,7 @@ class CalendarDayControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->getJson('/api/calendar/day?date=' . $today->toDateString());
 
-        // THEN — full-hour 10:00–11:00 slot has only vendor B;
-        //         partial 10:00–10:30 slot has only vendor A
+        // THEN — 10:00–11:00 slot has only vendor B; 10:00–10:30 slot has only vendor A
         $response->assertStatus(200);
 
         $tenStart = $today->copy()->setTime(10, 0)->utc()->toIso8601String();

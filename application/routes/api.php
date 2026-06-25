@@ -60,9 +60,10 @@ Route::prefix('calendar')->group(function () {
     Route::delete('import/bulk', [API\CalendarImportController::class, 'bulkDestroy'])->name('translation-order.calendar.import.bulkDestroy');
     Route::get('search', [API\CalendarSearchController::class, 'search'])->name('translation-order.calendar.search');
     Route::get('slot-matching/vendors', [API\CalendarSlotMatchingController::class, 'vendors'])->name('translation-order.calendar.slot-matching.vendors');
-    Route::get('settings', [API\CalendarSettingController::class, 'show'])->name('translation-order.calendar.settings.show');
-    Route::put('settings', [API\CalendarSettingController::class, 'store'])->name('translation-order.calendar.settings.store');
 });
+
+Route::get('/institution/settings', [API\InstitutionSettingController::class, 'show'])->name('translation-order.institution.settings.show');
+Route::put('/institution/settings', [API\InstitutionSettingController::class, 'store'])->name('translation-order.institution.settings.store');
 
 Route::get('/vendors', [API\VendorController::class, 'index'])->name('translation-order.vendors.index');
 Route::get('/vendors/{vendor}/calendar', [API\VendorCalendarController::class, 'index'])->whereUuid('vendor')->name('translation-order.vendors.calendar');

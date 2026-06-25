@@ -13,7 +13,7 @@ use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Models\VendorEmergencySchedule;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -25,7 +25,7 @@ class CalendarSearchControllerTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_search_requires_language_id(): void

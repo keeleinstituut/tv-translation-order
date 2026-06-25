@@ -7,7 +7,7 @@ use App\Enums\ProjectTypeCode;
 use App\Enums\ServiceType;
 use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
-use App\Models\CalendarSetting;
+use App\Models\InstitutionSetting;
 use App\Models\JobDefinition;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
@@ -49,7 +49,7 @@ class CalendarSettingsResolver
 
     public function getDefaultCalendarProjectTypeId(string $institutionId): string
     {
-        $calendarSetting = CalendarSetting::query()
+        $calendarSetting = InstitutionSetting::query()
             ->where('institution_id', $institutionId)
             ->first();
 
@@ -78,7 +78,7 @@ class CalendarSettingsResolver
             return TimeSlot::forEvent($startAt, $endAt);
         }
 
-        $setting = CalendarSetting::query()
+        $setting = InstitutionSetting::query()
             ->where('institution_id', $institutionId)
             ->first();
 
