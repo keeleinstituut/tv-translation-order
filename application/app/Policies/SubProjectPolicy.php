@@ -81,8 +81,7 @@ class SubProjectPolicy
     {
         return ($user->isInSameInstitutionAsProject($subProject->project) &&
                 $user->hasPrivilege(PrivilegeKey::ManageProject)) || (
-                $user->hasActivePartnerAccessToSubProject($subProject) &&
-                $this->hasManageProjectPrivilegeOrAssigned($user, $subProject)
+                $user->hasActivePartnerAccessToSubProject($subProject)
             );
     }
 
@@ -123,7 +122,8 @@ class SubProjectPolicy
     // partner access deliberately excluded
     public function editFinalFiles(AuthUser $user, SubProject $subProject, ?string $assignmentId = null): bool
     {
-        return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject, $assignmentId);
+        return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject, $assignmentId) ||
+            $user->hasActivePartnerAccessToSubProject($subProject);
     }
 
     // partner access deliberately excluded
@@ -135,7 +135,8 @@ class SubProjectPolicy
     // partner access deliberately excluded
     public function markFilesAsProjectFinalFiles(AuthUser $user, SubProject $subProject): bool
     {
-        return $this->hasManageProjectPrivilege($user, $subProject);
+        return $this->hasManageProjectPrivilege($user, $subProject) ||
+            $user->hasActivePartnerAccessToSubProject($subProject);
     }
 
     private function hasManageProjectPrivilege(AuthUser $user, SubProject $subProject): bool
