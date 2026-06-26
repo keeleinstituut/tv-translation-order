@@ -10,9 +10,11 @@ use App\Jobs\Workflows\UpdateProjectManagerInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\OutsourceOffer;
+use App\Models\OutsourceRequest;
 use App\Models\Project;
 use App\Models\Sequence;
 use App\Models\SubProject;
+use App\Services\OutsourceRequest\OutsourceRequestStateMachine;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
@@ -27,7 +29,11 @@ use Throwable;
 
 class ProjectObserver
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher, private readonly AuditLogPublisher $auditLogPublisher)
+    public function __construct(
+        private readonly NotificationPublisher $notificationPublisher,
+        private readonly AuditLogPublisher $auditLogPublisher,
+        private readonly OutsourceRequestStateMachine $outsourceRequestStateMachine
+    )
     {
     }
 
@@ -185,10 +191,12 @@ class ProjectObserver
                 filled($project->clientInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->clientInstitutionUser);
                 $this->publishProjectCancelledEmailNotificationForVendors($project);
 
-                $project->acceptedOutsourceOffers()->each(function (OutsourceOffer $offer) use ($project) {
-                    $this->publishProjectCancelledEmailNotificationForAcceptedOffer($project, $offer);
+                $project->outsourceRequests()->each(function (OutsourceRequest $request) {
+                    $this->outsourceRequestStateMachine->cancelRequest(
+                        $request,
+                        'Tellimus tühistati'
+                    );
                 });
-
             } elseif ($project->status === ProjectStatus::SubmittedToClient || $project->status === ProjectStatus::Corrected) {
                 $this->publishProjectSubmittedToClientEmailNotification($project);
                 $this->publishProjectIsReadyForReviewEmailNotification($project);
@@ -321,32 +329,6 @@ class ProjectObserver
                         ]
                     ]),
                     $project->institution_id
-                );
-            });
-        }
-    }
-
-    private function publishProjectCancelledEmailNotificationForAcceptedOffer(Project $project, OutsourceOffer $offer): void
-    {
-        $receiverEmail = $offer->institution?->email;
-        $receiverName = $offer->institution?->name;
-
-        if (filled($receiverEmail)) {
-            DB::afterCommit(function () use ($project, $offer, $receiverEmail, $receiverName) {
-                $this->notificationPublisher->publishEmailNotification(
-                    EmailNotificationMessage::make([
-                        'notification_type' => NotificationType::ProjectCancelled,
-                        'receiver_email' => $receiverEmail,
-                        'receiver_name' => $receiverName,
-                        'variables' => [
-                            'project' => $project->only([
-                                'ext_id',
-                                'cancellation_reason',
-                                'cancellation_comment'
-                            ]),
-                        ]
-                    ]),
-                    $offer->institution_id
                 );
             });
         }

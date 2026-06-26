@@ -87,6 +87,19 @@ class WorkflowService
     }
 
     /**
+     * Update a task-local variable. Task input mappings (e.g. `institution_id`) create
+     * task-local variables captured at task creation that are NOT re-evaluated when the
+     * underlying process variable changes, so they must be updated directly on the task.
+     *
+     * @throws RequestException
+     */
+    public static function updateTaskLocalVariable(string $taskId, string $variableName, array $params = [])
+    {
+        return static::client()->put("/task/$taskId/localVariables/$variableName", $params)
+            ->throw()->json();
+    }
+
+    /**
      * @throws RequestException
      */
     public static function deleteProcessInstances($processInstanceIds, string $deleteReason)

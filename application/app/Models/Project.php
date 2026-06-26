@@ -268,6 +268,14 @@ class Project extends Model implements AuditLoggable, HasMedia
         );
     }
 
+    public function outsourceRequests(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            new Assignment()->currentOutsourceRequest(),
+        );
+    }
+
     public function calendarEntries(): HasManyDeep
     {
         return $this->hasManyDeepFromRelations(

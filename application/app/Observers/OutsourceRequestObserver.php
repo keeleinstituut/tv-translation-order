@@ -4,11 +4,10 @@ namespace App\Observers;
 
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
-use App\Jobs\Workflows\SyncWorkflowVariables;
+use App\Jobs\Workflows\UpdateSharedAssignmentInstitutionInsideWorkflow;
 use App\Models\Candidate;
 use App\Models\OutsourceOffer;
 use App\Models\OutsourceRequest;
-use App\Models\Volume;
 use Throwable;
 
 readonly class OutsourceRequestObserver
@@ -33,14 +32,12 @@ readonly class OutsourceRequestObserver
                 }
             });
 
-            // We need to update institution_id for the task that belongs to the shared assignment
-            SyncWorkflowVariables::dispatchSync($request->assignment);
+            UpdateSharedAssignmentInstitutionInsideWorkflow::dispatchSync($request->assignment);
             // Bulk update is not used here to fire observer events
             $request->offers()
-                ->whereIn('status', [
+                ->whereNotIn('status', [
                     OutsourceOfferStatus::RequestPending,
-                    OutsourceOfferStatus::RequestSent,
-                    OutsourceOfferStatus::RequestAccepted,
+                    OutsourceOfferStatus::OfferDeclined
                 ])
                 ->each(fn (OutsourceOffer $offer) => $offer->update(['status' => OutsourceOfferStatus::RequestCancelled]));
 

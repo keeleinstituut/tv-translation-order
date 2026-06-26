@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\OutsourceOfferStatus;
-use App\Jobs\Workflows\SyncWorkflowVariables;
+use App\Jobs\Workflows\UpdateSharedAssignmentInstitutionInsideWorkflow;
 use App\Models\OutsourceOffer;
 use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
@@ -41,10 +41,8 @@ readonly class OutsourceOfferObserver
         };
 
         $hadOfferAcceptedStatus = data_get($offer->getChanges(), 'status') === OutsourceOfferStatus::OfferAccepted;
-
         if ($offer->status === OutsourceOfferStatus::OfferAccepted || $hadOfferAcceptedStatus) {
-            // We need to update institution_id for the task that belongs to the shared assignment
-            SyncWorkflowVariables::dispatchSync($offer->outsourceRequest->assignment);
+            UpdateSharedAssignmentInstitutionInsideWorkflow::dispatchSync($offer->outsourceRequest->assignment);
         }
     }
 
@@ -199,15 +197,6 @@ readonly class OutsourceOfferObserver
 
     private function publishRequestCancelledEmailNotification(OutsourceOffer $offer): void
     {
-        /**
-         * For the OutsourceOfferStatus::OfferAccepted email notifications are handled in ProjectObserver.
-         * @see ProjectObserver::publishProjectCancelledEmailNotificationForAcceptedOffer
-         */
-        $priorStatus = $offer->getOriginal('status');
-        if ($priorStatus !== OutsourceOfferStatus::RequestSent) {
-            return;
-        }
-
         $institution = $offer->institution;
         $requestCancellationReason = $offer->outsourceRequest?->only(['cancellation_reason']);
         $assignmentExtId = $offer->outsourceRequest?->assignment?->only(['ext_id']);
