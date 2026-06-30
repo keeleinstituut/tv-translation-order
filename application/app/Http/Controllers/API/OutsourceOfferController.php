@@ -233,6 +233,8 @@ class OutsourceOfferController extends Controller
             'outsourceRequest.assignment.subProject.destinationLanguageClassifierValue',
             'outsourceRequest.assignment.subProject.project.sourceFiles',
             'outsourceRequest.assignment.subProject.project.managerInstitutionUser',
+            'outsourceRequest.assignment.subProject.project.typeClassifierValue',
+            'outsourceRequest.assignment.subProject.project.translationDomainClassifierValue',
             'outsourceRequest.assignment.volumes',
             'outsourceRequest.assignment.jobDefinition',
         ];
