@@ -60,7 +60,10 @@ class VendorController extends Controller
         $params = collect($request->validated());
 
         $query = $this->getBaseQuery()
-            ->with('prices')
+            ->with(['prices' => fn ($q) => $q
+                ->whereHas('sourceLanguageClassifierValue')
+                ->whereHas('destinationLanguageClassifierValue')
+            ])
             ->with('prices.sourceLanguageClassifierValue')
             ->with('prices.destinationLanguageClassifierValue')
             ->with('tags');
