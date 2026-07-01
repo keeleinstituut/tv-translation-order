@@ -281,7 +281,7 @@ class ProjectController extends Controller
                 ?: ($params->get('is_calendar_project', false)
                     ? $this->calendarSettings->getDefaultCalendarProjectTypeId($institutionId)
                     : null);
-            $isCalendar = ClassifierValue::isVerbalProjectType($typeId);
+            $isCalendar = ClassifierValue::isCalendarProjectType($typeId);
 
             $managerUserId = $params->get('manager_institution_user_id');
             if ($isCalendar && blank($managerUserId) && Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {

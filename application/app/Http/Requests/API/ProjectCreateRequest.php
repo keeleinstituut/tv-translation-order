@@ -372,7 +372,7 @@ class ProjectCreateRequest extends FormRequest
 
                 if ($this->input('is_calendar_project') === true
                     && filled($this->input('type_classifier_value_id'))
-                    && !ClassifierValue::isVerbalProjectType($this->input('type_classifier_value_id'))) {
+                    && !ClassifierValue::isCalendarProjectType($this->input('type_classifier_value_id'))) {
                     $validator->errors()->add('is_calendar_project', 'The is_calendar_project flag contradicts the selected project type.');
                 }
             },
@@ -383,7 +383,7 @@ class ProjectCreateRequest extends FormRequest
 
     private function isCalendarProject(): bool
     {
-        return $this->isCalendarProjectCached ??= ClassifierValue::isVerbalProjectType($this->input('type_classifier_value_id'))
+        return $this->isCalendarProjectCached ??= ClassifierValue::isCalendarProjectType($this->input('type_classifier_value_id'))
             || $this->input('is_calendar_project', false);
     }
 }

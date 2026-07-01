@@ -64,7 +64,7 @@ class InstitutionSetting extends Model
 
     public function autoAcceptanceThresholdDaysFor(?string $typeClassifierValueId): ?int
     {
-        return ClassifierValue::isVerbalProjectType($typeClassifierValueId)
+        return ClassifierValue::isCalendarProjectType($typeClassifierValueId)
             ? $this->verbal_auto_acceptance_threshold_days
             : $this->non_verbal_auto_acceptance_threshold_days;
     }

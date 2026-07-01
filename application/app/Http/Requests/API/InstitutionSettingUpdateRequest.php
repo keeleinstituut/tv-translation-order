@@ -50,7 +50,7 @@ class InstitutionSettingUpdateRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                if ($this->has('default_project_type_id') && !ClassifierValue::isVerbalProjectType($this->input('default_project_type_id'))) {
+                if ($this->has('default_project_type_id') && !ClassifierValue::isCalendarProjectType($this->input('default_project_type_id'))) {
                     $validator->errors()->add('default_project_type_id', 'Ainult suulise tõlke tüübid on lubatud');
                 }
             }

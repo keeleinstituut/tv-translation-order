@@ -178,7 +178,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
 
             if (filled($this->input('type_classifier_value_id'))) {
                 $currentIsCalendar = $this->getProject()->is_calendar_project;
-                $newIsCalendar = ClassifierValue::isVerbalProjectType($this->input('type_classifier_value_id'));
+                $newIsCalendar = ClassifierValue::isCalendarProjectType($this->input('type_classifier_value_id'));
 
                 if ($currentIsCalendar !== $newIsCalendar) {
                     $validator->errors()->add(
