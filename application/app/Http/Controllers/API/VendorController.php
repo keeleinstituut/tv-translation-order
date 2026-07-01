@@ -63,10 +63,8 @@ class VendorController extends Controller
             ->with(['prices' => fn ($q) => $q
                 ->whereHas('sourceLanguageClassifierValue')
                 ->whereHas('destinationLanguageClassifierValue')
-            ])
-            ->with('prices.sourceLanguageClassifierValue')
-            ->with('prices.destinationLanguageClassifierValue')
-            ->with('tags');
+                ->with(['sourceLanguageClassifierValue', 'destinationLanguageClassifierValue'])
+            ])->with('tags');
 
         if ($param = $params->get('fullname')) {
             $query = $query->whereRelation('institutionUser', function ($query) use ($param) {
