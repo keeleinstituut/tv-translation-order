@@ -171,8 +171,11 @@ class AuthUser extends JwtPayloadUser
                 if ($requireSourceFiles) {
                     $q->where('include_source_files', true);
                 }
-            })->when($requireSourceFiles, fn($q) => $q->whereNot('status', OutsourceOfferStatus::RequestCancelled))
-            ->exists();
+            })->when($requireSourceFiles, fn($q) => $q->whereNotIn('status', [
+                OutsourceOfferStatus::RequestCancelled,
+                OutsourceOfferStatus::OfferDeclined,
+                OutsourceOfferStatus::RequestExpired
+            ]))->exists();
     }
 
     public function hasActivePartnerAccessToSubProject(SubProject $subProject): bool
@@ -199,11 +202,14 @@ class AuthUser extends JwtPayloadUser
             ->whereHas('outsourceRequest.assignment.subProject',
                 fn($q) => $q->where('project_id', $project->id))
             ->whereHas('outsourceRequest', function ($q) use ($requireSourceFiles) {
-                $q->when($requireSourceFiles,
-                    fn($q) => $q->where('include_source_files', true)
-                        ->whereNot('status', OutsourceOfferStatus::RequestCancelled)
-                );
-            })->exists();
+                if ($requireSourceFiles) {
+                    $q->where('include_source_files', true);
+                }
+            })->when($requireSourceFiles, fn($q) => $q->whereNotIn('status', [
+                OutsourceOfferStatus::RequestCancelled,
+                OutsourceOfferStatus::OfferDeclined,
+                OutsourceOfferStatus::RequestExpired
+            ]))->exists();
     }
 
     public function hasActivePartnerAccessToProject(Project $project): bool
