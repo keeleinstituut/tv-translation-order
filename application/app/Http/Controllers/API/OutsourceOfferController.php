@@ -99,7 +99,7 @@ class OutsourceOfferController extends Controller
         }
 
         if ($param = $params->get('institution_id')) {
-            $query->where('institution_id', $param);
+            $query->whereHas('outsourceRequest.assignment.subProject.project', fn($q) => $q->where('institution_id', $param));
         }
 
         if ($params->get('language_directions')) {
