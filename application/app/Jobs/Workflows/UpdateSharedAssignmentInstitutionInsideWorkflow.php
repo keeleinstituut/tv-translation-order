@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use RuntimeException;
 
 class UpdateSharedAssignmentInstitutionInsideWorkflow implements ShouldQueue
 {
@@ -45,16 +46,17 @@ class UpdateSharedAssignmentInstitutionInsideWorkflow implements ShouldQueue
 
         $workflow->syncVariables();
 
-        // `syncVariables()` only rewrites the `subProject` process variable. The task's
-        // `institution_id` is a task-local variable captured from `${subProcess.institution_id}`
-        // when the task was created and is not re-evaluated, so update it on the live task
-        // directly. Otherwise the partner institution that accepted the offer can't see the task.
+        // `syncVariables()` only rewrites the `subProject` process variable, but the task's
+        // `institution_id` was already snapshotted onto its execution at creation. Update that
+        // execution scope directly — it's what the /tasks `processVariables` filter reads.
         if (empty($taskData = $workflow->getTaskDataBasedOnAssignment($this->assignment))) {
             return;
         }
 
-        WorkflowService::updateTaskLocalVariable(
-            data_get($taskData, 'task.id'),
+        $executionId = data_get($taskData, 'task.executionId');
+
+        WorkflowService::updateExecutionLocalVariable(
+            $executionId,
             'institution_id',
             [
                 'value' => $this->assignment->currentOutsourceRequest?->acceptedOffer?->institution_id

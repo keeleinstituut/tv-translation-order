@@ -100,6 +100,21 @@ class WorkflowService
     }
 
     /**
+     * Update a variable local to an execution. Task input mappings (e.g. `institution_id`)
+     * create variables on the task's scope execution (`TASK_ID_` null) captured at task
+     * creation and NOT re-evaluated when the underlying process variable changes. This is
+     * the scope the task query's `processVariables` filter reads, so updating it here keeps
+     * the /tasks listing filter in sync (a task-local variable would be invisible to it).
+     *
+     * @throws RequestException
+     */
+    public static function updateExecutionLocalVariable(string $executionId, string $variableName, array $params = [])
+    {
+        return static::client()->put("/execution/$executionId/localVariables/$variableName", $params)
+            ->throw()->json();
+    }
+
+    /**
      * @throws RequestException
      */
     public static function deleteProcessInstances($processInstanceIds, string $deleteReason)
