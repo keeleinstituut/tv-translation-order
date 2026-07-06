@@ -155,8 +155,6 @@ class VendorController extends Controller
                 function () use ($vendor, $params) {
                     // and fill model with result from filter
                     tap(collect($params)->only([
-                        'comment',
-                        'company_name',
                         'discount_percentage_101',
                         'discount_percentage_repetitions',
                         'discount_percentage_100',
@@ -166,6 +164,8 @@ class VendorController extends Controller
                         'discount_percentage_50_74',
                         'discount_percentage_0_49',
                     ])->filter(fn($value) => ! is_null($value))->toArray(), $vendor->fill(...));
+
+                    $vendor->fill($params->only(['comment', 'company_name'])->toArray());
 
                     $vendor->saveOrFail();
 
