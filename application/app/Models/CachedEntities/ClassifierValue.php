@@ -78,7 +78,7 @@ class ClassifierValue extends Model
 
         $isProjectTypeSynchronousTranslation = ClassifierValue::where('id', $typeClassifierValueId)
             ->where('type', ClassifierValueType::ProjectType)
-            ->whereNot('value', ProjectTypeCode::SynchronousTranslation->value)
+            ->where('value', ProjectTypeCode::SynchronousTranslation->value)
             ->exists();
 
         return !$isProjectTypeSynchronousTranslation && self::isProjectTypeSupportingEventStartDate($typeClassifierValueId);
