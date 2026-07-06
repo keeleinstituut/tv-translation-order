@@ -41,6 +41,15 @@ use OpenApi\Attributes as OA;
 )]
 class OutsourceRequestResource extends JsonResource
 {
+    private bool $hideMedia = false;
+
+    public function hideMedia(bool $hide = true): static
+    {
+        $this->hideMedia = $hide;
+
+        return $this;
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -61,7 +70,7 @@ class OutsourceRequestResource extends JsonResource
                 $this->visibleOffers($request)->map(fn($offer) => OutsourceOfferResource::make($offer))
             ),
             'media' => $this->when(
-                $this->status !== OutsourceRequestStatus::Cancelled,
+                !$this->hideMedia && $this->status !== OutsourceRequestStatus::Cancelled,
                 $this->whenLoaded('media', fn() => MediaResource::collection($this->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION)))
             ),
             'created_at' => $this->created_at,
