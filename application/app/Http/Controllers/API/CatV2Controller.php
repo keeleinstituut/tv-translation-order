@@ -167,7 +167,8 @@ class CatV2Controller extends Controller
 
         return CatV2TranslationMemoryResource::make($response['data'])
             ->additional([
-                'segment_count' => $response['segment_count'],
+                'segment_count' => data_get($response, 'segment_count'),
+                'edit_url' => data_get($response, 'edit_url'),
             ]);
     }
 
