@@ -272,3 +272,5 @@ Route::prefix('/media')
 //Route::get('/cat/urls/revise/{project_id}', []);
 // ??
 Route::get('/redirect', [API\RedirectController::class, '__invoke']);
+
+Route::get('/statistics', API\StatisticsController::class)->name('translation-order.statistics.index');
