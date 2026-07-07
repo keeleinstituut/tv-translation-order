@@ -7,10 +7,10 @@ use App\Models\InstitutionSetting;
 use App\Models\Project;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
+use Throwable;
 
 class NotifyProjectsPendingAutoAcceptance extends Command
 {
@@ -20,6 +20,7 @@ class NotifyProjectsPendingAutoAcceptance extends Command
 
     /**
      * Execute the console command.
+     * @throws Throwable
      */
     public function handle(NotificationPublisher $notificationPublisher): void
     {
@@ -37,11 +38,14 @@ class NotifyProjectsPendingAutoAcceptance extends Command
         }
 
         $query = Project::query()
+            ->with(['clientInstitutionUser', 'institution'])
             ->whereIn('status', [ProjectStatus::SubmittedToClient, ProjectStatus::Corrected])
             ->whereIn('institution_id', $settingsByInstitution->keys())
             ->whereNull('auto_acceptance_notification_sent_at')
             ->whereNotNull('submitted_to_client_review_at')
             ->orderBy('submitted_to_client_review_at');
+
+        $groups = [];
 
         foreach ($query->cursor() as $project) {
             /** @var InstitutionSetting|null $setting */
@@ -69,37 +73,63 @@ class NotifyProjectsPendingAutoAcceptance extends Command
                 continue;
             }
 
+            $receiver = $this->resolveReceiver($project);
 
-            $this->publishProjectPendingAutoAcceptanceEmailNotification($project, $notificationPublisher);
+            if (filled($receiver['email'])) {
+                $groups[$receiver['key']] ??= [
+                    'email' => $receiver['email'],
+                    'name' => $receiver['name'],
+                    'institution_id' => $project->institution_id,
+                    'projects' => [],
+                ];
+                $groups[$receiver['key']]['projects'][] = $project->only(['ext_id']);
+            }
+
             $project->auto_acceptance_notification_sent_at = Carbon::now();
             $project->save();
         }
+
+        foreach ($groups as $group) {
+            $this->publishBatch($group, $notificationPublisher);
+        }
     }
 
-    private function publishProjectPendingAutoAcceptanceEmailNotification(Project $project, NotificationPublisher $notificationPublisher): void
+    /**
+     * @return array{email: ?string, name: ?string, key: string}
+     */
+    private function resolveReceiver(Project $project): array
     {
-        $receiverEmail = $project->clientInstitutionUser?->email;
-        $receiverName = $project->clientInstitutionUser?->getUserFullName();
-
-        if (empty($receiverEmail)) {
-            $receiverEmail = $project->institution?->email;
-            $receiverName = $project->institution?->name;
+        if (filled($email = $project->clientInstitutionUser?->email)) {
+            return [
+                'email' => $email,
+                'name' => $project->clientInstitutionUser?->getUserFullName(),
+                'key' => "user:$project->client_institution_user_id",
+            ];
         }
 
-        if (filled($receiverEmail)) {
-            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName, $notificationPublisher) {
-                $notificationPublisher->publishEmailNotification(
-                    EmailNotificationMessage::make([
-                        'notification_type' => NotificationType::ProjectAutoAcceptancePending,
-                        'receiver_email' => $receiverEmail,
-                        'receiver_name' => $receiverName,
-                        'variables' => [
-                            'project' => $project->only(['ext_id']),
-                        ]
-                    ]),
-                    $project->institution_id
-                );
-            });
-        }
+        return [
+            'email' => $project->institution?->email,
+            'name' => $project->institution?->name,
+            'key' => "institution:$project->institution_id",
+        ];
+    }
+
+    /**
+     * @param array{email: string, name: ?string, institution_id: ?string, projects: array<array{ext_id: ?string}>} $group
+     * @throws Throwable
+     */
+    private function publishBatch(array $group, NotificationPublisher $notificationPublisher): void
+    {
+        $notificationPublisher->publishEmailNotification(
+            EmailNotificationMessage::make([
+                'notification_type' => NotificationType::ProjectAutoAcceptancePending,
+                'receiver_email' => $group['email'],
+                'receiver_name' => $group['name'],
+                'variables' => [
+                    'projects' => $group['projects'],
+                ],
+            ]),
+            $group['institution_id']
+        );
     }
 }
