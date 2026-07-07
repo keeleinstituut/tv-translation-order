@@ -3,40 +3,53 @@
 namespace App\Services\CatV2;
 
 use Illuminate\Support\Facades\Http;
+use KeycloakAuthGuard\Services\ServiceAccountJwtRetrieverInterface;
 
 
 class CatV2Service {
-    public static function getTranslationMemories($params = []) {
+
+    private $baseUrl;
+    private $timeout;
+    private $connectionTimeout;
+
+    public function __construct(private readonly ServiceAccountJwtRetrieverInterface $jwtRetriever) {
+        $this->baseUrl = config('catv2.base_url');
+        $this->timeout = config('catv2.timeout', 30);
+        $this->connectionTimeout = config('catv2.connection_timeout', 30);
+    }
+
+    public function getTranslationMemories($params = []) {
         return static::client()
             ->get('/api/translation-memories?' . http_build_query($params))
+            ->throw()
             ->json();
     }    
 
-    public static function createTranslationMemory($data) {
+    public function createTranslationMemory($data) {
         return static::client()
             ->post("/api/translation-memories", $data)
             ->json();
     }
 
-    public static function getTranslationMemory(string $translationMemoryId) {
+    public function getTranslationMemory(string $translationMemoryId) {
         return static::client()
             ->get("/api/translation-memories/$translationMemoryId")
             ->json();
     }    
 
-    public static function updateTranslationMemory(string $translationMemoryId, $data) {
+    public function updateTranslationMemory(string $translationMemoryId, $data) {
         return static::client()
             ->put("/api/translation-memories/$translationMemoryId", $data)
             ->json();
     }    
 
-    public static function deleteTranslationMemory(string $translationMemoryId) {
+    public function deleteTranslationMemory(string $translationMemoryId) {
         return static::client()
             ->delete("/api/translation-memories/$translationMemoryId")
             ->json();
     }
 
-    public static function importTranslationMemory($data) {
+    public function importTranslationMemory($data) {
         $request = static::client()->asMultipart();
 
         collect($data['files'])
@@ -54,23 +67,20 @@ class CatV2Service {
             ->json();
     }
 
-    public static function exportTranslationMemory($data) {
+    public function exportTranslationMemory($data) {
         return static::client()
             ->post("/api/translation-memories/export", $data);
     }
 
-    public static function getTranslationMemoryContentChecks() {
+    public function getTranslationMemoryContentChecks() {
         return [];
     }
 
-    private static function client() {
-        $baseUrl = config('catv2.base_url');
-        $timeout = config('catv2.timeout', 30);
-        $connectionTimeout = config('catv2.connection_timeout', 30);
-
-        return Http::baseUrl($baseUrl)
-            ->timeout($timeout)
-            ->connectTimeout($connectionTimeout)
-            ->withHeader('Accept', 'application/json');
+    private function client() {
+        return Http::baseUrl($this->baseUrl)
+            ->timeout($this->timeout)
+            ->connectTimeout($this->connectionTimeout)
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('Authorization', 'Bearer ' . $this->jwtRetriever->getJwt());
     }
 }

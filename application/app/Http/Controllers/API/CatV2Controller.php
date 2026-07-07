@@ -16,6 +16,9 @@ class CatV2Controller extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    public function __construct(private readonly CatV2Service $catV2Service) {}
+
     public function translationMemoryIndex(Request $request)
     {
 
@@ -120,7 +123,7 @@ class CatV2Controller extends Controller
             ]
         ];
 
-        $response = CatV2Service::getTranslationMemories([
+        $response = $this->catV2Service->getTranslationMemories([
             'filter' => $filter,
             'with_segment_count' => $params->get('with_segment_count')
         ]);
@@ -137,7 +140,7 @@ class CatV2Controller extends Controller
 
         $locales = Str::of($params->get('lang_pair'))->explode('_');
 
-        $response = CatV2Service::createTranslationMemory([
+        $response = $this->catV2Service->createTranslationMemory([
             'name' => $params->get('name'),
             'source_locale' => $locales[0],
             'target_locale' => $locales[1],
@@ -154,7 +157,7 @@ class CatV2Controller extends Controller
 
     public function translationMemoryShow($id)
     {
-        $response = CatV2Service::getTranslationMemory($id);
+        $response = $this->catV2Service->getTranslationMemory($id);
 
         Gate::allowIf(function ($user) use ($response) {
             $visibility = data_get($response, 'data.meta.visibility');
@@ -171,7 +174,7 @@ class CatV2Controller extends Controller
     public function translationMemoryUpdate(Request $request, $id)
     {
         Gate::allowIf(function ($user) use ($id) {
-            $translationMemoryResponse = CatV2Service::getTranslationMemory($id);
+            $translationMemoryResponse = $this->catV2Service->getTranslationMemory($id);
             return $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
         });
 
@@ -190,7 +193,7 @@ class CatV2Controller extends Controller
             ])->filter()->toArray(),
         ])->filter()->toArray();
 
-        $response = CatV2Service::updateTranslationMemory($id, $payload);
+        $response = $this->catV2Service->updateTranslationMemory($id, $payload);
 
         return CatV2TranslationMemoryResource::make($response['data']);
     }
@@ -198,11 +201,11 @@ class CatV2Controller extends Controller
     public function translationMemoryDestroy($id)
     {
         Gate::allowIf(function ($user) use ($id) {
-            $translationMemoryResponse = CatV2Service::getTranslationMemory($id);
+            $translationMemoryResponse = $this->catV2Service->getTranslationMemory($id);
             return $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
         });
 
-        return CatV2Service::deleteTranslationMemory($id);
+        return $this->catV2Service->deleteTranslationMemory($id);
     }
 
     public function translationMemoryImport(Request $request)
@@ -210,11 +213,11 @@ class CatV2Controller extends Controller
         $params = collect($request->all());
 
         Gate::allowIf(function ($user) use ($params) {
-            $translationMemoryResponse = CatV2Service::getTranslationMemory($params->get('tag'));
+            $translationMemoryResponse = $this->catV2Service->getTranslationMemory($params->get('tag'));
             return $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
         });
 
-        return CatV2Service::importTranslationMemory([
+        return $this->catV2Service->importTranslationMemory([
             'translation_memory_id' => $params->get('tag'),
             'files' => [
                 $params->get('file'),
@@ -230,12 +233,12 @@ class CatV2Controller extends Controller
 
         Gate::allowIf(function ($user) use ($tags) {
             return collect($tags)->reduce(function ($acc, $id) use ($user) {
-                $translationMemoryResponse = CatV2Service::getTranslationMemory($id);
+                $translationMemoryResponse = $this->catV2Service->getTranslationMemory($id);
                 return $acc && $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
             }, true);
         });
 
-        $response = CatV2Service::exportTranslationMemory([
+        $response = $this->catV2Service->exportTranslationMemory([
             'translation_memory_ids' => $tags,
             'combined' => $combined,
         ]);
