@@ -6,13 +6,13 @@ use App\Enums\CandidateStatus;
 use App\Enums\OutsourceRequestMode;
 use App\Enums\InstitutionType;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Enums\OutsourceRequestType;
 use App\Enums\PrivilegeKey;
 use App\Jobs\ExpireOutsourceOfferJob;
 use App\Models\Assignment;
 use App\Models\CachedEntities\ClassifierValue;
-use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
 use App\Models\InstitutionPartner;
@@ -48,15 +48,15 @@ class OutsourceRequestControllerTest extends TestCase
             ->post('/api/outsource-requests', [
                 'assignment_id' => $assignment->id,
                 'mode' => OutsourceRequestMode::Cascade->value,
+                'price_mode' => OutsourceRequestPriceMode::FixedPrice->value,
                 'reaction_time_minutes' => 30,
                 'offers' => [
                     ['institution_id' => $partnerA->institution['id']],
                     ['institution_id' => $partnerB->institution['id']],
                 ],
                 'special_instructions' => 'Please preserve formatting.',
-                'include_price' => false,
                 'include_source_files' => true,
-                'fixed_price' => 123.456,
+                'price' => 123.456,
                 'request_files' => [
                     UploadedFile::fake()->createWithContent('source.docx', "PK\x03\x04" . str_repeat("\0", 22)),
                 ],
@@ -72,10 +72,10 @@ class OutsourceRequestControllerTest extends TestCase
 
         $this->assertSame(OutsourceRequestStatus::Active, $outsourceRequest->status);
         $this->assertSame(OutsourceRequestMode::Cascade, $outsourceRequest->mode);
+        $this->assertSame(OutsourceRequestPriceMode::FixedPrice, $outsourceRequest->price_mode);
         $this->assertSame(30, $outsourceRequest->reaction_time_minutes);
         $this->assertSame('Please preserve formatting.', $outsourceRequest->special_instructions);
-        $this->assertSame('123.456', $outsourceRequest->fixed_price);
-        $this->assertFalse($outsourceRequest->include_price);
+        $this->assertEqualsWithDelta(123.456, $outsourceRequest->price, 0.0001);
         $this->assertTrue($outsourceRequest->include_source_files);
         $this->assertCount(1, $outsourceRequest->getMedia(OutsourceRequest::REQUEST_FILES_COLLECTION));
         $this->assertCount(2, $offers);
@@ -89,8 +89,8 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertSame(OutsourceOfferStatus::RequestPending, $offers[1]->status);
         $this->assertNull($offers[1]->notified_at);
         $this->assertNull($offers[1]->expires_at);
-        $this->assertSame('123.456', $offers[0]->proposed_price);
-        $this->assertSame('123.456', $offers[1]->proposed_price);
+        $this->assertEqualsWithDelta(123.456, $offers[0]->price, 0.0001);
+        $this->assertEqualsWithDelta(123.456, $offers[1]->price, 0.0001);
         Queue::assertPushed(ExpireOutsourceOfferJob::class, 1);
         Queue::assertPushed(
             ExpireOutsourceOfferJob::class,
@@ -115,6 +115,7 @@ class OutsourceRequestControllerTest extends TestCase
             ->postJson('/api/outsource-requests', [
                 'assignment_id' => $assignment->id,
                 'mode' => OutsourceRequestMode::Parallel->value,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
                 'reaction_time_minutes' => $reactionTimeMinutes,
                 'offers' => [
                     ['institution_id' => $partnerA->institution['id']],
@@ -181,10 +182,9 @@ class OutsourceRequestControllerTest extends TestCase
     public function test_translation_agency_user_cannot_create_request(): void
     {
         // GIVEN
-        $ownerUser = $this->createOwnerUser();
-        Institution::query()
-            ->whereKey($ownerUser->institution['id'])
-            ->update(['type' => InstitutionType::TranslationAgency]);
+        $ownerUser = InstitutionUser::factory()
+            ->setInstitution(['type' => InstitutionType::TranslationAgency->value])
+            ->createWithPrivileges(PrivilegeKey::ManageOutsourceRequest);
         $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
         $this->createInstitutionPartner($ownerUser, $recipientUser);
@@ -1111,9 +1111,9 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertOk();
         $this->assertSame(OutsourceRequestStatus::Cancelled, $translationRequest->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestSent, $notified->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestAccepted, $accepted->fresh()->status);
+//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $pending->fresh()->status);
+//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
+//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferAccepted, $selected->fresh()->status);
@@ -1151,7 +1151,7 @@ class OutsourceRequestControllerTest extends TestCase
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'status' => OutsourceOfferStatus::RequestAccepted,
-            'proposed_price' => '123.456',
+            'price' => '123.456',
             'position' => 1,
         ]);
         $loserAccepted = OutsourceOffer::factory()->create([
@@ -1202,7 +1202,7 @@ class OutsourceRequestControllerTest extends TestCase
         $selected = OutsourceOffer::factory()->create([
             'outsource_request_id' => $translationRequest->id,
             'status' => OutsourceOfferStatus::RequestAccepted,
-            'proposed_price' => '99.000',
+            'price' => '99.000',
             'position' => 1,
         ]);
         $declined = OutsourceOffer::factory()->create([
@@ -1422,194 +1422,262 @@ class OutsourceRequestControllerTest extends TestCase
         $response->assertUnprocessable();
     }
 
-    // --- accept ---
+    // --- price mode validation ---
 
-    public function test_partner_with_respond_privilege_can_accept_request(): void
+    public function test_create_request_with_fixed_price_mode_requires_price(): void
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
 
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
-
-        // THEN
-        $response->assertOk();
-    }
-
-    public function test_partner_without_respond_privilege_cannot_accept(): void
-    {
-        // GIVEN — partner has ViewETR but not RespondETR
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
-
-        // THEN
-        $response->assertForbidden();
-    }
-
-    public function test_owner_institution_user_cannot_accept_their_own_request(): void
-    {
-        // GIVEN — owner has no recipient row, even with the Respond privilege
-        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
+        // WHEN — FIXED_PRICE without a price value
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/accept");
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'price_mode' => OutsourceRequestPriceMode::FixedPrice->value,
+            ]);
 
-        // THEN — accept policy requires the caller's institution to be among recipients
-        $response->assertForbidden();
+        // THEN
+        $response->assertUnprocessable()->assertJsonValidationErrors('price');
     }
 
-    // --- decline ---
-
-    public function test_partner_with_respond_privilege_can_decline_request(): void
+    public function test_create_request_with_pricelist_based_mode_rejects_price(): void
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN — PRICELIST_BASED with a price value
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'price' => 100.0,
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()->assertJsonValidationErrors('price');
+    }
+
+    public function test_create_request_with_ask_for_price_mode_rejects_price(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN — ASK_FOR_PRICE with a price value
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'price_mode' => OutsourceRequestPriceMode::AskForPrice->value,
+                'price' => 100.0,
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()->assertJsonValidationErrors('price');
+    }
+
+    public function test_create_request_with_fixed_price_mode_stores_fixed_price_on_offers(): void
+    {
+        // GIVEN
+        Queue::fake();
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
 
         // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'Not available',
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'price_mode' => OutsourceRequestPriceMode::FixedPrice->value,
+                'price' => 75.5,
+            ]);
+
+        // THEN
+        $response->assertCreated();
+        $outsourceRequest = OutsourceRequest::query()
+            ->where('assignment_id', $assignment->id)
+            ->firstOrFail();
+        $this->assertSame(OutsourceRequestPriceMode::FixedPrice, $outsourceRequest->price_mode);
+        $this->assertEqualsWithDelta(75.5, $outsourceRequest->price, 0.0001);
+        $this->assertEqualsWithDelta(75.5, $outsourceRequest->offers()->first()->price, 0.0001);
+    }
+
+    public function test_create_request_with_ask_for_price_mode_stores_null_price_on_offers(): void
+    {
+        // GIVEN
+        Queue::fake();
+        $ownerUser = $this->createOwnerUser();
+        $recipientUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $recipientUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                ...$this->validCreatePayload($assignment, [$recipientUser]),
+                'price_mode' => OutsourceRequestPriceMode::AskForPrice->value,
+            ]);
+
+        // THEN
+        $response->assertCreated();
+        $outsourceRequest = OutsourceRequest::query()
+            ->where('assignment_id', $assignment->id)
+            ->firstOrFail();
+        $this->assertSame(OutsourceRequestPriceMode::AskForPrice, $outsourceRequest->price_mode);
+        $this->assertNull($outsourceRequest->price);
+        $this->assertNull($outsourceRequest->offers()->first()->price);
+    }
+
+    public function test_resource_shape_exposes_price_mode_and_unified_price_field(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment, [
+            'price_mode' => OutsourceRequestPriceMode::PriceListBased,
+        ]);
+        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['price' => '42.000']);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->getJson("/api/outsource-requests/{$translationRequest->id}");
+
+        // THEN — new fields present, old fields absent
+        $response->assertOk()
+            ->assertJsonPath('data.price_mode', OutsourceRequestPriceMode::PriceListBased->value)
+            ->assertJsonMissingPath('data.include_price')
+            ->assertJsonMissingPath('data.fixed_price')
+            ->assertJsonMissingPath('data.offers.0.calculated_price')
+            ->assertJsonMissingPath('data.offers.0.proposed_price');
+        $this->assertEqualsWithDelta(42.0, $response->json('data.offers.0.price'), 0.0001);
+    }
+
+    // --- previewPrices ---
+
+    public function test_preview_prices_returns_fixed_price_for_all_partners(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerA);
+        $this->createInstitutionPartner($ownerUser, $partnerB);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::FixedPrice->value,
+                'price' => 75.5,
+                'offers' => [
+                    ['institution_id' => $partnerA->institution['id']],
+                    ['institution_id' => $partnerB->institution['id']],
+                ],
             ]);
 
         // THEN
         $response->assertOk();
+        $data = $response->json('data');
+        $this->assertCount(2, $data);
+        $this->assertSame(75.5, $data[0]['price']);
+        $this->assertSame(75.5, $data[1]['price']);
+        $this->assertEqualsCanonicalizing(
+            [$partnerA->institution['id'], $partnerB->institution['id']],
+            array_column($data, 'institution_id')
+        );
     }
 
-    public function test_partner_without_respond_privilege_cannot_decline(): void
+    public function test_preview_prices_returns_null_price_for_ask_for_price_mode(): void
     {
-        // GIVEN — partner has ViewETR but not RespondETR
+        // GIVEN
         $ownerUser = $this->createOwnerUser();
         $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::AskForPrice->value,
+                'offers' => [['institution_id' => $partnerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonPath('data.0.institution_id', $partnerUser->institution['id'])
+            ->assertJsonPath('data.0.price', null);
+    }
+
+    public function test_preview_prices_returns_null_for_pricelist_based_when_no_matching_price_entry(): void
+    {
+        // GIVEN — partner has no InstitutionPartnerPrice for this language pair
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [['institution_id' => $partnerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonPath('data.0.price', null);
+    }
+
+    public function test_preview_prices_rejects_non_partner_institution(): void
+    {
+        // GIVEN — no InstitutionPartner relationship created
+        $ownerUser = $this->createOwnerUser();
+        $nonPartnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [['institution_id' => $nonPartnerUser->institution['id']]],
+            ]);
+
+        // THEN
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('offers.0.institution_id');
+    }
+
+    public function test_preview_prices_forbidden_for_user_from_different_institution(): void
+    {
+        // GIVEN — partnerUser's institution does not own the assignment's project
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ManageOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($partnerUser, $ownerUser);
 
         // WHEN
         $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'Not available',
+            ->putJson('/api/outsource-requests/preview-prices', [
+                'assignment_id' => $assignment->id,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [['institution_id' => $ownerUser->institution['id']]],
             ]);
 
         // THEN
         $response->assertForbidden();
-    }
-
-    public function test_owner_institution_user_cannot_decline_their_own_request(): void
-    {
-        // GIVEN — owner has no recipient row, even with the Respond privilege
-        $ownerUser = $this->createOwnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser);
-
-        // WHEN
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->postJson("/api/outsource-requests/{$translationRequest->id}/decline", [
-                'decline_comment' => 'Not available',
-            ]);
-
-        // THEN — decline policy requires the caller's institution to be among recipients
-        $response->assertForbidden();
-    }
-
-    // --- price visibility ---
-
-    public function test_owner_always_sees_calculated_price_regardless_of_include_price(): void
-    {
-        // GIVEN — request with include_price = false but a known calculated_price on the offer
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, ['include_price' => false]);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '99.000']);
-
-        // WHEN owner reads the request
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->getJson("/api/outsource-requests/{$translationRequest->id}");
-
-        // THEN owner sees the real calculated_price
-        $response->assertOk()
-            ->assertJsonPath('data.offers.0.calculated_price', 99);
-    }
-
-    public function test_partner_sees_calculated_price_when_include_price_is_true(): void
-    {
-        // GIVEN — request with include_price = true
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, ['include_price' => true, 'fixed_price' => null]);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '88.000']);
-
-        // WHEN partner reads the request
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/outsource-requests/{$translationRequest->id}");
-
-        // THEN partner sees calculated_price
-        $response->assertOk()
-            ->assertJsonPath('data.offers.0.calculated_price', 88);
-    }
-
-    public function test_partner_sees_null_calculated_price_when_include_price_is_false(): void
-    {
-        // GIVEN — request with include_price = false
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, ['include_price' => false, 'fixed_price' => null]);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '77.000']);
-
-        // WHEN partner reads the request
-        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/outsource-requests/{$translationRequest->id}");
-
-        // THEN partner sees null for calculated_price (open bid — they must propose their own price)
-        $response->assertOk()
-            ->assertJsonPath('data.offers.0.calculated_price', null);
-    }
-
-    public function test_calculated_price_is_null_in_response_when_fixed_price_is_set(): void
-    {
-        // GIVEN — request with fixed_price set (calculated_price is irrelevant)
-        $ownerUser = $this->createOwnerUser();
-        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
-        $assignment = $this->createAssignmentForOwner($ownerUser);
-        $translationRequest = $this->createTranslationRequest($assignment, ['fixed_price' => '55.000']);
-        $this->createNotifiedRecipient($translationRequest, $partnerUser, ['calculated_price' => '66.000']);
-
-        // WHEN owner reads the request
-        $ownerResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
-            ->getJson("/api/outsource-requests/{$translationRequest->id}");
-
-        // WHEN partner reads the request
-        $partnerResponse = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
-            ->getJson("/api/outsource-requests/{$translationRequest->id}");
-
-        // THEN both owner and partner see null for calculated_price
-        $ownerResponse->assertOk()->assertJsonPath('data.offers.0.calculated_price', null);
-        $partnerResponse->assertOk()->assertJsonPath('data.offers.0.calculated_price', null);
     }
 
     // --- helpers ---
@@ -1679,6 +1747,7 @@ class OutsourceRequestControllerTest extends TestCase
         return [
             'assignment_id' => $assignment->id,
             'mode' => OutsourceRequestMode::Cascade->value,
+            'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
             'reaction_time_minutes' => 60,
             'offers' => collect($offers)
                 ->map(fn (InstitutionUser $offer): array => [

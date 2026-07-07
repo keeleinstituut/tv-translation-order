@@ -12,7 +12,7 @@ use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorEmergencySchedule;
 use App\Services\Calendar\SlotMatchingService;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -25,7 +25,7 @@ class SlotMatchingServiceTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
         $this->service = app(SlotMatchingService::class);
     }
 

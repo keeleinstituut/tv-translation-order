@@ -77,7 +77,7 @@ class InstitutionPartnerPriceControllerTest extends TestCase
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson('/api/institution-partner-prices?institution_partner_id[]='.$partner1->id);
+            ->getJson('/api/institution-partner-prices?institution_partner_id='.$partner1->id);
 
         // THEN
         $response->assertStatus(200)->assertJsonCount(2, 'data');

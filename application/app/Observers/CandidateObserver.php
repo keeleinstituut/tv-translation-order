@@ -46,7 +46,7 @@ class CandidateObserver
             );
         }
 
-        if ($subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
+        if (in_array($subProject->status, [SubProjectStatus::TasksSubmittedToVendors, SubProjectStatus::TasksInProgress])) {
             ProcessCandidatesNotificationCycle::dispatchAfterResponse($candidate->assignment);
         }
     }
@@ -73,8 +73,12 @@ class CandidateObserver
     {
         $this->deleteCandidateFromWorkflow($candidate);
 
-        if ($candidate->assignment->subProject->status === SubProjectStatus::TasksSubmittedToVendors) {
-            ProcessCandidatesNotificationCycle::dispatch($candidate->assignment);
+        if (blank($subProject = $candidate->assignment->subProject)) {
+            return;
+        }
+
+        if (in_array($subProject->status, [SubProjectStatus::TasksSubmittedToVendors, SubProjectStatus::TasksInProgress])) {
+            ProcessCandidatesNotificationCycle::dispatchAfterResponse($candidate->assignment);
         }
     }
 

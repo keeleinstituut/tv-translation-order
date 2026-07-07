@@ -13,7 +13,7 @@ use App\Models\VendorSkillLanguage;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -26,7 +26,7 @@ class CalendarPrebookControllerTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_prebook_creates_entry_and_returns_expires_at(): void

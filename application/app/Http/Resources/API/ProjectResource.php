@@ -118,7 +118,14 @@ class ProjectResource extends JsonResource
             'type_classifier_value' => ClassifierValueResource::make($this->whenLoaded('typeClassifierValue')),
             'translation_domain_classifier_value' => ClassifierValueResource::make($this->whenLoaded('translationDomainClassifierValue')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
-            'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
+            'sub_projects' => $this->whenLoaded('subProjects', function ($subProjects) use ($user, $isInSameInstitutionAsProject) {
+                if (!$isInSameInstitutionAsProject && $user->hasActivePartnerAccessToProject($this->resource)) {
+                    $subProjects = $subProjects->filter(
+                        fn ($sp) => $user->hasActivePartnerAccessToSubProject($sp)
+                    );
+                }
+                return SubProjectResource::collection($subProjects);
+            }),
             'workflow_started' => $this->workflow()->isStarted(),
             $this->mergeWhen($isInSameInstitutionAsProject, [
                 'client_institution_user' => InstitutionUserResource::make($this->whenLoaded('clientInstitutionUser')),

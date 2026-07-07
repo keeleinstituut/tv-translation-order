@@ -2,25 +2,27 @@
 
 namespace App\Http\Resources\API;
 
-use App\Models\CalendarSetting;
+use App\Models\InstitutionSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Attributes as OA;
 
 /**
- * @mixin CalendarSetting
+ * @mixin InstitutionSetting
  */
 #[OA\Schema(
-    title: 'CalendarSetting',
+    title: 'InstitutionSetting',
     properties: [
         new OA\Property(property: 'reaction_time_minutes', type: 'integer', example: 30),
         new OA\Property(property: 'buffer_before_minutes', type: 'integer', example: 0),
         new OA\Property(property: 'buffer_after_minutes', type: 'integer', example: 0),
+        new OA\Property(property: 'verbal_auto_acceptance_threshold_days', type: 'integer', example: 7, nullable: true),
+        new OA\Property(property: 'non_verbal_auto_acceptance_threshold_days', type: 'integer', example: 14, nullable: true),
         new OA\Property(property: 'default_project_type_id', type: 'string', format: 'uuid', nullable: true),
     ],
     type: 'object'
 )]
-class CalendarSettingResource extends JsonResource
+class InstitutionSettingResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -31,6 +33,8 @@ class CalendarSettingResource extends JsonResource
             'reaction_time_minutes',
             'buffer_before_minutes',
             'buffer_after_minutes',
+            'verbal_auto_acceptance_threshold_days',
+            'non_verbal_auto_acceptance_threshold_days',
             'default_project_type_id'
         );
     }

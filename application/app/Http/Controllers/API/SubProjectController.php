@@ -311,15 +311,6 @@ class SubProjectController extends Controller
             abort(400, 'Not possible to start workflow for the cancelled sub-project');
         }
 
-        $hasAssignmentWithoutCandidates = $subProject->assignments()
-            ->whereRelation('jobDefinition', function (Builder $jobDefinitionQuery) {
-                $jobDefinitionQuery->whereNot('job_key', JobKey::JOB_OVERVIEW);
-            })->whereDoesntHave('candidates')->exists();
-
-        if ($hasAssignmentWithoutCandidates) {
-            abort(400, 'Sub-project contains job(s) without candidates');
-        }
-
         $hasAssignmentWithoutDeadline = $subProject->assignments()
             ->whereNull('deadline_at')->exists();
 

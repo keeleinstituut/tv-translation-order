@@ -13,7 +13,7 @@ use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -24,7 +24,7 @@ class CalendarLanguageControllerTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_languages_returns_configured_institution_languages(): void

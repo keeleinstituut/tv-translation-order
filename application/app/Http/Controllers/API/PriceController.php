@@ -301,6 +301,9 @@ class PriceController extends Controller
 
     private function getBaseQuery()
     {
-        return Price::getModel()->withGlobalScope('policy', PricePolicy::scope());
+        return Price::getModel()
+            ->withGlobalScope('policy', PricePolicy::scope())
+            ->whereHas('sourceLanguageClassifierValue')
+            ->whereHas('destinationLanguageClassifierValue');
     }
 }

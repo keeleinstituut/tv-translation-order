@@ -53,6 +53,7 @@ use Throwable;
  * @property Carbon|null $rejected_at
  * @property Carbon|null $created_at
  * @property Carbon|null $submitted_to_client_review_at
+ * @property Carbon|null $auto_acceptance_notification_sent_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
  * @property Carbon|null $event_end_at
@@ -182,6 +183,7 @@ class Project extends Model implements AuditLoggable, HasMedia
         'corrected_at' => 'datetime',
         'accepted_at' => 'datetime',
         'submitted_to_client_review_at' => 'datetime',
+        'auto_acceptance_notification_sent_at' => 'datetime',
         'cancellation_pending_at' => 'datetime',
         'price' => 'float',
         'status' => ProjectStatus::class,
@@ -252,7 +254,7 @@ class Project extends Model implements AuditLoggable, HasMedia
     {
         return $this->hasManyDeepFromRelations(
             $this->assignments(),
-            new Assignment()->outsourceRequest(),
+            new Assignment()->currentOutsourceRequest(),
             new OutsourceRequest()->offers(),
         );
     }
@@ -261,8 +263,16 @@ class Project extends Model implements AuditLoggable, HasMedia
     {
         return $this->hasManyDeepFromRelations(
             $this->assignments(),
-            new Assignment()->outsourceRequest(),
+            new Assignment()->currentOutsourceRequest(),
             new OutsourceRequest()->acceptedOffer(),
+        );
+    }
+
+    public function outsourceRequests(): HasManyDeep
+    {
+        return $this->hasManyDeepFromRelations(
+            $this->assignments(),
+            new Assignment()->currentOutsourceRequest(),
         );
     }
 

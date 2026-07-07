@@ -14,6 +14,7 @@ class InstitutionPartnerListRequest extends FormRequest
             'partner_institution_id.*' => 'uuid',
             'sort_by' => 'sometimes|in:created_at',
             'sort_order' => 'sometimes|in:asc,desc',
+            'q' => 'nullable|string',
         ];
     }
 }

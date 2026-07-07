@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\Assignment;
 use App\Models\AuthUser;
 use App\Models\Volume;
 
@@ -27,9 +28,10 @@ class VolumePolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(AuthUser $user): bool
+    public function create(AuthUser $user, Assignment $assignment): bool
     {
-        return $user->hasPrivilege(PrivilegeKey::ManageProject);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
+            $user->isInSameInstitutionAsProject($assignment->subProject->project);
     }
 
     /**
@@ -38,7 +40,7 @@ class VolumePolicy
     public function update(AuthUser $user, Volume $volume): bool
     {
         return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
-            ! $user->hasSharedPartnerAccessToAssignment($volume->assignment);
+            $user->isInSameInstitutionAsProject($volume->assignment->subProject->project);
     }
 
     /**
@@ -47,7 +49,7 @@ class VolumePolicy
     public function delete(AuthUser $user, Volume $volume): bool
     {
         return $user->hasPrivilege(PrivilegeKey::ManageProject) &&
-            ! $user->hasSharedPartnerAccessToAssignment($volume->assignment);
+            $user->isInSameInstitutionAsProject($volume->assignment->subProject->project);
     }
 
     /**

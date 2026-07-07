@@ -18,11 +18,13 @@ use OpenApi\Attributes as OA;
             new OA\Property(property: 'reaction_time_minutes', type: 'integer', example: 30),
             new OA\Property(property: 'buffer_before_minutes', type: 'integer', example: 0),
             new OA\Property(property: 'buffer_after_minutes', type: 'integer', example: 0),
+            new OA\Property(property: 'verbal_auto_acceptance_threshold_days', type: 'integer', example: 7, nullable: true),
+            new OA\Property(property: 'non_verbal_auto_acceptance_threshold_days', type: 'integer', example: 14, nullable: true),
             new OA\Property(property: 'default_project_type_id', type: 'string', format: 'uuid'),
         ]
     )
 )]
-class CalendarSettingUpdateRequest extends FormRequest
+class InstitutionSettingUpdateRequest extends FormRequest
 {
     /**
      * @return array<string, ValidationRule|array|string>
@@ -33,6 +35,8 @@ class CalendarSettingUpdateRequest extends FormRequest
             'reaction_time_minutes' => ['sometimes', 'integer', 'min:0'],
             'buffer_before_minutes' => ['sometimes', 'integer', 'min:0'],
             'buffer_after_minutes' => ['sometimes', 'integer', 'min:0'],
+            'verbal_auto_acceptance_threshold_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:365'],
+            'non_verbal_auto_acceptance_threshold_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:365'],
             'default_project_type_id' => [
                 'sometimes',
                 'uuid',
@@ -46,7 +50,7 @@ class CalendarSettingUpdateRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                if ($this->has('default_project_type_id') && !ClassifierValue::isVerbalProjectType($this->input('default_project_type_id'))) {
+                if ($this->has('default_project_type_id') && !ClassifierValue::isCalendarProjectType($this->input('default_project_type_id'))) {
                     $validator->errors()->add('default_project_type_id', 'Ainult suulise tõlke tüübid on lubatud');
                 }
             }

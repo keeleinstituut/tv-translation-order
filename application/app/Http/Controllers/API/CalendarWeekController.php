@@ -15,7 +15,6 @@ use App\Http\Resources\API\VendorCalendarEntryResource;
 use App\Policies\VendorCalendarEntryPolicy;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
-use App\Services\Calendar\SlotDiscretizationService;
 use App\Services\Calendar\VendorsAvailabilityService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
@@ -30,7 +29,6 @@ class CalendarWeekController extends Controller
     public function __construct(
         private readonly CalendarDataLoader         $dataLoader,
         private readonly VendorsAvailabilityService $availabilityService,
-        private readonly SlotDiscretizationService  $discretizationService,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
     )
@@ -157,7 +155,7 @@ class CalendarWeekController extends Controller
             }
 
             $results = $results->merge(
-                $this->discretizationService->computeSlotLanguageAvailability(
+                $this->availabilityService->computeSlotLanguageAvailability(
                     $data->coverageByLanguage,
                     $precomputedAvailability,
                     $slotStart,
@@ -204,7 +202,7 @@ class CalendarWeekController extends Controller
             }
 
             $results = $results->merge(
-                $this->discretizationService->computeSlotLanguageAvailability(
+                $this->availabilityService->computeSlotLanguageAvailability(
                     $data->coverageByLanguage,
                     $precomputedAvailability,
                     $slotStart,

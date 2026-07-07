@@ -47,6 +47,47 @@ class ProjectControllerShowTest extends TestCase
             ->assertJsonFragment(['id' => $project->id]);
     }
 
+    public function test_partner_sees_only_subprojects_with_shared_assignments(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $project = Project::factory()->create(['institution_id' => $ownerUser->institution['id']]);
+
+        $sharedSubProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        $sharedAssignment = Assignment::factory()->create(['sub_project_id' => $sharedSubProject->id]);
+        $outsourceRequest = OutsourceRequest::factory()->create([
+            'assignment_id' => $sharedAssignment->id,
+            'status' => OutsourceRequestStatus::Active,
+        ]);
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $outsourceRequest->id,
+            'institution_id' => $partnerUser->institution['id'],
+            'status' => \App\Enums\OutsourceOfferStatus::OfferAccepted,
+        ]);
+
+        $unsharedSubProject = SubProject::factory()->create([
+            'project_id' => $project->id,
+            'source_language_classifier_value_id' => ClassifierValue::factory()->language(),
+            'destination_language_classifier_value_id' => ClassifierValue::factory()->language(),
+        ]);
+        Assignment::factory()->create(['sub_project_id' => $unsharedSubProject->id]);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson("/api/projects/{$project->id}");
+
+        // THEN
+        $response->assertOk();
+        $subProjectIds = collect($response->json('data.sub_projects'))->pluck('id');
+        $this->assertTrue($subProjectIds->contains($sharedSubProject->id));
+        $this->assertFalse($subProjectIds->contains($unsharedSubProject->id));
+    }
+
     public function test_partner_cannot_view_project_when_not_a_recipient(): void
     {
         // GIVEN — partner has ViewETR but no recipient record linking them to the project

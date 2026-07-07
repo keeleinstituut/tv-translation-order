@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\OutsourceOfferStatus;
+use App\Jobs\Workflows\UpdateSharedAssignmentInstitutionInsideWorkflow;
 use App\Models\OutsourceOffer;
 use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
@@ -33,9 +34,16 @@ readonly class OutsourceOfferObserver
             OutsourceOfferStatus::RequestAccepted => $this->publishRequestAcceptedEmailNotification($offer),
             OutsourceOfferStatus::RequestDeclined => $this->publishRequestDeclinedEmailNotification($offer),
             OutsourceOfferStatus::RequestExpired => $this->publishRequestExpiredEmailNotification($offer),
+            OutsourceOfferStatus::OfferAccepted => $this->publishOfferAcceptedEmailNotification($offer),
             OutsourceOfferStatus::OfferDeclined => $this->publishOfferDeclinedEmailNotification($offer),
+            OutsourceOfferStatus::RequestCancelled => $this->publishRequestCancelledEmailNotification($offer),
             default => null,
         };
+
+        $hadOfferAcceptedStatus = data_get($offer->getChanges(), 'status') === OutsourceOfferStatus::OfferAccepted;
+        if ($offer->status === OutsourceOfferStatus::OfferAccepted || $hadOfferAcceptedStatus) {
+            UpdateSharedAssignmentInstitutionInsideWorkflow::dispatchSync($offer->outsourceRequest->assignment);
+        }
     }
 
     private function publishRequestSentEmailNotification(OutsourceOffer $offer): void
@@ -135,6 +143,27 @@ readonly class OutsourceOfferObserver
         });
     }
 
+    private function publishOfferAcceptedEmailNotification(OutsourceOffer $offer): void
+    {
+        $institution = $offer->institution;
+        if (empty($institution?->email)) {
+            return;
+        }
+
+        $assignment = $offer->outsourceRequest->assignment;
+        DB::afterCommit(function () use ($institution, $assignment) {
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::OutsourceOfferAccepted,
+                    'receiver_email' => $institution->email,
+                    'receiver_name' => $institution->name,
+                    'variables' => ['assignment' => $assignment->only(['ext_id'])],
+                ]),
+                $institution->id
+            );
+        });
+    }
+
     private function publishOfferDeclinedEmailNotification(OutsourceOffer $offer): void
     {
         $priorStatus = $offer->getOriginal('status');
@@ -162,6 +191,32 @@ readonly class OutsourceOfferObserver
                     ],
                 ]),
                 $institutionId
+            );
+        });
+    }
+
+    private function publishRequestCancelledEmailNotification(OutsourceOffer $offer): void
+    {
+        $institution = $offer->institution;
+        $requestCancellationReason = $offer->outsourceRequest?->only(['cancellation_reason']);
+        $assignmentExtId = $offer->outsourceRequest?->assignment?->only(['ext_id']);
+
+        if (empty($institution->email) || empty($assignmentExtId)) {
+            return;
+        }
+
+        DB::afterCommit(function () use ($institution, $assignmentExtId, $requestCancellationReason) {
+            $this->notificationPublisher->publishEmailNotification(
+                EmailNotificationMessage::make([
+                    'notification_type' => NotificationType::OutsourceRequestCancelled,
+                    'receiver_email' => $institution->email,
+                    'receiver_name' => $institution->name,
+                    'variables' => [
+                        'assignment' => $assignmentExtId,
+                        'request' => $requestCancellationReason,
+                    ],
+                ]),
+                $institution->id
             );
         });
     }

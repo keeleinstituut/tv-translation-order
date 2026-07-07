@@ -9,6 +9,7 @@ use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
+use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Models\Volume;
 use Illuminate\Support\Carbon;
@@ -64,6 +65,10 @@ readonly class AssignmentObserver
         $this->updateVolumesAssigneeFields($assignment);
         if ($assignment->wasChanged('deadline_at')) {
             UpdateAssignmentDeadlineInsideWorkflow::dispatch($assignment);
+        }
+
+        if (filled($assignment->assignee) && $assignment->wasChanged(['event_start_at', 'event_end_at', 'deadline_at'])) {
+            $this->publishTaskUpdatedEmailNotification($assignment, $assignment->assignee);
         }
 
         if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
@@ -206,6 +211,35 @@ readonly class AssignmentObserver
                             'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
                             'vendor' => $assignment->assignee?->only(['company_name']),
                             'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
+                        ]
+                    ]),
+                    $assignment->subProject->project->institution_id
+                );
+            });
+        }
+    }
+
+    private function publishTaskUpdatedEmailNotification(Assignment $assignment, Vendor $receiver): void
+    {
+        $receiverEmail = $receiver->institutionUser?->email;
+        $receiverName = $receiver->institutionUser?->getUserFullName();
+
+        if (empty($receiverEmail)) {
+            $institution = $assignment->subProject->project->institution;
+            $receiverEmail = $institution?->email;
+            $receiverName = $institution?->name;
+        }
+
+        if (filled($receiverEmail) && filled($assignment->subProject?->project?->institution_id)) {
+            DB::afterCommit(function () use ($assignment, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::TaskUpdated,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'assignment' => $assignment->only('ext_id'),
+                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
                         ]
                     ]),
                     $assignment->subProject->project->institution_id

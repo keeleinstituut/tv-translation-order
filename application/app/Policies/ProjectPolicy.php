@@ -104,6 +104,10 @@ class ProjectPolicy
     // partner access deliberately excluded
     public function changeProjectManager(AuthUser $user, Project $project): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->isInSameInstitutionAsProject($project) &&
             ($user->hasPrivilege(PrivilegeKey::ChangeProjectManager) || empty($project->manager_institution_user_id));
     }
@@ -111,6 +115,10 @@ class ProjectPolicy
     // partner access deliberately excluded
     public function editSourceFiles(AuthUser $user, Project $project): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->isInSameInstitutionAsProject($project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
                 $user->isClientOfProject($project)
@@ -120,6 +128,10 @@ class ProjectPolicy
     // partner access deliberately excluded
     public function editHelpFiles(AuthUser $user, Project $project): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->isInSameInstitutionAsProject($project) && (
                 $user->hasPrivilege(PrivilegeKey::ManageProject) ||
                 $user->isClientOfProject($project)
@@ -148,18 +160,30 @@ class ProjectPolicy
     // partner access deliberately excluded
     public function cancel(AuthUser $user, Project $project): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->hasPrivilege(PrivilegeKey::ManageProject) || $user->isClientOfProject($project);
     }
 
     // partner access deliberately excluded
     public function review(AuthUser $user, Project $project): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->isClientOfProject($project);
     }
 
     // partner access deliberately excluded
     public function export(AuthUser $user): bool
     {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
         return $user->hasPrivilege(PrivilegeKey::ExportInstitutionGeneralReport);
     }
 

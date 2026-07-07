@@ -9,10 +9,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class CalendarSettingsSeeder extends Seeder
+class InstitutionSettingsSeeder extends Seeder
 {
     /**
-     * Seed default calendar_settings for every existing institution.
+     * Seed default institution_settings for every existing institution.
      * Safe to run multiple times — skips institutions that already have a row.
      */
     public function run(): void
@@ -23,7 +23,7 @@ class CalendarSettingsSeeder extends Seeder
             ->whereNull('deleted_at')
             ->pluck('id');
 
-        $existingIds = DB::table('calendar_settings')
+        $existingIds = DB::table('institution_settings')
             ->whereIn('institution_id', $institutionIds)
             ->pluck('institution_id')
             ->flip();
@@ -46,7 +46,7 @@ class CalendarSettingsSeeder extends Seeder
             ->toArray();
 
         if (! empty($rows)) {
-            DB::table('calendar_settings')->insert($rows);
+            DB::table('institution_settings')->insert($rows);
         }
     }
 

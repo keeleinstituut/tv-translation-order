@@ -17,6 +17,7 @@ use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -26,6 +27,7 @@ use App\Models\Candidate;
 use App\Models\Media;
 use App\Models\VendorCalendarEntry;
 use App\Policies\AssignmentPolicy;
+use App\Policies\OutsourceRequestPolicy;
 use App\Services\Calendar\CalendarSettingsResolver;
 use App\Services\Calendar\VendorReservationService;
 use App\Services\Workflows\WorkflowService;
@@ -86,7 +88,9 @@ class AssignmentController extends Controller
                 'subProject.project.managerInstitutionUser',
                 'subProject.project.projectComments',
                 'subProject.project.helpFiles',
-                'outsourceRequest.offers.institution'
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ])->findOrFail($id);
 
         $this->authorize('view', $assignment);
@@ -183,8 +187,9 @@ class AssignmentController extends Controller
                 'volumes',
                 'catToolJobs',
                 'jobDefinition',
-                'outsourceRequest.offers.institution',
-                'outsourceRequest.ownerInstitution',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ]);
 
             return AssignmentResource::make($assignment);
@@ -226,8 +231,9 @@ class AssignmentController extends Controller
                 'volumes',
                 'catToolJobs',
                 'jobDefinition',
-                'outsourceRequest.offers.institution',
-                'outsourceRequest.ownerInstitution',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ]);
 
             return AssignmentResource::make($assignment);
@@ -321,6 +327,7 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    ProcessCandidatesNotificationCycle::dispatchAfterResponse($assignment);
                 }
             );
 
@@ -378,6 +385,7 @@ class AssignmentController extends Controller
                     }
 
                     TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    ProcessCandidatesNotificationCycle::dispatchAfterResponse($assignment);
                 }
             );
 
@@ -574,8 +582,9 @@ class AssignmentController extends Controller
                 'volumes.institutionDiscount',
                 'catToolJobs',
                 'jobDefinition',
-                'outsourceRequest.offers.institution',
-                'outsourceRequest.ownerInstitution',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ]);
     }
 

@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\PrivilegeKey;
+use App\Enums\InstitutionType;
 use App\Enums\OutsourceOfferStatus;
+use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\Institution;
 use KeycloakAuthGuard\Models\JwtPayloadUser;
 
@@ -15,10 +16,18 @@ use KeycloakAuthGuard\Models\JwtPayloadUser;
  */
 class AuthUser extends JwtPayloadUser
 {
+    public string $selectedInstitutionType;
+
     private bool|null $isVendor = null;
 
     private Vendor|null $vendor = null;
     private Institution|null $institution = null;
+
+    public function __construct(array $jwtPayloadData)
+    {
+        parent::__construct($jwtPayloadData);
+        $this->selectedInstitutionType = $jwtPayloadData['selectedInstitution']['type'] ?? InstitutionType::Institution->value;
+    }
 
     public function institution(): Institution|null
     {
@@ -32,7 +41,7 @@ class AuthUser extends JwtPayloadUser
 
     public function belongsToTranslationAgency(): bool
     {
-        return $this->institution()?->isTranslationAgency() === true;
+        return InstitutionType::tryFrom($this->selectedInstitutionType) === InstitutionType::TranslationAgency;
     }
 
     public function isVendor(): bool
@@ -61,7 +70,7 @@ class AuthUser extends JwtPayloadUser
         return $this->vendor;
     }
 
-    public function hasPrivilege(PrivilegeKey | string $privilege): bool
+    public function hasPrivilege(PrivilegeKey|string $privilege): bool
     {
         if (empty($this->privileges)) {
             return false;
@@ -72,7 +81,7 @@ class AuthUser extends JwtPayloadUser
     }
 
     /**
-     * @param  array<PrivilegeKey|string>  $privileges
+     * @param array<PrivilegeKey|string> $privileges
      */
     public function hasAtLeastOnePrivilege(array $privileges): bool
     {
@@ -131,7 +140,7 @@ class AuthUser extends JwtPayloadUser
 
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
-            ->whereHas('outsourceRequest', fn ($q) => $q->where('assignment_id', $assignment->id))
+            ->whereHas('outsourceRequest', fn($q) => $q->where('assignment_id', $assignment->id))
             ->exists();
     }
 
@@ -144,7 +153,7 @@ class AuthUser extends JwtPayloadUser
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
             ->where('status', OutsourceOfferStatus::OfferAccepted)
-            ->whereHas('outsourceRequest', fn ($q) => $q->where('assignment_id', $assignment->id))
+            ->whereHas('outsourceRequest', fn($q) => $q->where('assignment_id', $assignment->id))
             ->exists();
     }
 
@@ -157,13 +166,16 @@ class AuthUser extends JwtPayloadUser
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
             ->whereHas('outsourceRequest.assignment.subProject',
-                fn ($q) => $q->where('id', $subProject->id))
+                fn($q) => $q->where('id', $subProject->id))
             ->whereHas('outsourceRequest', function ($q) use ($requireSourceFiles) {
                 if ($requireSourceFiles) {
                     $q->where('include_source_files', true);
                 }
-            })
-            ->exists();
+            })->when($requireSourceFiles, fn($q) => $q->whereNotIn('status', [
+                OutsourceOfferStatus::RequestCancelled,
+                OutsourceOfferStatus::OfferDeclined,
+                OutsourceOfferStatus::RequestExpired
+            ]))->exists();
     }
 
     public function hasActivePartnerAccessToSubProject(SubProject $subProject): bool
@@ -175,7 +187,7 @@ class AuthUser extends JwtPayloadUser
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
             ->where('status', OutsourceOfferStatus::OfferAccepted)
-            ->whereHas('outsourceRequest.assignment.subProject', fn ($q) => $q->where('id', $subProject->id))
+            ->whereHas('outsourceRequest.assignment.subProject', fn($q) => $q->where('id', $subProject->id))
             ->exists();
     }
 
@@ -188,12 +200,16 @@ class AuthUser extends JwtPayloadUser
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
             ->whereHas('outsourceRequest.assignment.subProject',
-                fn ($q) => $q->where('project_id', $project->id))
+                fn($q) => $q->where('project_id', $project->id))
             ->whereHas('outsourceRequest', function ($q) use ($requireSourceFiles) {
                 if ($requireSourceFiles) {
                     $q->where('include_source_files', true);
                 }
-            })->exists();
+            })->when($requireSourceFiles, fn($q) => $q->whereNotIn('status', [
+                OutsourceOfferStatus::RequestCancelled,
+                OutsourceOfferStatus::OfferDeclined,
+                OutsourceOfferStatus::RequestExpired
+            ]))->exists();
     }
 
     public function hasActivePartnerAccessToProject(Project $project): bool
@@ -205,7 +221,7 @@ class AuthUser extends JwtPayloadUser
         return OutsourceOffer::query()
             ->where('institution_id', $this->institutionId)
             ->where('status', OutsourceOfferStatus::OfferAccepted)
-            ->whereHas('outsourceRequest.assignment.subProject', fn ($q) => $q->where('project_id', $project->id))
+            ->whereHas('outsourceRequest.assignment.subProject', fn($q) => $q->where('project_id', $project->id))
             ->exists();
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\CandidateStatus;
 use App\Enums\OutsourceRequestMode;
+use App\Enums\OutsourceRequestPriceMode;
 use App\Enums\OutsourceRequestStatus;
 use App\Models\Assignment;
 use App\Models\Candidate;
@@ -20,10 +20,11 @@ use OpenApi\Attributes as OA;
     request: self::class,
     required: true,
     content: new OA\JsonContent(
-        required: ['assignment_id', 'mode', 'reaction_time_minutes', 'offers'],
+        required: ['assignment_id', 'mode', 'price_mode', 'reaction_time_minutes', 'offers'],
         properties: [
             new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
             new OA\Property(property: 'mode', type: 'string', enum: OutsourceRequestMode::class),
+            new OA\Property(property: 'price_mode', type: 'string', enum: OutsourceRequestPriceMode::class),
             new OA\Property(property: 'reaction_time_minutes', type: 'integer', maximum: 525600, minimum: 1),
             new OA\Property(
                 property: 'offers',
@@ -36,8 +37,7 @@ use OpenApi\Attributes as OA;
             ),
             new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
             new OA\Property(property: 'include_source_files', type: 'boolean', nullable: true),
-            new OA\Property(property: 'include_price', type: 'boolean', nullable: true),
-            new OA\Property(property: 'fixed_price', type: 'number', format: 'double', nullable: true),
+            new OA\Property(property: 'price', description: 'Required when price_mode is FIXED_PRICE; must be omitted otherwise.', type: 'number', format: 'double', nullable: true),
             new OA\Property(property: 'request_files', type: 'array', items: new OA\Items(type: 'string', format: 'binary'), nullable: true),
         ]
     )
@@ -49,13 +49,13 @@ class OutsourceRequestCreateRequest extends FormRequest
         return [
             'assignment_id' => 'required|uuid|exists:assignments,id',
             'mode' => 'required|string|in:CASCADE,PARALLEL',
+            'price_mode' => 'required|string|in:PRICELIST_BASED,FIXED_PRICE,ASK_FOR_PRICE',
             'reaction_time_minutes' => 'required|integer|min:1|max:525600',
             'offers' => 'required|array|min:1',
             'offers.*.institution_id' => 'required|uuid',
             'special_instructions' => 'nullable|string',
             'include_source_files' => 'nullable|boolean',
-            'include_price' => 'nullable|boolean',
-            'fixed_price' => 'nullable|numeric|min:0',
+            'price' => 'nullable|numeric|gt:0',
             'request_files' => 'nullable|array',
             'request_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
         ];
@@ -76,12 +76,8 @@ class OutsourceRequestCreateRequest extends FormRequest
                     $validator->errors()->add('assignment_id', 'Assignment already has a vendor assigned.');
                 }
 
-                if (Candidate::query()
-                    ->where('assignment_id', $assignmentId)
-                    ->whereIn('status', [CandidateStatus::New, CandidateStatus::SubmittedToVendor])
-                    ->exists()
-                ) {
-                    $validator->errors()->add('assignment_id', 'Assignment has active vendor candidates.');
+                if (Candidate::query()->where('assignment_id', $assignmentId)->exists()) {
+                    $validator->errors()->add('assignment_id', 'Päringut saab luua ainult ülesannetele, millel pole kandidaate.');
                 }
 
                 if (OutsourceRequest::query()
@@ -114,6 +110,20 @@ class OutsourceRequestCreateRequest extends FormRequest
                 $duplicates = $recipientIds->duplicates();
                 if ($duplicates->isNotEmpty()) {
                     $validator->errors()->add('offers', 'Offer institution IDs must be unique.');
+                }
+            },
+            function (Validator $validator) {
+                $priceMode = $this->input('price_mode');
+                $price = $this->input('price');
+
+                if ($priceMode === OutsourceRequestPriceMode::FixedPrice->value) {
+                    if ($price === null) {
+                        $validator->errors()->add('price', 'Price is required.');
+                    }
+                } elseif (in_array($priceMode, [OutsourceRequestPriceMode::PriceListBased->value, OutsourceRequestPriceMode::AskForPrice->value], true)) {
+                    if ($price !== null) {
+                        $validator->errors()->add('price', 'Price must be omitted.');
+                    }
                 }
             },
         ];

@@ -149,7 +149,7 @@ class CatToolController extends Controller
     public function jobsIndex(Request $request): SubProjectCatToolJobsResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
-        $this->authorize('manageCatTool', $subProject);
+        $this->authorize('viewCatToolJobs', $subProject);
 
         return SubProjectCatToolJobsResource::make($subProject);
     }
@@ -168,7 +168,7 @@ class CatToolController extends Controller
     public function volumeAnalysis(Request $request): SubProjectVolumeAnalysisResource
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
-        $this->authorize('manageCatTool', $subProject);
+        $this->authorize('viewCatToolJobs', $subProject);
 
         return SubProjectVolumeAnalysisResource::make($subProject);
     }
@@ -298,7 +298,7 @@ class CatToolController extends Controller
     public function downloadVolumeAnalysisReport(Request $request): StreamedResponse|Response
     {
         $subProject = $this->getSubProject($request->route('sub_project_id'));
-        $this->authorize('manageCatTool', $subProject);
+        $this->authorize('viewCatToolJobs', $subProject);
 
         if ($subProject->cat()->getAnalyzingStatus() !== CatToolAnalyzingStatus::Done) {
             return response()->noContent(Response::HTTP_ACCEPTED);

@@ -15,7 +15,7 @@ use App\Models\Skill;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,7 +27,7 @@ class VendorCalendarEntryStoreTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_store_tpm_creates_absence_entry(): void

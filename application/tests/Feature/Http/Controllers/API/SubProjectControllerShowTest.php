@@ -79,6 +79,34 @@ class SubProjectControllerShowTest extends TestCase
             ->assertJsonPath('data.source_files.0.file_name', 'source-file.pdf');
     }
 
+    public function test_partner_sees_only_shared_assignments_not_all(): void
+    {
+        $ownerInstitution = Institution::factory()->create();
+        $partnerUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ViewOutsourceRequest);
+
+        $subProject = $this->createSubProjectForInstitution($ownerInstitution->id);
+
+        $sharedAssignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+        $outsourceRequest = OutsourceRequest::factory()->create([
+            'assignment_id' => $sharedAssignment->id,
+        ]);
+        OutsourceOffer::factory()->create([
+            'outsource_request_id' => $outsourceRequest->id,
+            'institution_id' => $partnerUser->institution['id'],
+            'status' => OutsourceOfferStatus::OfferAccepted,
+        ]);
+
+        $unsharedAssignment = Assignment::factory()->create(['sub_project_id' => $subProject->id]);
+
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson("/api/subprojects/{$subProject->id}");
+
+        $response->assertOk();
+        $assignmentIds = collect($response->json('data.assignments'))->pluck('id');
+        $this->assertTrue($assignmentIds->contains($sharedAssignment->id));
+        $this->assertFalse($assignmentIds->contains($unsharedAssignment->id));
+    }
+
     private function createSubProjectForInstitution(string $institutionId): SubProject
     {
         $project = Project::factory()->create(['institution_id' => $institutionId]);

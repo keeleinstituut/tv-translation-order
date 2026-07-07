@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Enums\CandidateStatus;
 use App\Exceptions\CalendarSlotConflictException;
 use App\Models\Assignment;
-use App\Models\CalendarSetting;
+use App\Models\InstitutionSetting;
 use App\Models\Candidate;
 use App\Services\Calendar\CalendarSettingsResolver;
 use App\Services\Calendar\TimeSlot;
@@ -27,6 +27,12 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public const int DEFAULT_REACTION_TIME_MINUTES = 30;
+
+    /**
+     * Delete the job if its models no longer exist.
+     */
+    public bool $deleteWhenMissingModels = true;
+
 
     public function __construct(private readonly Assignment $assignment)
     {
@@ -204,7 +210,7 @@ class ProcessCandidatesNotificationCycle implements ShouldQueue
             return self::DEFAULT_REACTION_TIME_MINUTES;
         }
 
-        return CalendarSetting::where('institution_id', $institutionId)
+        return InstitutionSetting::where('institution_id', $institutionId)
             ->first()
             ?->reaction_time_minutes ?? self::DEFAULT_REACTION_TIME_MINUTES;
     }
