@@ -6,7 +6,6 @@ use App\Enums\AssignmentStatus;
 use App\Enums\OutsourceOfferStatus;
 use App\Enums\OutsourceRequestStatus;
 use App\Services\Prices\AssigneePriceCalculator;
-use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Models\AuditLoggable;
 use Database\Factories\AssignmentFactory;
@@ -34,6 +33,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string|null $ext_id
  * @property AssignmentStatus $status
  * @property float|null $price
+ * @property float|null $discount_amount
  * @property Carbon|null $deadline_at
  * @property string|null $comments
  * @property string|null $assignee_comments
@@ -86,6 +86,7 @@ class Assignment extends Model implements AuditLoggable
         'event_start_at' => 'datetime',
         'completed_at' => 'datetime',
         'price' => 'float',
+        'discount_amount' => 'float',
         'timeslot_passed_notification_sent_at' => 'datetime',
     ];
 
@@ -157,7 +158,7 @@ class Assignment extends Model implements AuditLoggable
         return $this->hasOne(OutsourceRequest::class)->whereIn('status', [OutsourceRequestStatus::Active, OutsourceRequestStatus::Fulfilled]);
     }
 
-    public function getPriceCalculator(): PriceCalculator
+    public function getPriceCalculator(): AssigneePriceCalculator
     {
         return new AssigneePriceCalculator($this);
     }

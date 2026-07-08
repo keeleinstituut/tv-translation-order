@@ -165,11 +165,15 @@ readonly class AssignmentObserver
     private function updateCachedPrices(Assignment $assignment): void
     {
         // https://github.com/laravel/framework/issues/27138
-        $assignment->price = $assignment->getPriceCalculator()->getPrice();
+        $assignmentCalculator = $assignment->getPriceCalculator();
+        $assignment->price = $assignmentCalculator->getPrice();
+        $assignment->discount_amount = $assignmentCalculator->getDiscountAmount();
         $assignment->saveQuietly();
 
         if (filled($subProject = $assignment->subProject)) {
-            $subProject->price = $subProject->getPriceCalculator()->getPrice();
+            $subProjectCalculator = $subProject->getPriceCalculator();
+            $subProject->price = $subProjectCalculator->getPrice();
+            $subProject->discount_amount = $subProjectCalculator->getDiscountAmount();
             $subProject->saveOrFail();
         }
 

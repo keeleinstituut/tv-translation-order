@@ -197,7 +197,7 @@ class StatisticsSeeder extends Seeder
             'assigned_vendor_id' => $vendor?->id,
             'status' => $status,
             'price' => $price,
-            //'price_without_discount' => $priceWithoutDiscount,
+            'discount_amount' => $priceWithoutDiscount - $price,
             'created_at' => $createdAt,
             'completed_at' => $completedAt,
         ]);
