@@ -104,6 +104,40 @@ class OutsourceOfferControllerTest extends TestCase
         $response->assertJsonPath('data.0.id', $sentOffer->id);
     }
 
+    public function test_index_filters_by_institution_ids(): void
+    {
+        // GIVEN — three distinct owner institutions, all offering to the same partner
+        $ownerA = $this->createOwnerUser();
+        $ownerB = $this->createOwnerUser();
+        $ownerC = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
+
+        $offerA = $this->createNotifiedRecipient(
+            $this->createTranslationRequest($this->createAssignmentForOwner($ownerA)),
+            $partnerUser
+        );
+        $offerB = $this->createNotifiedRecipient(
+            $this->createTranslationRequest($this->createAssignmentForOwner($ownerB)),
+            $partnerUser
+        );
+        $this->createNotifiedRecipient(
+            $this->createTranslationRequest($this->createAssignmentForOwner($ownerC)),
+            $partnerUser
+        );
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson('/api/outsource-offers'
+                . '?institution_ids[]=' . $ownerA->institution['id']
+                . '&institution_ids[]=' . $ownerB->institution['id']);
+
+        // THEN
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+        $returnedIds = collect($response->json('data'))->pluck('id');
+        $this->assertEqualsCanonicalizing([$offerA->id, $offerB->id], $returnedIds->all());
+    }
+
     public function test_user_without_respond_privilege_cannot_list_offers(): void
     {
         // GIVEN
