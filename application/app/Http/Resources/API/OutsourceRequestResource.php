@@ -18,13 +18,13 @@ use OpenApi\Attributes as OA;
  */
 #[OA\Schema(
     title: 'OutsourceRequest',
-    required: ['id', 'assignment_id', 'mode', 'price_mode', 'reaction_time_minutes', 'status', 'include_source_files', 'is_cascade_exhausted'],
+    required: ['id', 'assignment_id', 'mode', 'price_mode', 'status', 'include_source_files', 'is_cascade_exhausted'],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'mode', type: 'string', enum: OutsourceRequestMode::class),
         new OA\Property(property: 'price_mode', type: 'string', enum: OutsourceRequestPriceMode::class),
-        new OA\Property(property: 'reaction_time_minutes', type: 'integer'),
+        new OA\Property(property: 'reaction_time_minutes', type: 'integer', nullable: true),
         new OA\Property(property: 'deadline_at', description: 'Computed for PARALLEL mode (created_at + reaction_time_minutes); null for CASCADE.', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'special_instructions', type: 'string', nullable: true),
         new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),

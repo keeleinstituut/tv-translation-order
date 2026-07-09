@@ -29,7 +29,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property string $institution_user_id
  * @property OutsourceRequestMode $mode
  * @property OutsourceRequestPriceMode $price_mode
- * @property int $reaction_time_minutes
+ * @property int|null $reaction_time_minutes
  * @property string|null $special_instructions
  * @property string|null $price
  * @property bool $include_source_files
@@ -105,7 +105,7 @@ class OutsourceRequest extends Model implements HasMedia
 
     public function getDeadlineAtAttribute(): ?Carbon
     {
-        if ($this->isCascade() || $this->created_at === null) {
+        if ($this->isCascade() || $this->created_at === null || $this->reaction_time_minutes === null) {
             return null;
         }
 
