@@ -4,8 +4,6 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
-use App\Http\Requests\API\CatToolVolumeCreateRequest;
-use App\Http\Requests\API\CatToolVolumeUpdateRequest;
 use App\Http\Requests\API\VolumeCreateRequest;
 use App\Http\Requests\API\VolumeUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
@@ -57,38 +55,6 @@ class VolumeController extends Controller
     /**
      * @throws Throwable
      */
-    #[OA\Post(
-        path: '/volumes/cat-tool',
-        summary: 'Create a new volume for assignment with CAT tool',
-        requestBody: new OAH\RequestBody(CatToolVolumeCreateRequest::class),
-        tags: ['Volume management'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: VolumeResource::class, description: 'Created volume', response: Response::HTTP_CREATED)]
-    public function storeCatToolVolume(CatToolVolumeCreateRequest $request)
-    {
-        $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
-        $this->authorize('create', [Volume::class, $affectedAssignment]);
-        return DB::transaction(function () use ($request, $affectedAssignment) {
-            $volume = $this->auditLogPublisher->publishModifyObjectAfterAction(
-                $affectedAssignment,
-                function () use ($request): Volume {
-                    $volume = (new Volume)->fill($request->validated());
-                    $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
-                    $volume->unit_type = $volume->catToolJob?->volume_unit_type;
-                    $volume->saveOrFail();
-
-                    return $volume;
-                }
-            );
-
-            return $this->getEnrichedVolumeResource($volume);
-        });
-    }
-
-    /**
-     * @throws Throwable
-     */
     #[OA\Put(
         path: '/volumes/{id}',
         summary: 'Update volume for an assignment',
@@ -108,38 +74,6 @@ class VolumeController extends Controller
                 $affectedAssignment,
                 function () use ($request, $volume): void {
                     $volume->fill($request->validated());
-                    $this->authorize('update', $volume);
-                    $volume->saveOrFail();
-                }
-            );
-
-            return $this->getEnrichedVolumeResource($volume);
-        });
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[OA\Put(
-        path: '/volumes/cat-tool/{id}',
-        summary: 'Update volume for an assignment with CAT tool',
-        requestBody: new OAH\RequestBody(CatToolVolumeUpdateRequest::class),
-        tags: ['Volume management'],
-        parameters: [new OAH\UuidPath('id')],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\ResourceResponse(dataRef: VolumeResource::class, description: 'Updated volume', response: Response::HTTP_OK)]
-    public function updateCatToolVolume(CatToolVolumeUpdateRequest $request): VolumeResource
-    {
-        return DB::transaction(function () use ($request) {
-            $volume = self::getBaseQuery()->with('assignment')->findOrFail($request->route('id'));
-            $affectedAssignment = $volume->assignment;
-
-            $this->auditLogPublisher->publishModifyObjectAfterAction(
-                $affectedAssignment,
-                function () use ($request, $volume): void {
-                    $volume->fill($request->validated());
-                    $volume->unit_quantity = $volume->getVolumeAnalysis()?->total;
                     $this->authorize('update', $volume);
                     $volume->saveOrFail();
                 }
@@ -212,7 +146,6 @@ class VolumeController extends Controller
         return Volume::withGlobalScope('policy', VolumePolicy::scope())->with([
             'assignment.assignee',
             'institutionDiscount',
-            'catToolJob',
         ]);
     }
 }

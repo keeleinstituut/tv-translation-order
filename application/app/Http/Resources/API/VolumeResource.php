@@ -14,11 +14,9 @@ use OpenApi\Attributes as OA;
     required: [
         'id',
         'assignment_id',
-        'cat_tool_job_id',
         'unit_type',
         'unit_quantity',
         'unit_fee',
-        'custom_volume_analysis',
         'discounts',
         'created_at',
         'updated_at',
@@ -26,12 +24,9 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'assignment_id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'cat_tool_job_id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'unit_type', type: 'string', enum: VolumeUnits::class),
         new OA\Property(property: 'unit_quantity', type: 'number', minimum: 0),
         new OA\Property(property: 'unit_fee', type: 'number', minimum: 0),
-        new OA\Property(property: 'job', ref: CatToolJobResource::class),
-        new OA\Property(property: 'volume_analysis', ref: VolumeAnalysisResource::class),
         new OA\Property(property: 'discount', ref: VolumeAnalysisDiscountResource::class),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
@@ -57,8 +52,6 @@ class VolumeResource extends JsonResource
                 'updated_at',
                 'created_at'
             ),
-            'cat_job' => CatToolJobResource::make($this->catToolJob),
-            'volume_analysis' => VolumeAnalysisResource::make($this->getVolumeAnalysis()),
             'discounts' => VolumeAnalysisDiscountResource::make($this->getDiscount()),
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment'))
         ];

@@ -32,7 +32,6 @@ use App\Policies\SubProjectPolicy;
 use App\Policies\VendorPolicy;
 use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
-use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
@@ -64,7 +63,7 @@ use Throwable;
 class WorkflowController extends Controller
 {
 
-    public function __construct(private readonly TvTranslationMemoryApiClient $tmServiceApiClient, private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
+    public function __construct(private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
     {
         parent::__construct($auditLogPublisher);
     }
@@ -416,13 +415,10 @@ class WorkflowController extends Controller
             'subProject.project.projectComments',
             'subProject.sourceFiles',
             'subProject.finalFiles.assignment.jobDefinition',
-            'subProject.catToolTmKeys',
-            'catToolJobs'
         ]);
         $tasks = $this->mapWithProjectExtraInfo($tasks);
 
         $task = $tasks->first();
-        $task = $this->mapWithTmKeysInfo($task);
 
         return TaskResource::make($task);
     }
@@ -506,13 +502,10 @@ class WorkflowController extends Controller
             'subProject.project.managerInstitutionUser',
             'subProject.sourceFiles',
             'subProject.finalFiles.assignment.jobDefinition',
-            'subProject.catToolTmKeys',
-            'catToolJobs'
         ]);
         $data = $this->mapWithProjectExtraInfo($data);
 
         $task = $data->first();
-        $task = $this->mapWithTmKeysInfo($task);
         return TaskResource::make($task);
     }
 
@@ -1164,35 +1157,6 @@ class WorkflowController extends Controller
 
             return $task;
         });
-    }
-
-    private function mapWithTmKeysInfo(?array $task): ?array
-    {
-        $assignment = data_get($task, 'assignment');
-        if (!$assignment instanceof Assignment) {
-            return $task;
-        }
-
-        if (empty($institutionId = Auth::user()->institutionId)) {
-            abort(Response::HTTP_UNAUTHORIZED, 'institution is not defined for active user');
-        }
-
-        if (empty($tmKeyIds = $assignment->subProject->catToolTmKeys()->pluck('key')->toArray())) {
-            return $task;
-        }
-
-        try {
-            $tmKeysMeta = $this->tmServiceApiClient->getTags($institutionId, $tmKeyIds);
-            $tmKeysStats = $this->tmServiceApiClient->getTagsStats($institutionId);
-        } catch (RequestException) {
-            return $task;
-        }
-
-        return [
-            ...$task,
-            'tm_keys_meta' => $tmKeysMeta ?? [],
-            'tm_keys_stats' => $tmKeysStats ?? []
-        ];
     }
 
     /**

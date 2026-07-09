@@ -55,7 +55,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Suuline tõlge',
                     'skill' => 'Suuline tõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'POST_TRANSLATION' => [
@@ -65,7 +64,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Järeltõlge',
                     'skill' => 'Järeltõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'SYNCHRONOUS_TRANSLATION' => [
@@ -75,7 +73,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Sünkroontõlge',
                     'skill' => 'Sünkroontõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'SIGN_LANGUAGE' => [
@@ -85,7 +82,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Viipekeel',
                     'skill' => 'Viipekeel',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'CAT_TRANSLATION_REVIEW' => [
@@ -95,14 +91,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine(CAT)',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'CAT_TRANSLATION' => [
@@ -112,7 +106,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine(CAT)',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
             ],
             'TRANSLATION_REVIEW' => [
@@ -122,14 +115,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'TRANSLATION' => [
@@ -139,7 +130,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'EDITING_REVIEW' => [
@@ -149,14 +139,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetamine',
                     'skill' => 'Toimetamine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'EDITING' => [
@@ -166,7 +154,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetamine',
                     'skill' => 'Toimetamine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'EDITED_TRANSLATION_REVIEW' => [
@@ -176,14 +163,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetatud tõlge(CAT)',
                     'skill' => 'Tõlkimine+Toimetamine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'EDITED_TRANSLATION' => [
@@ -193,7 +178,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetatud tõlge(CAT)',
                     'skill' => 'Tõlkimine+toimetamine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
             ],
             'CAT_TRANSLATION_EDITING_REVIEW' => [
@@ -203,7 +187,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine(CAT)',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
                 [
                     'job_key' => JobKey::JOB_REVISION,
@@ -211,14 +194,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetamine',
                     'skill' => 'Toimetamine',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'CAT_TRANSLATION_EDITING' => [
@@ -228,7 +209,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine(CAT)',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
                 [
                     'job_key' => JobKey::JOB_REVISION,
@@ -236,7 +216,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetamine',
                     'skill' => 'Toimetamine',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'TRANSLATION_EDITING_REVIEW' => [
@@ -246,7 +225,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_REVISION,
@@ -254,14 +232,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetamine',
                     'skill' => 'Toimetamine',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'TRANSLATION_EDITING' => [
@@ -271,7 +247,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Tõlkimine',
                     'skill' => 'Tõlkimine',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_REVISION,
@@ -279,7 +254,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Toimetamine',
                     'skill' => 'Toimetamine',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'MANUSCRIPT_TRANSLATION_REVIEW' => [
@@ -289,14 +263,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Käsikirjaline tõlge',
                     'skill' => 'Käsikirjaline tõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'MANUSCRIPT_TRANSLATION' => [
@@ -306,7 +278,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Käsikirjaline tõlge',
                     'skill' => 'Käsikirjaline tõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'TERMINOLOGY_WORK' => [
@@ -316,7 +287,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Terminoloogia töö',
                     'skill' => 'Terminoloogia töö',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'TERMINOLOGY_WORK_REVIEW' => [
@@ -326,14 +296,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Terminoloogia töö',
                     'skill' => 'Terminoloogia töö',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'SWORN_CAT_TRANSLATION_REVIEW' => [
@@ -343,14 +311,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Vandetõlge(CAT)',
                     'skill' => 'Vandetõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'SWORN_CAT_TRANSLATION' => [
@@ -360,7 +326,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Vandetõlge(CAT)',
                     'skill' => 'Vandetõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => true,
                 ],
             ],
             'SWORN_TRANSLATION_REVIEW' => [
@@ -370,14 +335,12 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Vandetõlge',
                     'skill' => 'Vandetõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
                 [
                     'job_key' => JobKey::JOB_OVERVIEW,
                     'job_name' => 'Lõpetatuks märkimine tõlkekorraldaja poolt / väljastuseelne ülevaatus',
                     'job_short_name' => 'Ülevaatus',
                     'multi_assignments_enabled' => false,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
             'SWORN_TRANSLATION' => [
@@ -387,7 +350,6 @@ class JobDefinitionSeeder extends Seeder
                     'job_short_name' => 'Vandetõlge',
                     'skill' => 'Vandetõlge',
                     'multi_assignments_enabled' => true,
-                    'linking_with_cat_tool_jobs_enabled' => false,
                 ],
             ],
         ];

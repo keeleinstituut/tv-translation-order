@@ -18,10 +18,6 @@ class VolumeObserver
                 )?->getUnitFee($volume->unit_type);
                 $volume->save();
             }
-
-            if (filled($volume->cat_tool_job_id) && empty($volume->discounts)) {
-                $volume->discounts = $assignee->getVolumeAnalysisDiscount();
-            }
         }
     }
 

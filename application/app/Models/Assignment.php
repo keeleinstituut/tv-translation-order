@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -53,7 +52,6 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property-read JobDefinition $jobDefinition
  * @property-read Collection<int, Volume> $volumes
  * @property-read int|null $volumes_count
- * @property-read Collection<int, CatToolJob> $catToolJobs
  * @property-read VendorCalendarEntry|null $calendarEntry
  *
  * @method static AssignmentFactory factory($count = null, $state = [])
@@ -117,12 +115,6 @@ class Assignment extends Model implements AuditLoggable
         return $this->hasMany(Volume::class, 'assignment_id');
     }
 
-    public function catToolJobs(): BelongsToMany
-    {
-        return $this->belongsToMany(CatToolJob::class, AssignmentCatToolJob::class)
-            ->using(AssignmentCatToolJob::class);
-    }
-
     public function calendarEntry(): HasOne
     {
         return $this->hasOne(VendorCalendarEntry::class);
@@ -177,8 +169,6 @@ class Assignment extends Model implements AuditLoggable
                 'subProject',
                 'jobDefinition',
                 'volumes',
-                'volumes.catToolJob',
-                'catToolJobs',
             ])
             ->toArray();
     }

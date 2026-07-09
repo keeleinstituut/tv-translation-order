@@ -22,7 +22,6 @@ use Illuminate\Support\Collection;
  * @property string|null $workflow_process_definition_id
  * @property array|null $features
  * @property bool|null $is_start_date_supported
- * @property bool|null $cat_tool_enabled
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Collection<int, JobDefinition> $jobDefinitions
@@ -39,7 +38,6 @@ use Illuminate\Support\Collection;
  * @method static Builder|ProjectTypeConfig whereWorkflowProcessDefinitionId($value)
  * @method static Builder|ProjectTypeConfig whereIsStartDateSupported($value)
  * @property-read int|null $job_definitions_count
- * @method static Builder|ProjectTypeConfig whereCatToolEnabled($value)
  * @mixin Eloquent
  */
 class ProjectTypeConfig extends Model

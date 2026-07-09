@@ -181,51 +181,11 @@ Route::prefix('/subprojects')
         Route::get('/{id}/assignments', 'assignments')->name('translation-order.assignments.index');
     });
 
-Route::prefix('/cat-tool')
-    ->controller(API\CatToolController::class)
-    ->whereUuid('sub_project_id')->group(function (): void {
-        Route::post('/setup', 'setup')->name('translation-order.cat.setup');
-        Route::post('/split', 'split')->name('translation-order.cat.split');
-        Route::post('/merge', 'merge')->name('translation-order.cat.merge');
-        Route::get('/jobs/{sub_project_id}', 'jobsIndex')->name('translation-order.cat.jobsIndex');
-        Route::put('/toggle-mt-engine/{sub_project_id}', 'toggleMTEngine')->name('translation-order.cat.toggleMTEngine');
-        Route::get('/volume-analysis/{sub_project_id}', 'volumeAnalysis')->name('translation-order.cat.volumeAnalysis');
-        Route::get('/download-xliff/{sub_project_id}', 'downloadXLIFFs')->name('translation-order.cat.downloadXLIFFs');
-        Route::get('/download-translated/{sub_project_id}', 'downloadTranslations')->name('translation-order.cat.downloadTranslations');
-        Route::get('/download-volume-analysis/{sub_project_id}', 'downloadVolumeAnalysisReport')->name('translation-order.cat.downloadVolumeAnalysisReport');
-    });
-
-Route::prefix('/tm-keys')
-    ->controller(API\CatToolTmKeyController::class)
-    ->whereUuid('sub_project_id')->group(function (): void {
-        Route::get('/{sub_project_id}', 'index')->name('translation-order.cat_tool_tm_keys.index');
-        Route::get('/subprojects/{key}', 'subProjectsIndex')->name('translation-order.cat_tool_tm_keys.subProjectsIndex');
-        Route::post('/sync', 'sync')->name('translation-order.cat_tool_tm_keys.sync');
-        Route::put('/toggle-writable/{id}', 'toggleWritable')->name('translation-order.cat_tool_tm_keys.toggleWritable');
-        Route::post('/{sub_project_id}', 'create')->name('translation-order.cat_tool_tm_keys.create');
-    });
-
-Route::prefix('/catv2')
-    ->controller(API\CatV2Controller::class)
-    ->whereUuid('translation_memory_id')
-    ->group(function (): void {
-        Route::get('/translation-memories', 'translationMemoryIndex')->name('translation-memory.tags.index');
-        Route::post('/translation-memories', 'translationMemoryStore')->name('translation-memory.tags.create');
-        Route::get('/translation-memories/{translation_memory_id}', 'translationMemoryShow')->name('translation-memory.tags.show');
-        Route::put('/translation-memories/{translation_memory_id}', 'translationMemoryUpdate')->name('translation-memory.tags.update');
-        Route::delete('/translation-memories/{translation_memory_id}', 'translationMemoryDestroy')->name('translation-memory.tags.destroy');
-        Route::post('/translation-memories/import', 'translationMemoryImport')->name('translation-memory.tm.import');
-        Route::post('/translation-memories/export', 'translationMemoryExport')->name('translation-memory.tm.export');
-        Route::get('/translation-memories/content-checks', 'translationMemoryContentCheckIndex')->name('translation-memory.content-checks.index');
-    });
-
 Route::prefix('/volumes')
     ->controller(API\VolumeController::class)
     ->whereUuid('id')->group(function (): void {
         Route::post('/', 'store')->name('translation-order.volumes.store');
-        Route::post('/cat-tool', 'storeCatToolVolume')->name('translation-order.volumes.storeCatToolVolume');
         Route::put('/{id}', 'update')->name('translation-order.volumes.update');
-        Route::put('/cat-tool/{id}', 'updateCatToolVolume')->name('translation-order.volumes.updateCatToolVolume');
         Route::delete('/{id}', 'destroy')->name('translation-order.volumes.destroy');
     });
 
@@ -233,7 +193,6 @@ Route::prefix('/assignments')
     ->controller(API\AssignmentController::class)
     ->whereUuid('id')->group(function (): void {
         Route::get('/{id}', 'show')->name('translation-order.assignments.show');
-        Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs')->name('translation-order.assignments.linkToCatToolJobs');
         Route::post('/', 'store')->name('translation-order.assignments.store');
         Route::put('/{id}', 'update')->name('translation-order.assignments.update');
         Route::delete('/{id}', 'destroy')->name('translation-order.assignments.destroy');
@@ -267,8 +226,4 @@ Route::prefix('/media')
         Route::put('/{id}', 'update')->name('translation-order.media.update');
     });
 
-// ??
-//Route::get('/cat/urls/translate/{project_id}', []);
-//Route::get('/cat/urls/revise/{project_id}', []);
-// ??
 Route::get('/redirect', [API\RedirectController::class, '__invoke']);

@@ -22,7 +22,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $job_short_name
  * @property string|null $skill_id
  * @property bool $multi_assignments_enabled
- * @property bool $linking_with_cat_tool_jobs_enabled
  * @property int $sequence
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -41,7 +40,6 @@ use Illuminate\Support\Carbon;
  * @method static Builder|JobDefinition whereDeletedAt($value)
  * @method static Builder|JobDefinition whereUpdatedAt($value)
  * @method static Builder|JobDefinition onlyTrashed()
- * @method static Builder|JobDefinition whereLinkingWithCatToolJobsEnabled($value)
  * @method static Builder|JobDefinition whereSequence($value)
  * @method static Builder|JobDefinition withTrashed()
  * @method static Builder|JobDefinition withoutTrashed()
@@ -62,7 +60,6 @@ class JobDefinition extends Model
         'job_name',
         'job_short_name',
         'multi_assignments_enabled',
-        'linking_with_cat_tool_jobs_enabled',
         'sequence',
         'skill_id',
     ];
