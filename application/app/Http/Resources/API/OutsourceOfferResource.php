@@ -51,18 +51,9 @@ class OutsourceOfferResource extends JsonResource
             'response_comment' => $this->response_comment,
             'institution' => InstitutionResource::make($this->whenLoaded('institution')),
             'outsource_request' => OutsourceRequestResource::make($this->whenLoaded('outsourceRequest'))
-                ->hideMedia(self::hidesRequestMedia($this->status)),
+                ->hideMedia(in_array($this->status, OutsourceOfferStatus::statusesHidingFiles(), true)),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
-    }
-
-    private static function hidesRequestMedia(OutsourceOfferStatus $status): bool
-    {
-        return in_array($status, [
-            OutsourceOfferStatus::RequestCancelled,
-            OutsourceOfferStatus::OfferDeclined,
-            OutsourceOfferStatus::RequestExpired,
-        ], true);
     }
 }
