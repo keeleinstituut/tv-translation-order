@@ -32,6 +32,8 @@ enum PrivilegeKey: string
     case EditInstitutionWorktime = 'EDIT_INSTITUTION_WORKTIME';
     case EditInstitutionPriceRate = 'EDIT_INSTITUTION_PRICE_RATE';
     case ViewInstitutionPriceRate = 'VIEW_INSTITUTION_PRICE_RATE';
+    case ViewInstitutionPricelist = 'VIEW_INSTITUTION_PRICELIST';
+    case EditInstitutionPricelist = 'EDIT_INSTITUTION_PRICELIST';
     case CreateProject = 'CREATE_PROJECT';
     case ManageProject = 'MANAGE_PROJECT';
     case ReceiveProject = 'RECEIVE_PROJECT';
@@ -52,6 +54,11 @@ enum PrivilegeKey: string
     case ExportInstitutionGeneralReport = 'EXPORT_INSTITUTION_GENERAL_REPORT';
     case EditAuditLogSettings = 'EDIT_AUDIT_LOG_SETTINGS';
     case ChangeProjectManager = 'CHANGE_PROJECT_MANAGER';
+    case ViewExternalPartner = 'VIEW_EXTERNAL_PARTNER';
+    case ManageExternalPartner = 'MANAGE_EXTERNAL_PARTNER';
+    case ViewOutsourceRequest = 'VIEW_OUTSOURCE_REQUEST';
+    case RespondOutsourceRequest = 'RESPOND_OUTSOURCE_REQUEST';
+    case ManageOutsourceRequest = 'MANAGE_OUTSOURCE_REQUEST';
 
     public static function values(): array
     {

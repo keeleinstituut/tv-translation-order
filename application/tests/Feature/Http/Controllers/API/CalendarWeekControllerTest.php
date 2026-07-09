@@ -9,14 +9,14 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Project;
 use App\Models\Skill;
 use App\Models\SubProject;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Models\VendorEmergencySchedule;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,7 +29,7 @@ class CalendarWeekControllerTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_week_rejects_missing_parameters(): void
@@ -342,7 +342,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -370,7 +370,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -402,7 +402,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -439,7 +439,7 @@ class CalendarWeekControllerTest extends TestCase
             ->create();
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => Skill::findByCode(SkillCode::OralInterpretation)->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -460,11 +460,10 @@ class CalendarWeekControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -498,7 +497,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -584,7 +583,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -620,7 +619,7 @@ class CalendarWeekControllerTest extends TestCase
 
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => Skill::findByCode(SkillCode::OralInterpretation)->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -640,7 +639,6 @@ class CalendarWeekControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         return $vendor;
     }

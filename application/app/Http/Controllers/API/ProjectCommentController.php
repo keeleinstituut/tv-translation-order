@@ -37,7 +37,7 @@ class ProjectCommentController extends Controller
         $project = Project::withGlobalScope('policy', ProjectPolicy::scope())
             ->findOrFail($request->route('project'));
 
-        $this->authorize('create', ProjectComment::class);
+        $this->authorize('create', [ProjectComment::class, $project]);
 
         $comment = (new ProjectComment)->fill([
             'project_id' => $project->id,
@@ -45,6 +45,8 @@ class ProjectCommentController extends Controller
             'institution_user_id' => Auth::user()->institutionUserId,
         ]);
         $comment->saveOrFail();
+
+        $comment->load('institutionUser');
 
         return ProjectCommentResource::make($comment);
     }
@@ -71,6 +73,8 @@ class ProjectCommentController extends Controller
 
         $comment->fill($request->validated());
         $comment->saveOrFail();
+
+        $comment->load('institutionUser');
 
         return ProjectCommentResource::make($comment);
     }

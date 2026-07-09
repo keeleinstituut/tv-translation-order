@@ -9,15 +9,19 @@ use App\Jobs\Workflows\UpdateProjectDeadlineInsideWorkflow;
 use App\Jobs\Workflows\UpdateProjectManagerInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\OutsourceOffer;
+use App\Models\OutsourceRequest;
 use App\Models\Project;
 use App\Models\Sequence;
 use App\Models\SubProject;
+use App\Services\OutsourceRequest\OutsourceRequestStateMachine;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -25,7 +29,11 @@ use Throwable;
 
 class ProjectObserver
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher, private readonly AuditLogPublisher $auditLogPublisher)
+    public function __construct(
+        private readonly NotificationPublisher $notificationPublisher,
+        private readonly AuditLogPublisher $auditLogPublisher,
+        private readonly OutsourceRequestStateMachine $outsourceRequestStateMachine
+    )
     {
     }
 
@@ -38,7 +46,7 @@ class ProjectObserver
             $project->ext_id = collect([
                 $project->institution->short_name,
                 Carbon::now()->format('Y-m'),
-                data_get($project->typeClassifierValue->meta, 'code', ''),
+                data_get($project->typeClassifierValue?->meta, 'code', ''),
                 $project->institution->institutionProjectSequence->incrementCurrentValue(),
             ])->implode('-');
         }
@@ -57,18 +65,25 @@ class ProjectObserver
         $seq->name = Sequence::PROJECT_SUBPROJECT_SEQ;
         $seq->saveOrFail();
 
-        if (filled($projectManager = $project->managerInstitutionUser) && filled($projectManager->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectCreated,
-                    'receiver_email' => $projectManager->email,
-                    'receiver_name' => $projectManager->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only(['ext_id'])
-                    ]
-                ]),
-                $project->institution_id
-            );
+        $manager = $project->managerInstitutionUser;
+        $institution = $project->institution;
+        $receiverEmail = $manager?->email ?: $institution->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectCreated,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only(['ext_id'])
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 
@@ -84,8 +99,10 @@ class ProjectObserver
         if ($newProjectGotManager) {
             $project->status = ProjectStatus::Registered;
             $project->subProjects->each(function (SubProject $subProject) {
-                $subProject->status = SubProjectStatus::Registered;
-                $subProject->saveOrFail();
+                if ($subProject->status === SubProjectStatus::New) {
+                    $subProject->status = SubProjectStatus::Registered;
+                    $subProject->saveOrFail();
+                }
             });
         }
 
@@ -101,13 +118,14 @@ class ProjectObserver
                 $project->accepted_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::Corrected) {
                 $project->corrected_at = Carbon::now();
+                $project->auto_acceptance_notification_sent_at = null;
             } elseif ($project->status === ProjectStatus::Rejected) {
                 $project->rejected_at = Carbon::now();
             } elseif ($project->status === ProjectStatus::SubmittedToClient) {
                 $project->submitted_to_client_review_at = Carbon::now();
             }
 
-            if (Auth::check()) {
+            if (Auth::guard('api')->check()) {
                 $this->auditLogPublisher->publish(
                     AuditLogMessageBuilder::makeUsingJWT()
                         ->toModifyObjectEventComputingDiff(
@@ -163,22 +181,35 @@ class ProjectObserver
             });
         }
 
+        if ($project->wasChanged('event_end_at') && filled($project->event_end_at)) {
+            $project->assignments()->update(['timeslot_passed_notification_sent_at' => null]);
+        }
+
         if ($project->wasChanged('status')) {
             if ($project->status === ProjectStatus::Cancelled) {
-                filled($project->managerInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser);
+                $this->publishProjectCancelledEmailNotification($project, $project->managerInstitutionUser, true);
                 filled($project->clientInstitutionUser) && $this->publishProjectCancelledEmailNotification($project, $project->clientInstitutionUser);
                 $this->publishProjectCancelledEmailNotificationForVendors($project);
+
+                $project->outsourceRequests()->each(function (OutsourceRequest $request) {
+                    $this->outsourceRequestStateMachine->cancelRequest(
+                        $request,
+                        'Tellimus tühistati'
+                    );
+                });
             } elseif ($project->status === ProjectStatus::SubmittedToClient || $project->status === ProjectStatus::Corrected) {
                 $this->publishProjectSubmittedToClientEmailNotification($project);
                 $this->publishProjectIsReadyForReviewEmailNotification($project);
             } elseif ($project->status === ProjectStatus::Accepted) {
-                filled($project->managerInstitutionUser) && $this->publishProjectAcceptedEmailNotification($project, $project->managerInstitutionUser);
+                $this->publishProjectAcceptedEmailNotification($project, $project->managerInstitutionUser, true);
                 filled($project->clientInstitutionUser) && $this->publishProjectAcceptedEmailNotification($project, $project->clientInstitutionUser);
             } elseif ($project->status === ProjectStatus::Registered) {
                 $this->publishProjectRegisteredEmailNotification($project);
             }
+        }
 
-
+        if ($project->wasChanged(['deadline_at', 'event_start_at', 'event_end_at'])) {
+            $this->publishProjectUpdatedEmailNotification($project);
         }
     }
 
@@ -206,21 +237,30 @@ class ProjectObserver
         //
     }
 
+    /**
+     * @throws Throwable
+     */
     private function publishProjectSubmittedToClientEmailNotification(Project $project): void
     {
         $manager = $project->managerInstitutionUser;
-        if (filled($manager?->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectSentToClient,
-                    'receiver_email' => $manager->email,
-                    'receiver_name' => $manager->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only(['ext_id']),
-                    ]
-                ]),
-                $project->institution_id
-            );
+        $institution = $project->institution;
+        $receiverEmail = $manager?->email ?: $institution->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectSentToClient,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only(['ext_id']),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 
@@ -228,55 +268,69 @@ class ProjectObserver
     {
         $client = $project->clientInstitutionUser;
         if (filled($client?->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectReadyForReview,
-                    'receiver_email' => $client->email,
-                    'receiver_name' => $client->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only(['ext_id']),
-                    ]
-                ]),
-                $project->institution_id
-            );
+            DB::afterCommit(function () use ($project, $client) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectReadyForReview,
+                        'receiver_email' => $client->email,
+                        'receiver_name' => $client->getUserFullName(),
+                        'variables' => [
+                            'project' => $project->only(['ext_id']),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 
     private function publishPmOrClientAssignedToProject(Project $project, InstitutionUser $assignee): void
     {
         if (filled($assignee->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::InstitutionUserAssignedToProject,
-                    'receiver_email' => $assignee->email,
-                    'receiver_name' => $assignee->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only(['ext_id'])
-                    ]
-                ]),
-                $project->institution_id
-            );
+            DB::afterCommit(function () use ($project, $assignee) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::InstitutionUserAssignedToProject,
+                        'receiver_email' => $assignee->email,
+                        'receiver_name' => $assignee->getUserFullName(),
+                        'variables' => [
+                            'project' => $project->only(['ext_id'])
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 
-    private function publishProjectCancelledEmailNotification(Project $project, InstitutionUser $receiver): void
+    private function publishProjectCancelledEmailNotification(Project $project, ?InstitutionUser $receiver, $isManager = false): void
     {
-        if (filled($receiver->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectCancelled,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only([
-                            'ext_id',
-                            'cancellation_reason',
-                            'cancellation_comment'
-                        ]),
-                    ]
-                ]),
-                $project->institution_id
-            );
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $receiverEmail = $receiver?->email ?: $project->institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+        }
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectCancelled,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id',
+                                'cancellation_reason',
+                                'cancellation_comment'
+                            ]),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 
@@ -284,38 +338,53 @@ class ProjectObserver
     {
         $project->assignments->each(function (Assignment $assignment) use ($project) {
             if (filled($receiver = $assignment->assignee?->institutionUser) && filled($receiver->email)) {
-                $this->notificationPublisher->publishEmailNotification(
-                    EmailNotificationMessage::make([
-                        'notification_type' => NotificationType::TaskCancelled,
-                        'receiver_email' => $receiver->email,
-                        'receiver_name' => $receiver->getUserFullName(),
-                        'variables' => [
-                            'assignment' => $assignment->only('ext_id'),
-                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
-                        ]
-                    ]),
-                    $project->institution_id
-                );
+                DB::afterCommit(function () use ($project, $assignment, $receiver) {
+                    $this->notificationPublisher->publishEmailNotification(
+                        EmailNotificationMessage::make([
+                            'notification_type' => NotificationType::TaskCancelled,
+                            'receiver_email' => $receiver->email,
+                            'receiver_name' => $receiver->getUserFullName(),
+                            'variables' => [
+                                'assignment' => $assignment->only('ext_id'),
+                                'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                            ]
+                        ]),
+                        $project->institution_id
+                    );
+                });
             }
         });
     }
 
-    private function publishProjectAcceptedEmailNotification(Project $project, InstitutionUser $receiver): void
+    /**
+     * @throws Throwable
+     */
+    private function publishProjectAcceptedEmailNotification(Project $project, ?InstitutionUser $receiver, bool $isManager = false): void
     {
-        if (filled($receiver->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectAccepted,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only([
-                            'ext_id'
-                        ]),
-                    ]
-                ]),
-                $project->institution_id
-            );
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $receiverEmail = $receiver?->email ?: $project->institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+        }
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectAccepted,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 
@@ -323,19 +392,47 @@ class ProjectObserver
     {
         $receiver = $project->clientInstitutionUser;
         if (filled($receiver?->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectRegistered,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only([
-                            'ext_id'
-                        ]),
-                    ]
-                ]),
-                $project->institution_id
-            );
+            DB::afterCommit(function () use ($project, $receiver) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectRegistered,
+                        'receiver_email' => $receiver->email,
+                        'receiver_name' => $receiver->getUserFullName(),
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
+        }
+    }
+
+    private function publishProjectUpdatedEmailNotification(Project $project): void
+    {
+        $receiver = $project->clientInstitutionUser;
+
+        $receiverEmail = $receiver?->email ?: $project->institution?->email;
+        $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectUpdated,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 }

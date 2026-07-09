@@ -25,6 +25,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'comment', type: 'string'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, type: 'object', nullable: true),
+        new OA\Property(property: 'project', ref: ProjectResource::class, type: 'object', nullable: true),
     ],
     type: 'object'
 )]
@@ -44,7 +46,8 @@ class ProjectCommentResource extends JsonResource
                 'created_at',
                 'updated_at',
             ), [
-            'project' => ProjectResource::make($this->whenLoaded('project'))
+            'project' => ProjectResource::make($this->whenLoaded('project')),
+            'institution_user' => InstitutionUserResource::make($this->whenLoaded('institutionUser')),
         ]);
     }
 }

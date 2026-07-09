@@ -3,60 +3,60 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\Vendor;
 use BadMethodCallException;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class VendorPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value);
+        return $user->hasPrivilege(PrivilegeKey::ViewVendorDatabase);
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
+    public function view(AuthUser $user, Vendor $vendor): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewVendorDatabase->value);
+        return $user->hasPrivilege(PrivilegeKey::ViewVendorDatabase) ||
+            $this->ownsVendor($user, $vendor);
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
+    public function create(AuthUser $user, Vendor $vendor): bool
     {
-        return $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
-            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $vendor->institutionUser->institution['id'] == $user->institutionId
+            && $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
+    public function update(AuthUser $user, Vendor $vendor): bool
     {
-        return $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
-            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $vendor->institutionUser->institution['id'] == $user->institutionId
+            && $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
+    public function delete(AuthUser $user, Vendor $vendor): bool
     {
-        return $vendor->institutionUser->institution['id'] == $jwtPayloadUser->institutionId
-            && Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $vendor->institutionUser->institution['id'] == $user->institutionId
+            && $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
+    public function restore(AuthUser $user, Vendor $vendor): bool
     {
         throw new BadMethodCallException();
     }
@@ -64,9 +64,14 @@ class VendorPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $jwtPayloadUser, Vendor $vendor): bool
+    public function forceDelete(AuthUser $user, Vendor $vendor): bool
     {
         throw new BadMethodCallException();
+    }
+
+    public function ownsVendor(AuthUser $user, Vendor $vendor): bool
+    {
+        return $vendor->institution_user_id === $user->institutionUserId;
     }
 
     // Should serve as an query enhancement to Eloquent queries

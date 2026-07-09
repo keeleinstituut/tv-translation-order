@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\OutsourceOfferStatus;
+use App\Enums\OutsourceRequestStatus;
 use App\Services\Prices\AssigneePriceCalculator;
 use App\Services\Prices\PriceCalculator;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -16,9 +18,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Staudenmeir\EloquentHasManyDeep\HasOneDeep;
+use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 
 /**
  * App\Models\Assignment
@@ -38,14 +42,19 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $event_start_at
  * @property Carbon|null $completed_at
+ * @property Carbon|null $timeslot_passed_notification_sent_at
  * @property-read Vendor|null $assignee
  * @property-read Collection<int, Candidate> $candidates
  * @property-read int|null $candidates_count
  * @property-read SubProject $subProject
+ * @property-read Collection<int, OutsourceRequest> $outsourceRequests
+ * @property-read OutsourceRequest|null $currentOutsourceRequest
+ * @property-read Project $project
  * @property-read JobDefinition $jobDefinition
  * @property-read Collection<int, Volume> $volumes
  * @property-read int|null $volumes_count
  * @property-read Collection<int, CatToolJob> $catToolJobs
+ * @property-read VendorCalendarEntry|null $calendarEntry
  *
  * @method static AssignmentFactory factory($count = null, $state = [])
  * @method static Builder|Assignment newModelQuery()
@@ -67,6 +76,7 @@ class Assignment extends Model implements AuditLoggable
 {
     use HasUuids;
     use HasFactory;
+    use HasRelationships;
 
     protected $guarded = [];
 
@@ -76,11 +86,20 @@ class Assignment extends Model implements AuditLoggable
         'event_start_at' => 'datetime',
         'completed_at' => 'datetime',
         'price' => 'float',
+        'timeslot_passed_notification_sent_at' => 'datetime',
     ];
 
     public function subProject(): BelongsTo
     {
         return $this->belongsTo(SubProject::class);
+    }
+
+    public function project(): HasOneDeep
+    {
+        return $this->hasOneDeepFromRelations(
+            $this->subProject(),
+            new SubProject()->project(),
+        );
     }
 
     public function candidates(): HasMany
@@ -112,6 +131,30 @@ class Assignment extends Model implements AuditLoggable
     public function jobDefinition(): BelongsTo
     {
         return $this->belongsTo(JobDefinition::class);
+    }
+
+    public function scopeSharedWithInstitution(Builder $query, ?string $institutionId): void
+    {
+        if (empty($institutionId)) {
+            return;
+        }
+
+        $query->where(function (Builder $sharedQuery) use ($institutionId) {
+            $sharedQuery->whereHas('currentOutsourceRequest.offers', function (Builder $q) use ($institutionId) {
+                    $q->where('institution_id', $institutionId)
+                        ->where('status', OutsourceOfferStatus::OfferAccepted);
+            });
+        });
+    }
+
+    public function outsourceRequests(): HasMany
+    {
+        return $this->hasMany(OutsourceRequest::class)->orderByDesc('created_at');
+    }
+
+    public function currentOutsourceRequest(): HasOne
+    {
+        return $this->hasOne(OutsourceRequest::class)->whereIn('status', [OutsourceRequestStatus::Active, OutsourceRequestStatus::Fulfilled]);
     }
 
     public function getPriceCalculator(): PriceCalculator

@@ -22,9 +22,10 @@ readonly class SlotMatchingService
     }
 
     /**
-     * Check whether a specific vendor has no conflicting calendar entries in the slot.
+     * Check whether a vendor has no overlapping calendar entries in the slot.
+     * Lightweight check — does not verify calendar import or working hours.
      */
-    public function isVendorAvailableForSlot(
+    public function hasNoConflictingEntries(
         string  $vendorId,
         Carbon  $startAt,
         Carbon  $endAt,
@@ -50,6 +51,59 @@ readonly class SlotMatchingService
     }
 
     /**
+     * Full availability check for a specific vendor in a time slot.
+     *
+     * Checks: no conflicting entries (buffered times) + for internal vendors:
+     * calendar import coverage and working hours.
+     */
+    public function isVendorAvailableForSlot(
+        Vendor  $vendor,
+        TimeSlot $timeSlot,
+        string  $institutionId,
+        ?string $excludePrebookUserId = null,
+        ?string $excludeAssignmentId = null,
+    ): bool
+    {
+        if (!$this->hasNoConflictingEntries(
+            $vendor->id,
+            $timeSlot->bufferedStartAt,
+            $timeSlot->bufferedEndAt,
+            $excludePrebookUserId,
+            $excludeAssignmentId,
+        )) {
+            return false;
+        }
+
+        if (!$vendor->is_internal) {
+            return true;
+        }
+
+        $vendorHasCalendarImported = $this->vendorRepo->getVendorIdsWithImportInPeriod(
+            collect([$vendor->id]),
+            $timeSlot->startAt->copy()->startOfDay(),
+            $timeSlot->startAt->copy()->endOfDay(),
+        )->isNotEmpty();
+
+        if (!$vendorHasCalendarImported) {
+            return false;
+        }
+
+        $institutionWorktime = $this->worktimeRepo->getInstitutionWorktime($institutionId);
+        $userWorktimes = $this->worktimeRepo->getUserWorktimes(collect([$vendor->institution_user_id]));
+
+        $window = $this->workingHoursResolver->workingWindowInSlot(
+            $userWorktimes->get($vendor->institution_user_id),
+            $institutionWorktime,
+            $timeSlot->startAt,
+            $timeSlot->endAt,
+        );
+
+        return $window !== null
+            && $window[0] <= $timeSlot->startAt->timestamp
+            && $window[1] >= $timeSlot->endAt->timestamp;
+    }
+
+    /**
      * Algorithm 2: Pick the single best internal vendor from the available set.
      *
      * Priority:
@@ -69,12 +123,12 @@ readonly class SlotMatchingService
         ?Collection $excludeVendorIds = null,
     ): ?Vendor
     {
-        $internals = $this->findAvailableVendors(
+        $internals = $this->findAvailableVendorsForSlot(
             $languageId,
-            $eventStartAt,
-            $eventEndAt,
+            TimeSlot::forEvent($eventStartAt, $eventEndAt),
             $institutionId,
             $excludePrebookUserId,
+            excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => $v->is_internal);
 
         if ($excludeVendorIds?->isNotEmpty()) {
@@ -113,10 +167,12 @@ readonly class SlotMatchingService
         ?Collection $excludeVendorIds = null,
     ): ?Vendor
     {
+        $timeSlot = $this->calendarSettings->resolveTimeSlotForProject($project);
+
         return $this->pickBestInternalVendor(
             $project->subProjects->first()->destination_language_classifier_value_id,
-            $project->event_start_at,
-            $project->event_end_at,
+            $timeSlot->bufferedStartAt,
+            $timeSlot->bufferedEndAt,
             $project->institution_id,
             $project->tags->pluck('id'),
             $excludePrebookUserId,
@@ -138,11 +194,11 @@ readonly class SlotMatchingService
     ): Collection
     {
         /** @var \Illuminate\Database\Eloquent\Collection $externals */
-        $externals = $this->findAvailableVendors(
+        $externals = $this->findAvailableVendorsForSlot(
             $destinationLanguageId,
-            $eventStartAt,
-            $eventEndAt,
+            TimeSlot::forEvent($eventStartAt, $eventEndAt),
             $institutionId,
+            excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => !$v->is_internal);
 
         $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
@@ -162,15 +218,20 @@ readonly class SlotMatchingService
             ->values();
     }
 
+    /**
+     * @param Project $project
+     * @return Collection<int, Vendor>
+     */
     public function rankExternalVendorCascadeForProject(Project $project): Collection
     {
         $subProject = $project->subProjects->first();
+        $timeSlot = $this->calendarSettings->resolveTimeSlotForProject($project);
 
         return $this->rankExternalVendorCascade(
             $subProject->source_language_classifier_value_id,
             $subProject->destination_language_classifier_value_id,
-            $project->event_start_at,
-            $project->event_end_at,
+            $timeSlot->bufferedStartAt,
+            $timeSlot->bufferedEndAt,
             $project->institution_id,
         );
     }
@@ -184,15 +245,19 @@ readonly class SlotMatchingService
      * @return Collection<int, Vendor>
      */
     public function findAvailableVendorsForSlot(
-        string $languageId,
-        Carbon $startAt,
-        Carbon $endAt,
-        string $institutionId,
+        string   $languageId,
+        TimeSlot $timeSlot,
+        string   $institutionId,
+        ?string  $excludePrebookUserId = null,
+        bool     $excludeWithActiveEmergencySchedule = false,
     ): Collection
     {
         $vendors = Vendor::query()
             ->servingLanguage($languageId, $institutionId)
-            ->availableForSlot($startAt, $endAt)
+            ->availableForSlot($timeSlot->bufferedStartAt, $timeSlot->bufferedEndAt, $excludePrebookUserId)
+            ->when($excludeWithActiveEmergencySchedule, fn($q) => $q
+                ->withoutActiveEmergencySchedule($timeSlot->startAt->copy()->startOfDay())
+            )
             ->with('institutionUser')
             ->get();
 
@@ -203,8 +268,8 @@ readonly class SlotMatchingService
         [$internals, $externals] = $vendors->partition(fn(Vendor $v) => $v->is_internal);
 
         if ($internals->isNotEmpty()) {
-            $internals = $this->filterInternalsByCalendarImport($internals, $startAt);
-            $internals = $this->filterInternalsByWorkingHours($internals, $startAt, $endAt, $institutionId);
+            $internals = $this->filterInternalsByCalendarImport($internals, $timeSlot->startAt);
+            $internals = $this->filterInternalsByWorkingHours($internals, $timeSlot, $institutionId);
         }
 
         return $internals->merge($externals)->values();
@@ -218,10 +283,11 @@ readonly class SlotMatchingService
      */
     private function filterInternalsByCalendarImport(Collection $internals, Carbon $startAt): Collection
     {
-        $date = $startAt->copy()->startOfDay();
+        $dayStart = $startAt->copy()->startOfDay();
+        $dayEnd = $startAt->copy()->endOfDay();
 
         $vendorIdsWithImport = $this->vendorRepo->getVendorIdsWithImportInPeriod(
-            $internals->pluck('id'), $date, $date
+            $internals->pluck('id'), $dayStart, $dayEnd
         );
 
         return $internals->filter(fn(Vendor $v) => $vendorIdsWithImport->contains($v->id));
@@ -235,8 +301,7 @@ readonly class SlotMatchingService
      */
     private function filterInternalsByWorkingHours(
         Collection $internals,
-        Carbon     $startAt,
-        Carbon     $endAt,
+        TimeSlot   $timeSlot,
         string     $institutionId,
     ): Collection
     {
@@ -250,39 +315,18 @@ readonly class SlotMatchingService
             $internals->pluck('institution_user_id')
         );
 
-        return $internals->filter(function (Vendor $v) use ($iuWorktimes, $institutionWorktime, $startAt, $endAt) {
+        return $internals->filter(function (Vendor $v) use ($iuWorktimes, $institutionWorktime, $timeSlot) {
             $window = $this->workingHoursResolver->workingWindowInSlot(
                 $iuWorktimes->get($v->institution_user_id),
                 $institutionWorktime,
-                $startAt,
-                $endAt,
+                $timeSlot->startAt,
+                $timeSlot->endAt,
             );
 
             return $window !== null
-                && $window[0] <= $startAt->timestamp
-                && $window[1] >= $endAt->timestamp;
+                && $window[0] <= $timeSlot->startAt->timestamp
+                && $window[1] >= $timeSlot->endAt->timestamp;
         });
-    }
-
-    /**
-     * Algorithm 1: Find all vendors available for a given time slot and language.
-     *
-     * @return Collection<int, Vendor>
-     */
-    private function findAvailableVendors(
-        string  $languageId,
-        Carbon  $eventStartAt,
-        Carbon  $eventEndAt,
-        string  $institutionId,
-        ?string $excludePrebookUserId = null,
-    ): Collection
-    {
-        return Vendor::whereRelation('institutionUser', 'institution->id', $institutionId)
-            ->servingLanguage($languageId, $institutionId)
-            ->withCalendarImportFor($eventStartAt->copy()->startOfDay())
-            ->availableForSlot($eventStartAt, $eventEndAt, $excludePrebookUserId)
-            ->with('institutionUser')
-            ->get();
     }
 
     /**

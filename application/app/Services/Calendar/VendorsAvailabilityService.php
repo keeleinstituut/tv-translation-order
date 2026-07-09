@@ -233,6 +233,52 @@ readonly class VendorsAvailabilityService
     }
 
     /**
+     * Compute availability per language per slot for week view.
+     *
+     * Example:
+     *   $coverageByLanguage = collect(['lang-en' => collect([(object)['vendor_id' => 'v1'], (object)['vendor_id' => 'v2']])])
+     *   $precomputedAvailability = ['v1' => [0 => true], 'v2' => [0 => false]]
+     *   $slotIndex = 0, $institutionId = 'inst-1'
+     *
+     *   Output (Collection): [
+     *     ['institution_id' => 'inst-1', 'language_id' => 'lang-en', 'slot_start' => '…', 'slot_end' => '…',
+     *      'total_vendors' => 2, 'available_vendors' => 1, 'available_vendor_ids' => ['v1']],
+     *   ]
+     *
+     * @param array<string, array<int, bool>> $precomputedAvailability vendorId => [slotIndex => hasSlot]
+     */
+    public function computeSlotLanguageAvailability(
+        Collection $coverageByLanguage,
+        array      $precomputedAvailability,
+        Carbon     $slotStart,
+        Carbon     $slotEnd,
+        int        $slotIndex,
+        string     $institutionId,
+    ): Collection
+    {
+        return $coverageByLanguage
+            ->map(function ($vendorRows, $languageId) use (
+                $slotStart, $slotEnd, $precomputedAvailability, $slotIndex, $institutionId,
+            ) {
+                $vendorIds = $vendorRows->pluck('vendor_id')->unique();
+
+                $availableVendorIds = $vendorIds
+                    ->filter(fn($id) => $precomputedAvailability[$id][$slotIndex] ?? false)
+                    ->values();
+
+                return [
+                    'institution_id' => $institutionId,
+                    'language_id' => $languageId,
+                    'slot_start' => $slotStart->toIso8601String(),
+                    'slot_end' => $slotEnd->toIso8601String(),
+                    'total_vendors' => $vendorIds->count(),
+                    'available_vendors' => $availableVendorIds->count(),
+                    'available_vendor_ids' => $availableVendorIds->all(),
+                ];
+            })->values();
+    }
+
+    /**
      * Get overlapping entries as timestamp arrays for a single vendor.
      *
      * @return Collection<int, array{id: string, vendor_id: string, start_ts: int, end_ts: int}>

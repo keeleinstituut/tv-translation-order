@@ -8,11 +8,12 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use App\Models\VendorEmergencySchedule;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,7 +27,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_vendors_rejects_client_role(): void
@@ -85,7 +86,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         $institution = Institution::factory()->create();
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -104,7 +105,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         $language = ClassifierValue::factory()->language()->create();
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         $now = now();
@@ -133,7 +134,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -177,7 +178,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
         $language = ClassifierValue::factory()->language()->create();
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -189,11 +190,10 @@ class CalendarSlotMatchingControllerTest extends TestCase
         ]);
 
         // NO calendar import created
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -224,7 +224,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(18, 0)->utc()->toIso8601String();
@@ -261,7 +261,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
@@ -301,7 +301,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         ]);
         $language = ClassifierValue::factory()->language()->create();
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $externalVendor->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -313,11 +313,10 @@ class CalendarSlotMatchingControllerTest extends TestCase
         ]);
 
         // NO calendar import — external vendors don't need one
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
@@ -349,7 +348,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value, PrivilegeKey::ViewVendorDatabase->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
         ]);
 
         $startAt = now()->toIso8601String();
@@ -366,6 +365,83 @@ class CalendarSlotMatchingControllerTest extends TestCase
         // THEN
         $response->assertStatus(200)
             ->assertJson(['data' => []]);
+    }
+
+    public function test_vendors_includes_overlapping_emergency_schedule(): void
+    {
+        // GIVEN
+        $today = Carbon::today()->utc();
+        Carbon::setTestNow($today->copy()->setTime(0, 0));
+
+        $dayName = strtolower($today->format('l'));
+        [$institution, $language, $vendor] = $this->createInternalVendorWithCoverage($dayName);
+
+        $emergencySchedule = VendorEmergencySchedule::factory()->create([
+            'vendor_id' => $vendor->id,
+            'start_date' => $today->toDateString(),
+            'end_date' => $today->copy()->addDays(5)->toDateString(),
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
+        ]);
+
+        $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
+        $endAt = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson(self::ENDPOINT . '?' . http_build_query([
+                'language_id' => $language->id,
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+            ]));
+
+        // THEN
+        $response->assertStatus(200);
+        $vendorData = collect($response->json('data'))->firstWhere('id', $vendor->id);
+        $this->assertNotNull($vendorData);
+        $this->assertCount(1, $vendorData['emergency_schedules']);
+        $this->assertEquals($emergencySchedule->id, $vendorData['emergency_schedules'][0]['id']);
+    }
+
+    public function test_vendors_excludes_non_overlapping_emergency_schedule(): void
+    {
+        // GIVEN
+        $today = Carbon::today()->utc();
+        Carbon::setTestNow($today->copy()->setTime(0, 0));
+
+        $dayName = strtolower($today->format('l'));
+        [$institution, $language, $vendor] = $this->createInternalVendorWithCoverage($dayName);
+
+        VendorEmergencySchedule::factory()->create([
+            'vendor_id' => $vendor->id,
+            'start_date' => $today->copy()->addDays(10)->toDateString(),
+            'end_date' => $today->copy()->addDays(20)->toDateString(),
+        ]);
+
+        $accessToken = AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
+            'privileges' => [PrivilegeKey::ReceiveProject->value, PrivilegeKey::ViewVendorDatabase->value],
+        ]);
+
+        $startAt = $today->copy()->setTime(9, 0)->utc()->toIso8601String();
+        $endAt = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson(self::ENDPOINT . '?' . http_build_query([
+                'language_id' => $language->id,
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+            ]));
+
+        // THEN
+        $response->assertStatus(200);
+        $vendorData = collect($response->json('data'))->firstWhere('id', $vendor->id);
+        $this->assertNotNull($vendorData);
+        $this->assertCount(0, $vendorData['emergency_schedules']);
     }
 
     /**
@@ -387,7 +463,7 @@ class CalendarSlotMatchingControllerTest extends TestCase
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
         $language = ClassifierValue::factory()->language()->create();
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -407,7 +483,6 @@ class CalendarSlotMatchingControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         return [$institution, $language, $vendor];
     }

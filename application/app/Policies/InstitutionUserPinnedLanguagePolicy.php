@@ -3,19 +3,21 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\InstitutionUserPinnedLanguage;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
-use Illuminate\Support\Facades\Auth;
 
 class InstitutionUserPinnedLanguagePolicy
 {
-    public function create(JwtPayloadUser $user): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value);
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject)) {
+            return true;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency();
     }
 
-    public function delete(JwtPayloadUser $user, InstitutionUserPinnedLanguage $pinnedLanguage): bool
+    public function delete(AuthUser $user, InstitutionUserPinnedLanguage $pinnedLanguage): bool
     {
         return $pinnedLanguage->institution_user_id === $user->institutionUserId;
     }

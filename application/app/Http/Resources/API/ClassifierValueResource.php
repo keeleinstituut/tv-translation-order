@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\ClassifierValueType;
 use App\Models\CachedEntities\ClassifierValue;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -15,7 +16,7 @@ use OpenApi\Attributes as OA;
     required: ['id', 'type', 'value', 'name'],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'type', type: 'string'),
+        new OA\Property(property: 'type', type: 'string', enum: ClassifierValueType::class),
         new OA\Property(property: 'value', type: 'string'),
         new OA\Property(property: 'name', type: 'string'),
         new OA\Property(

@@ -2,28 +2,33 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\CalendarRole;
+use App\Exceptions\CalendarSlotConflictException;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\PrebookRequest;
 use App\Http\Resources\API\PrebookResource;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use App\Services\Calendar\PrebookService;
+use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotMatchingService;
+use App\Services\Calendar\TimeSlot;
+use App\Services\Calendar\VendorReservationService;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class CalendarPrebookController extends Controller
 {
     public function __construct(
-        private readonly SlotMatchingService $slotMatching,
-        private readonly PrebookService      $prebookService,
-        AuditLogPublisher                    $auditLogPublisher,
+        private readonly SlotMatchingService      $slotMatching,
+        private readonly VendorReservationService $vendorReservation,
+        private readonly CalendarRoleResolver     $roleResolver,
+        AuditLogPublisher                         $auditLogPublisher,
     )
     {
         parent::__construct($auditLogPublisher);
@@ -40,6 +45,7 @@ class CalendarPrebookController extends Controller
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
     #[OAH\ResourceResponse(dataRef: PrebookResource::class, description: 'Prebook created')]
+    #[OA\Response(response: Response::HTTP_NO_CONTENT, description: 'No vendor found for the given slot IF acting user is a client')]
     public function prebook(PrebookRequest $request): \Illuminate\Http\Response|PrebookResource
     {
         $this->authorize('prebook', VendorCalendarEntry::class);
@@ -53,35 +59,47 @@ class CalendarPrebookController extends Controller
         $institutionUserId = Auth::user()->institutionUserId;
         $institutionId = Auth::user()->institutionId;
 
-        if (VendorCalendarEntry::where('prebook_institution_user_id', $institutionUserId)->exists()) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, 'Only one prebook is allowed');
+        try {
+            return DB::transaction(function () use ($slotStart, $slotEnd, $languageId, $tagIds, $vendorId, $institutionUserId, $institutionId) {
+                $prebook = VendorCalendarEntry::where('prebook_institution_user_id', $institutionUserId)->first();
+
+                if (filled($prebook)) {
+                    $prebook->forceDelete();
+                }
+
+                $vendor = filled($vendorId) ?
+                    Vendor::find($vendorId) :
+                    $this->slotMatching->pickBestInternalVendor(
+                        $languageId,
+                        $slotStart,
+                        $slotEnd,
+                        $institutionId,
+                        $tagIds,
+                    );
+
+                if (blank($vendor)) {
+                    return response()->noContent();
+                }
+
+                $slot = TimeSlot::forEvent($slotStart, $slotEnd);
+                if (!$this->slotMatching->isVendorAvailableForSlot($vendor, $slot, $institutionId)) {
+                    throw new CalendarSlotConflictException();
+                }
+
+                $calendarEntry = $this->vendorReservation->prebook($vendor->id, $slotStart, $slotEnd, $institutionUserId);
+
+                return PrebookResource::make([
+                    'calendar_entry' => $calendarEntry,
+                    'expires_at' => $this->vendorReservation->getPrebookExpiresAt($calendarEntry),
+                ]);
+            });
+        } catch (CalendarSlotConflictException $e) {
+            if ($this->roleResolver->resolve() === CalendarRole::Client) {
+                return response()->noContent();
+            }
+
+            throw $e;
         }
-
-        $vendor = filled($vendorId) ?
-            Vendor::find($vendorId) :
-            $this->slotMatching->pickBestInternalVendor(
-                $languageId,
-                $slotStart,
-                $slotEnd,
-                $institutionId,
-                $tagIds,
-            );
-
-        if (blank($vendor)) {
-            return response()->noContent();
-        }
-
-        $calendarEntry = $this->prebookService->create(
-            $vendor->id,
-            $slotStart,
-            $slotEnd,
-            $institutionUserId,
-        );
-
-        return PrebookResource::make([
-            'calendar_entry' => $calendarEntry,
-            'expires_at' => $this->prebookService->getExpiresAt($calendarEntry),
-        ]);
     }
 
     /**
@@ -100,13 +118,7 @@ class CalendarPrebookController extends Controller
 
         $institutionUserId = Auth::user()->institutionUserId;
 
-        $prebookCalendarEntry = VendorCalendarEntry::where('prebook_institution_user_id', $institutionUserId)->first();
-
-        if (!filled($prebookCalendarEntry)) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, 'No active prebook found');
-        }
-
-        $prebookCalendarEntry->delete();
+        $this->vendorReservation->releasePrebook($institutionUserId);
 
         return response()->noContent();
     }

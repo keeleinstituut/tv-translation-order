@@ -2,7 +2,10 @@
 
 namespace App\Models\CachedEntities;
 
+use App\Enums\InstitutionType;
 use App\Models\InstitutionDiscount;
+use App\Models\InstitutionPartner;
+use App\Models\InstitutionPrice;
 use App\Models\Sequence;
 use Database\Factories\CachedEntities\InstitutionFactory;
 use Eloquent;
@@ -10,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -24,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $phone
  * @property string|null $logo_url
  * @property string|null $synced_at
+ * @property InstitutionType $type
  * @property Carbon|null $deleted_at
  * @property-read Sequence|null $institutionProjectSequence
  * @property-read InstitutionDiscount|null $institutionDiscount
@@ -83,6 +88,17 @@ class Institution extends Model
 
     public $timestamps = false;
 
+    protected $guarded = [];
+
+    protected $casts = [
+        'type' => InstitutionType::class,
+    ];
+
+    public function isTranslationAgency(): bool
+    {
+        return $this->type === InstitutionType::TranslationAgency;
+    }
+
     public function institutionProjectSequence()
     {
         return $this->morphOne(Sequence::class, 'sequenceable')
@@ -92,5 +108,20 @@ class Institution extends Model
     public function institutionDiscount(): HasOne
     {
         return $this->hasOne(InstitutionDiscount::class);
+    }
+
+    public function prices(): HasMany
+    {
+        return $this->hasMany(InstitutionPrice::class);
+    }
+
+    public function partners(): HasMany
+    {
+        return $this->hasMany(InstitutionPartner::class);
+    }
+
+    public function partnerOf(): HasMany
+    {
+        return $this->hasMany(InstitutionPartner::class, 'partner_institution_id');
     }
 }

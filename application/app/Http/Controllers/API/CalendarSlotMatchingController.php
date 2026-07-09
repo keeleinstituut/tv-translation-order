@@ -6,10 +6,11 @@ use App\Enums\CalendarRole;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\SlotMatchingVendorsRequest;
-use App\Http\Resources\API\SlotMatchingVendorResource;
+use App\Http\Resources\API\VendorResource;
 use App\Models\Vendor;
 use App\Services\Calendar\CalendarRoleResolver;
 use App\Services\Calendar\SlotMatchingService;
+use App\Services\Calendar\TimeSlot;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -43,7 +44,7 @@ class CalendarSlotMatchingController extends Controller
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: SlotMatchingVendorResource::class)]
+    #[OAH\CollectionResponse(itemsRef: VendorResource::class)]
     public function vendors(SlotMatchingVendorsRequest $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Vendor::class);
@@ -51,16 +52,23 @@ class CalendarSlotMatchingController extends Controller
         $role = $this->roleResolver->resolve();
 
         if ($role !== CalendarRole::ProjectManager) {
-            throw new HttpException(Response::HTTP_FORBIDDEN, 'Invalid role');
+            throw new HttpException(Response::HTTP_FORBIDDEN, 'Teie rollil puudub ligipääs sellele funktsioonile');
         }
+
+        $startAt = Carbon::parse($request->validated('start_at'))->utc();
+        $endAt = Carbon::parse($request->validated('end_at'))->utc();
 
         $vendors = $this->slotMatchingService->findAvailableVendorsForSlot(
             $request->validated('language_id'),
-            Carbon::parse($request->validated('start_at'))->utc(),
-            Carbon::parse($request->validated('end_at'))->utc(),
+            TimeSlot::forEvent($startAt, $endAt),
             $this->roleResolver->getInstitutionId(),
         );
 
-        return SlotMatchingVendorResource::collection($vendors);
+        $vendors->load(['emergencySchedules' => fn($q) => $q
+            ->where('start_date', '<=', $endAt->toDateString())
+            ->where('end_date', '>=', $startAt->toDateString())
+        ]);
+
+        return VendorResource::collection($vendors);
     }
 }

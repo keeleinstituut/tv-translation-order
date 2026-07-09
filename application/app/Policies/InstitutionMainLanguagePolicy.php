@@ -3,21 +3,30 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
+use App\Models\AuthUser;
 
 class InstitutionMainLanguagePolicy
 {
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditInstitution->value) ||
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value);
+        if ($user->hasAtLeastOnePrivilege([
+            PrivilegeKey::EditInstitution,
+            PrivilegeKey::ReceiveProject,
+            PrivilegeKey::ManageProject,
+        ])) {
+            return true;
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency()) {
+            return true;
+        }
+
+        return $user->isVendor();
     }
 
-    public function sync(JwtPayloadUser $jwtPayloadUser): bool
+    public function sync(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditInstitution->value);
+        return $user->hasPrivilege(PrivilegeKey::EditInstitution);
     }
 
     public static function scope(): Scope\InstitutionMainLanguageScope

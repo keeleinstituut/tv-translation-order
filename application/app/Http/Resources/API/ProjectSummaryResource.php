@@ -21,7 +21,7 @@ use OpenApi\Attributes as OA;
         'deadline_at',
         'type_classifier_value',
         'tags',
-        'cost',
+        'price',
         'source_language_classifier_value',
         'destination_language_classifier_values',
         'status',
@@ -37,7 +37,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'source_language_classifier_value', ref: ClassifierValueResource::class),
         new OA\Property(property: 'destination_languages_classifier_values', type: 'array', items: new OA\Items(ref: ClassifierValueResource::class)),
         new OA\Property(property: 'status', type: 'string', enum: ProjectStatus::class),
-        new OA\Property(property: 'cost', description: 'TODO (computation/enumeration of cost is unclear for now)', anyOf: [new OA\Schema(const: null)]),
+        new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
     ],
     type: 'object'
 )]
@@ -63,7 +63,7 @@ class ProjectSummaryResource extends JsonResource
             'tags' => TagResource::collection($this->tags),
             'source_language_classifier_value' => ClassifierValueResource::make($this->getSourceLanguageClassifierValue()),
             'destination_language_classifier_values' => ClassifierValueResource::collection($this->getDestinationLanguageClassifierValues()),
-            //            'cost' => $this->computeCost(),
+            'price' => $this->price,
         ];
     }
 }

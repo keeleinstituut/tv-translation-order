@@ -24,6 +24,7 @@ use OpenApi\Attributes as OA;
             new OA\Property(property: 'vendor_ids', type: 'array', items: new OA\Items(type: 'string', format: 'uuid')),
         ])),
         new OA\Property(property: 'vendors', type: 'array', items: new OA\Items(ref: VendorCalendarExpandResource::class)),
+        new OA\Property(property: 'unassigned_projects', type: 'array', items: new OA\Items(ref: UnassignedProjectCalendarResource::class)),
     ],
     type: 'object'
 )]
@@ -34,6 +35,9 @@ class CalendarDayProjectManagerResource extends JsonResource
         return [
             'available_slots' => $this->resource['available_slots'],
             'vendors' => VendorCalendarExpandResource::collection($this->resource['vendors']),
+            'unassigned_projects' => UnassignedProjectCalendarResource::collection(
+                collect($this->resource['unassigned_projects'] ?? [])
+            ),
         ];
     }
 }

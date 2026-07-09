@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\API;
 
+use App\Enums\ProjectStatus;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -17,7 +18,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'ext_id', type: 'string'),
         new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', nullable: true),
-        new OA\Property(property: 'status', type: 'string'),
+        new OA\Property(property: 'status', type: 'string', enum: ProjectStatus::class),
         new OA\Property(property: 'service_type', type: 'string', nullable: true),
         new OA\Property(property: 'location', type: 'string', nullable: true),
         new OA\Property(property: 'meeting_link', type: 'string', nullable: true),

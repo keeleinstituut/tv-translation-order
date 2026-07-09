@@ -169,7 +169,7 @@ class VendorCalendarControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -211,7 +211,7 @@ class VendorCalendarControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -232,7 +232,7 @@ class VendorCalendarControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -278,7 +278,7 @@ class VendorCalendarControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         return [$institution, $vendor, $accessToken];

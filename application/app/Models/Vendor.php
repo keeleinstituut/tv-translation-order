@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Dto\VolumeAnalysisDiscount;
-use App\Repositories\Calendar\VendorLanguageCoverageRepository;
+use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
 use AuditLogClient\Enums\AuditLogEventObjectType;
 use AuditLogClient\Models\AuditLoggable;
 use Barryvdh\LaravelIdeHelper\Eloquent;
@@ -160,7 +160,7 @@ class Vendor extends Model implements AuditLoggable
     /** Vendors who serve a language at an institution. */
     public function scopeServingLanguage(Builder $query, string $languageId, string $institutionId): Builder
     {
-        $repo = app(VendorLanguageCoverageRepository::class);
+        $repo = app(VendorLanguageCoverageRepositoryInterface::class);
         $vendorIds = $repo->getVendorIdsForLanguage($languageId, $institutionId);
 
         return $query->whereIn('id', $vendorIds);
@@ -172,8 +172,8 @@ class Vendor extends Model implements AuditLoggable
         return $query->whereHas(
             'calendarImports',
             fn (Builder $sub) => $sub
-                ->where('date_from', '<=', $date)
-                ->where('date_to', '>=', $date)
+                ->where('date_from', '<=', $date->copy()->endOfDay())
+                ->where('date_to', '>=', $date->copy()->startOfDay())
         );
     }
 
@@ -189,6 +189,17 @@ class Vendor extends Model implements AuditLoggable
                         ->orWhere('prebook_institution_user_id', '!=', $excludePrebookUserId)
                     )
                 )
+        );
+    }
+
+    /** Vendors who do NOT have an active emergency schedule covering the given date. */
+    public function scopeWithoutActiveEmergencySchedule(Builder $query, Carbon $date): Builder
+    {
+        return $query->whereDoesntHave(
+            'emergencySchedules',
+            fn (Builder $sub) => $sub
+                ->where('start_date', '<=', $date)
+                ->where('end_date', '>=', $date)
         );
     }
 

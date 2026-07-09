@@ -8,16 +8,16 @@ use App\Http\Requests\API\MediaDeleteRequest;
 use App\Http\Requests\API\MediaDownloadRequest;
 use App\Http\Requests\MediaUpdateRequest;
 use App\Http\Resources\MediaResource;
+use App\Models\OutsourceRequest;
 use App\Models\Media;
 use App\Models\Project;
 use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Auth\Access\AuthorizationException;
 use AuditLogClient\Models\AuditLoggable;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 use App\Http\OpenApiHelpers as OAH;
 use Symfony\Component\HttpFoundation\Response;
@@ -227,14 +227,14 @@ class MediaController extends Controller
             ->where('id', $params['id'])
             ->first() ?? abort(404);
 
-        $this->auditLogPublisher->publish(
-            AuditLogMessageBuilder::makeUsingJWT()->toDownloadProjectFileEvent(
-                $media->id,
-                $collectionOwnerEntity->id,
-                $collectionOwnerEntity->ext_id,
-                $media->file_name
-            )
-        );
+//        $this->auditLogPublisher->publish(
+//            AuditLogMessageBuilder::makeUsingJWT()->toDownloadProjectFileEvent(
+//                $media->id,
+//                $collectionOwnerEntity->id,
+//                $collectionOwnerEntity->ext_id,
+//                $media->file_name
+//            )
+//        );
 
         return $media->toResponse($request);
     }
@@ -245,6 +245,7 @@ class MediaController extends Controller
             'project', Project::class => Project::class,
             'subproject', SubProject::class => SubProject::class,
             'review', ProjectReviewRejection::class => ProjectReviewRejection::class,
+            'outsource_request', OutsourceRequest::class => OutsourceRequest::class,
             default => null,
         };
 
@@ -262,6 +263,7 @@ class MediaController extends Controller
             [Project::class, 'help'] => [$entity, $entity, Project::HELP_FILES_COLLECTION],
             [ProjectReviewRejection::class, 'review'], [SubProject::class, 'source'] => [$entity, $entity->project, $entity->file_collection],
             [SubProject::class, 'final'] => [$entity, $entity->project, $entity->file_collection_final],
+            [OutsourceRequest::class, OutsourceRequest::REQUEST_FILES_COLLECTION] => [$entity, $entity, OutsourceRequest::REQUEST_FILES_COLLECTION],
             default => null,
         };
     }
@@ -272,6 +274,7 @@ class MediaController extends Controller
             [Project::class, 'source'], [SubProject::class, 'source'] => 'editSourceFiles',
             [Project::class, 'help'] => 'editHelpFiles',
             [SubProject::class, 'final'] => 'editFinalFiles',
+            [OutsourceRequest::class, OutsourceRequest::REQUEST_FILES_COLLECTION] => 'downloadMedia',
             default => null,
         };
     }

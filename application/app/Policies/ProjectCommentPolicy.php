@@ -3,33 +3,39 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
+use App\Models\Project;
 use App\Models\ProjectComment;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class ProjectCommentPolicy
 {
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value)
-            || Auth::hasPrivilege(PrivilegeKey::ManageProject->value)
-            || Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+        return true;
     }
 
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user, Project $project): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject)) {
+            return true;
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency()) {
+            return true;
+        }
+
+        return $project->assignees()->where('institution_user_id', $user->institutionUserId)->exists();
     }
 
-    public function update(JwtPayloadUser $jwtPayloadUser, ProjectComment $projectComment): bool
+    public function update(AuthUser $user, ProjectComment $projectComment): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value)
-            && $projectComment->institution_user_id === Auth::user()?->institutionUserId;
+        return $user->hasPrivilege(PrivilegeKey::ManageProject)
+            && $projectComment->institution_user_id === $user->institutionUserId;
     }
 
-    public function delete(JwtPayloadUser $jwtPayloadUser, ProjectComment $projectComment): bool
+    public function delete(AuthUser $user, ProjectComment $projectComment): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     public static function scope()

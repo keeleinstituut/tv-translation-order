@@ -15,11 +15,9 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Policies\ProjectPolicy;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Policies\VendorPolicy;
-use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
-use App\Services\Calendar\SlotDiscretizationService;
+use App\Services\Calendar\AvailableSlotsBuilder;
 use App\Services\Calendar\VendorsAvailabilityService;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,14 +26,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+
 
 class CalendarDayController extends Controller
 {
     public function __construct(
         private readonly CalendarDataLoader         $dataLoader,
         private readonly VendorsAvailabilityService $availabilityService,
-        private readonly SlotDiscretizationService  $discretizationService,
+        private readonly AvailableSlotsBuilder      $slotsBuilder,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
     )
@@ -91,8 +89,7 @@ class CalendarDayController extends Controller
             CalendarRole::Vendor => $this->vendorView(
                 $this->roleResolver->getVendor(),
                 $date
-            ),
-            CalendarRole::Unknown => throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid role')
+            )
         };
     }
 
@@ -119,7 +116,7 @@ class CalendarDayController extends Controller
 
     private function clientView(string $institutionId, string $actingUserId, Carbon $date): CalendarClientDayResource
     {
-        $unassignedProjects = $this->getClientUnassignedProjects($actingUserId, $date);
+        $unassignedProjects = $this->getUnassignedProjects($date, $actingUserId);
 
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
@@ -139,12 +136,9 @@ class CalendarDayController extends Controller
         $excludeVendorIds = $data->vendorIdsWithEmergencySchedule();
         $vendorWindows = $this->availabilityService->computeVendorWindows($data, $date, $excludeVendorIds);
         $vendorFreeIntervals = $this->availabilityService->computeFreeIntervals($data, $date, $vendorWindows, $excludeVendorIds);
-        $perLanguageIntervals = $this->discretizationService->fanOutByLanguage($vendorFreeIntervals, $data);
-        $availableSlots = $this->discretizationService->discretizeLanguageSlots($perLanguageIntervals);
-        $bookedSlots = $this->discretizationService->computeFullyBookedSlots($availableSlots, $data->coverageByLanguage, $vendorWindows);
+        $availableSlots = $this->slotsBuilder->languageTaggedFreeSlots($vendorFreeIntervals, $data);
 
         $entries = VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->whereIn('vendor_id', $data->importedCalendarVendorIds)
             ->overlapping($dayStart, $dayEnd)
             ->forClient($actingUserId)
             ->with([
@@ -157,7 +151,6 @@ class CalendarDayController extends Controller
 
         return CalendarClientDayResource::make([
             'available_slots' => $availableSlots,
-            'booked_slots' => $bookedSlots,
             'calendar_entries' => $entries,
             'unassigned_projects' => $unassignedProjects,
         ]);
@@ -168,28 +161,43 @@ class CalendarDayController extends Controller
         $dayStart = $date->copy()->startOfDay()->utc();
         $dayEnd = $date->copy()->endOfDay()->utc();
         $data = $this->dataLoader->loadFull($institutionId, $dayStart, $dayEnd);
+        $unassignedProjects = $this->getUnassignedProjects($date);
 
         if ($data->importedCalendarVendorIds->isEmpty()) {
             return CalendarDayProjectManagerResource::make([
                 'available_slots' => [],
                 'vendors' => [],
+                'unassigned_projects' => $unassignedProjects,
             ]);
         }
 
         $vendorFreeIntervals = $this->availabilityService->computeFreeIntervals($data, $date);
-        $availableSlots = $this->discretizationService->discretizeWithVendorIds($vendorFreeIntervals);
-        $vendors = $this->buildVendorsMap($data, $dayStart, $dayEnd);
+        $availableSlots = $this->slotsBuilder->vendorTaggedFreeSlots($vendorFreeIntervals);
+        $entriesByVendor = $data->internalVendorIds->isNotEmpty()
+            ? VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
+                ->whereIn('vendor_id', $data->internalVendorIds)
+                ->overlapping($dayStart, $dayEnd)
+                ->with([
+                    'assignment.subProject.sourceLanguageClassifierValue',
+                    'assignment.subProject.destinationLanguageClassifierValue',
+                    'assignment.subProject.project',
+                ])
+                ->orderBy('start_at')
+                ->get()
+                ->groupBy('vendor_id')
+            : collect();
 
         return CalendarDayProjectManagerResource::make([
             'available_slots' => $availableSlots,
-            'vendors' => $vendors,
+            'vendors' => $data->buildExpandedVendors($entriesByVendor),
+            'unassigned_projects' => $unassignedProjects,
         ]);
     }
 
-    private function getClientUnassignedProjects(string $institutionUserId, Carbon $date): Collection
+    private function getUnassignedProjects(Carbon $date, string|null $clientInstitutionUserId = null): Collection
     {
         return Project::withGlobalScope('policy', ProjectPolicy::scope())
-            ->where('client_institution_user_id', $institutionUserId)
+            ->when($clientInstitutionUserId, fn ($q) => $q->where('client_institution_user_id', $clientInstitutionUserId))
             ->where('is_calendar_project', true)
             ->whereNotNull('event_start_at')
             ->whereNotNull('event_end_at')
@@ -198,37 +206,5 @@ class CalendarDayController extends Controller
             ->whereDoesntHave('subProjects.assignments.calendarEntry')
             ->with('subProjects')
             ->get();
-    }
-
-    /**
-     * @return array<int, array>
-     */
-    private function buildVendorsMap(CalendarData $data, Carbon $dayStart, Carbon $dayEnd): array
-    {
-        $vendors = $data->internalVendorIds->isNotEmpty() ?
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->whereIn('id', $data->internalVendorIds)
-                ->with('institutionUser')
-                ->get() : collect();
-
-        $entries = $data->internalVendorIds->isNotEmpty() ? VendorCalendarEntry::withGlobalScope('policy', VendorCalendarEntryPolicy::scope())
-            ->whereIn('vendor_id', $data->internalVendorIds)
-            ->overlapping($dayStart, $dayEnd)
-            ->with([
-                'assignment.subProject.sourceLanguageClassifierValue',
-                'assignment.subProject.destinationLanguageClassifierValue',
-                'assignment.subProject.project',
-            ])
-            ->orderBy('start_at')
-            ->get()
-            ->groupBy('vendor_id') : collect();
-
-        return $vendors->map(fn(Vendor $vendor) => [
-            'id' => $vendor->id,
-            'institutionUser' => $vendor->institutionUser,
-            'calendar_entries' => $entries->get($vendor->id, collect()),
-            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
-        ])->all();
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Services\CatV2\CatV2Service;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class CatV2Controller extends Controller
@@ -15,6 +16,9 @@ class CatV2Controller extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    public function __construct(private readonly CatV2Service $catV2Service) {}
+
     public function translationMemoryIndex(Request $request)
     {
 
@@ -109,14 +113,17 @@ class CatV2Controller extends Controller
                 ],
                 4 => tap(collect(), function ($acc) use ($params) {
                     if ($name = $params->get('name')) {
-                        $acc['name'] = $name;
+                        $acc['name'] = [
+                            'operator' => 'ilike',
+                            'value' => "%$name%",
+                        ];
                     }
                     return $acc;
                 })->toArray()
             ]
         ];
 
-        $response = CatV2Service::getTranslationMemories([
+        $response = $this->catV2Service->getTranslationMemories([
             'filter' => $filter,
             'with_segment_count' => $params->get('with_segment_count')
         ]);
@@ -133,7 +140,7 @@ class CatV2Controller extends Controller
 
         $locales = Str::of($params->get('lang_pair'))->explode('_');
 
-        $response = CatV2Service::createTranslationMemory([
+        $response = $this->catV2Service->createTranslationMemory([
             'name' => $params->get('name'),
             'source_locale' => $locales[0],
             'target_locale' => $locales[1],
@@ -150,16 +157,28 @@ class CatV2Controller extends Controller
 
     public function translationMemoryShow($id)
     {
-        $response = CatV2Service::getTranslationMemory($id);
+        $response = $this->catV2Service->getTranslationMemory($id);
+
+        Gate::allowIf(function ($user) use ($response) {
+            $visibility = data_get($response, 'data.meta.visibility');
+            $institutionId = data_get($response, 'data.meta.institution_id');
+            return $user->institutionId == $institutionId || $visibility == 'shared' || $visibility == 'public';
+        });
 
         return CatV2TranslationMemoryResource::make($response['data'])
             ->additional([
-                'segment_count' => $response['segment_count'],
+                'segment_count' => data_get($response, 'segment_count'),
+                'edit_url' => data_get($response, 'edit_url'),
             ]);
     }
 
     public function translationMemoryUpdate(Request $request, $id)
     {
+        Gate::allowIf(function ($user) use ($id) {
+            $translationMemoryResponse = $this->catV2Service->getTranslationMemory($id);
+            return $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
+        });
+
         $params = collect($request->all());
 
         $payload = collect([
@@ -175,16 +194,31 @@ class CatV2Controller extends Controller
             ])->filter()->toArray(),
         ])->filter()->toArray();
 
-        $response = CatV2Service::updateTranslationMemory($id, $payload);
+        $response = $this->catV2Service->updateTranslationMemory($id, $payload);
 
         return CatV2TranslationMemoryResource::make($response['data']);
+    }
+
+    public function translationMemoryDestroy($id)
+    {
+        Gate::allowIf(function ($user) use ($id) {
+            $translationMemoryResponse = $this->catV2Service->getTranslationMemory($id);
+            return $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
+        });
+
+        return $this->catV2Service->deleteTranslationMemory($id);
     }
 
     public function translationMemoryImport(Request $request)
     {
         $params = collect($request->all());
 
-        return CatV2Service::importTranslationMemory([
+        Gate::allowIf(function ($user) use ($params) {
+            $translationMemoryResponse = $this->catV2Service->getTranslationMemory($params->get('tag'));
+            return $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
+        });
+
+        return $this->catV2Service->importTranslationMemory([
             'translation_memory_id' => $params->get('tag'),
             'files' => [
                 $params->get('file'),
@@ -198,7 +232,14 @@ class CatV2Controller extends Controller
         $tags = $params->get('tag');
         $combined = collect($tags)->count() > 1;
 
-        $response = CatV2Service::exportTranslationMemory([
+        Gate::allowIf(function ($user) use ($tags) {
+            return collect($tags)->reduce(function ($acc, $id) use ($user) {
+                $translationMemoryResponse = $this->catV2Service->getTranslationMemory($id);
+                return $acc && $user->institutionId == data_get($translationMemoryResponse, 'data.meta.institution_id');
+            }, true);
+        });
+
+        $response = $this->catV2Service->exportTranslationMemory([
             'translation_memory_ids' => $tags,
             'combined' => $combined,
         ]);
@@ -217,35 +258,35 @@ class CatV2Controller extends Controller
         ];
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+    // /**
+    //  * Store a newly created resource in storage.
+    //  */
+    // public function store(Request $request)
+    // {
+    //     //
+    // }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+    // /**
+    //  * Display the specified resource.
+    //  */
+    // public function show(string $id)
+    // {
+    //     //
+    // }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+    // /**
+    //  * Update the specified resource in storage.
+    //  */
+    // public function update(Request $request, string $id)
+    // {
+    //     //
+    // }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
+    // /**
+    //  * Remove the specified resource from storage.
+    //  */
+    // public function destroy(string $id)
+    // {
+    //     //
+    // }
 }

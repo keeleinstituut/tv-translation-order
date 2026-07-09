@@ -2,17 +2,25 @@
 
 namespace App\Policies;
 
-use App\Models\Vendor;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
+use App\Models\AuthUser;
+use App\Models\VendorCalendarImport;
 
 class VendorCalendarImportPolicy
 {
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Vendor::withGlobalScope('policy', VendorPolicy::scope())
-            ->where('institution_user_id', $jwtPayloadUser->institutionUserId)
-            ->exists();
+        return $user->isVendor();
+    }
+
+    public function create(AuthUser $user): bool
+    {
+        return $user->isVendor();
+    }
+
+    public function delete(AuthUser $user, VendorCalendarImport $import): bool
+    {
+        $vendor = $user->vendor();
+        return $vendor && $vendor->id === $import->vendor_id;
     }
 
     public static function scope(): Scope\VendorCalendarImportScope

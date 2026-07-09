@@ -12,7 +12,7 @@ use App\Models\Candidate;
 use App\Models\Project;
 use App\Models\SubProject;
 use App\Models\Vendor;
-use App\Models\VendorCalendarEntry;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\Http;
@@ -65,7 +65,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor->id,
             'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
+            'position' => 1,
             'notified_at' => now(),
         ]);
 
@@ -111,7 +111,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor->id,
             'status' => CandidateStatus::Declined,
-            'position' => 0,
+            'position' => 1,
         ]);
 
         $taskId = fake()->uuid();
@@ -190,7 +190,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor1->id,
             'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
+            'position' => 1,
             'notified_at' => now(),
         ]);
 
@@ -198,7 +198,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor2->id,
             'status' => CandidateStatus::New,
-            'position' => 1,
+            'position' => 2,
         ]);
 
         $taskId = fake()->uuid();
@@ -221,9 +221,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
         $candidate1->refresh();
         $this->assertEquals(CandidateStatus::Declined, $candidate1->status);
 
-        $candidate2->refresh();
-        $this->assertEquals(CandidateStatus::SubmittedToVendor, $candidate2->status);
-        $this->assertNotNull($candidate2->notified_at);
+        Queue::assertPushed(ProcessCandidatesNotificationCycle::class);
     }
 
     public function test_decline_does_not_cascade_for_non_calendar_project(): void
@@ -254,7 +252,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor1->id,
             'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
+            'position' => 1,
             'notified_at' => now(),
         ]);
 
@@ -262,7 +260,7 @@ class WorkflowControllerDeclineTaskTest extends TestCase
             'assignment_id' => $assignment->id,
             'vendor_id' => $vendor2->id,
             'status' => CandidateStatus::New,
-            'position' => 1,
+            'position' => 2,
         ]);
 
         $taskId = fake()->uuid();
@@ -289,81 +287,6 @@ class WorkflowControllerDeclineTaskTest extends TestCase
         $candidate2->refresh();
         $this->assertEquals(CandidateStatus::New, $candidate2->status);
         $this->assertNull($candidate2->notified_at);
-    }
-
-    public function test_decline_creates_vce_for_next_vendor_in_calendar_cascade(): void
-    {
-        // GIVEN
-        Queue::fake();
-
-        $vendorInstitutionUser1 = InstitutionUser::factory()
-            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
-            ->create();
-        $vendor1 = Vendor::factory()->create([
-            'institution_user_id' => $vendorInstitutionUser1->id,
-            'company_name' => fake()->company(),
-        ]);
-
-        $vendorInstitutionUser2 = InstitutionUser::factory()
-            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
-            ->create();
-        $vendor2 = Vendor::factory()->create([
-            'institution_user_id' => $vendorInstitutionUser2->id,
-            'company_name' => fake()->company(),
-        ]);
-
-        $project = $this->createProjectWithAssignment(isCalendar: true);
-        $assignment = $project->subProjects->first()->assignments->first();
-
-        // VCE for vendor1 (current)
-        VendorCalendarEntry::create([
-            'vendor_id' => $vendor1->id,
-            'start_at' => $project->event_start_at,
-            'end_at' => $project->event_end_at,
-            'assignment_id' => $assignment->id,
-        ]);
-
-        $candidate1 = Candidate::factory()->create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $vendor1->id,
-            'status' => CandidateStatus::SubmittedToVendor,
-            'position' => 0,
-            'notified_at' => now(),
-        ]);
-
-        Candidate::factory()->create([
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $vendor2->id,
-            'status' => CandidateStatus::New,
-            'position' => 1,
-        ]);
-
-        $taskId = fake()->uuid();
-        $executionId = fake()->uuid();
-        $this->fakeCamundaForDecline($taskId, $executionId, $assignment->id);
-
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $vendorInstitutionUser1->id,
-            'selectedInstitution' => ['id' => $this->institution->id],
-            'privileges' => [],
-        ]);
-
-        // WHEN
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->postJson("/api/workflow/tasks/{$taskId}/decline");
-
-        // THEN
-        $response->assertOk();
-
-        // Old VCE soft-deleted, new VCE created for vendor2
-        $this->assertSoftDeleted('vendor_calendar_entries', [
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $vendor1->id,
-        ]);
-        $this->assertDatabaseHas('vendor_calendar_entries', [
-            'assignment_id' => $assignment->id,
-            'vendor_id' => $vendor2->id,
-        ]);
     }
 
     private function createProjectWithAssignment(bool $isCalendar = false): Project

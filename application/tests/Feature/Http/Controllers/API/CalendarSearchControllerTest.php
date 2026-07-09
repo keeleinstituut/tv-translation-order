@@ -8,12 +8,12 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Models\VendorEmergencySchedule;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -25,7 +25,7 @@ class CalendarSearchControllerTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_search_requires_language_id(): void
@@ -340,7 +340,7 @@ class CalendarSearchControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -401,7 +401,7 @@ class CalendarSearchControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -449,7 +449,7 @@ class CalendarSearchControllerTest extends TestCase
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
         $language = ClassifierValue::factory()->language()->create();
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -469,7 +469,6 @@ class CalendarSearchControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         return [$institution, $language, $vendor];
     }

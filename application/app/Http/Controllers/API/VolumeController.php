@@ -14,9 +14,9 @@ use App\Models\Assignment;
 use App\Models\Volume;
 use App\Observers\VolumeObserver;
 use App\Policies\VolumePolicy;
-use DB;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -36,10 +36,10 @@ class VolumeController extends Controller
     #[OAH\ResourceResponse(dataRef: VolumeResource::class, description: 'Created volume', response: Response::HTTP_CREATED)]
     public function store(VolumeCreateRequest $request): VolumeResource
     {
-        $this->authorize('create', Volume::class);
+        $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
+        $this->authorize('create', [Volume::class, $affectedAssignment]);
 
-        return DB::transaction(function () use ($request) {
-            $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
+        return DB::transaction(function () use ($request, $affectedAssignment) {
             $volume = $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $affectedAssignment,
                 function () use ($request): Volume {
@@ -67,10 +67,9 @@ class VolumeController extends Controller
     #[OAH\ResourceResponse(dataRef: VolumeResource::class, description: 'Created volume', response: Response::HTTP_CREATED)]
     public function storeCatToolVolume(CatToolVolumeCreateRequest $request)
     {
-        $this->authorize('create', Volume::class);
-
-        return DB::transaction(function () use ($request) {
-            $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
+        $affectedAssignment = Assignment::findOrFail($request->validated('assignment_id'));
+        $this->authorize('create', [Volume::class, $affectedAssignment]);
+        return DB::transaction(function () use ($request, $affectedAssignment) {
             $volume = $this->auditLogPublisher->publishModifyObjectAfterAction(
                 $affectedAssignment,
                 function () use ($request): Volume {

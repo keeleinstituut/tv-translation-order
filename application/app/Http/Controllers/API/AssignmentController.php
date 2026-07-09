@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\API;
 
 use App\Enums\AssignmentStatus;
+use App\Enums\CandidateStatus;
 use App\Enums\JobKey;
 use App\Enums\TaskType;
+use App\Exceptions\CalendarSlotConflictException;
 use App\Helpers\SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
@@ -12,10 +14,10 @@ use App\Http\Requests\API\AssignmentAddCandidatesRequest;
 use App\Http\Requests\API\AssignmentCatToolJobBulkLinkRequest;
 use App\Http\Requests\API\AssignmentCreateRequest;
 use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
-use App\Http\Requests\API\AssignmentListRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
 use App\Http\Requests\API\AssignmentUpdateRequest;
 use App\Http\Resources\API\AssignmentResource;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -23,19 +25,20 @@ use App\Models\Assignment;
 use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
 use App\Models\Media;
-use App\Models\SubProject;
+use App\Models\VendorCalendarEntry;
 use App\Policies\AssignmentPolicy;
-use App\Policies\SubProjectPolicy;
-use App\Services\Workflows\Tasks\WorkflowTasksDataProvider;
+use App\Policies\OutsourceRequestPolicy;
+use App\Services\Calendar\CalendarSettingsResolver;
+use App\Services\Calendar\VendorReservationService;
 use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use NotificationClient\Services\NotificationPublisher;
@@ -45,7 +48,12 @@ use Throwable;
 
 class AssignmentController extends Controller
 {
-    public function __construct(private readonly NotificationPublisher $notificationPublisher, AuditLogPublisher $auditLogPublisher)
+    public function __construct(
+        private readonly NotificationPublisher $notificationPublisher,
+        private readonly VendorReservationService $vendorReservation,
+        private readonly CalendarSettingsResolver $calendarSettings,
+        AuditLogPublisher $auditLogPublisher,
+    )
     {
         parent::__construct($auditLogPublisher);
     }
@@ -54,43 +62,40 @@ class AssignmentController extends Controller
      * @throws AuthorizationException
      */
     #[OA\Get(
-        path: '/assignments/{sub_project_id}',
-        description: 'Endpoint that returns list of assignments of the sub-project with filtering by `feature`',
-        summary: 'list of assignments of the sub-project with filtering by `feature`',
+        path: '/assignments/{id}',
+        summary: 'Get assignment details for the assigned vendor or candidate',
         tags: ['Assignment management'],
-        parameters: [
-            new OAH\UuidPath('sub_project_id'),
-            new OA\QueryParameter(name: 'job_key', schema: new OA\Schema(type: 'string', enum: JobKey::class)),
-        ],
+        parameters: [new OAH\UuidPath('id')],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
-    #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'Filtered assignments of current sub-project')]
-    public function index(AssignmentListRequest $request): ResourceCollection
+    #[OAH\ResourceResponse(dataRef: AssignmentResource::class, description: 'Assignment details')]
+    public function show(string $id): AssignmentResource
     {
-        $this->authorize('viewAny', [
-            Assignment::class,
-            self::getSubProjectOrFail($request->route('sub_project_id')),
-        ]);
-
-        $data = static::getBaseQuery()->where(
-            'sub_project_id',
-            $request->route('sub_project_id')
-        )->when(
-            $request->validated('job_key'),
-            fn(Builder $query, string $feature) => $query->whereRelation(
+        $assignment = Assignment::getModel()
+            ->withGlobalScope('policy', AssignmentPolicy::scope())
+            ->with([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+                'volumes',
+                'catToolJobs',
                 'jobDefinition',
-                'job_key',
-                $request->validated('job_key')
-            )
-        )->with(
-            'candidates.vendor.institutionUser',
-            'assignee.institutionUser',
-            'volumes',
-            'catToolJobs',
-            'jobDefinition'
-        )->get();
+                'subProject.sourceLanguageClassifierValue',
+                'subProject.destinationLanguageClassifierValue',
+                'subProject.project.tags',
+                'subProject.project.clientInstitutionUser',
+                'subProject.project.typeClassifierValue',
+                'subProject.project.translationDomainClassifierValue',
+                'subProject.project.managerInstitutionUser',
+                'subProject.project.projectComments',
+                'subProject.project.helpFiles',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
+            ])->findOrFail($id);
 
-        return AssignmentResource::collection($data);
+        $this->authorize('view', $assignment);
+
+        return AssignmentResource::make($assignment);
     }
 
     /**
@@ -181,7 +186,10 @@ class AssignmentController extends Controller
                 'assignee.institutionUser',
                 'volumes',
                 'catToolJobs',
-                'jobDefinition'
+                'jobDefinition',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ]);
 
             return AssignmentResource::make($assignment);
@@ -222,7 +230,10 @@ class AssignmentController extends Controller
                 'assignee.institutionUser',
                 'volumes',
                 'catToolJobs',
-                'jobDefinition'
+                'jobDefinition',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ]);
 
             return AssignmentResource::make($assignment);
@@ -297,7 +308,7 @@ class AssignmentController extends Controller
                         ->unique(fn($data) => $data['vendor_id'])
                         ->map(Candidate::make(...));
 
-                    $assignment->candidates()->saveMany($newCandidates);
+                    $assignment->candidates()->saveManyQuietly($newCandidates);
 
                     $assignment->load('candidates.vendor.institutionUser');
 
@@ -308,9 +319,15 @@ class AssignmentController extends Controller
                         return $candidate->vendor?->institution_user_id;
                     })->filter()->values();
 
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($newCandidatesInstitutionUserIds->isNotEmpty()) {
-                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray());
+                        AddCandidatesToWorkflow::dispatch($assignment, $newCandidatesInstitutionUserIds->toArray())
+                            ->afterCommit();
                     }
+
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    ProcessCandidatesNotificationCycle::dispatchAfterResponse($assignment);
                 }
             );
 
@@ -355,13 +372,27 @@ class AssignmentController extends Controller
                             $candidate->deleteQuietly();
                         });
 
+                    $this->syncCalendarReservationWithCandidates($assignment);
+
                     if ($deletedCandidatesInstitutionUserIds->isNotEmpty()) {
-                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray());
+                        DeleteCandidatesFromWorkflow::dispatch($assignment, $deletedCandidatesInstitutionUserIds->toArray())
+                            ->afterCommit();
                     }
+
+                    if ($vendorIds->contains($assignment->assigned_vendor_id)) {
+                        $assignment->assigned_vendor_id = null;
+                        $assignment->saveOrFail();
+                    }
+
+                    TrackSubProjectStatus::dispatchSync($assignment->subProject);
+                    ProcessCandidatesNotificationCycle::dispatchAfterResponse($assignment);
                 }
             );
 
-            $assignment->load('candidates.vendor.institutionUser');
+            $assignment->load([
+                'candidates.vendor.institutionUser',
+                'assignee.institutionUser',
+            ]);
             return AssignmentResource::make($assignment);
         });
     }
@@ -501,14 +532,16 @@ class AssignmentController extends Controller
                         )
                 );
 
+                $institutionId = $assignment->subProject->project->institution_id;
+
                 $assigneeInstitutionUser = $assignment->assignee?->institutionUser;
                 if (filled($assigneeInstitutionUser) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $assigneeInstitutionUser))) {
-                    $this->notificationPublisher->publishEmailNotification($message);
+                    $this->notificationPublisher->publishEmailNotification($message, $institutionId);
                 }
 
                 $projectManager = $assignment->subProject?->project?->managerInstitutionUser;
-                if (filled($projectManager) && filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager))) {
-                    $this->notificationPublisher->publishEmailNotification($message);
+                if (filled($message = SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer::compose($assignment, $projectManager, true))) {
+                    $this->notificationPublisher->publishEmailNotification($message, $institutionId);
                 }
             }
 
@@ -540,15 +573,6 @@ class AssignmentController extends Controller
         return $taskData;
     }
 
-    private static function getSubProjectOrFail(string $id): SubProject
-    {
-        /** @var SubProject $subProject */
-        $subProject = SubProject::withGlobalScope('policy', SubProjectPolicy::scope())
-            ->findOrFail($id);
-
-        return $subProject;
-    }
-
     private static function getBaseQuery(): Builder
     {
         return Assignment::getModel()->withGlobalScope('policy', AssignmentPolicy::scope())
@@ -558,7 +582,57 @@ class AssignmentController extends Controller
                 'volumes.institutionDiscount',
                 'catToolJobs',
                 'jobDefinition',
+                'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
+                'outsourceRequests.offers.institution',
+                'outsourceRequests.ownerInstitution',
             ]);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function syncCalendarReservationWithCandidates(Assignment $assignment): void
+    {
+        $assignment->loadMissing('subProject.project');
+        $project = $assignment->subProject->project;
+
+        if (blank($project) || !$project->is_calendar_project) {
+            return;
+        }
+
+        $statusPriority = sprintf(
+            "CASE status WHEN '%s' THEN 1 WHEN '%s' THEN 2 WHEN '%s' THEN 3 WHEN '%s' THEN 4 ELSE 5 END",
+            CandidateStatus::Done->value,
+            CandidateStatus::Accepted->value,
+            CandidateStatus::SubmittedToVendor->value,
+            CandidateStatus::New->value,
+        );
+
+        $nextCandidate = $assignment->candidates()
+            ->whereNotIn('status', [CandidateStatus::Declined, CandidateStatus::Rejected])
+            ->orderByRaw($statusPriority)
+            ->ordered()
+            ->first();
+
+        if (blank($nextCandidate)) {
+            VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
+            return;
+        }
+
+        $timeSlot = $this->calendarSettings->resolveTimeSlotForProject($project);
+
+        try {
+            $this->vendorReservation->rotateToVendor(
+                $assignment,
+                $nextCandidate->vendor_id,
+                $timeSlot->bufferedStartAt,
+                $timeSlot->bufferedEndAt,
+            );
+        } catch (CalendarSlotConflictException) {
+            throw ValidationException::withMessages([
+                'data' => 'Valitud teostaja ei ole valitud ajavahemikul saadaval.',
+            ]);
+        }
     }
 
     /**

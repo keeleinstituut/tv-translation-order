@@ -6,10 +6,11 @@ use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\ProjectReviewRejection;
 use App\Models\SubProject;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
-use Str;
 
 class ProjectReviewRejectionObserver
 {
@@ -28,6 +29,7 @@ class ProjectReviewRejectionObserver
 
     /**
      * Handle the ProjectReviewRejection "created" event.
+     * @throws \Throwable
      */
     public function created(ProjectReviewRejection $projectReviewRejection): void
     {
@@ -35,9 +37,11 @@ class ProjectReviewRejectionObserver
             $this->publishProjectRejectedEmailNotification($projectReviewRejection, $client);
         }
 
-        if (filled($manager = $projectReviewRejection->project?->managerInstitutionUser)) {
-            $this->publishProjectRejectedEmailNotification($projectReviewRejection, $manager);
-        }
+        $this->publishProjectRejectedEmailNotification(
+            $projectReviewRejection,
+            $projectReviewRejection->project?->managerInstitutionUser,
+            true
+        );
     }
 
     /**
@@ -72,29 +76,42 @@ class ProjectReviewRejectionObserver
         //
     }
 
-    private function publishProjectRejectedEmailNotification(ProjectReviewRejection $projectReviewRejection, InstitutionUser $receiver): void
+    /**
+     * @throws \Throwable
+     */
+    private function publishProjectRejectedEmailNotification(ProjectReviewRejection $projectReviewRejection, ?InstitutionUser $receiver, bool $isManager = false): void
     {
         if (empty($project = $projectReviewRejection->project)) {
             return;
         }
 
-        if (filled($receiver->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::ProjectRejected,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
-                    'variables' => [
-                        'project' => $project->only(['ext_id']),
-                        'project_review_rejection' => [
-                            ...$projectReviewRejection->only(['description']),
-                            'sub_projects' => $projectReviewRejection->getSubProjects()
-                                ->each(fn(SubProject $subProject) => $subProject->only(['ext_id']))
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $receiverEmail = $receiver?->email ?: $project->institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $project->institution?->name;
+        }
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($project, $projectReviewRejection, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::ProjectRejected,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'project' => $project->only(['ext_id']),
+                            'project_review_rejection' => [
+                                ...$projectReviewRejection->only(['description']),
+                                'sub_projects' => $projectReviewRejection->getSubProjects()
+                                    ->each(fn(SubProject $subProject) => $subProject->only(['ext_id']))
+                            ]
                         ]
-                    ]
-                ]),
-                $project->institution_id
-            );
+                    ]),
+                    $project->institution_id
+                );
+            });
         }
     }
 }

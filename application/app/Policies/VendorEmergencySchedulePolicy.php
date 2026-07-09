@@ -3,25 +3,24 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
+use App\Models\AuthUser;
 use App\Models\VendorEmergencySchedule;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class VendorEmergencySchedulePolicy
 {
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
-    public function delete(JwtPayloadUser $jwtPayloadUser, VendorEmergencySchedule $emergencySchedule): bool
+    public function delete(AuthUser $user, VendorEmergencySchedule $emergencySchedule): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::EditVendorDatabase->value);
+        return $user->hasPrivilege(PrivilegeKey::EditVendorDatabase);
     }
 
     public static function scope()

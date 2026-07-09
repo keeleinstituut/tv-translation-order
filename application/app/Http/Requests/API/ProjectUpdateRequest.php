@@ -37,7 +37,7 @@ use Symfony\Component\HttpFoundation\Response;
             new OA\Property(property: 'manager_institution_user_id', type: 'string', format: 'uuid', nullable: true),
             new OA\Property(property: 'client_institution_user_id', type: 'string', format: 'uuid', nullable: true),
             new OA\Property(property: 'reference_number', type: 'string', nullable: true),
-            new OA\Property(property: 'comments', type: 'string', nullable: true),
+            new OA\Property(property: 'comments', type: 'string', nullable: true, deprecated: true),
             new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
             new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z', nullable: true),
             new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', example: '2020-12-31T14:00:00Z', nullable: true),
@@ -115,7 +115,7 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 'sometimes',
                 'date_format:' . self::DATETIME_FORMAT,
                 Rule::prohibitedIf(fn() => !$this->isCalendarProject() && !ClassifierValue::isProjectTypeSupportingEventStartDate(
-                    $this->get(
+                    $this->input(
                         'type_classifier_value_id',
                         $this->getProject()->type_classifier_value_id
                     )
@@ -131,27 +131,27 @@ class ProjectUpdateRequest extends ProjectCreateRequest
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::requiredIf(fn () => ($this->get('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::OnSite->value),
+                Rule::requiredIf(fn () => ($this->input('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::OnSite->value),
             ],
             'meeting_link' => [
                 'sometimes',
                 'nullable',
                 'string',
-                Rule::requiredIf(fn () => ($this->get('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::Remote->value),
+                Rule::requiredIf(fn () => ($this->input('service_type') ?? $this->getProject()->service_type?->value) === ServiceType::Remote->value),
             ],
             'candidate_vendor_id' => [
                 'sometimes',
                 'nullable',
                 'uuid',
                 'bail',
-                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ManageProject->value)),
+                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)),
                 Rule::exists(Vendor::class, 'id'),
             ],
             'use_external_vendor' => ['sometimes', 'nullable', 'boolean'],
             'tags' => 'sometimes|array',
             'tags.*' => [
                 'required',
-                Rule::exists(Tag::class, 'id')->where('type', TagType::Order->value),
+                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Order->value, TagType::TranslationDomain->value]),
             ],
         ];
     }
@@ -174,6 +174,18 @@ class ProjectUpdateRequest extends ProjectCreateRequest
 
             if (filled($eventStart) && filled($eventEnd) && $eventEnd <= $eventStart) {
                 $validator->errors()->add('event_end_at', 'Event end datetime should be greater than event start datetime');
+            }
+
+            if (filled($this->input('type_classifier_value_id'))) {
+                $currentIsCalendar = $this->getProject()->is_calendar_project;
+                $newIsCalendar = ClassifierValue::isCalendarProjectType($this->input('type_classifier_value_id'));
+
+                if ($currentIsCalendar !== $newIsCalendar) {
+                    $validator->errors()->add(
+                        'type_classifier_value_id',
+                        'Changing between calendar and non-calendar project types is not allowed.'
+                    );
+                }
             }
         });
     }

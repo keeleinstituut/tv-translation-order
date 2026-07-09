@@ -13,11 +13,8 @@ use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Http\Resources\API\VendorCalendarEntryResource;
 use App\Policies\VendorCalendarEntryPolicy;
-use App\Policies\VendorPolicy;
-use App\Services\Calendar\CalendarData;
 use App\Services\Calendar\CalendarDataLoader;
 use App\Services\Calendar\CalendarRoleResolver;
-use App\Services\Calendar\SlotDiscretizationService;
 use App\Services\Calendar\VendorsAvailabilityService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
@@ -25,14 +22,13 @@ use AuditLogClient\Services\AuditLogPublisher;
 use App\Http\OpenApiHelpers as OAH;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+
 
 class CalendarWeekController extends Controller
 {
     public function __construct(
         private readonly CalendarDataLoader         $dataLoader,
         private readonly VendorsAvailabilityService $availabilityService,
-        private readonly SlotDiscretizationService  $discretizationService,
         private readonly CalendarRoleResolver       $roleResolver,
         AuditLogPublisher                           $auditLogPublisher,
     )
@@ -77,8 +73,7 @@ class CalendarWeekController extends Controller
         return match ($this->roleResolver->resolve()) {
             CalendarRole::ProjectManager => $this->projectManagerView($this->roleResolver->getInstitutionId(), $startAt, $endAt),
             CalendarRole::Vendor => $this->vendorView($this->roleResolver->getVendor(), $startAt, $endAt),
-            CalendarRole::Client => $this->clientView($this->roleResolver->getInstitutionId(), $startAt, $endAt),
-            CalendarRole::Unknown => throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid role')
+            CalendarRole::Client => $this->clientView($this->roleResolver->getInstitutionId(), $startAt, $endAt)
         };
     }
 
@@ -160,7 +155,7 @@ class CalendarWeekController extends Controller
             }
 
             $results = $results->merge(
-                $this->discretizationService->computeSlotLanguageAvailability(
+                $this->availabilityService->computeSlotLanguageAvailability(
                     $data->coverageByLanguage,
                     $precomputedAvailability,
                     $slotStart,
@@ -207,7 +202,7 @@ class CalendarWeekController extends Controller
             }
 
             $results = $results->merge(
-                $this->discretizationService->computeSlotLanguageAvailability(
+                $this->availabilityService->computeSlotLanguageAvailability(
                     $data->coverageByLanguage,
                     $precomputedAvailability,
                     $slotStart,
@@ -230,26 +225,7 @@ class CalendarWeekController extends Controller
 
         return CalendarWeekProjectManagerResource::make([
             'available_slots' => $availableSlots,
-            'vendors' => $this->buildVendorsMap($data),
+            'vendors' => $data->buildExpandedVendors(),
         ]);
-    }
-
-    /**
-     * @return array<int, array>
-     */
-    private function buildVendorsMap(CalendarData $data): array
-    {
-        $vendors = $data->internalVendorIds->isNotEmpty() ?
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->whereIn('id', $data->internalVendorIds)
-                ->with('institutionUser')
-                ->get() : collect();
-
-        return $vendors->map(fn(Vendor $vendor) => [
-            'id' => $vendor->id,
-            'institutionUser' => $vendor->institutionUser,
-            'languages' => $data->getLanguagesForVendor($vendor->id)->all(),
-            'emergency_schedules' => $data->getEmergencySchedulesForVendor($vendor->id),
-        ])->all();
     }
 }

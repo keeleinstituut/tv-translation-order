@@ -7,5 +7,4 @@ enum CalendarRole: string
     case ProjectManager = 'tpm';
     case Vendor = 'vendor';
     case Client = 'client';
-    case Unknown = 'unknown';
 }

@@ -8,13 +8,13 @@ use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\InstitutionMainLanguage;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Project;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
 use App\Models\VendorEmergencySchedule;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,7 +27,7 @@ class CalendarDayControllerTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
     }
 
     public function test_day_accepts_request_without_parameters(): void
@@ -224,7 +224,7 @@ class CalendarDayControllerTest extends TestCase
         $this->assertNotContains($entry->start_at->utc()->toIso8601String(), $slotStarts);
     }
 
-    public function test_day_client_partial_hour_free_interval_not_emitted_as_available_slot(): void
+    public function test_day_client_partial_hour_free_interval_emitted_as_available_slot(): void
     {
         // GIVEN — vendor free only 10:00–10:30 (partial); no full hour available in that window
         $today = Carbon::today()->utc();
@@ -257,50 +257,13 @@ class CalendarDayControllerTest extends TestCase
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->getJson('/api/calendar/day?date=' . $today->toDateString());
 
-        // THEN — 10:00–10:30 partial must not appear in available_slots
+        // THEN — 10:00–10:30 partial slot should appear in available_slots
         $response->assertStatus(200);
 
-        $slotStarts = array_column($response->json('data.available_slots') ?? [], 'start_at');
-        $partialSlotStart = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
-        $this->assertNotContains($partialSlotStart, $slotStarts);
-    }
-
-    public function test_day_client_all_vendors_busy_language_appears_in_booked_slots(): void
-    {
-        // GIVEN — vendor entry covers the entire working window (08:00–17:00 UTC)
-        $today = Carbon::today()->utc();
-        $dayName = strtolower($today->format('l'));
-
-        [$institution, $language, $vendor] = $this->createVendorCoverageWithWorktime($dayName);
-
-        VendorCalendarEntry::create([
-            'vendor_id' => $vendor->id,
-            'start_at' => $today->copy()->setTime(8, 0),
-            'end_at' => $today->copy()->setTime(17, 0),
-        ]);
-
-        $clientUser = InstitutionUser::factory()
-            ->setInstitution(['id' => $institution->id, 'name' => $institution->name])
-            ->create();
-
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $clientUser->id,
-            'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::CreateProject->value],
-        ]);
-
-        // WHEN
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->getJson('/api/calendar/day?date=' . $today->toDateString());
-
-        // THEN
-        $response
-            ->assertStatus(200)
-            ->assertJsonCount(0, 'data.available_slots');
-
-        $booked = $response->json('data.booked_slots');
-        $this->assertNotEmpty($booked);
-        $this->assertContains($language->id, $booked[0]['languages']);
+        $partialSlot = collect($response->json('data.available_slots') ?? [])
+            ->first(fn($s) => $s['start_at'] === $today->copy()->setTime(10, 0)->utc()->toIso8601String()
+                && $s['end_at'] === $today->copy()->setTime(10, 30)->utc()->toIso8601String());
+        $this->assertNotNull($partialSlot, 'Partial 10:00–10:30 slot should be present in available_slots');
     }
 
     public function test_day_client_returns_unassigned_projects(): void
@@ -356,7 +319,7 @@ class CalendarDayControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -371,10 +334,10 @@ class CalendarDayControllerTest extends TestCase
         $this->assertContains($vendor->id, $slot['vendor_ids']);
     }
 
-    public function test_day_project_manager_excludes_vendor_from_slot_when_only_partial_hour_free(): void
+    public function test_day_project_manager_partial_hour_vendor_gets_own_slot(): void
     {
-        // GIVEN — vendor A free 10:00–10:30 only; vendor B free 10:00–11:00 (full)
-        // The 10:00–11:00 slot must include vendor B but NOT vendor A
+        // GIVEN — vendor A free 10:00–10:30; vendor B free 10:00–11:00
+        // Each vendor gets a separate continuous slot tagged with their own vendor_id
         $today = Carbon::today()->utc();
         $dayName = strtolower($today->format('l'));
 
@@ -399,12 +362,12 @@ class CalendarDayControllerTest extends TestCase
             'company_name' => null,
         ]);
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendorA->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
         ]);
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendorB->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -436,26 +399,44 @@ class CalendarDayControllerTest extends TestCase
             'start_at' => $today->copy()->setTime(10, 30),
             'end_at' => $today->copy()->setTime(17, 0),
         ]);
-
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
+        VendorCalendarEntry::create([
+            'vendor_id' => $vendorB->id,
+            'start_at' => $today->copy()->setTime(8, 0),
+            'end_at' => $today->copy()->setTime(10, 0),
+        ]);
+        VendorCalendarEntry::create([
+            'vendor_id' => $vendorB->id,
+            'start_at' => $today->copy()->setTime(11, 0),
+            'end_at' => $today->copy()->setTime(17, 0),
+        ]);
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
         $response = $this->prepareAuthorizedRequest($accessToken)
             ->getJson('/api/calendar/day?date=' . $today->toDateString());
 
-        // THEN — 10:00–11:00 slot must not include vendor A (only free 10:00–10:30)
+        // THEN — 10:00–11:00 slot has only vendor B; 10:00–10:30 slot has only vendor A
         $response->assertStatus(200);
 
-        $tenOClockSlot = collect($response->json('data.available_slots') ?? [])
-            ->first(fn($s) => str_starts_with($s['start_at'], $today->toDateString() . 'T10:'));
-        $this->assertNotNull($tenOClockSlot);
-        $this->assertNotContains($vendorA->id, $tenOClockSlot['vendor_ids']);
-        $this->assertContains($vendorB->id, $tenOClockSlot['vendor_ids']);
+        $tenStart = $today->copy()->setTime(10, 0)->utc()->toIso8601String();
+        $tenThirty = $today->copy()->setTime(10, 30)->utc()->toIso8601String();
+        $eleven = $today->copy()->setTime(11, 0)->utc()->toIso8601String();
+
+        $slots = collect($response->json('data.available_slots') ?? []);
+
+        $fullHourSlot = $slots->first(fn($s) => $s['start_at'] === $tenStart && $s['end_at'] === $eleven);
+        $this->assertNotNull($fullHourSlot, 'Full-hour 10:00–11:00 slot should exist');
+        $this->assertContains($vendorB->id, $fullHourSlot['vendor_ids']);
+        $this->assertNotContains($vendorA->id, $fullHourSlot['vendor_ids']);
+
+        $partialSlot = $slots->first(fn($s) => $s['start_at'] === $tenStart && $s['end_at'] === $tenThirty);
+        $this->assertNotNull($partialSlot, 'Partial 10:00–10:30 slot should exist');
+        $this->assertContains($vendorA->id, $partialSlot['vendor_ids']);
+        $this->assertNotContains($vendorB->id, $partialSlot['vendor_ids']);
     }
 
     public function test_day_project_manager_returns_vendors_map(): void
@@ -470,7 +451,7 @@ class CalendarDayControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -504,7 +485,7 @@ class CalendarDayControllerTest extends TestCase
 
         $accessToken = AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institution->id, 'name' => $institution->name],
-            'privileges' => [PrivilegeKey::ManageProject->value],
+            'privileges' => [PrivilegeKey::ReceiveProject->value],
         ]);
 
         // WHEN
@@ -577,7 +558,7 @@ class CalendarDayControllerTest extends TestCase
         $vendor = Vendor::factory()->create(['institution_user_id' => $institutionUser->id, 'company_name' => null]);
         $language = ClassifierValue::factory()->language()->create();
 
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'dst_lang_classifier_value_id' => $language->id,
@@ -597,7 +578,6 @@ class CalendarDayControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
 
         return [$institution, $language, $vendor];
     }

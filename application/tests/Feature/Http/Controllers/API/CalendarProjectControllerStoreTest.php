@@ -4,19 +4,21 @@ namespace Tests\Feature\Http\Controllers\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ProjectStatus;
 use App\Enums\ServiceType;
 use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
+use App\Models\InstitutionSetting;
 use App\Models\Candidate;
-use App\Models\Price;
+use App\Models\VendorSkillLanguage;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\Skill;
 use App\Models\Vendor;
 use App\Models\VendorCalendarEntry;
-use Database\Seeders\CalendarSettingsSeeder;
+use Database\Seeders\InstitutionSettingsSeeder;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -38,9 +40,16 @@ class CalendarProjectControllerStoreTest extends TestCase
     {
         parent::setUp();
         $this->seed(ClassifiersAndProjectTypesSeeder::class);
-        $this->seed(CalendarSettingsSeeder::class);
+        $this->seed(InstitutionSettingsSeeder::class);
 
         $this->institution = Institution::factory()->create();
+        InstitutionSetting::create([
+            'institution_id' => $this->institution->id,
+            'reaction_time_minutes' => 30,
+            'buffer_before_minutes' => 0,
+            'buffer_after_minutes' => 0,
+            'default_project_type_id' => null,
+        ]);
         $this->destinationLanguage = ClassifierValue::where('type', ClassifierValueType::Language)
             ->whereNot('value', 'et-EE')
             ->firstOrFail();
@@ -67,6 +76,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -95,7 +105,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->where('vendor_id', $vendor->id)
             ->first();
         $this->assertNotNull($candidate);
-        $this->assertEquals(0, $candidate->position);
+        $this->assertEquals(1, $candidate->position);
 
         // Calendar entry created
         $calendarEntry = VendorCalendarEntry::where('assignment_id', $assignment->id)
@@ -114,13 +124,18 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->create();
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
-        $this->refreshView();
+
+        $dayName = strtolower(Carbon::tomorrow()->utc()->format('l'));
+        $this->institution->forceFill([
+            'worktime_timezone' => 'UTC',
+            "{$dayName}_worktime_start" => '09:00',
+            "{$dayName}_worktime_end" => '18:00',
+        ])->save();
         $accessToken = AuthHelpers::generateAccessToken([
             'institutionUserId' => $actingUser->id,
             'selectedInstitution' => ['id' => $this->institution->id],
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
-                PrivilegeKey::ManageProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -155,6 +170,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -187,6 +203,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -220,6 +237,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -249,6 +267,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -278,6 +297,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -305,6 +325,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -367,6 +388,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -380,35 +402,6 @@ class CalendarProjectControllerStoreTest extends TestCase
         // THEN
         $response->assertUnprocessable();
         $response->assertJsonValidationErrors(['candidate_vendor_id']);
-        $this->assertDatabaseMissing('projects', ['institution_id' => $this->institution->id]);
-    }
-
-    public function test_tpm_gets_422_when_no_vendor_available_for_auto_matching(): void
-    {
-        // GIVEN
-        // No vendors with language coverage and calendar import set up
-        $actingUser = InstitutionUser::factory()
-            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
-            ->create();
-        $accessToken = AuthHelpers::generateAccessToken([
-            'institutionUserId' => $actingUser->id,
-            'selectedInstitution' => ['id' => $this->institution->id],
-            'privileges' => [
-                PrivilegeKey::CreateProject->value,
-                PrivilegeKey::ManageProject->value,
-                PrivilegeKey::ChangeClient->value,
-                PrivilegeKey::ChangeProjectManager->value,
-            ],
-        ]);
-        $payload = $this->createCalendarPayload();
-
-        // WHEN
-        $response = $this->prepareAuthorizedRequest($accessToken)
-            ->postJson('/api/projects', $payload);
-
-        // THEN
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['event_start_at']);
         $this->assertDatabaseMissing('projects', ['institution_id' => $this->institution->id]);
     }
 
@@ -443,6 +436,63 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->assertDatabaseMissing('vendor_calendar_entries', ['assignment_id' => $assignment->id]);
     }
 
+    public function test_client_creates_calendar_project_without_vendor_when_event_is_outside_vendor_working_hours(): void
+    {
+        // GIVEN
+        // A future weekday is chosen deterministically so the day-of-week worktime fields apply.
+        $eventDate = Carbon::parse('next monday')->utc();
+        $dayName = strtolower($eventDate->format('l'));
+
+        // Institution defines working hours 09:00-18:00 UTC for the event day
+        // (this is the resolver's fallback when the vendor's own worktime is empty).
+        $this->institution->forceFill([
+            'worktime_timezone' => 'UTC',
+            "{$dayName}_worktime_start" => '09:00',
+            "{$dayName}_worktime_end" => '18:00',
+        ])->save();
+
+        // Vendor matches every other matching criterion: internal, language coverage,
+        // calendar imported, no conflicting entries, no emergency schedule.
+        $vendor = $this->createVendorWithCoverage(internal: true);
+        $this->createCalendarImport($vendor, $eventDate);
+
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+
+        // Event is 30 minutes long at 19:00 — outside the 09:00-18:00 window.
+        $payload = $this->createCalendarPayload([
+            'event_start_at' => $eventDate->copy()->setTime(19, 0)->toIso8601ZuluString(),
+            'event_end_at' => $eventDate->copy()->setTime(19, 30)->toIso8601ZuluString(),
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        // Project is still created — the client request succeeds.
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertTrue($project->is_calendar_project);
+
+        $assignment = $project->subProjects->first()->assignments->first();
+        $this->assertNotNull($assignment, 'Assignment must exist even when no vendor is matched');
+
+        // No vendor was auto-assigned because the only matching vendor is outside working hours.
+        $this->assertDatabaseMissing('candidates', ['assignment_id' => $assignment->id]);
+        $this->assertDatabaseMissing('vendor_calendar_entries', ['assignment_id' => $assignment->id]);
+    }
+
     public function test_client_creates_project_without_candidates_when_candidate_vendor_not_available(): void
     {
         // GIVEN
@@ -453,7 +503,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             ->create();
         $vendor = $this->createVendorWithCoverage(internal: true);
         $this->createCalendarImport($vendor);
-        $this->refreshView();
+
         // Block the vendor so auto matching finds nothing
         VendorCalendarEntry::create([
             'vendor_id' => $vendor->id,
@@ -560,6 +610,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -598,6 +649,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -694,6 +746,125 @@ class CalendarProjectControllerStoreTest extends TestCase
         $this->assertEquals($this->destinationLanguage->id, $subProject->destination_language_classifier_value_id);
     }
 
+    public function test_calendar_project_derived_from_type_without_is_calendar_project_flag(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $vendor = $this->createVendorInInstitution();
+        $payload = $this->createCalendarPayload(['candidate_vendor_id' => $vendor->id]);
+        unset($payload['is_calendar_project']);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertTrue($project->is_calendar_project);
+    }
+
+    public function test_non_calendar_type_results_in_is_calendar_project_false(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $nonCalendarTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('type', ClassifierValueType::ProjectType->value)
+                ->where('value', 'TRANSLATION');
+        })->firstOrFail()->type_classifier_value_id;
+
+        $payload = [
+            'type_classifier_value_id' => $nonCalendarTypeId,
+            'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                ->firstOrFail()->id,
+            'client_institution_user_id' => InstitutionUser::factory()
+                ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+                ->createWithPrivileges(PrivilegeKey::CreateProject)->id,
+            'source_language_classifier_value_id' => $this->sourceLanguageET->id,
+            'destination_language_classifier_value_ids' => [$this->destinationLanguage->id],
+            'deadline_at' => Carbon::tomorrow()->toIso8601ZuluString(),
+        ];
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertFalse($project->is_calendar_project);
+    }
+
+    public function test_is_calendar_project_true_with_non_calendar_type_rejected(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $nonCalendarTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('type', ClassifierValueType::ProjectType->value)
+                ->where('value', 'TRANSLATION');
+        })->firstOrFail()->type_classifier_value_id;
+
+        $payload = [
+            'is_calendar_project' => true,
+            'type_classifier_value_id' => $nonCalendarTypeId,
+            'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                ->firstOrFail()->id,
+            'client_institution_user_id' => InstitutionUser::factory()
+                ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+                ->createWithPrivileges(PrivilegeKey::CreateProject)->id,
+            'destination_language_classifier_value_ids' => [$this->destinationLanguage->id],
+            'event_start_at' => Carbon::tomorrow()->setHour(10)->toIso8601ZuluString(),
+            'event_end_at' => Carbon::tomorrow()->setHour(11)->toIso8601ZuluString(),
+            'service_type' => ServiceType::OnSite->value,
+            'location' => 'Tallinn',
+        ];
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['is_calendar_project']);
+    }
+
     public function test_use_external_vendor_skips_availability_check(): void
     {
         // GIVEN
@@ -707,6 +878,7 @@ class CalendarProjectControllerStoreTest extends TestCase
             'privileges' => [
                 PrivilegeKey::CreateProject->value,
                 PrivilegeKey::ManageProject->value,
+                PrivilegeKey::ReceiveProject->value,
                 PrivilegeKey::ChangeClient->value,
                 PrivilegeKey::ChangeProjectManager->value,
             ],
@@ -720,6 +892,98 @@ class CalendarProjectControllerStoreTest extends TestCase
         // THEN
         // Project created even though no internal vendor is available
         $response->assertCreated();
+    }
+
+    public function test_calendar_project_auto_assigns_manager_when_acting_user_has_receive_project_privilege(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload();
+        // No manager_institution_user_id in payload
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertEquals($actingUser->id, $project->manager_institution_user_id);
+        $this->assertEquals(ProjectStatus::Registered, $project->status);
+    }
+
+    public function test_calendar_project_does_not_override_explicit_manager_when_acting_user_has_receive_project(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $explicitManager = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->createWithPrivileges(PrivilegeKey::ReceiveProject);
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ReceiveProject->value,
+                PrivilegeKey::ChangeClient->value,
+                PrivilegeKey::ChangeProjectManager->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload([
+            'manager_institution_user_id' => $explicitManager->id,
+        ]);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertEquals($explicitManager->id, $project->manager_institution_user_id);
+    }
+
+    public function test_calendar_project_does_not_auto_assign_manager_without_receive_project_privilege(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload();
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertNull($project->manager_institution_user_id);
+        $this->assertEquals(ProjectStatus::New, $project->status);
     }
 
     private function createCalendarPayload(array $overrides = []): array
@@ -768,7 +1032,7 @@ class CalendarProjectControllerStoreTest extends TestCase
         ]);
 
         $skill = Skill::findByCode(SkillCode::OralInterpretation);
-        Price::factory()->create([
+        VendorSkillLanguage::factory()->create([
             'vendor_id' => $vendor->id,
             'skill_id' => $skill->id,
             'src_lang_classifier_value_id' => $this->sourceLanguageET->id,
@@ -790,10 +1054,5 @@ class CalendarProjectControllerStoreTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
-
-    private function refreshView(): void
-    {
-        DB::statement('REFRESH MATERIALIZED VIEW v_vendor_language_coverage');
     }
 }

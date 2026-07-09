@@ -9,4 +9,5 @@ namespace App\Enums;
 enum ProjectTypeCode: string
 {
     case OralTranslation = 'ORAL_TRANSLATION';
+    case SynchronousTranslation = 'SYNCHRONOUS_TRANSLATION';
 }

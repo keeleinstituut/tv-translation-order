@@ -2,7 +2,9 @@
 
 namespace App\Services\Calendar;
 
+use App\Models\Vendor;
 use App\Models\VendorEmergencySchedule;
+use App\Policies\VendorPolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -108,5 +110,36 @@ readonly class CalendarData
         return $this->getEmergencySchedulesForVendor($vendorId)->contains(
             fn(VendorEmergencySchedule $s) => $s->start_date->lte($date) && $s->end_date->gte($date)
         );
+    }
+
+    /**
+     * Build the expanded vendor array used by TPM calendar views.
+     *
+     * @param  Collection<string, Collection>|null  $entriesByVendor  When provided, each vendor gets a calendar_entries key.
+     * @return array<int, array>
+     */
+    public function buildExpandedVendors(?Collection $entriesByVendor = null): array
+    {
+        $vendors = $this->internalVendorIds->isNotEmpty()
+            ? Vendor::withGlobalScope('policy', VendorPolicy::scope())
+                ->whereIn('id', $this->internalVendorIds)
+                ->with('institutionUser')
+                ->get()
+            : collect();
+
+        return $vendors->map(function (Vendor $vendor) use ($entriesByVendor) {
+            $entry = [
+                'id' => $vendor->id,
+                'institutionUser' => $vendor->institutionUser,
+                'languages' => $this->getLanguagesForVendor($vendor->id)->all(),
+                'emergency_schedules' => $this->getEmergencySchedulesForVendor($vendor->id),
+            ];
+
+            if ($entriesByVendor !== null) {
+                $entry['calendar_entries'] = $entriesByVendor->get($vendor->id, collect());
+            }
+
+            return $entry;
+        })->all();
     }
 }

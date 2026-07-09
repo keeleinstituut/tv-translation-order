@@ -31,8 +31,8 @@ class PrebookRequest extends FormRequest
             'end_at' => ['required', 'date', 'after:start_at'],
             'language_id' => ['required', 'uuid'],
             'vendor_id' => [
-                Rule::requiredIf(fn() => Auth::hasPrivilege(PrivilegeKey::ManageProject->value)),
-                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ManageProject->value)),
+                Rule::requiredIf(fn() => Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)),
+                Rule::prohibitedIf(fn() => !Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)),
                 'nullable',
                 'uuid',
                 'exists:vendors,id',

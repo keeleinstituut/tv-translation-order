@@ -38,7 +38,7 @@ class ProjectManagerCandidateResource extends JsonResource
         }
 
         return [
-            'institution_user' => new InstitutionUserResource($manager),
+            'institution_user' => InstitutionUserResource::make($manager),
             'status' => $status,
             'price' => null
         ];

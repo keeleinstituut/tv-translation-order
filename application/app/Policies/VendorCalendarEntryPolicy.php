@@ -3,37 +3,46 @@
 namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
-use App\Models\Vendor;
+use App\Models\AuthUser;
 use App\Models\VendorCalendarEntry;
-use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class VendorCalendarEntryPolicy
 {
-    public function viewAny(JwtPayloadUser $user): bool
+    public function viewAny(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value) ||
-            Vendor::withGlobalScope('policy', VendorPolicy::scope())
-                ->where('institution_user_id', $user->institutionUserId)
-                ->exists();
-    }
-
-    public function delete(JwtPayloadUser $user, VendorCalendarEntry $entry): bool
-    {
-        if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
+        if ($user->hasAtLeastOnePrivilege([PrivilegeKey::ReceiveProject, PrivilegeKey::ManageProject])) {
             return true;
         }
 
-        return Vendor::where('institution_user_id', $user->institutionUserId)
-            ->where('id', $entry->vendor_id)
-            ->exists();
+        if ($user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency()) {
+            return true;
+        }
+
+        return $user->isVendor();
     }
 
-    public function prebook(JwtPayloadUser $user): bool
+    public function create(AuthUser $user): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            Auth::hasPrivilege(PrivilegeKey::CreateProject->value);
+        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ManageProject, PrivilegeKey::ReceiveProject]);
+    }
+
+    public function delete(AuthUser $user, VendorCalendarEntry $entry): bool
+    {
+        if ($user->hasPrivilege(PrivilegeKey::ReceiveProject)) {
+            return true;
+        }
+
+        $vendor = $user->vendor();
+        return $vendor && $vendor->id === $entry->vendor_id;
+    }
+
+    public function prebook(AuthUser $user): bool
+    {
+        if ($user->hasPrivilege(PrivilegeKey::ReceiveProject)) {
+            return true;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::CreateProject) && ! $user->belongsToTranslationAgency();
     }
 
     public static function scope(): Scope\VendorCalendarEntryScope

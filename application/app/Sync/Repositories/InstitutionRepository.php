@@ -2,8 +2,10 @@
 
 namespace App\Sync\Repositories;
 
+use App\Enums\InstitutionType;
 use App\Models\CachedEntities\Institution;
 use Carbon\Carbon;
+use RuntimeException;
 use SyncTools\Repositories\CachedEntityRepositoryInterface;
 
 class InstitutionRepository implements CachedEntityRepositoryInterface
@@ -17,6 +19,10 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
             $obj->id = $resource['id'];
         }
 
+        if (!empty($resource['institution_type']) && empty(InstitutionType::tryFrom($resource['institution_type']))) {
+            throw new RuntimeException('Unregistered Institution Type provided');
+        }
+
         $obj->name = $resource['name'];
         $obj->short_name = $resource['short_name'];
         $obj->phone = $resource['phone'];
@@ -24,6 +30,7 @@ class InstitutionRepository implements CachedEntityRepositoryInterface
         $obj->logo_url = $resource['logo_url'];
         $obj->deleted_at = $resource['deleted_at'];
         $obj->synced_at = Carbon::now();
+        $obj->type = InstitutionType::tryFrom($resource['institution_type'] ?? '') ?: InstitutionType::Institution;
 
         $obj->worktime_timezone = $resource['worktime_timezone'] ?? null;
         $obj->monday_worktime_start = $resource['monday_worktime_start'] ?? null;

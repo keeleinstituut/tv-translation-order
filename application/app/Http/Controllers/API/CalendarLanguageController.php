@@ -24,8 +24,8 @@ use App\Services\Calendar\CalendarRoleResolver;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Support\Carbon;
 use OpenApi\Attributes as OA;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+
+
 
 class CalendarLanguageController extends Controller
 {
@@ -67,8 +67,7 @@ class CalendarLanguageController extends Controller
                 $this->roleResolver->getVendor(),
                 $dateFrom,
                 $dateTo
-            ),
-            CalendarRole::Unknown => throw new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid role')
+            )
         };
     }
 

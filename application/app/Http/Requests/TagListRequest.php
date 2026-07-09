@@ -17,7 +17,8 @@ class TagListRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['nullable', 'string', new Enum(TagType::class)],
+            'type' => ['nullable'],
+            'type.*' => ['string', new Enum(TagType::class)],
         ];
     }
 }

@@ -121,6 +121,20 @@ class InstitutionUser extends Model
         return $this->hasOne(InstitutionDiscount::class, 'institution_id', 'institution_id');
     }
 
+    public function institutionEntity(): ?Institution
+    {
+        if (empty($this->institution_id)) {
+            return null;
+        }
+
+        return Institution::query()->find($this->institution_id);
+    }
+
+    public function belongsToTranslationAgency(): bool
+    {
+        return $this->institutionEntity()?->isTranslationAgency() === true;
+    }
+
     public function getInstitutionIdAttribute()
     {
         return $this->institution['id'] ?? null;
@@ -157,7 +171,8 @@ class InstitutionUser extends Model
             ->filter(fn(array $role) => empty($role['deleted_at']))
             ->flatMap(fn(array $role) => $role['privileges'])
             ->map(fn(array $privilege) => $privilege['key'])
-            ->map(PrivilegeKey::from(...));
+            ->map(fn(string $key) => PrivilegeKey::tryFrom($key))
+            ->filter();
 
         return collect($expectedPrivileges)
             ->every(fn(PrivilegeKey $expectedPrivilege) => $actualPrivileges->contains($expectedPrivilege));

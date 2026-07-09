@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\ProjectTypeCode;
 use App\Models\ProjectTypeConfig;
 use Database\Factories\CachedEntities\ClassifierValueFactory;
 use Eloquent;
@@ -67,5 +68,19 @@ class ClassifierValue extends Model
             ?->projectTypeConfig()
             ?->where('is_start_date_supported', true)
             ?->exists() ?? false;
+    }
+
+    public static function isCalendarProjectType(?string $typeClassifierValueId): bool
+    {
+        if (blank($typeClassifierValueId)) {
+            return false;
+        }
+
+        $isProjectTypeSynchronousTranslation = ClassifierValue::where('id', $typeClassifierValueId)
+            ->where('type', ClassifierValueType::ProjectType)
+            ->where('value', ProjectTypeCode::SynchronousTranslation->value)
+            ->exists();
+
+        return !$isProjectTypeSynchronousTranslation && self::isProjectTypeSupportingEventStartDate($typeClassifierValueId);
     }
 }

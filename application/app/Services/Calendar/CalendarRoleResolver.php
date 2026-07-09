@@ -6,6 +6,7 @@ use App\Enums\CalendarRole;
 use App\Enums\PrivilegeKey;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 
 class CalendarRoleResolver
@@ -48,12 +49,13 @@ class CalendarRoleResolver
     {
         $this->resolved = true;
 
-        if (Auth::hasPrivilege(PrivilegeKey::ManageProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)) {
             $this->role = CalendarRole::ProjectManager;
             return;
         }
 
-        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)) {
+        if (Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
+            && ! Auth::user()->belongsToTranslationAgency()) {
             $this->role = CalendarRole::Client;
             return;
         }
@@ -67,6 +69,6 @@ class CalendarRoleResolver
             return;
         }
 
-        $this->role = CalendarRole::Unknown;
+        throw new AuthorizationException();
     }
 }
