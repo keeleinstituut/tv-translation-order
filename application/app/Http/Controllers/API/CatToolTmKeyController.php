@@ -35,7 +35,7 @@ use Throwable;
 
 class CatToolTmKeyController extends Controller
 {
-    public function __construct(private readonly TvTranslationMemoryApiClient $apiClient, AuditLogPublisher $auditLogPublisher)
+    public function __construct(private readonly TvTranslationMemoryApiClient $apiClient, AuditLogPublisher $auditLogPublisher, private readonly CatV2Service $catV2Service)
     {
         parent::__construct($auditLogPublisher);
     }
@@ -216,7 +216,7 @@ class CatToolTmKeyController extends Controller
 
                 $locales = Str::of($langPair)->explode('_');
 
-                $createResponse = CatV2Service::createTranslationMemory([
+                $createResponse = $this->catV2Service->createTranslationMemory([
                     'name' => $subProject->ext_id,
                     'source_locale' => $locales[0],
                     'target_locale' => $locales[1],
