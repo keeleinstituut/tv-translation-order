@@ -2,10 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\ClassifierValueType;
-use App\Models\CachedEntities\ClassifierValue;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -38,7 +35,6 @@ class InstitutionSettingsSeeder extends Seeder
                 'reaction_time_minutes' => 30,
                 'buffer_before_minutes' => 0,
                 'buffer_after_minutes' => 0,
-                'default_project_type_id' => $this->getCalendarSupportedProjectTypes()->random(),
                 'created_at' => $now,
                 'updated_at' => $now,
             ])
@@ -48,13 +44,5 @@ class InstitutionSettingsSeeder extends Seeder
         if (! empty($rows)) {
             DB::table('institution_settings')->insert($rows);
         }
-    }
-
-
-    private function getCalendarSupportedProjectTypes(): Collection
-    {
-        return ClassifierValue::query()->where('type', ClassifierValueType::ProjectType->value)
-            ->whereIn('value', ['ORAL_TRANSLATION', 'SYNCHRONOUS_TRANSLATION', 'POST_TRANSLATION', 'SIGN_LANGUAGE'])
-            ->pluck('id');
     }
 }

@@ -279,7 +279,7 @@ class ProjectController extends Controller
 
             $typeId = $params->get('type_classifier_value_id')
                 ?: ($params->get('is_calendar_project', false)
-                    ? $this->calendarSettings->getDefaultCalendarProjectTypeId($institutionId)
+                    ? ClassifierValue::getCalendarProjectType()->id
                     : null);
             $isCalendar = ClassifierValue::isCalendarProjectType($typeId);
 

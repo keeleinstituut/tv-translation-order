@@ -19,16 +19,13 @@ use Illuminate\Support\Carbon;
  * @property int $buffer_after_minutes
  * @property int|null $verbal_auto_acceptance_threshold_days
  * @property int|null $non_verbal_auto_acceptance_threshold_days
- * @property string|null $default_project_type_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read ClassifierValue $defaultProjectType
  * @property-read Institution $institution
  * @method static Builder<static>|InstitutionSetting newModelQuery()
  * @method static Builder<static>|InstitutionSetting newQuery()
  * @method static Builder<static>|InstitutionSetting query()
  * @method static Builder<static>|InstitutionSetting whereCreatedAt($value)
- * @method static Builder<static>|InstitutionSetting whereDefaultProjectTypeId($value)
  * @method static Builder<static>|InstitutionSetting whereId($value)
  * @method static Builder<static>|InstitutionSetting whereInstitutionId($value)
  * @method static Builder<static>|InstitutionSetting whereReactionTimeMinutes($value)
@@ -55,11 +52,6 @@ class InstitutionSetting extends Model
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
-    }
-
-    public function defaultProjectType(): BelongsTo
-    {
-        return $this->belongsTo(ClassifierValue::class);
     }
 
     public function autoAcceptanceThresholdDaysFor(?string $typeClassifierValueId): ?int

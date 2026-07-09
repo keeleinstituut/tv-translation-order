@@ -48,7 +48,6 @@ class CalendarProjectControllerStoreTest extends TestCase
             'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 0,
             'buffer_after_minutes' => 0,
-            'default_project_type_id' => null,
         ]);
         $this->destinationLanguage = ClassifierValue::where('type', ClassifierValueType::Language)
             ->whereNot('value', 'et-EE')

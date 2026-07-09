@@ -2,8 +2,6 @@
 
 namespace App\Services\Calendar;
 
-use App\Enums\ClassifierValueType;
-use App\Enums\ProjectTypeCode;
 use App\Enums\ServiceType;
 use App\Enums\SkillCode;
 use App\Models\CachedEntities\ClassifierValue;
@@ -17,20 +15,18 @@ use RuntimeException;
 
 class CalendarSettingsResolver
 {
-    /**
-     * @var array<string, string>
-     */
-    private array $cache = [];
+    private ?string $defaultSkillId = null;
 
-    public function getDefaultCalendarSkillId(string $institutionId): string
+    public function getDefaultCalendarSkillId(): string
     {
-        $projectTypeConfig = ProjectTypeConfig::query()
-            ->where('type_classifier_value_id', $this->getDefaultCalendarProjectTypeId($institutionId))
-            ->first();
+        if ($this->defaultSkillId !== null) {
+            return $this->defaultSkillId;
+        }
+
+        $projectTypeConfig = ClassifierValue::getCalendarProjectType()->projectTypeConfig;
 
         if (! $projectTypeConfig) {
-            $this->cache[$institutionId] = $this->getDefaultSkill()->id;
-            return $this->cache[$institutionId];
+            return $this->defaultSkillId = $this->getDefaultSkill()->id;
         }
 
         $jobDefinition = JobDefinition::query()
@@ -40,31 +36,10 @@ class CalendarSettingsResolver
             ->first();
 
         if (! $jobDefinition || ! $jobDefinition->skill_id) {
-            $this->cache[$institutionId] = $this->getDefaultSkill()->id;
-            return $this->cache[$institutionId];
+            return $this->defaultSkillId = $this->getDefaultSkill()->id;
         }
 
-        return $this->cache[$institutionId] = $jobDefinition->skill_id;
-    }
-
-    public function getDefaultCalendarProjectTypeId(string $institutionId): string
-    {
-        $calendarSetting = InstitutionSetting::query()
-            ->where('institution_id', $institutionId)
-            ->first();
-
-        if (!$calendarSetting || !$calendarSetting->default_project_type_id) {
-            $projectType = ClassifierValue::where('type', ClassifierValueType::ProjectType)
-                ->where('value', ProjectTypeCode::OralTranslation)->first();
-
-            if (blank($projectType)) {
-                throw new RuntimeException('Failed to resolve default project type for calendar');
-            }
-
-            return $projectType->id;
-        }
-
-        return $calendarSetting->default_project_type_id;
+        return $this->defaultSkillId = $jobDefinition->skill_id;
     }
 
     public function resolveTimeSlot(
