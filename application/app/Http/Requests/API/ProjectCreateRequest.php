@@ -216,7 +216,7 @@ class ProjectCreateRequest extends FormRequest
             'comment' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => [
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
-                Rule::requiredIf(fn () => !$this->isCalendarProject()),
+                Rule::requiredIf(fn () => !ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
             ],
             'translation_domain_classifier_value_id' => [
                 Rule::requiredIf(fn () => !$this->isCalendarProject()),
