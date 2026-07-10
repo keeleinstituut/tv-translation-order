@@ -15,6 +15,7 @@ use App\Models\OutsourceRequest;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
+use Illuminate\Http\UploadedFile;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 
@@ -205,6 +206,34 @@ class OutsourceOfferControllerTest extends TestCase
 
         // THEN
         $response->assertForbidden();
+    }
+
+    public function test_declined_offer_hides_request_media_and_project_source_files(): void
+    {
+        // GIVEN
+        $ownerUser = $this->createOwnerUser();
+        $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $translationRequest = $this->createTranslationRequest($assignment);
+        $offer = $this->createNotifiedRecipient($translationRequest, $partnerUser, [
+            'status' => OutsourceOfferStatus::RequestDeclined,
+        ]);
+
+        $translationRequest->addMedia(UploadedFile::fake()->create('request-file.docx'))
+            ->toMediaCollection(OutsourceRequest::REQUEST_FILES_COLLECTION);
+
+        $project = $assignment->subProject->project;
+        $project->addMedia(UploadedFile::fake()->create('source-file.docx'))
+            ->toMediaCollection(Project::SOURCE_FILES_COLLECTION);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($partnerUser))
+            ->getJson("/api/outsource-offers/{$offer->id}");
+
+        // THEN
+        $response->assertOk();
+        $response->assertJsonMissingPath('data.outsource_request.media');
+        $response->assertJsonMissingPath('data.outsource_request.assignment.subProject.project.source_files');
     }
 
     // --- accept ---

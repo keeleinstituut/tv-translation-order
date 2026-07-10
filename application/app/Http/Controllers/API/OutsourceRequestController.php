@@ -214,7 +214,7 @@ class OutsourceRequestController extends Controller
                 'institution_user_id' => $institutionUserId,
                 'mode' => $validated['mode'],
                 'price_mode' => $priceMode,
-                'reaction_time_minutes' => $validated['reaction_time_minutes'],
+                'reaction_time_minutes' => $validated['reaction_time_minutes'] ?? null,
                 'special_instructions' => $validated['special_instructions'] ?? null,
                 'price' => $validated['price'] ?? null,
                 'include_source_files' => $validated['include_source_files'] ?? true,
@@ -250,7 +250,7 @@ class OutsourceRequestController extends Controller
                     'notified_at' => $notified ? now() : null,
                     'expires_at' => match (true) {
                         $isCascade && $notified => now()->addMinutes($outsourceRequest->reaction_time_minutes),
-                        !$isCascade => $outsourceRequest->created_at->copy()->addMinutes($outsourceRequest->reaction_time_minutes),
+                        !$isCascade && $outsourceRequest->reaction_time_minutes !== null => $outsourceRequest->created_at->copy()->addMinutes($outsourceRequest->reaction_time_minutes),
                         default => null,
                     },
                     'price' => $offerPrice,
