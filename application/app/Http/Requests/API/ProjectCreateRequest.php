@@ -56,7 +56,7 @@ use OpenApi\Attributes as OA;
                 new OA\Property(property: 'comment', type: 'string', nullable: true),
                 new OA\Property(
                     property: 'deadline_at',
-                    description: 'Required when is_calendar_project is false or omitted.',
+                    description: 'Required unless the selected project type supports an event start date.',
                     type: 'string',
                     format: 'date-time',
                     example: '2020-12-31T12:00:00Z',
