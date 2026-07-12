@@ -84,4 +84,51 @@ class ProjectControllerUpdateTest extends TestCase
             ],
         ]);
     }
+
+    /** Reproduces the live bug: event_end_at was prohibited for non-calendar event types (Post/Sync/SignLanguage). */
+    public function test_update_event_end_at_succeeds_for_non_calendar_event_type(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(
+            PrivilegeKey::CreateProject,
+            PrivilegeKey::ManageProject,
+        );
+
+        $languages = ClassifierValue::where('type', ClassifierValueType::Language)->limit(2)->get();
+        $projectTypeConfig = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('value', 'POST_TRANSLATION');
+        })->firstOrFail();
+
+        $storeResponse = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                [
+                    'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
+                    'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                        ->firstOrFail()->id,
+                    'source_language_classifier_value_id' => $languages[0]->id,
+                    'destination_language_classifier_value_ids' => [$languages[1]->id],
+                    'event_start_at' => Date::now()->addDay()->toIso8601ZuluString(),
+                    'event_end_at' => Date::now()->addDay()->addHour()->toIso8601ZuluString(),
+                    'service_type' => 'REMOTE',
+                    'meeting_link' => 'https://meet.example.com/post-translation',
+                ]
+            );
+
+        $storeResponse->assertCreated();
+        $project = Project::findOrFail($storeResponse->json('data.id'));
+        $project->update(['event_end_at' => null]);
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->putJson(
+                action([ProjectController::class, 'update'], ['id' => $project->id]),
+                ['event_end_at' => Date::now()->addDay()->addHour()->toIso8601ZuluString()]
+            );
+
+        $response->assertOk();
+        $this->assertNotNull($project->refresh()->event_end_at);
+    }
 }
