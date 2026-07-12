@@ -311,11 +311,12 @@ class SubProjectController extends Controller
             abort(400, 'Not possible to start workflow for the cancelled sub-project');
         }
 
-        $hasAssignmentWithoutDeadline = $subProject->assignments()
-            ->whereNull('deadline_at')->exists();
+        $anchorColumn = ClassifierValue::isProjectTypeSupportingEventStartDate($subProject->project->type_classifier_value_id)
+            ? 'event_start_at'
+            : 'deadline_at';
 
-        if ($hasAssignmentWithoutDeadline) {
-            abort(400, 'Sub-project contains assignments without deadline');
+        if ($subProject->assignments()->whereNull($anchorColumn)->exists()) {
+            abort(400, 'Sub-project contains assignments without a scheduled time');
         }
 
         $subProject->workflow()->start();

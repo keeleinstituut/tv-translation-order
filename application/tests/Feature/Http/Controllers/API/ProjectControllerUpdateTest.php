@@ -84,4 +84,35 @@ class ProjectControllerUpdateTest extends TestCase
             ],
         ]);
     }
+
+    /** Reproduces the live bug: event_end_at was prohibited for non-calendar event types (Post/Sync/SignLanguage). */
+    public function test_update_event_end_at_succeeds_for_non_calendar_event_type(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ManageProject);
+
+        $postTranslationTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('value', 'POST_TRANSLATION');
+        })->firstOrFail()->type_classifier_value_id;
+
+        $project = Project::factory()->create([
+            'institution_id' => $actingUser->institution['id'],
+            'type_classifier_value_id' => $postTranslationTypeId,
+            'is_calendar_project' => false,
+            'deadline_at' => null,
+            'event_start_at' => Date::now()->addDay(),
+            'event_end_at' => null,
+        ]);
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->putJson(
+                action([ProjectController::class, 'update'], ['id' => $project->id]),
+                ['event_end_at' => Date::now()->addDay()->addHour()->toIso8601ZuluString()]
+            );
+
+        $response->assertOk();
+        $this->assertNotNull($project->refresh()->event_end_at);
+    }
 }
