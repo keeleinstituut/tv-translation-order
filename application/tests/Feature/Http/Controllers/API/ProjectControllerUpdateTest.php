@@ -90,20 +90,36 @@ class ProjectControllerUpdateTest extends TestCase
     {
         $this->seed(ClassifiersAndProjectTypesSeeder::class);
 
-        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::ManageProject);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(
+            PrivilegeKey::CreateProject,
+            PrivilegeKey::ManageProject,
+        );
 
-        $postTranslationTypeId = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+        $languages = ClassifierValue::where('type', ClassifierValueType::Language)->limit(2)->get();
+        $projectTypeConfig = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
             $query->where('value', 'POST_TRANSLATION');
-        })->firstOrFail()->type_classifier_value_id;
+        })->firstOrFail();
 
-        $project = Project::factory()->create([
-            'institution_id' => $actingUser->institution['id'],
-            'type_classifier_value_id' => $postTranslationTypeId,
-            'is_calendar_project' => false,
-            'deadline_at' => null,
-            'event_start_at' => Date::now()->addDay(),
-            'event_end_at' => null,
-        ]);
+        $storeResponse = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                [
+                    'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
+                    'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                        ->firstOrFail()->id,
+                    'source_language_classifier_value_id' => $languages[0]->id,
+                    'destination_language_classifier_value_ids' => [$languages[1]->id],
+                    'event_start_at' => Date::now()->addDay()->toIso8601ZuluString(),
+                    'event_end_at' => Date::now()->addDay()->addHour()->toIso8601ZuluString(),
+                    'service_type' => 'REMOTE',
+                    'meeting_link' => 'https://meet.example.com/post-translation',
+                ]
+            );
+
+        $storeResponse->assertCreated();
+        $project = Project::findOrFail($storeResponse->json('data.id'));
+        $project->update(['event_end_at' => null]);
 
         $response = $this
             ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
