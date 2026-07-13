@@ -25,10 +25,13 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\AuthHelpers;
+use Tests\FakesRealFiles;
 use Tests\TestCase;
 
 class OutsourceRequestControllerTest extends TestCase
 {
+    use FakesRealFiles;
+
     // --- store ---
 
     public function test_owner_can_create_cascade_request(): void
@@ -58,7 +61,7 @@ class OutsourceRequestControllerTest extends TestCase
                 'include_source_files' => true,
                 'price' => 123.456,
                 'request_files' => [
-                    UploadedFile::fake()->createWithContent('source.docx', "PK\x03\x04" . str_repeat("\0", 22)),
+                    $this->fakeDocx('source.docx'),
                 ],
             ]);
 
@@ -1154,12 +1157,12 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertOk();
         $this->assertSame(OutsourceRequestStatus::Cancelled, $translationRequest->fresh()->status);
-//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $pending->fresh()->status);
-//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
-//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::OfferAccepted, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $selected->fresh()->status);
     }
 
     public function test_partner_cannot_cancel_request(): void

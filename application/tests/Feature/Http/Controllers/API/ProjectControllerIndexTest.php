@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Assertions;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -386,13 +387,12 @@ class ProjectControllerIndexTest extends TestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreatorsAndExtraAssertions
-     *
      * @param  Closure(Collection, InstitutionUser): array  $createValidPayload
      * @param  Closure(TestCase, TestResponse, array, Collection, InstitutionUser): void  $performAssertions
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreatorsAndExtraAssertions')]
     public function test_expected_subset_of_projects_returned_for_valid_payloads(Closure $createValidPayload, Closure $performAssertions): void
     {
         $payload = $createValidPayload(static::$projects, static::$privilegedActingUser);
@@ -450,13 +450,12 @@ class ProjectControllerIndexTest extends TestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));

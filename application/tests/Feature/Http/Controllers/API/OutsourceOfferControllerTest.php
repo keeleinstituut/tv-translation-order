@@ -16,6 +16,7 @@ use App\Models\Project;
 use App\Models\ProjectTypeConfig;
 use App\Models\SubProject;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\AuthHelpers;
 use Tests\TestCase;
 
@@ -211,6 +212,7 @@ class OutsourceOfferControllerTest extends TestCase
     public function test_declined_offer_hides_request_media_and_project_source_files(): void
     {
         // GIVEN
+        Storage::fake(config('media-library.disk_name', 'test-disk'));
         $ownerUser = $this->createOwnerUser();
         $partnerUser = $this->createPartnerUser(PrivilegeKey::RespondOutsourceRequest);
         $assignment = $this->createAssignmentForOwner($ownerUser);

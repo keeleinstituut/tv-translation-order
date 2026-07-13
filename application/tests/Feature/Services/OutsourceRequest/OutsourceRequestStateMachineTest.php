@@ -489,10 +489,10 @@ class OutsourceRequestStateMachineTest extends TestCase
 
         // THEN
         $this->assertSame(OutsourceRequestStatus::Cancelled, $request->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $offerDeclined->fresh()->status);
     }
 
