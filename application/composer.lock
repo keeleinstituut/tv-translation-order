@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2fd641b13ef6dc7f9d4edd612d8a6e41",
+    "content-hash": "5b3f5d2771f77fbe5a3d0a1fd0ee6dee",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -818,16 +818,16 @@
         },
         {
             "name": "firebase/php-jwt",
-            "version": "v7.0.4",
+            "version": "v7.1.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/firebase/php-jwt.git",
-                "reference": "e41f1bd7dbe3c5455c3f72d4338cfeb083b71931"
+                "url": "https://github.com/googleapis/php-jwt.git",
+                "reference": "b374a5d1a4f1f67fadc2165cdb284645945e2fc0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/firebase/php-jwt/zipball/e41f1bd7dbe3c5455c3f72d4338cfeb083b71931",
-                "reference": "e41f1bd7dbe3c5455c3f72d4338cfeb083b71931",
+                "url": "https://api.github.com/repos/googleapis/php-jwt/zipball/b374a5d1a4f1f67fadc2165cdb284645945e2fc0",
+                "reference": "b374a5d1a4f1f67fadc2165cdb284645945e2fc0",
                 "shasum": ""
             },
             "require": {
@@ -836,6 +836,7 @@
             "require-dev": {
                 "guzzlehttp/guzzle": "^7.4",
                 "phpfastcache/phpfastcache": "^9.2",
+                "phpseclib/phpseclib": "~3.0",
                 "phpspec/prophecy-phpunit": "^2.0",
                 "phpunit/phpunit": "^9.5",
                 "psr/cache": "^2.0||^3.0",
@@ -844,7 +845,8 @@
             },
             "suggest": {
                 "ext-sodium": "Support EdDSA (Ed25519) signatures",
-                "paragonie/sodium_compat": "Support EdDSA (Ed25519) signatures when libsodium is not present"
+                "paragonie/sodium_compat": "Support EdDSA (Ed25519) signatures when libsodium is not present",
+                "phpseclib/phpseclib": "Support PS256 (RSASSA-PSS) signatures"
             },
             "type": "library",
             "autoload": {
@@ -869,16 +871,16 @@
                 }
             ],
             "description": "A simple library to encode and decode JSON Web Tokens (JWT) in PHP. Should conform to the current spec.",
-            "homepage": "https://github.com/firebase/php-jwt",
+            "homepage": "https://github.com/googleapis/php-jwt",
             "keywords": [
                 "jwt",
                 "php"
             ],
             "support": {
-                "issues": "https://github.com/firebase/php-jwt/issues",
-                "source": "https://github.com/firebase/php-jwt/tree/v7.0.4"
+                "issues": "https://github.com/googleapis/php-jwt/issues",
+                "source": "https://github.com/googleapis/php-jwt/tree/v7.1.0"
             },
-            "time": "2026-03-27T21:17:19+00:00"
+            "time": "2026-06-11T17:54:14+00:00"
         },
         {
             "name": "fruitcake/php-cors",
@@ -1432,16 +1434,16 @@
         },
         {
             "name": "keeleinstituut/tv-common-laravel-amqp",
-            "version": "0.0.89",
+            "version": "0.0.90",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-amqp.git",
-                "reference": "975b36806b91fdfc2fc3800ae3ab49f4c3575060"
+                "reference": "ef5e2aae7b0197f1789588557d18078d36e167fe"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/975b36806b91fdfc2fc3800ae3ab49f4c3575060",
-                "reference": "975b36806b91fdfc2fc3800ae3ab49f4c3575060",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-amqp/zipball/ef5e2aae7b0197f1789588557d18078d36e167fe",
+                "reference": "ef5e2aae7b0197f1789588557d18078d36e167fe",
                 "shasum": ""
             },
             "require": {
@@ -1450,12 +1452,23 @@
                 "php": "^8.2",
                 "php-amqplib/php-amqplib": "^3.5"
             },
+            "conflict": {
+                "guzzlehttp/guzzle": "<7.12.1",
+                "guzzlehttp/psr7": "<2.12.1",
+                "phpseclib/phpseclib": ">=3.0.0,<3.0.52",
+                "symfony/http-foundation": "<6.4.41|>=7.0.0,<7.4.13|>=8.0.0,<8.0.13",
+                "symfony/mailer": "<6.4.40|>=7.0.0,<7.4.12|>=8.0.0,<8.0.12",
+                "symfony/mime": "<6.4.40|>=7.0.0,<7.4.12|>=8.0.0,<8.0.12",
+                "symfony/polyfill-intl-idn": ">=1.17.1,<1.38.1",
+                "symfony/routing": "<6.4.41|>=7.0.0,<7.4.13|>=8.0.0,<8.0.13",
+                "symfony/yaml": "<6.4.40|>=7.0.0,<7.4.12|>=8.0.0,<8.0.12"
+            },
             "require-dev": {
                 "laravel/pint": "^1.9",
-                "mockery/mockery": "^1.4.4",
-                "nunomaduro/collision": "^7.4",
-                "orchestra/testbench": "^8.5",
-                "phpunit/phpunit": "^10.0"
+                "mockery/mockery": "^1.6.10",
+                "nunomaduro/collision": "^8.1",
+                "orchestra/testbench": "^10.0",
+                "phpunit/phpunit": "^11.5.3 || ^12.0.1 || ^13.0.0"
             },
             "type": "library",
             "extra": {
@@ -1490,29 +1503,32 @@
                 "rabbitmq"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.89",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-amqp/tree/0.0.90",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-amqp/issues"
             },
-            "time": "2026-06-15T14:37:19+00:00"
+            "time": "2026-07-13T11:04:03+00:00"
         },
         {
             "name": "keeleinstituut/tv-common-laravel-security",
-            "version": "0.0.23",
+            "version": "0.0.24",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keeleinstituut/tv-common-laravel-security.git",
-                "reference": "8f8983597e15cad53c01ac74531027a6b20989ce"
+                "reference": "3e86563c3e4c21e1aedb1f9b233c1795d51b68d6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/8f8983597e15cad53c01ac74531027a6b20989ce",
-                "reference": "8f8983597e15cad53c01ac74531027a6b20989ce",
+                "url": "https://api.github.com/repos/keeleinstituut/tv-common-laravel-security/zipball/3e86563c3e4c21e1aedb1f9b233c1795d51b68d6",
+                "reference": "3e86563c3e4c21e1aedb1f9b233c1795d51b68d6",
                 "shasum": ""
             },
             "require": {
                 "firebase/php-jwt": "^7.0",
-                "guzzlehttp/guzzle": "^7.8",
+                "guzzlehttp/guzzle": "^7.12.1",
                 "php": "^8.3"
+            },
+            "conflict": {
+                "guzzlehttp/psr7": "<2.12.1"
             },
             "require-dev": {
                 "ext-openssl": "*",
@@ -1551,10 +1567,10 @@
                 "laravel"
             ],
             "support": {
-                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.23",
+                "source": "https://github.com/keeleinstituut/tv-common-laravel-security/tree/0.0.24",
                 "issues": "https://github.com/keeleinstituut/tv-common-laravel-security/issues"
             },
-            "time": "2026-04-18T08:09:21+00:00"
+            "time": "2026-07-13T11:03:35+00:00"
         },
         {
             "name": "laravel/framework",
@@ -3663,16 +3679,16 @@
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.50",
+            "version": "3.0.55",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "aa6ad8321ed103dc3624fb600a25b66ebf78ec7b"
+                "reference": "db9744e6d47e742b1f974e965ad49bdd041105af"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/aa6ad8321ed103dc3624fb600a25b66ebf78ec7b",
-                "reference": "aa6ad8321ed103dc3624fb600a25b66ebf78ec7b",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/db9744e6d47e742b1f974e965ad49bdd041105af",
+                "reference": "db9744e6d47e742b1f974e965ad49bdd041105af",
                 "shasum": ""
             },
             "require": {
@@ -3753,7 +3769,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.50"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.55"
             },
             "funding": [
                 {
@@ -3769,7 +3785,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-03-19T02:57:58+00:00"
+            "time": "2026-06-14T23:24:10+00:00"
         },
         {
             "name": "phpstan/phpdoc-parser",
