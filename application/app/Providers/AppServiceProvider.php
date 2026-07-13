@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Repositories\Calendar\PriceVendorLanguageCoverageRepository;
 use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
 use App\Services\Calendar\CalendarSettingsResolver;
+use App\Services\CattoApiClient;
 use App\Sync\ApiClients\TvAuthorizationApiClient;
 use App\Sync\ApiClients\TvClassifierApiClient;
 use Illuminate\Foundation\Application;
@@ -26,6 +27,12 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(TvClassifierApiClient::class, function (Application $app) {
             return new TvClassifierApiClient(
+                $app->make(ServiceAccountJwtRetrieverInterface::class)
+            );
+        });
+
+        $this->app->bind(CattoApiClient::class, function (Application $app) {
+            return new CattoApiClient(
                 $app->make(ServiceAccountJwtRetrieverInterface::class)
             );
         });

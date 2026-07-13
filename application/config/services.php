@@ -34,4 +34,7 @@ return [
     'camunda' => [
         'api_url' => env('CAMUNDA_API_URL'),
     ],
+    'catto' => [
+        'base_url' => env('CATTO_BASE_URL'),
+    ],
 ];

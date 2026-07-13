@@ -45,6 +45,7 @@ use Throwable;
  * @property string|null $destination_language_classifier_value_id
  * @property string|null $active_job_definition_id
  * @property float|null $price
+ * @property array|null $cat_metadata
  * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
@@ -99,7 +100,8 @@ class SubProject extends Model implements AuditLoggable
         'price' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
-        'deadline_at' => 'datetime'
+        'deadline_at' => 'datetime',
+        'cat_metadata' => 'array',
     ];
 
     public function project(): BelongsTo
@@ -140,7 +142,7 @@ class SubProject extends Model implements AuditLoggable
         );
     }
 
-    public function projectTypeConfig(): HasManyDeep
+    public function projectTypeConfig(): HasOneDeep
     {
         return $this->hasOneDeep(
             ProjectTypeConfig::class,

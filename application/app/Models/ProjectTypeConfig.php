@@ -22,6 +22,7 @@ use Illuminate\Support\Collection;
  * @property string|null $workflow_process_definition_id
  * @property array|null $features
  * @property bool|null $is_start_date_supported
+ * @property bool|null $cat_tool_enabled
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Collection<int, JobDefinition> $jobDefinitions
@@ -51,6 +52,7 @@ class ProjectTypeConfig extends Model
 
     protected $casts = [
         'features' => 'array',
+        'cat_tool_enabled' => 'boolean',
     ];
 
     public function jobDefinitions(): HasMany
