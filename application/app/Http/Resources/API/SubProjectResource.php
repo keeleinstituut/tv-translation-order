@@ -70,6 +70,7 @@ class SubProjectResource extends JsonResource
                 'updated_at',
                 'status',
                 'workflow_started',
+                'cat_metadata',
             ]),
             // 'features' logic was changed and currently not in use.
             'features' => [], //$this->project->typeClassifierValue->projectTypeConfig->features,
