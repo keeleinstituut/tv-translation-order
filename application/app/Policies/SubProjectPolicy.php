@@ -88,16 +88,20 @@ class SubProjectPolicy
 
     public function downloadXliff(AuthUser $user, SubProject $subProject): bool
     {
-        return ($user->hasActivePartnerAccessToSubProject($subProject) ||
-                $user->isInSameInstitutionAsProject($subProject->project)) &&
-            $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject) && $user->hasActivePartnerAccessToSubProject($subProject)) {
+            return true;
+        }
+
+        return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
     }
 
     public function downloadTranslations(AuthUser $user, SubProject $subProject): bool
     {
-        return ($user->hasActivePartnerAccessToSubProject($subProject) ||
-                $user->isInSameInstitutionAsProject($subProject->project)) &&
-            $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject) && $user->hasActivePartnerAccessToSubProject($subProject)) {
+            return true;
+        }
+
+        return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
     }
 
     public function downloadMedia(AuthUser $user, SubProject $subProject): bool
