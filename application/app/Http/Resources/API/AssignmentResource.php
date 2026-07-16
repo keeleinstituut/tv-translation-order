@@ -7,6 +7,7 @@ use App\Enums\JobKey;
 use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
 
 /**
@@ -47,6 +48,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'subProject', ref: SubProjectResource::class, nullable: true),
         new OA\Property(property: 'outsource_requests', type: 'array', items: new OA\Items(ref: OutsourceRequestResource::class)),
         new OA\Property(property: 'manager_candidates', type: 'array', items: new OA\Items(ref: ProjectManagerCandidateResource::class)),
+        new OA\Property(property: 'can_download_xliff', type: 'boolean'),
+        new OA\Property(property: 'can_download_translations', type: 'boolean'),
     ],
     type: 'object'
 )]
@@ -59,6 +62,8 @@ class AssignmentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $subProject = $this->relationLoaded('subProject') ? $this->subProject : null;
+
         return [
             ...$this->only(
                 'id',
@@ -86,6 +91,8 @@ class AssignmentResource extends JsonResource
                     $this->when($this->jobDefinition?->job_key === JobKey::JOB_OVERVIEW, $this)
                 )
             ],
+            'can_download_xliff' => $subProject && Gate::forUser($request->user())->allows('downloadXliff', $subProject),
+            'can_download_translations' => $subProject && Gate::forUser($request->user())->allows('downloadTranslations', $subProject),
         ];
     }
 }
