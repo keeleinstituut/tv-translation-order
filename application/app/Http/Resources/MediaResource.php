@@ -41,6 +41,7 @@ use OpenApi\Attributes as OA;
         ),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'url', description: 'Temporary, short-lived URL for downloading the file directly.', type: 'string', format: 'uri'),
         new OA\Property(property: 'assignment', ref: AssignmentResource::class, nullable: true),
         new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, nullable: true),
         new OA\Property(property: 'is_project_final_file', type: 'boolean', nullable: true),
@@ -68,6 +69,7 @@ class MediaResource extends JsonResource
                 'created_at',
                 'updated_at',
             ),
+            'url' => $this->getTemporaryUrl(now()->addMinutes(30)),
             'assignment' => AssignmentResource::make($this->whenLoaded('assignment')),
             'institution_user' => InstitutionUserResource::make($this->whenLoaded('institutionUser')),
             ...$this->getSubProjectFinalFileIsProjectFinalFileField()
