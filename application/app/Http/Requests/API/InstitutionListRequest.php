@@ -14,8 +14,7 @@ class InstitutionListRequest extends FormRequest
             'name' => 'sometimes|string|max:255',
             'type' => ['sometimes', Rule::enum(InstitutionType::class)],
             'not_partner_of_current_institution' => 'sometimes|boolean',
-            'has_current_institution_as_partner' => 'sometimes|boolean',
-            'per_page' => 'sometimes|integer|max:10000',
+            'per_page' => 'sometimes|integer|min:1',
             'sort_by' => 'sometimes|in:name',
             'sort_order' => 'sometimes|in:asc,desc',
         ];

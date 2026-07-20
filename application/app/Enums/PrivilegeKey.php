@@ -59,6 +59,7 @@ enum PrivilegeKey: string
     case ViewOutsourceRequest = 'VIEW_OUTSOURCE_REQUEST';
     case RespondOutsourceRequest = 'RESPOND_OUTSOURCE_REQUEST';
     case ManageOutsourceRequest = 'MANAGE_OUTSOURCE_REQUEST';
+    case ViewStatistic = 'VIEW_STATISTIC';
 
     public static function values(): array
     {
