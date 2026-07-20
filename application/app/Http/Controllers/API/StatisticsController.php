@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Enums\PrivilegeKey;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
@@ -14,17 +16,21 @@ class StatisticsController extends Controller
 {
     public function __invoke(Request $request): JsonResource
     {
+        Gate::allowIf($request->user()->hasPrivilege(PrivilegeKey::ViewStatistic));
+
         $validated = $request->validate([
-            'type' => ['required', Rule::in(['projects', 'subprojects', 'assignments'])],
+            'type' => ['required', Rule::in([
+                'projects_plain', 'projects_extended',
+                'subprojects_plain', 'subprojects_extended',
+                'assignments_plain', 'assignments_extended',
+            ])],
             'timeframe' => ['required', Rule::in(['daily', 'monthly', 'yearly'])],
             'basis' => ['required', Rule::in(['created', 'completed'])],
-            'variant' => ['sometimes', Rule::in(['plain', 'extended'])],
         ]);
 
-        $variant = $validated['variant'] ?? 'plain';
         $sql = data_get(
             $this->options(),
-            "{$validated['type']}.{$validated['timeframe']}.{$validated['basis']}.{$variant}"
+            "{$validated['type']}.{$validated['timeframe']}.{$validated['basis']}"
         );
 
         abort_if(blank($sql), Response::HTTP_UNPROCESSABLE_ENTITY, 'No statistics query matches the given parameters.');
@@ -41,100 +47,88 @@ class StatisticsController extends Controller
     private function options(): array
     {
         return [
-            'projects' => [
+            'projects_plain' => [
                 'daily' => [
-                    'created' => [
-                        'plain' => $this->projectsDailyStatisticsByCreationTimeSql(),
-                        'extended' => $this->projectsExtendedDailyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->projectsDailyStatisticsByCompletionTimeSql(),
-                        'extended' => $this->projectsExtendedDailyStatisticsByCompletionTimeSql(),
-                    ],
+                    'created' => $this->projectsDailyStatisticsByCreationTimeSql(),
+                    'completed' => $this->projectsDailyStatisticsByCompletionTimeSql(),
                 ],
                 'monthly' => [
-                    'created' => [
-                        'plain' => $this->projectsMonthlyStatisticsByCreationTimeSql(),
-                        'extended' => $this->projectsExtendedMonthlyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->projectsMonthlyStatisticsByCompletionTimeSql(),
-                        'extended' => $this->projectsExtendedMonthlyStatisticsByCompletionTimeSql(),
-                    ],
+                    'created' => $this->projectsMonthlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->projectsMonthlyStatisticsByCompletionTimeSql(),
                 ],
                 'yearly' => [
-                    'created' => [
-                        'plain' => $this->projectsYearlyStatisticsByCreationTimeSql(),
-                        'extended' => $this->projectsExtendedYearlyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->projectsYearlyStatisticsByCompletionTimeSql(),
-                        'extended' => $this->projectsExtendedYearlyStatisticsByCompletionTimeSql(),
-                    ],
+                    'created' => $this->projectsYearlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->projectsYearlyStatisticsByCompletionTimeSql(),
                 ],
             ],
-            'subprojects' => [
+            'projects_extended' => [
                 'daily' => [
-                    'created' => [
-                        'plain' => $this->subProjectsDailyStatisticsByCreationTimeSql(),
-                        'extended' => $this->subProjectsExtendedDailyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->subProjectsDailyStatisticsByAcceptanceTimeSql(),
-                        'extended' => $this->subProjectsExtendedDailyStatisticsByAcceptanceTimeSql(),
-                    ],
+                    'created' => $this->projectsExtendedDailyStatisticsByCreationTimeSql(),
+                    'completed' => $this->projectsExtendedDailyStatisticsByCompletionTimeSql(),
                 ],
                 'monthly' => [
-                    'created' => [
-                        'plain' => $this->subProjectsMonthlyStatisticsByCreationTimeSql(),
-                        'extended' => $this->subProjectsExtendedMonthlyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->subProjectsMonthlyStatisticsByAcceptanceTimeSql(),
-                        'extended' => $this->subProjectsExtendedMonthlyStatisticsByAcceptanceTimeSql(),
-                    ],
+                    'created' => $this->projectsExtendedMonthlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->projectsExtendedMonthlyStatisticsByCompletionTimeSql(),
                 ],
                 'yearly' => [
-                    'created' => [
-                        'plain' => $this->subProjectsYearlyStatisticsByCreationTimeSql(),
-                        'extended' => $this->subProjectsExtendedYearlyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->subProjectsYearlyStatisticsByAcceptanceTimeSql(),
-                        'extended' => $this->subProjectsExtendedYearlyStatisticsByAcceptanceTimeSql(),
-                    ],
+                    'created' => $this->projectsExtendedYearlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->projectsExtendedYearlyStatisticsByCompletionTimeSql(),
                 ],
             ],
-            'assignments' => [
+            'subprojects_plain' => [
                 'daily' => [
-                    'created' => [
-                        'plain' => $this->assignmentsDailyStatisticsByCreationTimeSql(),
-                        'extended' => $this->assignmentsExtendedDailyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->assignmentsDailyStatisticsByAcceptanceTimeSql(),
-                        'extended' => $this->assignmentsExtendedDailyStatisticsByAcceptanceTimeSql(),
-                    ],
+                    'created' => $this->subProjectsDailyStatisticsByCreationTimeSql(),
+                    'completed' => $this->subProjectsDailyStatisticsByAcceptanceTimeSql(),
                 ],
                 'monthly' => [
-                    'created' => [
-                        'plain' => $this->assignmentsMonthlyStatisticsByCreationTimeSql(),
-                        'extended' => $this->assignmentsExtendedMonthlyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->assignmentsMonthlyStatisticsByAcceptanceTimeSql(),
-                        'extended' => $this->assignmentsExtendedMonthlyStatisticsByAcceptanceTimeSql(),
-                    ],
+                    'created' => $this->subProjectsMonthlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->subProjectsMonthlyStatisticsByAcceptanceTimeSql(),
                 ],
                 'yearly' => [
-                    'created' => [
-                        'plain' => $this->assignmentsYearlyStatisticsByCreationTimeSql(),
-                        'extended' => $this->assignmentsExtendedYearlyStatisticsByCreationTimeSql(),
-                    ],
-                    'completed' => [
-                        'plain' => $this->assignmentsYearlyStatisticsByAcceptanceTimeSql(),
-                        'extended' => $this->assignmentsExtendedYearlyStatisticsByAcceptanceTimeSql(),
-                    ],
+                    'created' => $this->subProjectsYearlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->subProjectsYearlyStatisticsByAcceptanceTimeSql(),
+                ],
+            ],
+            'subprojects_extended' => [
+                'daily' => [
+                    'created' => $this->subProjectsExtendedDailyStatisticsByCreationTimeSql(),
+                    'completed' => $this->subProjectsExtendedDailyStatisticsByAcceptanceTimeSql(),
+                ],
+                'monthly' => [
+                    'created' => $this->subProjectsExtendedMonthlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->subProjectsExtendedMonthlyStatisticsByAcceptanceTimeSql(),
+                ],
+                'yearly' => [
+                    'created' => $this->subProjectsExtendedYearlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->subProjectsExtendedYearlyStatisticsByAcceptanceTimeSql(),
+                ],
+            ],
+            'assignments_plain' => [
+                'daily' => [
+                    'created' => $this->assignmentsDailyStatisticsByCreationTimeSql(),
+                    'completed' => $this->assignmentsDailyStatisticsByAcceptanceTimeSql(),
+                ],
+                'monthly' => [
+                    'created' => $this->assignmentsMonthlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->assignmentsMonthlyStatisticsByAcceptanceTimeSql(),
+                ],
+                'yearly' => [
+                    'created' => $this->assignmentsYearlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->assignmentsYearlyStatisticsByAcceptanceTimeSql(),
+                ],
+            ],
+            'assignments_extended' => [
+                'daily' => [
+                    'created' => $this->assignmentsExtendedDailyStatisticsByCreationTimeSql(),
+                    'completed' => $this->assignmentsExtendedDailyStatisticsByAcceptanceTimeSql(),
+                ],
+                'monthly' => [
+                    'created' => $this->assignmentsExtendedMonthlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->assignmentsExtendedMonthlyStatisticsByAcceptanceTimeSql(),
+                ],
+                'yearly' => [
+                    'created' => $this->assignmentsExtendedYearlyStatisticsByCreationTimeSql(),
+                    'completed' => $this->assignmentsExtendedYearlyStatisticsByAcceptanceTimeSql(),
                 ],
             ],
         ];
@@ -161,7 +155,7 @@ class StatisticsController extends Controller
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false),
                 p.status
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status;
         EOT;
@@ -193,7 +187,7 @@ class StatisticsController extends Controller
                 p.status,
                 tg.tag_id
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status,
                 tag_id;
@@ -221,7 +215,7 @@ class StatisticsController extends Controller
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false),
                 p.status
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status;
         EOT;
@@ -253,7 +247,7 @@ class StatisticsController extends Controller
                 p.status,
                 tg.tag_id
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status,
                 tag_id;
@@ -281,7 +275,7 @@ class StatisticsController extends Controller
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false),
                 p.status
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status
         EOT;
@@ -313,7 +307,7 @@ class StatisticsController extends Controller
                 p.status,
                 tg.tag_id
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status,
                 tag_id;
@@ -341,7 +335,7 @@ class StatisticsController extends Controller
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false),
                 p.status
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status;
         EOT;
@@ -373,7 +367,7 @@ class StatisticsController extends Controller
                 p.status,
                 tg.tag_id
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status,
                 tag_id;
@@ -401,7 +395,7 @@ class StatisticsController extends Controller
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false),
                 p.status
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status;
         EOT;
@@ -433,7 +427,7 @@ class StatisticsController extends Controller
                 p.status,
                 tg.tag_id
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status,
                 tag_id;
@@ -461,7 +455,7 @@ class StatisticsController extends Controller
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false),
                 p.status
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status;
         EOT;
@@ -494,7 +488,7 @@ class StatisticsController extends Controller
                 p.status,
                 tg.tag_id
             ORDER BY
-                period,
+                period DESC,
                 is_verbal,
                 status,
                 tag_id;
@@ -552,7 +546,7 @@ class StatisticsController extends Controller
                 p.type_classifier_value_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.status;
         EOT;
@@ -618,7 +612,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.source_language_classifier_value_id,
                 sp.destination_language_classifier_value_id,
@@ -678,7 +672,7 @@ class StatisticsController extends Controller
                 p.type_classifier_value_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.status;
         EOT;
@@ -744,7 +738,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.source_language_classifier_value_id,
                 sp.destination_language_classifier_value_id,
@@ -804,7 +798,7 @@ class StatisticsController extends Controller
                 p.type_classifier_value_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.status;
         EOT;
@@ -870,7 +864,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.source_language_classifier_value_id,
                 sp.destination_language_classifier_value_id,
@@ -930,7 +924,7 @@ class StatisticsController extends Controller
                 p.type_classifier_value_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.status;
         EOT;
@@ -996,7 +990,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.source_language_classifier_value_id,
                 sp.destination_language_classifier_value_id,
@@ -1056,7 +1050,7 @@ class StatisticsController extends Controller
                 p.type_classifier_value_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.status;
         EOT;
@@ -1122,7 +1116,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.source_language_classifier_value_id,
                 sp.destination_language_classifier_value_id,
@@ -1182,7 +1176,7 @@ class StatisticsController extends Controller
                 p.type_classifier_value_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.status;
         EOT;
@@ -1248,7 +1242,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 sp.status
             ORDER BY
-                period,
+                period DESC,
                 p.type_classifier_value_id,
                 sp.source_language_classifier_value_id,
                 sp.destination_language_classifier_value_id,
@@ -1313,7 +1307,7 @@ class StatisticsController extends Controller
                 jd.job_short_name,
                 a.status
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status;
         EOT;
@@ -1387,7 +1381,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 (ciu.institution ->> 'id')
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1448,7 +1442,7 @@ class StatisticsController extends Controller
                 jd.job_short_name,
                 a.status
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status;
         EOT;
@@ -1522,7 +1516,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 (ciu.institution ->> 'id')
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1583,7 +1577,7 @@ class StatisticsController extends Controller
                 jd.job_short_name,
                 a.status
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status;
         EOT;
@@ -1657,7 +1651,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 (ciu.institution ->> 'id')
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1688,7 +1682,7 @@ class StatisticsController extends Controller
                 GROUP BY v.assignment_id
             )
             SELECT
-                date_trunc('day', a.completed_at) AS period,
+                date_trunc('day', p.accepted_at) AS period,
                 jd.job_short_name,
                 a.status,
                 COUNT(*)                    AS assignments_count,
@@ -1712,13 +1706,13 @@ class StatisticsController extends Controller
             LEFT JOIN assignment_volumes av
                 ON av.assignment_id = a.id
             WHERE p.institution_id = :institution_id
-                AND a.completed_at IS NOT NULL
+                AND p.accepted_at IS NOT NULL
             GROUP BY
-                date_trunc('day', a.completed_at),
+                date_trunc('day', p.accepted_at),
                 jd.job_short_name,
                 a.status
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status;
         EOT;
@@ -1745,7 +1739,7 @@ class StatisticsController extends Controller
                 GROUP BY v.assignment_id
             )
             SELECT
-                date_trunc('day', a.completed_at) AS period,
+                date_trunc('day', p.accepted_at) AS period,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1782,9 +1776,9 @@ class StatisticsController extends Controller
                 ON ciu.id = ve.institution_user_id
                AND ciu.deleted_at IS NULL
             WHERE p.institution_id = :institution_id
-                AND a.completed_at IS NOT NULL
+                AND p.accepted_at IS NOT NULL
             GROUP BY
-                date_trunc('day', a.completed_at),
+                date_trunc('day', p.accepted_at),
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1792,7 +1786,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 (ciu.institution ->> 'id')
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1823,7 +1817,7 @@ class StatisticsController extends Controller
                 GROUP BY v.assignment_id
             )
             SELECT
-                date_trunc('month', a.completed_at) AS period,
+                date_trunc('month', p.accepted_at) AS period,
                 jd.job_short_name,
                 a.status,
                 COUNT(*)                    AS assignments_count,
@@ -1847,13 +1841,13 @@ class StatisticsController extends Controller
             LEFT JOIN assignment_volumes av
                 ON av.assignment_id = a.id
             WHERE p.institution_id = :institution_id
-                AND a.completed_at IS NOT NULL
+                AND p.accepted_at IS NOT NULL
             GROUP BY
-                date_trunc('month', a.completed_at),
+                date_trunc('month', p.accepted_at),
                 jd.job_short_name,
                 a.status
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status;
         EOT;
@@ -1880,7 +1874,7 @@ class StatisticsController extends Controller
                 GROUP BY v.assignment_id
             )
             SELECT
-                date_trunc('month', a.completed_at) AS period,
+                date_trunc('month', p.accepted_at) AS period,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1917,9 +1911,9 @@ class StatisticsController extends Controller
                 ON ciu.id = ve.institution_user_id
                AND ciu.deleted_at IS NULL
             WHERE p.institution_id = :institution_id
-                AND a.completed_at IS NOT NULL
+                AND p.accepted_at IS NOT NULL
             GROUP BY
-                date_trunc('month', a.completed_at),
+                date_trunc('month', p.accepted_at),
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1927,7 +1921,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 (ciu.institution ->> 'id')
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -1958,7 +1952,7 @@ class StatisticsController extends Controller
                 GROUP BY v.assignment_id
             )
             SELECT
-                date_trunc('year', a.completed_at) AS period,
+                date_trunc('year', p.accepted_at) AS period,
                 jd.job_short_name,
                 a.status,
                 COUNT(*)                    AS assignments_count,
@@ -1982,13 +1976,13 @@ class StatisticsController extends Controller
             LEFT JOIN assignment_volumes av
                 ON av.assignment_id = a.id
             WHERE p.institution_id = :institution_id
-                AND a.completed_at IS NOT NULL
+                AND p.accepted_at IS NOT NULL
             GROUP BY
-                date_trunc('year', a.completed_at),
+                date_trunc('year', p.accepted_at),
                 jd.job_short_name,
                 a.status
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status;
         EOT;
@@ -2015,7 +2009,7 @@ class StatisticsController extends Controller
                 GROUP BY v.assignment_id
             )
             SELECT
-                date_trunc('year', a.completed_at) AS period,
+                date_trunc('year', p.accepted_at) AS period,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -2052,9 +2046,9 @@ class StatisticsController extends Controller
                 ON ciu.id = ve.institution_user_id
                AND ciu.deleted_at IS NULL
             WHERE p.institution_id = :institution_id
-                AND a.completed_at IS NOT NULL
+                AND p.accepted_at IS NOT NULL
             GROUP BY
-                date_trunc('year', a.completed_at),
+                date_trunc('year', p.accepted_at),
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
@@ -2062,7 +2056,7 @@ class StatisticsController extends Controller
                 tg.tag_id,
                 (ciu.institution ->> 'id')
             ORDER BY
-                period,
+                period DESC,
                 jd.job_short_name,
                 a.status,
                 sp.source_language_classifier_value_id,
