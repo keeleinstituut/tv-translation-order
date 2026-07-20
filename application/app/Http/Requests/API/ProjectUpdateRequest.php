@@ -124,7 +124,12 @@ class ProjectUpdateRequest extends ProjectCreateRequest
             'event_end_at' => [
                 'sometimes',
                 'date_format:' . self::DATETIME_FORMAT,
-                Rule::prohibitedIf(fn() => !$this->isCalendarProject()),
+                Rule::prohibitedIf(fn() => !$this->isCalendarProject() && !ClassifierValue::isProjectTypeSupportingEventStartDate(
+                    $this->input(
+                        'type_classifier_value_id',
+                        $this->getProject()->type_classifier_value_id
+                    )
+                )),
             ],
             'service_type' => ['sometimes', 'nullable', Rule::in(ServiceType::cases())],
             'location' => [

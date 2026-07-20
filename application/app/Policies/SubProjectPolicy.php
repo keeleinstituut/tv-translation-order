@@ -86,15 +86,21 @@ class SubProjectPolicy
     }
 
 
-    // partner access deliberately excluded
     public function downloadXliff(AuthUser $user, SubProject $subProject): bool
     {
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject) && $user->hasActivePartnerAccessToSubProject($subProject)) {
+            return true;
+        }
+
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
     }
 
-    // partner access deliberately excluded
     public function downloadTranslations(AuthUser $user, SubProject $subProject): bool
     {
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject) && $user->hasActivePartnerAccessToSubProject($subProject)) {
+            return true;
+        }
+
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
     }
 

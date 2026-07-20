@@ -2,9 +2,7 @@
 
 namespace Tests\Feature\Http\Controllers\API;
 
-use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
-use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\InstitutionSetting;
 use Database\Seeders\ClassifiersAndProjectTypesSeeder;
@@ -15,17 +13,12 @@ class InstitutionSettingControllerTest extends TestCase
 {
     private Institution $institution;
 
-    private string $oralTranslationTypeId;
-
     protected function setUp(): void
     {
         parent::setUp();
         $this->seed(ClassifiersAndProjectTypesSeeder::class);
 
         $this->institution = Institution::factory()->create();
-        $this->oralTranslationTypeId = ClassifierValue::where('type', ClassifierValueType::ProjectType)
-            ->where('value', 'ORAL_TRANSLATION')
-            ->firstOrFail()->id;
     }
 
     public function test_show_returns_no_content_when_no_settings_exist(): void
@@ -43,7 +36,6 @@ class InstitutionSettingControllerTest extends TestCase
             'reaction_time_minutes' => 60,
             'buffer_before_minutes' => 15,
             'buffer_after_minutes' => 10,
-            'default_project_type_id' => $this->oralTranslationTypeId,
         ]);
 
         $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
@@ -54,7 +46,6 @@ class InstitutionSettingControllerTest extends TestCase
                 'reaction_time_minutes' => 60,
                 'buffer_before_minutes' => 15,
                 'buffer_after_minutes' => 10,
-                'default_project_type_id' => $this->oralTranslationTypeId,
             ]);
     }
 
@@ -83,7 +74,6 @@ class InstitutionSettingControllerTest extends TestCase
                 'reaction_time_minutes' => 45,
                 'buffer_before_minutes' => 20,
                 'buffer_after_minutes' => 10,
-                'default_project_type_id' => $this->oralTranslationTypeId,
             ]);
 
         $response->assertCreated()
@@ -91,7 +81,6 @@ class InstitutionSettingControllerTest extends TestCase
                 'reaction_time_minutes' => 45,
                 'buffer_before_minutes' => 20,
                 'buffer_after_minutes' => 10,
-                'default_project_type_id' => $this->oralTranslationTypeId,
             ]);
     }
 
@@ -102,7 +91,6 @@ class InstitutionSettingControllerTest extends TestCase
             'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 10,
             'buffer_after_minutes' => 5,
-            'default_project_type_id' => $this->oralTranslationTypeId,
         ]);
 
         $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
@@ -115,7 +103,6 @@ class InstitutionSettingControllerTest extends TestCase
                 'reaction_time_minutes' => 30,
                 'buffer_before_minutes' => 99,
                 'buffer_after_minutes' => 5,
-                'default_project_type_id' => $this->oralTranslationTypeId,
             ]);
     }
 
@@ -203,20 +190,6 @@ class InstitutionSettingControllerTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_store_validates_project_type_must_be_calendar_supported(): void
-    {
-        $languageId = ClassifierValue::where('type', ClassifierValueType::Language)
-            ->firstOrFail()->id;
-
-        $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
-            ->putJson('/api/institution/settings', [
-                'default_project_type_id' => $languageId,
-            ]);
-
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors('default_project_type_id');
-    }
-
     public function test_store_validates_negative_buffer_rejected(): void
     {
         $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())
@@ -236,7 +209,6 @@ class InstitutionSettingControllerTest extends TestCase
             'reaction_time_minutes' => 999,
             'buffer_before_minutes' => 999,
             'buffer_after_minutes' => 999,
-            'default_project_type_id' => $this->oralTranslationTypeId,
         ]);
 
         $response = $this->prepareAuthorizedRequest($this->actAsInstitutionEditor())

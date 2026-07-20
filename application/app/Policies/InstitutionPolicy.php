@@ -11,4 +11,13 @@ class InstitutionPolicy
     {
         return $user->hasPrivilege(PrivilegeKey::ManageExternalPartner);
     }
+
+    public function viewRequestOwners(AuthUser $user): bool
+    {
+        return $user->hasAtLeastOnePrivilege([
+            PrivilegeKey::ManageExternalPartner,
+            PrivilegeKey::RespondOutsourceRequest,
+            PrivilegeKey::ViewOutsourceRequest,
+        ]);
+    }
 }

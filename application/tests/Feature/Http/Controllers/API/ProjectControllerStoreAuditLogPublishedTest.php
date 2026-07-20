@@ -17,6 +17,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Assertions;
 use Tests\AuditLogTestCase;
 use Tests\AuthHelpers;
@@ -131,12 +132,11 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreators
-     *
      * @param  Closure(InstitutionUser): array  $createValidPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreators')]
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload): void
     {
         $this->markTestSkipped('Skipping audit log validation test');
@@ -261,12 +261,11 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
     }
 
     /**
-     * @dataProvider provideInvalidPayloadCreators
-     *
      * @param  Closure(InstitutionUser): array  $createInvalidPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideInvalidPayloadCreators')]
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
         $this->markTestSkipped('Skipping audit log validation test');
@@ -309,13 +308,12 @@ class ProjectControllerStoreAuditLogPublishedTest extends AuditLogTestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         $this->markTestSkipped('Skipping audit log validation test');

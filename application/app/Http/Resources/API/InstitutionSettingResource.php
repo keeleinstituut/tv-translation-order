@@ -18,7 +18,6 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'buffer_after_minutes', type: 'integer', example: 0),
         new OA\Property(property: 'verbal_auto_acceptance_threshold_days', type: 'integer', example: 7, nullable: true),
         new OA\Property(property: 'non_verbal_auto_acceptance_threshold_days', type: 'integer', example: 14, nullable: true),
-        new OA\Property(property: 'default_project_type_id', type: 'string', format: 'uuid', nullable: true),
     ],
     type: 'object'
 )]
@@ -34,8 +33,7 @@ class InstitutionSettingResource extends JsonResource
             'buffer_before_minutes',
             'buffer_after_minutes',
             'verbal_auto_acceptance_threshold_days',
-            'non_verbal_auto_acceptance_threshold_days',
-            'default_project_type_id'
+            'non_verbal_auto_acceptance_threshold_days'
         );
     }
 }

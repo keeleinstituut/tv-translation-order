@@ -23,12 +23,17 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\AuthHelpers;
+use Tests\FakesRealFiles;
 use Tests\TestCase;
 use Throwable;
 
 class ProjectControllerStoreTest extends TestCase
 {
+    use FakesRealFiles;
+
+
     /** @return array<array{
      *     Closure(InstitutionUser): array,
      *     Closure(TestCase, TestResponse, array): void,
@@ -114,8 +119,8 @@ class ProjectControllerStoreTest extends TestCase
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'source_files' => [
-                        UploadedFile::fake()->create('source1.pdf', 1024, 'application/pdf'),
-                        UploadedFile::fake()->create('source2.docx', 1024, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                        static::fakePdf('source1.pdf'),
+                        static::fakeDocx('source2.docx'),
                     ],
                 ],
                 function (TestCase $testCase, TestResponse $testResponse) {
@@ -131,8 +136,8 @@ class ProjectControllerStoreTest extends TestCase
                 fn () => [
                     ...static::createExampleValidPayload(),
                     'help_files' => [
-                        UploadedFile::fake()->create('help1.pdf', 1024, 'application/pdf'),
-                        UploadedFile::fake()->create('help2.docx', 1024, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                        static::fakePdf('help1.pdf'),
+                        static::fakeDocx('help2.docx'),
                     ],
                     'help_file_types' => ['REFERENCE_FILE', 'STYLE_GUIDE'],
                 ],
@@ -155,13 +160,12 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreatorsAndExtraAssertions
-     *
      * @param  Closure(InstitutionUser): array  $createValidPayload
      * @param  Closure(TestCase, TestResponse, array): void  $performExtraAssertions
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreatorsAndExtraAssertions')]
     public function test_project_is_created_when_payload_valid(Closure $createValidPayload, Closure $performExtraAssertions): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -351,12 +355,11 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideInvalidPayloadCreators
-     *
      * @param  Closure(InstitutionUser): array  $createInvalidPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideInvalidPayloadCreators')]
     public function test_invalid_payload_results_in_unprocessable_entity_response(Closure $createInvalidPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -404,13 +407,12 @@ class ProjectControllerStoreTest extends TestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));
@@ -566,5 +568,140 @@ class ProjectControllerStoreTest extends TestCase
         }
 
         return $payload;
+    }
+
+    /** POST_TRANSLATION supports event dates but is not a calendar project type. */
+    private static function createPostTranslationValidPayload(array $overrides = []): array
+    {
+        $languages = ClassifierValue::where('type', ClassifierValueType::Language)->get();
+
+        throw_unless($languages->count() > 1);
+
+        [$sourceLanguage, $destinationLanguage] = $languages;
+
+        $projectTypeConfig = ProjectTypeConfig::whereHas('typeClassifierValue', function ($query) {
+            $query->where('value', 'POST_TRANSLATION');
+        })->firstOrFail();
+
+        return array_merge([
+            'type_classifier_value_id' => $projectTypeConfig->type_classifier_value_id,
+            'translation_domain_classifier_value_id' => ClassifierValue::where('type', ClassifierValueType::TranslationDomain)
+                ->firstOrFail()
+                ->id,
+            'source_language_classifier_value_id' => $sourceLanguage->id,
+            'destination_language_classifier_value_ids' => [
+                $destinationLanguage->id,
+            ],
+            'event_start_at' => Date::now()->addDays(5)->toIso8601ZuluString(),
+            'event_end_at' => Date::now()->addDays(5)->addHour()->toIso8601ZuluString(),
+            'service_type' => 'REMOTE',
+            'meeting_link' => 'https://meet.example.com/post-translation',
+        ], $overrides);
+    }
+
+    /** @throws Throwable */
+    public function test_event_type_project_creation_succeeds_without_deadline_at(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(
+                action([ProjectController::class, 'store']),
+                static::createPostTranslationValidPayload()
+            );
+
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertNull($project->deadline_at);
+        $this->assertNotNull($project->event_start_at);
+        $this->assertNotNull($project->event_end_at);
+        $this->assertFalse($project->is_calendar_project);
+    }
+
+    /** @throws Throwable */
+    public function test_event_type_project_creation_requires_event_start_at(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $payload = collect(static::createPostTranslationValidPayload())->except('event_start_at')->toArray();
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(action([ProjectController::class, 'store']), $payload);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['event_start_at']);
+    }
+
+    /** @throws Throwable */
+    public function test_event_type_project_creation_requires_event_end_at(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $payload = collect(static::createPostTranslationValidPayload())->except('event_end_at')->toArray();
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(action([ProjectController::class, 'store']), $payload);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['event_end_at']);
+    }
+
+    /** @throws Throwable */
+    public function test_event_type_project_creation_requires_service_type(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $payload = collect(static::createPostTranslationValidPayload())->except('service_type')->toArray();
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(action([ProjectController::class, 'store']), $payload);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['service_type']);
+    }
+
+    /** @throws Throwable */
+    public function test_event_type_project_creation_does_not_require_deadline_at(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        // No deadline_at in payload at all (not just null) — must not 422.
+        $payload = static::createPostTranslationValidPayload();
+        $this->assertArrayNotHasKey('deadline_at', $payload);
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(action([ProjectController::class, 'store']), $payload);
+
+        $response->assertCreated();
+    }
+
+    /** @throws Throwable */
+    public function test_event_type_project_creation_rejects_event_end_before_event_start(): void
+    {
+        $this->seed(ClassifiersAndProjectTypesSeeder::class);
+        $actingUser = InstitutionUser::factory()->createWithPrivileges(PrivilegeKey::CreateProject);
+
+        $payload = static::createPostTranslationValidPayload([
+            'event_start_at' => Date::now()->addDays(5)->setHour(11)->toIso8601ZuluString(),
+            'event_end_at' => Date::now()->addDays(5)->setHour(10)->toIso8601ZuluString(),
+        ]);
+
+        $response = $this
+            ->withHeaders(AuthHelpers::createHeadersForInstitutionUser($actingUser))
+            ->postJson(action([ProjectController::class, 'store']), $payload);
+
+        $response->assertUnprocessable();
+        $response->assertJsonValidationErrors(['event_end_at']);
     }
 }

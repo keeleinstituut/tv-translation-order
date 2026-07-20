@@ -12,4 +12,14 @@ enum OutsourceOfferStatus: string
     case OfferAccepted = 'OFFER_ACCEPTED';
     case OfferDeclined = 'OFFER_DECLINED';
     case RequestCancelled = 'REQUEST_CANCELLED';
+
+    public static function statusesHidingFiles(): array
+    {
+        return [
+            self::RequestCancelled,
+            self::OfferDeclined,
+            self::RequestExpired,
+            self::RequestDeclined,
+        ];
+    }
 }

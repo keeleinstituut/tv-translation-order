@@ -49,7 +49,11 @@ class OutsourceOfferController extends Controller
                 description: 'Filter the result set to offers which have any of the specified project types.',
                 schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'))
             ),
-            new OA\QueryParameter(name: 'institution_id', schema: new OA\Schema(type: 'string', format: 'uuid', nullable: true)),
+            new OA\QueryParameter(
+                name: 'institution_ids',
+                description: 'Filter the result set to offers whose owning project belongs to any of the specified institutions.',
+                schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string', format: 'uuid'), nullable: true)
+            ),
             new OA\QueryParameter(name: 'language_directions[]', schema: new OA\Schema(type: 'array', items: new OA\Items(type: 'string'), nullable: true)),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
@@ -98,8 +102,8 @@ class OutsourceOfferController extends Controller
             $query->whereIn('status', $param);
         }
 
-        if ($param = $params->get('institution_id')) {
-            $query->whereHas('outsourceRequest.assignment.subProject.project', fn($q) => $q->where('institution_id', $param));
+        if ($param = $params->get('institution_ids')) {
+            $query->whereHas('outsourceRequest.assignment.subProject.project', fn(Builder $q) => $q->whereIn('institution_id', $param));
         }
 
         if ($params->get('language_directions')) {

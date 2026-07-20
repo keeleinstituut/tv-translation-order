@@ -24,7 +24,8 @@ class OutsourceOfferListRequest extends FormRequest
             'per_page' => 'nullable|integer|min:1|max:50',
             'sort_by' => 'nullable|string|in:created_at,expires_at',
             'sort_order' => 'nullable|string|in:asc,desc',
-            'institution_id' => 'nullable|uuid',
+            'institution_ids' => 'nullable|array',
+            'institution_ids.*' => 'uuid',
             'type_classifier_value_ids' => 'array',
             'type_classifier_value_ids.*' => [
                 'uuid',

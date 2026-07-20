@@ -48,7 +48,6 @@ class CalendarProjectControllerStoreTest extends TestCase
             'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 0,
             'buffer_after_minutes' => 0,
-            'default_project_type_id' => null,
         ]);
         $this->destinationLanguage = ClassifierValue::where('type', ClassifierValueType::Language)
             ->whereNot('value', 'et-EE')
@@ -776,6 +775,42 @@ class CalendarProjectControllerStoreTest extends TestCase
 
         $project = Project::findOrFail($response->json('data.id'));
         $this->assertTrue($project->is_calendar_project);
+    }
+
+    /**
+     * Reproduces the deadline_at asymmetry bug: a flag-based calendar create (is_calendar_project=true,
+     * type_classifier_value_id omitted, resolved to Oral later in ProjectController::store) wrongly required
+     * deadline_at because deadline_at's requiredIf keyed only on the (null) type id, not the flag.
+     */
+    public function test_flag_based_calendar_create_without_type_or_deadline_succeeds(): void
+    {
+        // GIVEN
+        $actingUser = InstitutionUser::factory()
+            ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
+            ->create();
+        $accessToken = AuthHelpers::generateAccessToken([
+            'institutionUserId' => $actingUser->id,
+            'selectedInstitution' => ['id' => $this->institution->id],
+            'privileges' => [
+                PrivilegeKey::CreateProject->value,
+                PrivilegeKey::ChangeClient->value,
+            ],
+        ]);
+        $payload = $this->createCalendarPayload();
+        unset($payload['type_classifier_value_id']);
+        $this->assertArrayNotHasKey('deadline_at', $payload);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->postJson('/api/projects', $payload);
+
+        // THEN
+        $response->assertCreated();
+
+        $project = Project::findOrFail($response->json('data.id'));
+        $this->assertTrue($project->is_calendar_project);
+        $this->assertEquals($this->projectTypeId, $project->type_classifier_value_id);
+        $this->assertNull($project->deadline_at);
     }
 
     public function test_non_calendar_type_results_in_is_calendar_project_false(): void
