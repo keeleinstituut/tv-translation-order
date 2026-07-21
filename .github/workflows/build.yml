@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: self-hosted   # GH_runner1 — PHP/Composer installed via ansible (roles/php_composer_runner)
+    env:
+      DTRACK_API_KEY: ${{ secrets.DTRACK_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Install Composer dependencies
+        working-directory: application
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Upload SBOM to Dependency-Track
+        if: env.DTRACK_API_KEY != ''
+        working-directory: application
+        env:
+          PROJECT_NAME: ${{ github.event.repository.name }}
+        run: |
+          composer require --dev cyclonedx/cyclonedx-php-composer --no-interaction
+          composer CycloneDX:make-sbom --output-format=JSON --output-file=bom.json --omit=dev
+          curl -sSf -X POST "http://193.40.153.113:9010/api/v1/bom" \
+            -H "X-Api-Key: $DTRACK_API_KEY" \
+            -F "autoCreate=true" \
+            -F "projectName=$PROJECT_NAME" \
+            -F "projectVersion=$GITHUB_REF_NAME" \
+            -F "bom=@bom.json"
+
+      - uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: application
+          args: >
+            -Dsonar.projectKey=${{ github.event.repository.name }}${{ github.ref_name != 'main' && format('-{0}', github.ref_name) || '' }}
