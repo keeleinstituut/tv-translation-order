@@ -137,16 +137,25 @@ class StatisticsController extends Controller
     private function projectsDailyStatisticsByCreationTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('day', p.created_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
                AND cv.deleted_at IS NULL
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.created_at IS NOT NULL
@@ -164,13 +173,20 @@ class StatisticsController extends Controller
     private function projectsExtendedDailyStatisticsByCreationTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('day', p.created_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 tg.tag_id,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
@@ -178,6 +194,8 @@ class StatisticsController extends Controller
             LEFT JOIN taggables tg
                 ON tg.taggable_id = p.id
                 AND tg.taggable_type = 'App\Models\Project'
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.created_at IS NOT NULL
@@ -197,16 +215,25 @@ class StatisticsController extends Controller
     private function projectsMonthlyStatisticsByCreationTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('month', p.created_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
                AND cv.deleted_at IS NULL
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.created_at IS NOT NULL
@@ -224,13 +251,20 @@ class StatisticsController extends Controller
     private function projectsExtendedMonthlyStatisticsByCreationTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('month', p.created_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 tg.tag_id,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
@@ -238,6 +272,8 @@ class StatisticsController extends Controller
             LEFT JOIN taggables tg
                 ON tg.taggable_id = p.id
                 AND tg.taggable_type = 'App\Models\Project'
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.created_at IS NOT NULL
@@ -257,16 +293,25 @@ class StatisticsController extends Controller
     private function projectsYearlyStatisticsByCreationTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('year', p.created_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
                AND cv.deleted_at IS NULL
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.created_at IS NOT NULL
@@ -284,13 +329,20 @@ class StatisticsController extends Controller
     private function projectsExtendedYearlyStatisticsByCreationTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('year', p.created_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 tg.tag_id,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
@@ -298,6 +350,8 @@ class StatisticsController extends Controller
             LEFT JOIN taggables tg
                 ON tg.taggable_id = p.id
                 AND tg.taggable_type = 'App\Models\Project'
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.created_at IS NOT NULL
@@ -317,16 +371,25 @@ class StatisticsController extends Controller
     private function projectsDailyStatisticsByCompletionTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('day', p.accepted_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
                AND cv.deleted_at IS NULL
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.accepted_at IS NOT NULL
@@ -344,13 +407,20 @@ class StatisticsController extends Controller
     private function projectsExtendedDailyStatisticsByCompletionTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('day', p.accepted_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 tg.tag_id,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
@@ -358,6 +428,8 @@ class StatisticsController extends Controller
             LEFT JOIN taggables tg
                 ON tg.taggable_id = p.id
                 AND tg.taggable_type = 'App\Models\Project'
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.accepted_at IS NOT NULL
@@ -377,16 +449,25 @@ class StatisticsController extends Controller
     private function projectsMonthlyStatisticsByCompletionTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('month', p.accepted_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
                AND cv.deleted_at IS NULL
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.accepted_at IS NOT NULL
@@ -404,13 +485,20 @@ class StatisticsController extends Controller
     private function projectsExtendedMonthlyStatisticsByCompletionTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('month', p.accepted_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 tg.tag_id,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
@@ -418,6 +506,8 @@ class StatisticsController extends Controller
             LEFT JOIN taggables tg
                 ON tg.taggable_id = p.id
                 AND tg.taggable_type = 'App\Models\Project'
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.accepted_at IS NOT NULL
@@ -437,16 +527,25 @@ class StatisticsController extends Controller
     private function projectsYearlyStatisticsByCompletionTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('year', p.accepted_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
                AND cv.deleted_at IS NULL
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.accepted_at IS NOT NULL
@@ -465,13 +564,20 @@ class StatisticsController extends Controller
     private function projectsExtendedYearlyStatisticsByCompletionTimeSql(): string
     {
         return <<<EOT
+            WITH project_discounts AS (
+                SELECT project_id, SUM(discount_amount) AS total_discount
+                FROM sub_projects
+                WHERE deleted_at IS NULL
+                GROUP BY project_id
+            )
             SELECT
                 date_trunc('year', p.accepted_at) AS period,
                 COALESCE(cv.type = 'PROJECT_TYPE' AND cv.value = 'ORAL_TRANSLATION', false) AS is_verbal,
                 p.status,
                 tg.tag_id,
                 COUNT(*) AS projects_count,
-                SUM(COALESCE(p.price, 0)) AS total_price
+                SUM(COALESCE(p.price, 0)) AS total_price,
+                COALESCE(SUM(pd.total_discount), 0) AS total_discount
             FROM projects p
             LEFT JOIN cached_classifier_values cv
                 ON cv.id = p.type_classifier_value_id
@@ -479,6 +585,8 @@ class StatisticsController extends Controller
             LEFT JOIN taggables tg
                 ON tg.taggable_id = p.id
                 AND tg.taggable_type = 'App\Models\Project'
+            LEFT JOIN project_discounts pd
+                ON pd.project_id = p.id
             WHERE p.deleted_at IS NULL
                 AND p.institution_id = :institution_id
                 AND p.accepted_at IS NOT NULL
@@ -526,6 +634,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*) AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)          AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)      AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0) AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)      AS volume_pages,
@@ -586,6 +695,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*)                             AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)           AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)       AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0)  AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)       AS volume_pages,
@@ -652,6 +762,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*) AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)          AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)      AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0) AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)      AS volume_pages,
@@ -712,6 +823,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*)                             AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)           AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)       AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0)  AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)       AS volume_pages,
@@ -778,6 +890,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*) AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)          AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)      AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0) AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)      AS volume_pages,
@@ -838,6 +951,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*)                             AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)           AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)       AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0)  AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)       AS volume_pages,
@@ -904,6 +1018,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*) AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)          AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)      AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0) AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)      AS volume_pages,
@@ -964,6 +1079,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*)                             AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)           AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)       AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0)  AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)       AS volume_pages,
@@ -1030,6 +1146,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*) AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)          AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)      AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0) AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)      AS volume_pages,
@@ -1090,6 +1207,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*)                             AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)           AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)       AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0)  AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)       AS volume_pages,
@@ -1156,6 +1274,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*) AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)          AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)      AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0) AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)      AS volume_pages,
@@ -1216,6 +1335,7 @@ class StatisticsController extends Controller
                 sp.status,
                 COUNT(*)                             AS sub_projects_count,
                 COALESCE(SUM(sp.price), 0)           AS total_price,
+                COALESCE(SUM(sp.discount_amount), 0) AS total_discount,
                 COALESCE(SUM(sv.vol_words), 0)       AS volume_words,
                 COALESCE(SUM(sv.vol_characters), 0)  AS volume_characters,
                 COALESCE(SUM(sv.vol_pages), 0)       AS volume_pages,
