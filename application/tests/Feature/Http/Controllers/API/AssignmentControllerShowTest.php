@@ -75,7 +75,6 @@ class AssignmentControllerShowTest extends TestCase
                     'assignee',
                     'candidates',
                     'volumes',
-                    'cat_jobs',
                     'subProject',
                     'outsource_requests',
                 ],
