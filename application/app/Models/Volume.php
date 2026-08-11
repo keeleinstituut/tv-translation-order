@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\VolumeUnits;
 use App\Models\CachedEntities\Institution;
+use App\Models\Dto\VolumeAnalysis;
 use App\Models\Dto\VolumeAnalysisDiscount;
 use App\Services\Prices\VolumePriceCalculator;
 use Eloquent;
@@ -66,6 +67,7 @@ class Volume extends Model
     protected $casts = [
         'unit_type' => VolumeUnits::class,
         'discounts' => AsArrayObject::class,
+        'custom_volume_analysis' => AsArrayObject::class,
         'unit_fee' => 'decimal:3',
         'unit_quantity' => 'decimal:3',
     ];
@@ -109,5 +111,14 @@ class Volume extends Model
     public function getPriceCalculator(): VolumePriceCalculator
     {
         return new VolumePriceCalculator($this);
+    }
+
+    public function getVolumeAnalysis(): ?VolumeAnalysis
+    {
+        if (empty($this->custom_volume_analysis)) {
+            return null;
+        }
+
+        return new VolumeAnalysis((array) $this->custom_volume_analysis);
     }
 }
