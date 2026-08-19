@@ -5,6 +5,7 @@ namespace App\Http\Requests\API;
 use App\Models\Candidate;
 use App\Models\Vendor;
 use App\Policies\VendorPolicy;
+use App\Rules\OutsourcedAssignmentCandidateInstitutionRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use OpenApi\Attributes as OA;
@@ -65,6 +66,16 @@ class AssignmentDeleteCandidateRequest extends FormRequest
                     }
                 },
             ],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            new OutsourcedAssignmentCandidateInstitutionRule(
+                $this->route('id'),
+                'Teostajate haldamiseks eemaldage esmalt päring'
+            ),
         ];
     }
 }

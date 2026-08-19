@@ -9,8 +9,11 @@ use App\Jobs\Workflows\UpdateAssignmentDeadlineInsideWorkflow;
 use App\Models\Assignment;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Candidate;
+use App\Models\Vendor;
+use App\Models\VendorCalendarEntry;
 use App\Models\Volume;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -64,14 +67,20 @@ readonly class AssignmentObserver
             UpdateAssignmentDeadlineInsideWorkflow::dispatch($assignment);
         }
 
-        if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
-            if (filled($manager = $assignment->subProject?->project?->managerInstitutionUser)) {
-                $this->publishTaskAcceptedEmailNotification($assignment, $manager);
-            }
+        if (filled($assignment->assignee) && $assignment->wasChanged(['event_start_at', 'event_end_at', 'deadline_at'])) {
+            $this->publishTaskUpdatedEmailNotification($assignment, $assignment->assignee);
+        }
 
-            if (filled($vendorInstitutionUser = $assignment->assignee?->institutionUser)) {
-                $this->publishTaskAcceptedEmailNotification($assignment, $vendorInstitutionUser);
-            }
+        if (filled($assignment->assigned_vendor_id) && $assignment->wasChanged('assigned_vendor_id')) {
+            $this->publishTaskAcceptedEmailNotification(
+                $assignment,
+                $assignment->subProject?->project?->managerInstitutionUser,
+                true
+            );
+
+//            if (filled($vendorInstitutionUser = $assignment->assignee?->institutionUser)) {
+//                $this->publishTaskAcceptedEmailNotification($assignment, $vendorInstitutionUser);
+//            }
         }
     }
 
@@ -85,6 +94,8 @@ readonly class AssignmentObserver
      */
     public function deleted(Assignment $assignment): void
     {
+        VendorCalendarEntry::where('assignment_id', $assignment->id)->delete();
+
         $assignments = $assignment->getSameJobDefinitionAssignmentsQuery()
             ->orderBy('created_at')
             ->get();
@@ -154,11 +165,15 @@ readonly class AssignmentObserver
     private function updateCachedPrices(Assignment $assignment): void
     {
         // https://github.com/laravel/framework/issues/27138
-        $assignment->price = $assignment->getPriceCalculator()->getPrice();
+        $assignmentCalculator = $assignment->getPriceCalculator();
+        $assignment->price = $assignmentCalculator->getPrice();
+        $assignment->discount_amount = $assignmentCalculator->getDiscountAmount();
         $assignment->saveQuietly();
 
         if (filled($subProject = $assignment->subProject)) {
-            $subProject->price = $subProject->getPriceCalculator()->getPrice();
+            $subProjectCalculator = $subProject->getPriceCalculator();
+            $subProject->price = $subProjectCalculator->getPrice();
+            $subProject->discount_amount = $subProjectCalculator->getDiscountAmount();
             $subProject->saveOrFail();
         }
 
@@ -168,7 +183,7 @@ readonly class AssignmentObserver
         }
     }
 
-    private function setExternalId(Assignment $assignment, int $sequence = null): void
+    private function setExternalId(Assignment $assignment, ?int $sequence = null): void
     {
         $idx = $assignment->jobDefinition?->sequence ?: 0;
         $sequence = is_null($sequence) ? $assignment->getSameJobDefinitionAssignmentsQuery()
@@ -177,23 +192,63 @@ readonly class AssignmentObserver
             ->implode('');
     }
 
-    private function publishTaskAcceptedEmailNotification(Assignment $assignment, InstitutionUser $receiver): void
+    private function publishTaskAcceptedEmailNotification(Assignment $assignment, ?InstitutionUser $receiver, bool $isManager = false): void
     {
-        if (filled($receiver->email) && filled($assignment->subProject?->project?->institution_id)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::TaskAccepted,
-                    'receiver_email' => $receiver->email,
-                    'receiver_name' => $receiver->getUserFullName(),
-                    'variables' => [
-                        'assignment' => $assignment->only('ext_id'),
-                        'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
-                        'vendor' => $assignment->assignee?->only(['company_name']),
-                        'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
-                    ]
-                ]),
-                $assignment->subProject->project->institution_id
-            );
+        $receiverEmail = $receiver?->email;
+        $receiverName = $receiver?->getUserFullName();
+
+        if ($isManager && empty($receiverEmail)) {
+            $institution = $assignment->subProject->project->institution;
+            $receiverEmail = $receiver?->email ?: $institution?->email;
+            $receiverName = $receiver?->getUserFullName() ?: $institution?->name;
+        }
+
+        if (filled($receiverEmail) && filled($assignment->subProject?->project?->institution_id)) {
+            DB::afterCommit(function () use ($assignment, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::TaskAccepted,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'assignment' => $assignment->only('ext_id'),
+                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                            'vendor' => $assignment->assignee?->only(['company_name']),
+                            'user' => ['name' => $assignment->assignee?->institutionUser?->getUserFullName()],
+                        ]
+                    ]),
+                    $assignment->subProject->project->institution_id
+                );
+            });
+        }
+    }
+
+    private function publishTaskUpdatedEmailNotification(Assignment $assignment, Vendor $receiver): void
+    {
+        $receiverEmail = $receiver->institutionUser?->email;
+        $receiverName = $receiver->institutionUser?->getUserFullName();
+
+        if (empty($receiverEmail)) {
+            $institution = $assignment->subProject->project->institution;
+            $receiverEmail = $institution?->email;
+            $receiverName = $institution?->name;
+        }
+
+        if (filled($receiverEmail) && filled($assignment->subProject?->project?->institution_id)) {
+            DB::afterCommit(function () use ($assignment, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::TaskUpdated,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'assignment' => $assignment->only('ext_id'),
+                            'job_definition' => $assignment->jobDefinition?->only('job_short_name'),
+                        ]
+                    ]),
+                    $assignment->subProject->project->institution_id
+                );
+            });
         }
     }
 }

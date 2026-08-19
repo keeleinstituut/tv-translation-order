@@ -13,6 +13,7 @@ use App\Http\Requests\API\WorkflowHistoryTaskListRequest;
 use App\Http\Requests\API\WorkflowTaskListRequest;
 use App\Http\Resources\TaskResource;
 use App\Http\Resources\TaskResource2;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Jobs\NotifyAssignmentCandidatesAboutReviewRejection;
 use App\Jobs\Workflows\TrackProjectStatus;
 use App\Jobs\Workflows\TrackSubProjectStatus;
@@ -37,8 +38,6 @@ use App\Services\Workflows\WorkflowService;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use BadMethodCallException;
-use DB;
-use Gate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
@@ -50,6 +49,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use NotificationClient\Services\NotificationPublisher;
@@ -97,6 +98,7 @@ class WorkflowController extends Controller
                     'assignment.subProject.project.typeClassifierValue',
                     'project',
                     'project.tags',
+                    'project.projectComments',
                     'project.typeClassifierValue',
                     'project.clientInstitutionUser',
                     'project.subProjects.sourceLanguageClassifierValue',
@@ -196,6 +198,7 @@ class WorkflowController extends Controller
                     'assignment.subProject.project.clientInstitutionUser',
                     'assignment.subProject.project.typeClassifierValue',
                     'project',
+                    'project.projectComments',
                     'project.tags',
                     'project.typeClassifierValue',
                     'project.clientInstitutionUser',
@@ -308,7 +311,8 @@ class WorkflowController extends Controller
         // For some reason tasks from camunda are missing project_id when assignment_id is set.
         // Project_id is directly derivable through one-to-one relations between assignment -> subProject -> project.
         $assignments = collect(Assignment::getModel()->with('subProject.project')->whereIn('id', $entities->pluck('var_assignment_id'))->get());
-        $entities = $entities->map(function ($entity) use ($assignments) {;
+        $entities = $entities->map(function ($entity) use ($assignments) {
+            /** @var Assignment $assignment */
             $assignment = $assignments->firstWhere('id', $entity['var_assignment_id']);
             if ($assignment) {
                 $entity['var_project_id'] = $assignment->subProject->project->id;
@@ -409,6 +413,7 @@ class WorkflowController extends Controller
             'subProject.project.helpFiles',
             'subProject.project.sourceFiles',
             'subProject.project.finalFiles',
+            'subProject.project.projectComments',
             'subProject.sourceFiles',
             'subProject.finalFiles.assignment.jobDefinition',
             'subProject.catToolTmKeys',
@@ -574,6 +579,72 @@ class WorkflowController extends Controller
             AuditLogMessageBuilder::makeUsingJWT()
                 ->toAcceptTaskEvent($assignment->id, $assignment->ext_id)
         );
+
+        return TaskResource::make($taskData);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    #[OA\Post(
+        path: '/workflow/tasks/{id}/decline',
+        summary: 'Decline the task as a vendor',
+        tags: ['Workflow'],
+        parameters: [new OAH\UuidPath('id')],
+        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
+    )]
+    #[OAH\ResourceResponse(dataRef: TaskResource::class, description: 'Task resource', response: Response::HTTP_OK)]
+    public function declineTask(Request $request): TaskResource
+    {
+        $taskId = $request->route('id');
+        $taskData = $this->getTaskDataOrFail($taskId);
+
+        if (empty($taskType = TaskType::tryFrom(data_get($taskData, 'variables.task_type')))) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Unknown task type');
+        }
+
+        if ($taskType !== TaskType::Default) {
+            abort(Response::HTTP_BAD_REQUEST, 'Declining of the tasks available only for vendor tasks');
+        }
+
+        $activeVendor = Vendor::withGlobalScope('policy', VendorPolicy::scope())
+            ->where('institution_user_id', Auth::user()->institutionUserId)
+            ->first();
+
+        if (empty($activeVendor)) {
+            abort(Response::HTTP_BAD_REQUEST, 'The active user is not a vendor');
+        }
+
+        /** @var Assignment $assignment */
+        if (empty($assignment = $taskData['assignment'])) {
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Missed assignment for the vendor task');
+        }
+
+        /** @var Candidate $candidate */
+        $candidate = $assignment->candidates()
+            ->where('vendor_id', $activeVendor->id)
+            ->where('status', CandidateStatus::SubmittedToVendor)
+            ->first();
+
+        if (empty($candidate)) {
+            abort(Response::HTTP_BAD_REQUEST, 'The vendor has no pending proposal for this task');
+        }
+
+        DB::transaction(function () use ($candidate) {
+            $candidate = Candidate::lockForUpdate()->find($candidate->id);
+
+            if (!$candidate || $candidate->status !== CandidateStatus::SubmittedToVendor) {
+                return;
+            }
+
+            $candidate->status = CandidateStatus::Declined;
+            $candidate->saveOrFail();
+
+            if ($candidate->assignment->subProject->project->is_calendar_project) {
+                ProcessCandidatesNotificationCycle::dispatch($candidate->assignment)
+                    ->afterCommit();
+            }
+        });
 
         return TaskResource::make($taskData);
     }

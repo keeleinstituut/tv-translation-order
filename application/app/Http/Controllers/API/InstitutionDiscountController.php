@@ -60,7 +60,7 @@ class InstitutionDiscountController extends Controller
         /** @var InstitutionDiscount|null $institutionDiscount */
         $institutionDiscount = $institution->institutionDiscount()->firstOrNew();
 
-        $saveInstitutionDiscount = function (InstitutionDiscount $institutionDiscount) use ($institution, $request): void {
+        $saveInstitutionDiscount = function () use ($institution, $request, $institutionDiscount): void {
             $institutionDiscount->fill([
                 ...$request->validated(),
                 'institution_id' => $institution->id,
@@ -71,7 +71,7 @@ class InstitutionDiscountController extends Controller
         if ($institutionDiscount->exists()) {
             $this->auditLogPublisher->publishModifyObjectAfterAction($institutionDiscount, $saveInstitutionDiscount);
         } else {
-            $saveInstitutionDiscount($institutionDiscount);
+            $saveInstitutionDiscount();
             $this->auditLogPublisher->publishCreateObject($institutionDiscount);
         }
 

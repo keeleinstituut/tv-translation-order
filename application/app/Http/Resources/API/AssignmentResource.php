@@ -7,6 +7,7 @@ use App\Enums\JobKey;
 use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
 
 /**
@@ -39,12 +40,16 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'assignee_comments', type: 'string'),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'updated_at', type: 'string', format: 'date-time'),
-        new OA\Property(property: 'assignee', ref: VendorResource::class),
-        new OA\Property(property: 'job_definition', ref: JobDefinitionResource::class),
-        new OA\Property(property: 'candidates', type: 'array', items: new OA\Items(ref: VendorResource::class)),
+        new OA\Property(property: 'job_definition', ref: JobDefinitionResource::class, nullable: true),
+        new OA\Property(property: 'assignee', ref: VendorResource::class, nullable: true),
+        new OA\Property(property: 'candidates', type: 'array', items: new OA\Items(ref: CandidateResource::class), nullable: true),
+        new OA\Property(property: 'volumes', type: 'array', items: new OA\Items(ref: VolumeResource::class), nullable: true),
+        new OA\Property(property: 'cat_jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class), nullable: true),
+        new OA\Property(property: 'subProject', ref: SubProjectResource::class, nullable: true),
+        new OA\Property(property: 'outsource_requests', type: 'array', items: new OA\Items(ref: OutsourceRequestResource::class)),
         new OA\Property(property: 'manager_candidates', type: 'array', items: new OA\Items(ref: ProjectManagerCandidateResource::class)),
-        new OA\Property(property: 'volumes', type: 'array', items: new OA\Items(ref: VolumeResource::class)),
-        new OA\Property(property: 'jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class)),
+        new OA\Property(property: 'can_download_xliff', type: 'boolean'),
+        new OA\Property(property: 'can_download_translations', type: 'boolean'),
     ],
     type: 'object'
 )]
@@ -57,6 +62,8 @@ class AssignmentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $subProject = $this->relationLoaded('subProject') ? $this->subProject : null;
+
         return [
             ...$this->only(
                 'id',
@@ -77,12 +84,15 @@ class AssignmentResource extends JsonResource
             'volumes' => VolumeResource::collection($this->whenLoaded('volumes')),
             'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
             'subProject' => SubProjectResource::make($this->whenLoaded('subProject')),
+            'outsource_requests' => OutsourceRequestResource::collection($this->whenLoaded('outsourceRequests')),
             // Done in this way as we're expecting that in the future multiple PMs can be candidates for review tasks.
             'manager_candidates' => [
                 ProjectManagerCandidateResource::make(
-                    $this->when($this->jobDefinition->job_key === JobKey::JOB_OVERVIEW, $this)
+                    $this->when($this->jobDefinition?->job_key === JobKey::JOB_OVERVIEW, $this)
                 )
             ],
+            'can_download_xliff' => $subProject && Gate::forUser($request->user())->allows('downloadXliff', $subProject),
+            'can_download_translations' => $subProject && Gate::forUser($request->user())->allows('downloadTranslations', $subProject),
         ];
     }
 }

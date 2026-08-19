@@ -32,6 +32,11 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'prices', type: 'array', items: new OA\Items(ref: PriceResource::class)),
         new OA\Property(property: 'institution_user', ref: InstitutionUserResource::class, type: 'object'),
         new OA\Property(property: 'tags', type: 'array', items: new OA\Items(ref: TagResource::class)),
+        new OA\Property(
+            property: 'emergency_schedules',
+            type: 'array',
+            items: new OA\Items(ref: VendorEmergencyScheduleResource::class)
+        ),
     ],
     type: 'object'
 )]
@@ -48,13 +53,15 @@ class VendorResource extends JsonResource
             'id' => $this->id,
             'institution_user_id' => $this->institution_user_id,
             'company_name' => $this->company_name,
+            'is_internal' => $this->is_internal,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'comment' => $this->comment,
             ...$this->discounts(),
             'prices' => PriceResource::collection($this->whenLoaded('prices')),
-            'institution_user' => new InstitutionUserResource($this->whenLoaded('institutionUser')),
+            'institution_user' => InstitutionUserResource::make($this->whenLoaded('institutionUser')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
+            'emergency_schedules' => VendorEmergencyScheduleResource::collection($this->whenLoaded('emergencySchedules')),
         ];
     }
 

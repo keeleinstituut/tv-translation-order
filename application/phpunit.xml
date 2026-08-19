@@ -18,6 +18,7 @@
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
@@ -28,11 +29,12 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
 
         <env name="DB_CONNECTION" value="pgsql" />
+        <env name="DB_HOST" value="127.0.0.1" />
 
         <env name="KEYCLOAK_BASE_URL" value="https://sso.dev.tolkevarav.eki.ee" />
         <env name="REALM_PUBLIC_KEY_RETRIEVAL_MODE" value="config" />
-        <env name="KEYCLOAK_REALM_PUBLIC_KEY" value="MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDOk1X/mSqKfI67jPLqk13xDpjznlCAbJO/DgWbabgdnkg1KI4YpImbHZk/8DckXnGAyCHjZJTnVtKJ51ljT3VwN6kwSiTGHWr8u9VKilf7UM9lj5cCIjS6tRFGxH4iOig50HfdWO9lx+m/E/Q+XmIXDJMH8WTXhxgR+WPg9V2s9wIDAQAB" />
-        <env name="KEYCLOAK_REALM_PRIVATE_KEY" value="MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAM6TVf+ZKop8jruM8uqTXfEOmPOeUIBsk78OBZtpuB2eSDUojhikiZsdmT/wNyRecYDIIeNklOdW0onnWWNPdXA3qTBKJMYdavy71UqKV/tQz2WPlwIiNLq1EUbEfiI6KDnQd91Y72XH6b8T9D5eYhcMkwfxZNeHGBH5Y+D1Xaz3AgMBAAECgYAc6ehulyyqJ5b+z1Ks3KWYePeVmcIgx5HCex7zys9XbfEjZ6LD9jvAd1sc5O2C7KksYlbD8i8ZVkCvxq7vRI7mPog9LzhNiZvhvT1Y/H6vwVBgkwAg9f/5iv5czjjtN66pVpGIKTJJhZo9J2vJ14CdSahiekocFX+TOJVfhlLSKQJBAPdbSSL7NdgcvDg3jA/mhXeypTN2Yw5HHGJ2gJUYik0kv8f7JEjZq+T3hjssMWeIaIkcxILwzN74zr9y4iSziZsCQQDVyz7iBUo5YJPtfyaNNN14b3ImsSFK/hGq0wrSje+mzOp+9dK+6noCGSHxnwTATizt2zsRco1VN4zmJR/d2v3VAkEA5isccB+f59w9THZrr3QLJ+mlDbEQ1X1YLUsltRcjwkr65iSMi/l4mVO2pSMnSbbFxyhst4dIrAaLo9xMEGi8FwJBAM+OfyEc859apKKYo8vI/A41XAQ2SNUubeaC9unNRFGSdUIG06/nocWxsqOJtyofezz8bo8UwCNwR8kTV6miNnUCQA95n5pY07ahQgxPpaOp0d2rOrfTodVPZGmv+r6EeiKDgTgdTcnmNTerQ2+JZwhExU9W0oOXe2iEUdfGM2ewZgY=" />
+        <env name="KEYCLOAK_REALM_PUBLIC_KEY" value="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtNc8IJckGxhiouvHsIaJ+BAUmXGmgXKKW0JEYO7lO3S/P3JRxS/kS5ZbStgO1JQmMDPDlvOWHdOSboTcP+yJM/CRo0AKTGtXZL2wjSJ54OhjMAhc7cTuI6w9R5rPgrRAfljJeWqy+3hJMbT0yi1ZLWWqKRszjc7KjK1lNjUKLtrlhbplERaDFV/AYS7P+1OF3EdXB9Q09eQH26Jb53Jq/Oymg+RDh+0CS+lgS/I1KVOXWWuAKLX+r7yizTRe5BTh3Ay/tPKKsiHqqKt5kikZ+r7hh23irF2VGwXtMyy0CwssAjdoaoBt+/1hoIiZloy9tZ+4r0J+o96QImT+FJD8eQIDAQAB" />
+        <env name="KEYCLOAK_REALM_PRIVATE_KEY" value="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC01zwglyQbGGKi68ewhon4EBSZcaaBcopbQkRg7uU7dL8/clHFL+RLlltK2A7UlCYwM8OW85Yd05JuhNw/7Ikz8JGjQApMa1dkvbCNInng6GMwCFztxO4jrD1Hms+CtEB+WMl5arL7eEkxtPTKLVktZaopGzONzsqMrWU2NQou2uWFumURFoMVX8BhLs/7U4XcR1cH1DT15Afbolvncmr87KaD5EOH7QJL6WBL8jUpU5dZa4Aotf6vvKLNNF7kFOHcDL+08oqyIeqoq3mSKRn6vuGHbeKsXZUbBe0zLLQLCywCN2hqgG37/WGgiJmWjL21n7ivQn6j3pAiZP4UkPx5AgMBAAECggEAI9ul1YSCqUi9jjaYYv1acDCoFQD/Fh3jJ1NNgbb9BzwQDAGcCzCC4SYQNhf/YNF7fQVWnCDyvDlOiNGZZqd9USo7hpZVNG/4ZUZjsqiKaDlMKaMO4iqxWat2fzNIQE+Dlkn+sS+iC9D/GncaLtitHR5SjlIRd+XwLdLYBdagjUeOKZukJa1uyaLlYjLtoZbJ2iYMeGvW2duN/0N+6zo1EK6+5aljdy8rgbHA0WXb27+69AdWwc7mfOr7YVnPryYcMXVrskeqHgUpDbtqdpTnABR4vk2fFSfvF+ukym7/AgRiB4yazR0YH7i7RgqK03m9URFk3CUc8+XY/X6p1SVHXQKBgQD2nq0sjoJLS/wLlVozNcDzcceHx99jErltrNWQ6P7i1YPl8gh37Ixjr2O/RI8vvrT2xjDYZ1YmtW2DSSSWRqGEjGbpzhwocTjQ4lUjY7Bn0T1cWuMoDt5DvDOIuIFHHWzR6xXdrjnRo2x/iS/3nFd0AYLfaOdDE9S8oPRee/LZjwKBgQC7uBI/wNvMUovarV5MWL37Vr4CddRUU4bM8/dmc4FqHSErztL3n/mEN1ujcu9RlX6j9969ZxOtllKpyGWTciJ4VAJSzgxBUlHc+6fUyvDBWeEqqE8hFCY/8FmeQeYVQ3F5g1R6m1b0+rfyuO2lMCet67EXfwOG4AYa6TS/wAj1dwKBgQChV1/d5YGSNyy2e0gedo079vTdfMJFM4vCF69EdVnDFoKK3dPyePvDf4vXJsgyKSaEx1ZPTROMkWcK28Am3CBw8dWmIiRDxQaxiVC/rUlMMhRdpkwz+b4pPCfOyz4wQyzdDFoqw/+piavCqAKMkGiaSR7Qf/XD6WZk3Tvh0F8pOwKBgC8cB8BmJwME6EIt5g9k6fCsmSzG401yVM8Uns7gR+cYfl2fHwSz6guLVP0U+AhSayC9MPH5b0/N/NrNBujU6N+nvZmISj0Oaqr5oOnfMEJlywNIj+suQlcje2ojAZnufgjPs6C9YTpDvWw1irY8+ohEMQJDhuAPUpjoU6uXhugLAoGAFYMzd1+djV6ca6hbvd0C74B/t5JQjIoID3+21cLSmMtasNH1KN03vN97iV5rtXdLBWuTxfiSiJimOf0NQ47H8iuWIz3WyrBn7z6v0IsVyGNTKwZ8JhyuReJO7oO0PiD3XcrbgWfgobkcYqgnkX/zOtElu7waZnIHmqA/OxdgKEQ=" />
         <env name="ACCEPTED_AUTHORIZED_PARTIES" value="tolkevarav-web-dev" />
         <env name="KEYCLOAK_REALM" value="tolkevarav-dev" />
         <env name="KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID" value="tv-translation-order-service" />
@@ -45,7 +47,7 @@
         <env name="EMAIL_NOTIFICATION_EXCHANGE" value="tv-notification.email" />
         <env name="CAMUNDA_API_URL" value="http://process-definition" />
 
-        <env name="AMQP_HOST" value="rabbitmq" />
+        <env name="AMQP_HOST" value="127.0.0.1" />
         <env name="AMQP_PORT" value="5672" />
         <env name="AMQP_USER" value="guest" />
         <env name="AMQP_PASSWORD" value="guest" />

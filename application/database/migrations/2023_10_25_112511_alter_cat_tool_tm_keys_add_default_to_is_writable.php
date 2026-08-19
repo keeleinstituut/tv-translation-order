@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('cat_tool_tm_keys', function (Blueprint $table) {
-            $table->boolean('is_writable')->default(false)->change();
+            $table->boolean('is_writable')->default(false)->nullable(false)->change();
         });
     }
 

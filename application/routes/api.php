@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\API;
 use App\Http\Controllers\TagController;
-use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -34,23 +33,119 @@ Route::prefix('/tags')
 // Only GET endpoints are allowed for read-only access.
 Route::get('/classifier-values', [API\ClassifierValueController::class, 'index'])->name('translation-order.classifier_values.index');
 Route::get('/institution-users', [API\InstitutionUserController::class, 'index'])->name('translation-order.institution_users.index');
+Route::get('/institution-users/{institution_user_id}/vendor', [API\InstitutionUserController::class, 'vendor'])->whereUuid('institution_user_id')->name('translation-order.institution_users.vendor');
 
 Route::get('/institution-discounts', [API\InstitutionDiscountController::class, 'show'])->name('translation-order.institution_discounts.index');
 Route::put('/institution-discounts', [API\InstitutionDiscountController::class, 'store'])->name('translation-order.institution_discounts.store');
 
+Route::get('/institutions/main-languages', [API\InstitutionMainLanguageController::class, 'index'])->name('translation-order.institutions.mainLanguages.index');
+Route::post('/institutions/main-languages', [API\InstitutionMainLanguageController::class, 'sync'])->name('translation-order.institutions.syncMainLanguages');
+Route::post('/institution-users/pinned-languages', [API\InstitutionUserController::class, 'pinLanguage'])->name('translation-order.institution_users.pinLanguage');
+Route::delete('/institution-users/pinned-languages', [API\InstitutionUserController::class, 'unpinLanguage'])->name('translation-order.institution_users.unpinLanguage');
+
 Route::get('/skills', [API\SkillController::class, 'index'])->name('translation-order.skills.index');
 
+Route::prefix('calendar')->group(function () {
+    Route::get('languages', [API\CalendarLanguageController::class, 'languages'])->name('translation-order.calendar.languages');
+    Route::get('day', [API\CalendarDayController::class, 'index'])->name('translation-order.calendar.day');
+    Route::get('week', [API\CalendarWeekController::class, 'index'])->name('translation-order.calendar.week');
+    Route::get('month', [API\CalendarMonthController::class, 'index'])->name('translation-order.calendar.month');
+    Route::get('vendor-entries', [API\VendorCalendarEntryController::class, 'index'])->name('translation-order.calendar.vendor_entries.index');
+    Route::post('vendor-entries', [API\VendorCalendarEntryController::class, 'store'])->name('translation-order.calendar.vendor_entries.store');
+    Route::delete('vendor-entries/{entry}', [API\VendorCalendarEntryController::class, 'destroy'])->whereUuid('entry')->name('translation-order.calendar.vendor_entries.destroy');
+    Route::post('prebook', [API\CalendarPrebookController::class, 'prebook'])->name('translation-order.calendar.prebook');
+    Route::delete('prebook', [API\CalendarPrebookController::class, 'cancelPrebook'])->name('translation-order.calendar.prebook.cancel');
+    Route::get('import', [API\CalendarImportController::class, 'index'])->name('translation-order.calendar.import.index');
+    Route::post('import', [API\CalendarImportController::class, 'store'])->name('translation-order.calendar.import');
+    Route::delete('import/bulk', [API\CalendarImportController::class, 'bulkDestroy'])->name('translation-order.calendar.import.bulkDestroy');
+    Route::get('search', [API\CalendarSearchController::class, 'search'])->name('translation-order.calendar.search');
+    Route::get('slot-matching/vendors', [API\CalendarSlotMatchingController::class, 'vendors'])->name('translation-order.calendar.slot-matching.vendors');
+});
+
+Route::get('/institution/settings', [API\InstitutionSettingController::class, 'show'])->name('translation-order.institution.settings.show');
+Route::put('/institution/settings', [API\InstitutionSettingController::class, 'store'])->name('translation-order.institution.settings.store');
+
 Route::get('/vendors', [API\VendorController::class, 'index'])->name('translation-order.vendors.index');
+Route::get('/vendors/{vendor}/calendar', [API\VendorCalendarController::class, 'index'])->whereUuid('vendor')->name('translation-order.vendors.calendar');
 Route::get('/vendors/{id}', [API\VendorController::class, 'show'])->name('translation-order.vendors.show');
 Route::put('/vendors/{id}', [API\VendorController::class, 'update'])->name('translation-order.vendors.update');
 Route::post('/vendors/bulk', [API\VendorController::class, 'bulkCreate'])->name('translation-order.vendors.bulkCreate');
 Route::delete('/vendors/bulk', [API\VendorController::class, 'bulkDestroy'])->name('translation-order.vendors.bulkDestroy');
+
+Route::prefix('/vendors/{vendor}/emergency-schedules')
+    ->controller(API\VendorEmergencyScheduleController::class)
+    ->whereUuid('vendor')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.vendor_emergency_schedules.index');
+        Route::post('/', 'store')->name('translation-order.vendor_emergency_schedules.store');
+        Route::delete('/{emergency_schedule}', 'destroy')
+            ->whereUuid('emergency_schedule')
+            ->name('translation-order.vendor_emergency_schedules.destroy');
+    });
 
 Route::get('/prices', [API\PriceController::class, 'index'])->name('translation-order.prices.index');
 Route::post('/prices', [API\PriceController::class, 'store'])->name('translation-order.prices.store');
 Route::post('/prices/bulk', [API\PriceController::class, 'bulkStore'])->name('translation-order.prices.bulkStore');
 Route::put('/prices/bulk', [API\PriceController::class, 'bulkUpdate'])->name('translation-order.prices.bulkUpdate');
 Route::delete('/prices/bulk', [API\PriceController::class, 'bulkDestroy'])->name('translation-order.prices.bulkDestroy');
+
+Route::get('/vendor-skill-languages', [API\VendorSkillLanguageController::class, 'index'])->name('translation-order.vendor_skill_languages.index');
+Route::post('/vendor-skill-languages', [API\VendorSkillLanguageController::class, 'store'])->name('translation-order.vendor_skill_languages.store');
+Route::post('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkStore'])->name('translation-order.vendor_skill_languages.bulkStore');
+Route::put('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkUpdate'])->name('translation-order.vendor_skill_languages.bulkUpdate');
+Route::delete('/vendor-skill-languages/bulk', [API\VendorSkillLanguageController::class, 'bulkDestroy'])->name('translation-order.vendor_skill_languages.bulkDestroy');
+
+Route::get('/institution-prices', [API\InstitutionPriceController::class, 'index'])->name('translation-order.institution_prices.index');
+Route::post('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkStore'])->name('translation-order.institution_prices.bulkStore');
+Route::put('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkUpdate'])->name('translation-order.institution_prices.bulkUpdate');
+Route::delete('/institution-prices/bulk', [API\InstitutionPriceController::class, 'bulkDestroy'])->name('translation-order.institution_prices.bulkDestroy');
+
+Route::get('/institutions', [API\InstitutionController::class, 'index'])->name('translation-order.institutions.index');
+
+Route::prefix('/institution-partners')
+    ->controller(API\InstitutionPartnerController::class)
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.institution_partners.index');
+        Route::post('/', 'store')->name('translation-order.institution_partners.store');
+        Route::post('/bulk', 'bulkCreate')->name('translation-order.institution_partners.bulkCreate');
+        Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partners.bulkDestroy');
+        Route::get('/{id}', 'show')->whereUuid('id')->name('translation-order.institution_partners.show');
+        Route::put('/{id}', 'update')->whereUuid('id')->name('translation-order.institution_partners.update');
+        Route::delete('/{id}', 'destroy')->whereUuid('id')->name('translation-order.institution_partners.destroy');
+    });
+
+Route::prefix('/institution-partner-prices')
+    ->controller(API\InstitutionPartnerPriceController::class)
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.institution_partner_prices.index');
+        Route::post('/', 'store')->name('translation-order.institution_partner_prices.store');
+        Route::post('/bulk', 'bulkStore')->name('translation-order.institution_partner_prices.bulkStore');
+        Route::put('/bulk', 'bulkUpdate')->name('translation-order.institution_partner_prices.bulkUpdate');
+        Route::delete('/bulk', 'bulkDestroy')->name('translation-order.institution_partner_prices.bulkDestroy');
+    });
+
+Route::prefix('/outsource-requests')
+    ->controller(API\OutsourceRequestController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.outsource_requests.index');
+        Route::post('/', 'store')->name('translation-order.outsource_requests.store');
+        Route::put('/preview-prices', 'previewPrices')->name('translation-order.outsource_requests.previewPrices');
+        Route::get('/{id}', 'show')->name('translation-order.outsource_requests.show');
+        Route::put('/{id}', 'update')->name('translation-order.outsource_requests.update');
+        Route::post('/{id}/cancel', 'cancel')->name('translation-order.outsource_requests.cancel');
+        Route::post('/{id}/select', 'select')->name('translation-order.outsource_requests.select');
+    });
+
+Route::prefix('/outsource-offers')
+    ->controller(API\OutsourceOfferController::class)
+    ->whereUuid('id')
+    ->group(function (): void {
+        Route::get('/', 'index')->name('translation-order.outsource_offers.index');
+        Route::get('/{id}', 'show')->name('translation-order.outsource_offers.show');
+        Route::post('/{id}/accept', 'accept')->name('translation-order.outsource_offers.accept');
+        Route::post('/{id}/decline', 'decline')->name('translation-order.outsource_offers.decline');
+    });
 
 Route::prefix('/projects')
     ->controller(API\ProjectController::class)
@@ -60,7 +155,18 @@ Route::prefix('/projects')
         Route::get('/{id}', [API\ProjectController::class, 'show'])->name('translation-order.projects.show');
         Route::put('/{id}', [API\ProjectController::class, 'update'])->name('translation-order.projects.update');
         Route::post('/{id}/cancel', [API\ProjectController::class, 'cancel'])->name('translation-order.projects.cancel');
+        Route::post('/{id}/cancel-decline', [API\ProjectController::class, 'declineCancellation'])->name('translation-order.projects.cancel-decline');
         Route::get('/export-csv', [API\ProjectController::class, 'exportCsv'])->name('translation-order.projects.exportCsv');
+
+        Route::post('/{project}/comments', [API\ProjectCommentController::class, 'store'])
+            ->whereUuid('project')
+            ->name('translation-order.project_comments.store');
+        Route::put('/{project}/comments/{comment}', [API\ProjectCommentController::class, 'update'])
+            ->whereUuid(['project', 'comment'])
+            ->name('translation-order.project_comments.update');
+        Route::delete('/{project}/comments/{comment}', [API\ProjectCommentController::class, 'destroy'])
+            ->whereUuid(['project', 'comment'])
+            ->name('translation-order.project_comments.destroy');
     });
 
 Route::prefix('/subprojects')
@@ -72,6 +178,7 @@ Route::prefix('/subprojects')
         Route::put('/{id}', 'update')->name('translation-order.subprojects.update');
         Route::post('/{id}/set-project-final-files', 'setProjectFinalFiles')->name('translation-order.subprojects.setProjectFinalFiles');
         Route::get('/languages', 'getLanguageCombinations')->name('translation-order.subprojects.getLanguageCombinations');
+        Route::get('/{id}/assignments', 'assignments')->name('translation-order.assignments.index');
     });
 
 Route::prefix('/cat-tool')
@@ -98,6 +205,20 @@ Route::prefix('/tm-keys')
         Route::post('/{sub_project_id}', 'create')->name('translation-order.cat_tool_tm_keys.create');
     });
 
+Route::prefix('/catv2')
+    ->controller(API\CatV2Controller::class)
+    ->whereUuid('translation_memory_id')
+    ->group(function (): void {
+        Route::get('/translation-memories', 'translationMemoryIndex')->name('translation-memory.tags.index');
+        Route::post('/translation-memories', 'translationMemoryStore')->name('translation-memory.tags.create');
+        Route::get('/translation-memories/{translation_memory_id}', 'translationMemoryShow')->name('translation-memory.tags.show');
+        Route::put('/translation-memories/{translation_memory_id}', 'translationMemoryUpdate')->name('translation-memory.tags.update');
+        Route::delete('/translation-memories/{translation_memory_id}', 'translationMemoryDestroy')->name('translation-memory.tags.destroy');
+        Route::post('/translation-memories/import', 'translationMemoryImport')->name('translation-memory.tm.import');
+        Route::post('/translation-memories/export', 'translationMemoryExport')->name('translation-memory.tm.export');
+        Route::get('/translation-memories/content-checks', 'translationMemoryContentCheckIndex')->name('translation-memory.content-checks.index');
+    });
+
 Route::prefix('/volumes')
     ->controller(API\VolumeController::class)
     ->whereUuid('id')->group(function (): void {
@@ -111,7 +232,7 @@ Route::prefix('/volumes')
 Route::prefix('/assignments')
     ->controller(API\AssignmentController::class)
     ->whereUuid('id')->group(function (): void {
-        Route::get('/{sub_project_id}', 'index')->name('translation-order.assignments.index');
+        Route::get('/{id}', 'show')->name('translation-order.assignments.show');
         Route::post('/link-cat-tool-jobs', 'linkToCatToolJobs')->name('translation-order.assignments.linkToCatToolJobs');
         Route::post('/', 'store')->name('translation-order.assignments.store');
         Route::put('/{id}', 'update')->name('translation-order.assignments.update');
@@ -130,6 +251,7 @@ Route::prefix('/workflow')
         Route::get('/tasks/{id}', [API\WorkflowController::class, 'getTask'])->name('translation-order.workflow.getTask');
         Route::post('/tasks/{id}/complete', [API\WorkflowController::class, 'completeTask'])->name('translation-order.workflow.completeTask');
         Route::post('/tasks/{id}/accept', [API\WorkflowController::class, 'acceptTask'])->name('translation-order.workflow.acceptTask');
+        Route::post('/tasks/{id}/decline', [API\WorkflowController::class, 'declineTask'])->name('translation-order.workflow.declineTask');
         Route::get('/history/tasks', [API\WorkflowController::class, 'getHistoryTasks'])->name('translation-order.workflow.getHistoryTasks');
         Route::get('/history/tasks2', [API\WorkflowController::class, 'getHistoryTasks2'])->name('translation-order.workflow.getHistoryTasks2');
         Route::get('/history/tasks/{id}', [API\WorkflowController::class, 'getHistoryTask'])->name('translation-order.workflow.getHistoryTask');
@@ -150,3 +272,5 @@ Route::prefix('/media')
 //Route::get('/cat/urls/revise/{project_id}', []);
 // ??
 Route::get('/redirect', [API\RedirectController::class, '__invoke']);
+
+Route::get('/statistics', API\StatisticsController::class)->name('translation-order.statistics.index');

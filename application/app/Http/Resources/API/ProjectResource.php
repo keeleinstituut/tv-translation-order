@@ -3,6 +3,7 @@
 namespace App\Http\Resources\API;
 
 use App\Enums\ProjectStatus;
+use App\Enums\ServiceType;
 use App\Http\Resources\MediaResource;
 use App\Http\Resources\TagResource;
 use App\Models\Project;
@@ -33,21 +34,26 @@ use OpenApi\Attributes as OA;
         'sub_project_ids',
         'source_files',
         'help_files',
-        'final_files',
         'tags',
         'source_language_classifier_value',
         'destination_language_classifier_values',
         'status',
-        'cost',
     ],
     properties: [
         new OA\Property(property: 'id', type: 'string', format: 'uuid'),
         new OA\Property(property: 'ext_id', type: 'string'),
         new OA\Property(property: 'reference_number', type: 'string', nullable: true),
         new OA\Property(property: 'institution_id', type: 'string', format: 'uuid'),
-        new OA\Property(property: 'comments', type: 'string', nullable: true),
+        new OA\Property(property: 'comments', type: 'string', nullable: true, deprecated: true),
+        new OA\Property(property: 'project_comments', type: 'array', items: new OA\Items(ref: ProjectCommentResource::class)),
         new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time'),
         new OA\Property(property: 'event_start_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'event_end_at', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'is_calendar_project', type: 'boolean'),
+        new OA\Property(property: 'use_external_vendor', type: 'boolean'),
+        new OA\Property(property: 'service_type', type: 'string', enum: ServiceType::class, nullable: true),
+        new OA\Property(property: 'meeting_link', type: 'string', nullable: true),
+        new OA\Property(property: 'location', type: 'string', nullable: true),
         new OA\Property(property: 'corrected_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'accepted_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'cancelled_at', type: 'string', format: 'date-time', nullable: true),
@@ -66,7 +72,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'source_language_classifier_value', ref: ClassifierValueResource::class),
         new OA\Property(property: 'destination_languages_classifier_values', type: 'array', items: new OA\Items(ref: ClassifierValueResource::class)),
         new OA\Property(property: 'status', type: 'string', enum: ProjectStatus::class),
-        new OA\Property(property: 'cost', description: 'TODO (computation/enumeration of costs is unclear for now)', anyOf: [new OA\Schema(const: null)]),
+        new OA\Property(property: 'price', type: 'number', format: 'double', nullable: true),
     ],
     type: 'object'
 )]
@@ -79,6 +85,8 @@ class ProjectResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $user = $request->user();
+        $isInSameInstitutionAsProject = $user->isInSameInstitutionAsProject($this->resource);
         return [
             ...$this->only(
                 'id',
@@ -88,29 +96,56 @@ class ProjectResource extends JsonResource
                 'comments',
                 'workflow_template_id',
                 'workflow_instance_ref',
-                'price',
                 'status',
                 'deadline_at',
                 'event_start_at',
+                'event_end_at',
+                'is_calendar_project',
+                'use_external_vendor',
+                'service_type',
+                'meeting_link',
+                'location',
                 'corrected_at',
                 'rejected_at',
                 'accepted_at',
                 'cancelled_at',
+                'cancellation_pending_at',
+                'cancel_at',
                 'created_at',
                 'updated_at',
             ),
             'manager_institution_user' => InstitutionUserResource::make($this->whenLoaded('managerInstitutionUser')),
-            'client_institution_user' => InstitutionUserResource::make($this->whenLoaded('clientInstitutionUser')),
             'type_classifier_value' => ClassifierValueResource::make($this->whenLoaded('typeClassifierValue')),
             'translation_domain_classifier_value' => ClassifierValueResource::make($this->whenLoaded('translationDomainClassifierValue')),
-            'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
-            'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
-            'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
-            'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
-            'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
-            'sub_projects' => SubProjectResource::collection($this->whenLoaded('subProjects')),
-            'workflow_started' => $this->workflow()->isStarted()
+            'sub_projects' => $this->whenLoaded('subProjects', function ($subProjects) use ($user, $isInSameInstitutionAsProject) {
+                if (!$isInSameInstitutionAsProject && $user->hasActivePartnerAccessToProject($this->resource)) {
+                    $subProjects = $subProjects->filter(
+                        fn ($sp) => $user->hasActivePartnerAccessToSubProject($sp)
+                    );
+                }
+                return SubProjectResource::collection($subProjects);
+            }),
+            'workflow_started' => $this->workflow()->isStarted(),
+            $this->mergeWhen($isInSameInstitutionAsProject, [
+                'client_institution_user' => InstitutionUserResource::make($this->whenLoaded('clientInstitutionUser')),
+                'review_files' => MediaResource::collection($this->whenLoaded('reviewFiles')),
+                'price' => $this->price,
+                'reviews' => ProjectReviewRejectionResource::collection($this->whenLoaded('reviewRejections')),
+            ]),
+            $this->mergeWhen($isInSameInstitutionAsProject || $user->hasActivePartnerAccessToProject($this->resource), [
+                'project_comments' => ProjectCommentResource::collection($this->whenLoaded('projectComments')),
+                'final_files' => MediaResource::collection($this->whenLoaded('finalFiles')),
+            ]),
+            $this->mergeWhen(
+                $isInSameInstitutionAsProject
+                || $user->hasActivePartnerAccessToProject($this->resource)
+                || $user->hasSharedPartnerAccessToProject($this->resource, true),
+                [
+                'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
+                'help_files' => MediaResource::collection($this->whenLoaded('helpFiles')),
+                ]
+            ),
         ];
     }
 }

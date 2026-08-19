@@ -67,11 +67,15 @@ class VolumeObserver
     private function updateCachedPrices(Volume $volume): void
     {
         if (filled($assignment = $volume->assignment)) {
-            $assignment->price = $assignment->getPriceCalculator()->getPrice();
+            $assignmentCalculator = $assignment->getPriceCalculator();
+            $assignment->price = $assignmentCalculator->getPrice();
+            $assignment->discount_amount = $assignmentCalculator->getDiscountAmount();
             $assignment->saveOrFail();
 
             if (filled($subProject = $assignment->subProject)) {
-                $subProject->price = $subProject->getPriceCalculator()->getPrice();
+                $subProjectCalculator = $subProject->getPriceCalculator();
+                $subProject->price = $subProjectCalculator->getPrice();
+                $subProject->discount_amount = $subProjectCalculator->getDiscountAmount();
                 $subProject->saveOrFail();
             }
 

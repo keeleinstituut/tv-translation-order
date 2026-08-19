@@ -31,7 +31,18 @@ class TagController extends Controller
         summary: 'List tags of current institution, optionally filtering by type (institution inferrred from JWT)',
         tags: ['Tag management'],
         parameters: [
-            new OA\QueryParameter(name: 'type', schema: new OA\Schema(enum: TagType::class, nullable: true)),
+            new OA\QueryParameter(
+                name: 'type',
+                description: 'Filter by tag type. Pass a single value (e.g. `?type=Tellimus`) or multiple values (e.g. `?type[]=Tellimus&type[]=Valdkond`).',
+                schema: new OA\Schema(nullable: true, oneOf: [
+                    new OA\Schema(enum: TagType::class),
+                    new OA\Schema(type: 'array', items: new OA\Items(enum: TagType::class)),
+                ]),
+                examples: [
+                    new OA\Examples(example: 'single_type', summary: 'Single type', value: 'Tellimus'),
+                    new OA\Examples(example: 'multiple_types', summary: 'Multiple types', value: ['Tellimus', 'Valdkond']),
+                ]
+            ),
         ],
         responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
     )]
@@ -41,7 +52,10 @@ class TagController extends Controller
         $this->authorize('viewAny', Tag::class);
 
         $tagsQuery = $this->getBaseQuery();
-        if ($type = $request->validated('type')) {
+        $type = $request->validated('type');
+        if (is_array($type)) {
+            $tagsQuery->whereIn('type', $type);
+        } elseif (filled($type)) {
             $tagsQuery->where('type', $type);
         }
 

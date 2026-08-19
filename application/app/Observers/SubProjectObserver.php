@@ -4,12 +4,15 @@ namespace App\Observers;
 
 use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
-use App\Jobs\NotifyAssignmentCandidatesAboutNewTask;
+use App\Enums\OutsourceRequestStatus;
+use App\Enums\SubProjectStatus;
+use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Models\Assignment;
 use App\Models\SubProject;
 use AuditLogClient\Services\AuditLogMessageBuilder;
 use AuditLogClient\Services\AuditLogPublisher;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use NotificationClient\DataTransferObjects\EmailNotificationMessage;
 use NotificationClient\Enums\NotificationType;
 use NotificationClient\Services\NotificationPublisher;
@@ -48,7 +51,7 @@ class SubProjectObserver
     public function updating(SubProject $subProject): void
     {
         if ($subProject->isDirty('status')) {
-            if (Auth::check()) {
+            if (Auth::guard('api')->check()) {
                 $this->auditLogPublisher->publish(
                     AuditLogMessageBuilder::makeUsingJWT()
                         ->toModifyObjectEventComputingDiff(
@@ -84,7 +87,7 @@ class SubProjectObserver
                         $assignment->status = AssignmentStatus::InProgress;
                         $assignment->saveOrFail();
 
-                        NotifyAssignmentCandidatesAboutNewTask::dispatch($assignment);
+                        ProcessCandidatesNotificationCycle::dispatch($assignment);
                     });
 
                 if ($subProject->activeJobDefinition->job_key === JobKey::JOB_OVERVIEW) {
@@ -101,6 +104,20 @@ class SubProjectObserver
                 } elseif ($assignment->deadline_at > $subProject->deadline_at) {
                     $assignment->deadline_at = $subProject->deadline_at;
                     $assignment->saveOrFail();
+                }
+            });
+        }
+
+        if ($subProject->wasChanged('status') && $subProject->status === SubProjectStatus::Cancelled) {
+            $subProject->assignments->each(function (Assignment $assignment) use ($subProject) {
+                if (filled($assignment->calendarEntry)) {
+                    $assignment->calendarEntry->delete();
+                }
+
+                if (filled($assignment->currentOutsourceRequest)) {
+                    $assignment->currentOutsourceRequest->status = OutsourceRequestStatus::Cancelled;
+                    $assignment->currentOutsourceRequest->cancellation_reason = $subProject->project->cancellation_reason;
+                    $assignment->currentOutsourceRequest->saveOrFail();
                 }
             });
         }
@@ -133,20 +150,26 @@ class SubProjectObserver
     private function publishSubProjectSentToPmEmailNotification(SubProject $subProject): void
     {
         $manager = $subProject->project->managerInstitutionUser;
-        if (filled($manager?->email)) {
-            $this->notificationPublisher->publishEmailNotification(
-                EmailNotificationMessage::make([
-                    'notification_type' => NotificationType::SubProjectSentToPm,
-                    'receiver_email' => $manager->email,
-                    'receiver_name' => $manager->getUserFullName(),
-                    'variables' => [
-                        'sub_project' => $subProject->only([
-                            'ext_id'
-                        ]),
-                    ]
-                ]),
-                $subProject->project->institution_id
-            );
+        $institution = $subProject->project->institution;
+        $receiverEmail = $manager?->email ?: $institution->email;
+        $receiverName = $manager?->getUserFullName() ?: $institution->name;
+
+        if (filled($receiverEmail)) {
+            DB::afterCommit(function () use ($subProject, $receiverEmail, $receiverName) {
+                $this->notificationPublisher->publishEmailNotification(
+                    EmailNotificationMessage::make([
+                        'notification_type' => NotificationType::SubProjectSentToPm,
+                        'receiver_email' => $receiverEmail,
+                        'receiver_name' => $receiverName,
+                        'variables' => [
+                            'sub_project' => $subProject->only([
+                                'ext_id'
+                            ]),
+                        ]
+                    ]),
+                    $subProject->project->institution_id
+                );
+            });
         }
     }
 }

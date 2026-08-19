@@ -13,6 +13,7 @@ use OpenApi\Attributes as OA;
         properties: [
             new OA\Property(property: 'cancellation_reason', type: 'string'),
             new OA\Property(property: 'cancellation_comment', type: 'string', nullable: true),
+            new OA\Property(property: 'is_delayed', type: 'boolean', nullable: true),
         ]
     )
 )]
@@ -29,6 +30,7 @@ class ProjectCancelRequest extends FormRequest
         return [
             'cancellation_reason' => ['required', 'string'],
             'cancellation_comment' => ['nullable', 'string'],
+            'is_delayed' => ['nullable', 'boolean'],
         ];
     }
 }

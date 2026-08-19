@@ -23,6 +23,11 @@ class UpdateProjectClientInsideWorkflow implements ShouldQueue
     public int $tries = 5;
 
     /**
+     * Delete the job if its models no longer exist.
+     */
+    public $deleteWhenMissingModels = true;
+
+    /**
      * Create a new job instance.
      */
     public function __construct(private readonly Project $project)

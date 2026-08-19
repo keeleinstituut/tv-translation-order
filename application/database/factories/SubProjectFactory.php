@@ -19,6 +19,8 @@ class SubProjectFactory extends Factory
     {
         return [
             'project_id' => Project::factory(),
+            'file_collection' => 'intermediate-files/' . fake()->word() . '/' . fake()->word(),
+            'file_collection_final' => 'final-files/' . fake()->word() . '/' . fake()->word(),
         ];
     }
 }

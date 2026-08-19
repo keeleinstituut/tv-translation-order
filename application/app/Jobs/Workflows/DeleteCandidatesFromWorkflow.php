@@ -21,6 +21,11 @@ class DeleteCandidatesFromWorkflow implements ShouldQueue
     public int $tries = 5;
 
     /**
+     * Delete the job if its models no longer exist.
+     */
+    public $deleteWhenMissingModels = true;
+
+    /**
      * Create a new job instance.
      */
     public function __construct(private readonly Assignment $assignment, private readonly array $candidatesInstitutionUserIds)
@@ -48,6 +53,10 @@ class DeleteCandidatesFromWorkflow implements ShouldQueue
                 $candidateInstitutionUserId,
                 'candidate'
             );
+        }
+
+        if (in_array(data_get($taskData, 'task.assignee'), $this->candidatesInstitutionUserIds, true)) {
+            WorkflowService::unclaimTask(data_get($taskData, 'task.id'));
         }
     }
 }

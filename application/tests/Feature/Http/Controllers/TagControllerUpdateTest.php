@@ -171,6 +171,72 @@ class TagControllerUpdateTest extends TestCase
         ]))->assertUnprocessable();
     }
 
+    public function test_creating_of_translation_domain_tags_returned_422()
+    {
+        $institution = Institution::factory()->create();
+        $tagsType = TagType::TranslationDomain;
+        $updatedTagsAttributes = Tag::factory(10)
+            ->withType($tagsType)
+            ->create()->map(fn (Tag $tag) => [
+                'id' => $tag->id,
+                'name' => "new $tag->name",
+            ]);
+
+        $this->sendUpdateRequestWithCustomHeaders([
+            'type' => $tagsType->value,
+            'tags' => $updatedTagsAttributes->map(fn (array $tagAttributes) => [
+                'id' => $tagAttributes['id'],
+                'name' => $tagAttributes['name'],
+            ])->toArray(),
+        ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
+            PrivilegeKey::AddTag,
+            PrivilegeKey::EditTag,
+            PrivilegeKey::DeleteTag,
+        ]))->assertUnprocessable();
+    }
+
+    public function test_deleting_of_translation_domain_tags_returned_422()
+    {
+        $institution = Institution::factory()->create();
+        $tagsType = TagType::TranslationDomain;
+        $this->sendUpdateRequestWithCustomHeaders([
+            'type' => $tagsType->value,
+            'tags' => [],
+        ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
+            PrivilegeKey::AddTag,
+            PrivilegeKey::EditTag,
+            PrivilegeKey::DeleteTag,
+        ]))->assertUnprocessable();
+    }
+
+    public function test_editing_of_translation_domain_tags_returned_422()
+    {
+        $institution = Institution::factory()->create();
+        $tagsType = TagType::TranslationDomain;
+        $newTagsAttributes = Tag::factory(10)
+            ->withType($tagsType)
+            ->make()->map(fn (Tag $tag) => [
+                'id' => null,
+                'name' => $tag->name,
+            ]);
+
+        Tag::factory(10)
+            ->withType($tagsType)
+            ->create();
+
+        $this->sendUpdateRequestWithCustomHeaders([
+            'type' => $tagsType->value,
+            'tags' => $newTagsAttributes->map(fn (array $tagAttributes) => [
+                'id' => $tagAttributes['id'],
+                'name' => $tagAttributes['name'],
+            ])->toArray(),
+        ], AuthHelpers::createJsonHeaderWithTokenParams($institution->id, [
+            PrivilegeKey::AddTag,
+            PrivilegeKey::EditTag,
+            PrivilegeKey::DeleteTag,
+        ]))->assertUnprocessable();
+    }
+
     public function test_delete_without_privilege_returned_403(): void
     {
         $institution = Institution::factory()->create();

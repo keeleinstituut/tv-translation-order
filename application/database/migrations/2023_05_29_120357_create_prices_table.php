@@ -32,12 +32,12 @@ return new class extends Migration
                 ->on('cached_classifier_values')
                 ->constrained();
 
-            $table->unsignedDecimal('character_fee', 10, 2);
-            $table->unsignedDecimal('word_fee', 10, 2);
-            $table->unsignedDecimal('page_fee', 10, 2);
-            $table->unsignedDecimal('minute_fee', 10, 2);
-            $table->unsignedDecimal('hour_fee', 10, 2);
-            $table->unsignedDecimal('minimal_fee', 10, 2);
+            $table->decimal('character_fee', 10, 2)->unsigned();
+            $table->decimal('word_fee', 10, 2)->unsigned();
+            $table->decimal('page_fee', 10, 2)->unsigned();
+            $table->decimal('minute_fee', 10, 2)->unsigned();
+            $table->decimal('hour_fee', 10, 2)->unsigned();
+            $table->decimal('minimal_fee', 10, 2)->unsigned();
 
             $table->timestampsTz();
 

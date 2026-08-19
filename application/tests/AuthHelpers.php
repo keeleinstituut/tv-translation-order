@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Enums\InstitutionType;
 use App\Enums\PrivilegeKey;
 use App\Models\CachedEntities\InstitutionUser;
 use Faker\Generator;
@@ -31,6 +32,7 @@ readonly class AuthHelpers
                 'selectedInstitution' => [
                     'id' => fake()->uuid(),
                     'name' => fake()->company(),
+                    'type' => InstitutionType::Institution->value,
                 ],
                 'privileges' => [],
             ])->merge($tolkevaravPayload)->toArray(),
@@ -116,6 +118,7 @@ readonly class AuthHelpers
             'selectedInstitution' => [
                 'id' => $institutionUser->institution['id'],
                 'name' => $institutionUser->institution['name'],
+                'type' => $institutionUser->institution['type'] ?? InstitutionType::Institution->value,
             ],
             'privileges' => collect($institutionUser->roles)
                 ->flatMap(fn (array $role) => $role['privileges'])

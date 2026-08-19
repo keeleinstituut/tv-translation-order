@@ -4,11 +4,15 @@ namespace App\Http\Requests\API;
 
 use App\Enums\ClassifierValueType;
 use App\Enums\PrivilegeKey;
+use App\Enums\ServiceType;
+use App\Enums\TagType;
 use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\InstitutionUser;
 use App\Models\Project;
 use App\Models\ProjectTypeConfig;
+use App\Models\Tag;
+use App\Models\Vendor;
 use App\Rules\ModelBelongsToInstitutionRule;
 use App\Rules\ProjectFileValidator;
 use App\Rules\ScannedRule;
@@ -29,26 +33,63 @@ use OpenApi\Attributes as OA;
         mediaType: 'multipart/form-data',
         schema: new OA\Schema(
             required: [
-                'type_classifier_value_id',
-                'deadline_at',
-                'source_language_classifier_value_id',
                 'destination_language_classifier_value_ids',
             ],
             properties: [
-                new OA\Property(property: 'type_classifier_value_id', type: 'string', format: 'uuid'),
+                new OA\Property(
+                    property: 'is_calendar_project',
+                    description: 'When true, the project is a calendar booking. Calendar projects have different required fields.',
+                    type: 'boolean',
+                    nullable: true
+                ),
+                new OA\Property(
+                    property: 'type_classifier_value_id',
+                    description: 'Required when is_calendar_project is false or omitted.',
+                    type: 'string',
+                    format: 'uuid',
+                    nullable: true
+                ),
                 new OA\Property(property: 'manager_institution_user_id', type: 'string', format: 'uuid', nullable: true),
                 new OA\Property(property: 'client_institution_user_id', type: 'string', format: 'uuid', nullable: true),
                 new OA\Property(property: 'reference_number', type: 'string', nullable: true),
-                new OA\Property(property: 'comments', type: 'string', nullable: true),
-                new OA\Property(property: 'deadline_at', type: 'string', format: 'date-time', example: '2020-12-31T12:00:00Z'),
-                new OA\Property(property: 'translation_domain_classifier_value_id', type: 'string', format: 'uuid', nullable: true),
-                new OA\Property(property: 'source_language_classifier_value_id', type: 'string', format: 'uuid'),
+                new OA\Property(property: 'comments', type: 'string', nullable: true, deprecated: true),
+                new OA\Property(property: 'comment', type: 'string', nullable: true),
                 new OA\Property(
-                    property: 'event_start_at',
-                    description: 'Only allowed if project type supports start date.',
+                    property: 'deadline_at',
+                    description: 'Required unless is_calendar_project is true or the project type supports a start date.',
                     type: 'string',
                     format: 'date-time',
                     example: '2020-12-31T12:00:00Z',
+                    nullable: true
+                ),
+                new OA\Property(
+                    property: 'translation_domain_classifier_value_id',
+                    description: 'Required when is_calendar_project is false or omitted.',
+                    type: 'string',
+                    format: 'uuid',
+                    nullable: true
+                ),
+                new OA\Property(
+                    property: 'source_language_classifier_value_id',
+                    description: 'Required when is_calendar_project is false or omitted.',
+                    type: 'string',
+                    format: 'uuid',
+                    nullable: true
+                ),
+                new OA\Property(
+                    property: 'event_start_at',
+                    description: 'Required for calendar projects and for project types that support start date.',
+                    type: 'string',
+                    format: 'date-time',
+                    example: '2020-12-31T12:00:00Z',
+                    nullable: true
+                ),
+                new OA\Property(
+                    property: 'event_end_at',
+                    description: 'Required for calendar projects and for project types that support start date. Must be after event_start_at.',
+                    type: 'string',
+                    format: 'date-time',
+                    example: '2020-12-31T14:00:00Z',
                     nullable: true
                 ),
                 new OA\Property(
@@ -66,32 +107,66 @@ use OpenApi\Attributes as OA;
                 ),
                 new OA\Property(
                     property: 'source_files',
+                    description: 'Not allowed for calendar projects.',
                     type: 'array',
                     items: new OA\Items(type: 'string', format: 'binary'),
                     minItems: 1
                 ),
                 new OA\Property(
                     property: 'destination_language_classifier_value_ids',
+                    description: 'Exactly one language required for calendar projects.',
                     type: 'array',
                     items: new OA\Items(type: 'string', format: 'uuid'),
                     minItems: 1
+                ),
+                new OA\Property(
+                    property: 'candidate_vendor_id',
+                    description: 'Calendar projects only. Requires ManageProject privilege.',
+                    type: 'string',
+                    format: 'uuid',
+                    nullable: true
+                ),
+                new OA\Property(
+                    property: 'service_type',
+                    description: 'Required for calendar projects and for project types that support start date.',
+                    type: 'string',
+                    enum: ['ON_SITE', 'REMOTE'],
+                    nullable: true
+                ),
+                new OA\Property(property: 'location', type: 'string', nullable: true),
+                new OA\Property(property: 'meeting_link', type: 'string', nullable: true),
+                new OA\Property(property: 'use_external_vendor', type: 'boolean', nullable: true),
+                new OA\Property(
+                    property: 'tags',
+                    type: 'array',
+                    items: new OA\Items(type: 'string', format: 'uuid'),
+                    nullable: true
                 ),
             ],
             type: 'object'
         ),
         encoding: [
-            'type_classifier_value_id' => ['contentType' => 'application/json'],
-            'reference_number' => ['contentType' => 'application/json'],
-            'manager_institution_user_id' => ['contentType' => 'application/json'],
-            'comments' => ['contentType' => 'application/json'],
-            'deadline_at' => ['contentType' => 'application/json'],
-            'event_start_at' => ['contentType' => 'application/json'],
-            'translation_domain_classifier_value_id' => ['contentType' => 'application/json'],
-            'source_language_classifier_value_id' => ['contentType' => 'application/json'],
-            'destination_language_classifier_value_ids' => ['contentType' => 'application/json'],
-            'help_file_types' => ['contentType' => 'application/json'],
-            'source_files' => ['contentType' => 'application/octet-stream'],
-            'help_files' => ['contentType' => 'application/octet-stream'],
+            new OA\Encoding(property: 'is_calendar_project', contentType: 'application/json'),
+            new OA\Encoding(property: 'type_classifier_value_id', contentType: 'application/json'),
+            new OA\Encoding(property: 'reference_number', contentType: 'application/json'),
+            new OA\Encoding(property: 'manager_institution_user_id', contentType: 'application/json'),
+            new OA\Encoding(property: 'comments', contentType: 'application/json'),
+            new OA\Encoding(property: 'comment', contentType: 'application/json'),
+            new OA\Encoding(property: 'deadline_at', contentType: 'application/json'),
+            new OA\Encoding(property: 'event_start_at', contentType: 'application/json'),
+            new OA\Encoding(property: 'event_end_at', contentType: 'application/json'),
+            new OA\Encoding(property: 'translation_domain_classifier_value_id', contentType: 'application/json'),
+            new OA\Encoding(property: 'source_language_classifier_value_id', contentType: 'application/json'),
+            new OA\Encoding(property: 'destination_language_classifier_value_ids', contentType: 'application/json'),
+            new OA\Encoding(property: 'help_file_types', contentType: 'application/json'),
+            new OA\Encoding(property: 'source_files', contentType: 'application/octet-stream'),
+            new OA\Encoding(property: 'help_files', contentType: 'application/octet-stream'),
+            new OA\Encoding(property: 'candidate_vendor_id', contentType: 'application/json'),
+            new OA\Encoding(property: 'service_type', contentType: 'application/json'),
+            new OA\Encoding(property: 'location', contentType: 'application/json'),
+            new OA\Encoding(property: 'meeting_link', contentType: 'application/json'),
+            new OA\Encoding(property: 'use_external_vendor', contentType: 'application/json'),
+            new OA\Encoding(property: 'tags', contentType: 'application/json'),
         ]
     ),
 )]
@@ -105,8 +180,9 @@ class ProjectCreateRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'is_calendar_project' => ['nullable', 'boolean'],
             'type_classifier_value_id' => [
-                'required',
+                Rule::requiredIf(fn () => !$this->isCalendarProject()),
                 'uuid',
                 'bail',
                 Rule::exists(ProjectTypeConfig::class, 'type_classifier_value_id'),
@@ -115,8 +191,15 @@ class ProjectCreateRequest extends FormRequest
                 'nullable',
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
                 'bail',
-                Rule::prohibitedIf(fn () => ! ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
-                Rule::requiredIf(fn () => ClassifierValue::isProjectTypeSupportingEventStartDate($this->get('type_classifier_value_id'))),
+                Rule::requiredIf(fn () => $this->isCalendarProject()
+                    || ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
+            ],
+            'event_end_at' => [
+                'nullable',
+                'date_format:Y-m-d\\TH:i:s\\Z',
+                'bail',
+                Rule::requiredIf(fn () => $this->isCalendarProject()
+                    || ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
             ],
             'manager_institution_user_id' => [
                 'nullable',
@@ -132,31 +215,79 @@ class ProjectCreateRequest extends FormRequest
             ],
             'reference_number' => ['nullable', 'string'],
             'comments' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
-            'deadline_at' => ['required', 'date_format:Y-m-d\\TH:i:s\\Z'], // only UTC (zero offset)
+            'comment' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
+            'deadline_at' => [
+                'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
+                Rule::requiredIf(fn () => !$this->isCalendarProject()
+                    && !ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
+            ],
             'translation_domain_classifier_value_id' => [
-                'required',
+                Rule::requiredIf(fn () => !$this->isCalendarProject()),
                 'uuid',
                 'bail',
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::TranslationDomain),
             ],
-            'source_files' => ['array', 'min:1', 'max:20'],
+            'source_files' => [
+                'array', 'min:1', 'max:20',
+                Rule::prohibitedIf(fn () => $this->isCalendarProject()),
+            ],
             'source_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
             'help_files' => ['required_with:help_file_types', 'array', 'max:20'],
             'help_files.*' => [ProjectFileValidator::createRule(), ScannedRule::createRule()],
             'help_file_types' => ['required_with:help_files', 'array'],
             'help_file_types.*' => [Rule::in(Project::HELP_FILE_TYPES)],
             'source_language_classifier_value_id' => [
-                'required',
+                'nullable',
                 'string',
                 'bail',
+                Rule::requiredIf(fn () => !$this->isCalendarProject()),
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::Language),
             ],
-            'destination_language_classifier_value_ids' => ['required', 'array'],
+            'destination_language_classifier_value_ids' => array_filter([
+                'required',
+                'array',
+                $this->isCalendarProject() ? 'min:1' : null,
+                $this->isCalendarProject() ? 'max:1' : null,
+            ]),
             'destination_language_classifier_value_ids.*' => [
                 'required',
                 'string',
                 'bail',
                 Rule::exists(ClassifierValue::class, 'id')->where('type', ClassifierValueType::Language),
+            ],
+
+            // Calendar-only fields
+            'candidate_vendor_id' => [
+                'nullable',
+                'uuid',
+                'bail',
+                Rule::prohibitedIf(fn () => !$this->isCalendarProject() || !Auth::hasPrivilege(PrivilegeKey::ReceiveProject->value)),
+                Rule::exists(Vendor::class, 'id'),
+            ],
+            'service_type' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->isCalendarProject()
+                    || ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
+                Rule::in(ServiceType::cases()),
+            ],
+            'location' => [
+                'nullable',
+                'string',
+                Rule::requiredIf(fn () => $this->input('service_type') === ServiceType::OnSite->value),
+            ],
+            'meeting_link' => [
+                'nullable',
+                'string',
+                Rule::requiredIf(fn () => $this->input('service_type') === ServiceType::Remote->value),
+            ],
+            'use_external_vendor' => [
+                'nullable',
+                'boolean'
+            ],
+            'tags' => ['sometimes', 'array'],
+            'tags.*' => [
+                'required',
+                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Order->value, TagType::TranslationDomain->value]),
             ],
         ];
     }
@@ -188,6 +319,10 @@ class ProjectCreateRequest extends FormRequest
     {
         return static::existsActiveUserInSameInstitution(
             function (InstitutionUser $institutionUser) {
+                if ($institutionUser->belongsToTranslationAgency()) {
+                    return ['The user referenced by :attribute may not belong to a translation agency institution.'];
+                }
+
                 if ($institutionUser->hasPrivileges(PrivilegeKey::CreateProject)) {
                     return [];
                 }
@@ -230,8 +365,27 @@ class ProjectCreateRequest extends FormRequest
                         $validator->errors()->add('event_start_at', 'Event start datetime should be less or equal to deadline');
                     }
                 }
+
+                if (filled($eventStart = data_get($validated, 'event_start_at')) && filled($eventEnd = data_get($validated, 'event_end_at'))) {
+                    if ($eventEnd <= $eventStart) {
+                        $validator->errors()->add('event_end_at', 'Event end datetime must be after event start datetime.');
+                    }
+                }
+
+                if ($this->input('is_calendar_project') === true
+                    && filled($this->input('type_classifier_value_id'))
+                    && !ClassifierValue::isCalendarProjectType($this->input('type_classifier_value_id'))) {
+                    $validator->errors()->add('is_calendar_project', 'The is_calendar_project flag contradicts the selected project type.');
+                }
             },
         ];
+    }
 
+    private ?bool $isCalendarProjectCached = null;
+
+    private function isCalendarProject(): bool
+    {
+        return $this->isCalendarProjectCached ??= ClassifierValue::isCalendarProjectType($this->input('type_classifier_value_id'))
+            || $this->input('is_calendar_project', false);
     }
 }

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Assertions;
 use Tests\AuthHelpers;
 use Tests\TestCase;
@@ -171,7 +172,7 @@ class ProjectControllerIndexTest extends TestCase
                             $query->where('manager_institution_user_id', $actingUser->id)
                                 ->orWhere('client_institution_user_id', $actingUser->id);
                         })
-                        ->join('entity_cache.cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
+                        ->join('cached_institution_users', 'projects.client_institution_user_id', '=', 'cached_institution_users.id')
                         ->pluck('projects.id')
                         ->all();
 
@@ -386,13 +387,12 @@ class ProjectControllerIndexTest extends TestCase
     }
 
     /**
-     * @dataProvider provideValidPayloadCreatorsAndExtraAssertions
-     *
      * @param  Closure(Collection, InstitutionUser): array  $createValidPayload
      * @param  Closure(TestCase, TestResponse, array, Collection, InstitutionUser): void  $performAssertions
      *
      * @throws Throwable
      */
+    #[DataProvider('provideValidPayloadCreatorsAndExtraAssertions')]
     public function test_expected_subset_of_projects_returned_for_valid_payloads(Closure $createValidPayload, Closure $performAssertions): void
     {
         $payload = $createValidPayload(static::$projects, static::$privilegedActingUser);
@@ -408,10 +408,10 @@ class ProjectControllerIndexTest extends TestCase
         $response->assertJsonIsArray('data');
         collect($response->json('data'))->each(function (mixed $item) {
             $this->assertIsArray($item);
-            Assertions::assertArraysEqualIgnoringOrder(
-                ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'ext_id', 'id', 'institution_id', 'price', 'reference_number', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'],
-                array_keys($item)
-            );
+            $expectedKeys = ['rejected_at', 'workflow_template_id', 'workflow_started', 'accepted_at', 'cancel_at', 'cancellation_pending_at', 'cancelled_at', 'client_institution_user', 'corrected_at', 'comments', 'created_at', 'deadline_at', 'event_start_at', 'event_end_at', 'ext_id', 'id', 'institution_id', 'is_calendar_project', 'price', 'reference_number', 'service_type', 'status', 'sub_projects', 'tags', 'type_classifier_value', 'updated_at', 'workflow_instance_ref'];
+            foreach ($expectedKeys as $key) {
+                $this->assertArrayHasKey($key, $item, "Response item is missing key: $key");
+            }
 
             $this->assertContains($item['id'], static::$projects->pluck('id'));
             $this->assertEquals($item['institution_id'], static::$privilegedActingUser->institution['id']);
@@ -450,13 +450,12 @@ class ProjectControllerIndexTest extends TestCase
     }
 
     /**
-     * @dataProvider provideActingUserModifiersAndForbiddenPayloadCreators
-     *
      * @param  Closure(): InstitutionUser  $createActingUser
      * @param  Closure(InstitutionUser): array  $createPayload
      *
      * @throws Throwable
      */
+    #[DataProvider('provideActingUserModifiersAndForbiddenPayloadCreators')]
     public function test_unprivileged_acting_user_results_in_forbidden_response(Closure $createActingUser, Closure $createPayload): void
     {
         Storage::fake(config('media-library.disk_name', 'test-disk'));

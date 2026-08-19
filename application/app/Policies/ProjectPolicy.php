@@ -4,46 +4,53 @@ namespace App\Policies;
 
 use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
+use App\Models\AuthUser;
 use App\Models\Project;
-use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class ProjectPolicy
 {
     /**
      * Determine whether the user can view any models.
+     * partner access deliberately excluded
      */
-    public function viewAny(JwtPayloadUser $user, bool $onlyPersonalProjectsRequested, bool $onlyUnclaimedProjectsRequested): bool
+    public function viewAny(AuthUser $user, bool $onlyPersonalProjectsRequested, bool $onlyUnclaimedProjectsRequested): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectList->value) ||
-            Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value) ||
-            ($onlyUnclaimedProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewInstitutionUnclaimedProjectDetail->value)) ||
-            ($onlyPersonalProjectsRequested && Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value));
+        return $user->hasAtLeastOnePrivilege([PrivilegeKey::ViewInstitutionProjectList, PrivilegeKey::ViewInstitutionProjectDetail]) ||
+            ($onlyUnclaimedProjectsRequested && $user->hasPrivilege(PrivilegeKey::ViewInstitutionUnclaimedProjectDetail)) ||
+            ($onlyPersonalProjectsRequested && $user->hasPrivilege(PrivilegeKey::ViewPersonalProject));
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $user, Project $project): bool
+    public function view(AuthUser $user, Project $project): bool
     {
-        $currentInstitutionUserId = Auth::user()?->institutionUserId;
-
-        if (empty($currentInstitutionUserId)) {
+        if (empty($user->institutionUserId)) {
             return false;
         }
 
-        if (Auth::hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail->value)) {
+        if ($user->hasPrivilege(PrivilegeKey::ViewInstitutionProjectDetail)) {
             return true;
         }
 
-        if ($project->status === ProjectStatus::New && Auth::hasPrivilege(PrivilegeKey::ViewInstitutionUnclaimedProjectDetail->value)) {
+        if ($project->status === ProjectStatus::New && $user->hasPrivilege(PrivilegeKey::ViewInstitutionUnclaimedProjectDetail)) {
             return true;
         }
 
-        if ($project->client_institution_user_id === $currentInstitutionUserId
-            || $project->manager_institution_user_id === $currentInstitutionUserId) {
-            return Auth::hasPrivilege(PrivilegeKey::ViewPersonalProject->value);
+        if ($user->isClientOfProject($project)
+            || $user->isManagerOfProject($project)) {
+            return $user->hasPrivilege(PrivilegeKey::ViewPersonalProject);
+        }
+
+        if ($project->is_calendar_project) {
+            if ($vendor = $user->vendor()) {
+                return $project->calendarEntries()->where('vendor_id', $vendor->id)->exists();
+            }
+        }
+
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest)) {
+            return $user->hasActivePartnerAccessToProject($project);
         }
 
         return false;
@@ -51,137 +58,160 @@ class ProjectPolicy
 
     /**
      * Determine whether the user can create models.
+     * partner access deliberately excluded
      */
-    public function create(JwtPayloadUser $user, Project $project): bool
+    public function create(AuthUser $user, Project $project): bool
     {
-        $currentInstitutionUserId = Auth::user()?->institutionUserId;
-
-        if (empty($currentInstitutionUserId)) {
+        if (empty($user->institutionUserId)) {
             return false;
         }
 
-        return Auth::hasPrivilege(PrivilegeKey::CreateProject->value)
-            && (
-                $project->client_institution_user_id === $currentInstitutionUserId
-                || Auth::hasPrivilege(PrivilegeKey::ChangeClient->value)
-            ) && (
-                $project->manager_institution_user_id === null
-                || Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value)
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::CreateProject) &&
+            ($user->isClientOfProject($project) || $user->hasPrivilege(PrivilegeKey::ChangeClient)) &&
+            ($project->manager_institution_user_id === null || $user->isManagerOfProject($project) ||
+                $user->hasPrivilege(PrivilegeKey::ChangeProjectManager)
             );
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
-    public function update(JwtPayloadUser $user, Project $project): bool
+    public function update(AuthUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
+        return $user->isInSameInstitutionAsProject($project) &&
+            $user->hasPrivilege(PrivilegeKey::ManageProject);
     }
 
     /**
      * Determine whether the user can update the model.
+     * partner access deliberately excluded
      */
-    public function changeClient(JwtPayloadUser $user, Project $project): bool
+    public function changeClient(AuthUser $user, Project $project): bool
     {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ChangeClient->value);
-    }
-
-    public function changeProjectManager(JwtPayloadUser $user, Project $project): bool
-    {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ChangeProjectManager->value);
-    }
-
-    public function editSourceFiles(JwtPayloadUser $user, Project $project): bool
-    {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
-    }
-
-    public function editHelpFiles(JwtPayloadUser $user, Project $project): bool
-    {
-        return $this->isInSameInstitutionAsCurrentUser($project) &&
-            Auth::hasPrivilege(PrivilegeKey::ManageProject->value);
-    }
-
-    public function downloadMedia(JwtPayloadUser $user, Project $project): bool
-    {
-        if (! $this->isInSameInstitutionAsCurrentUser($project)) {
+        if ($user->belongsToTranslationAgency()) {
             return false;
         }
 
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) ||
-            $this->isClient($project) ||
-            $this->isAssignmentCandidate($project);
+        return $user->isInSameInstitutionAsProject($project) &&
+            ($user->hasPrivilege(PrivilegeKey::ChangeClient) || empty($project->client_institution_user_id));
     }
 
-    public function cancel(JwtPayloadUser $user, Project $project): bool
+    // partner access deliberately excluded
+    public function changeProjectManager(AuthUser $user, Project $project): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ManageProject->value) || $this->isClient($project);
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->isInSameInstitutionAsProject($project) &&
+            ($user->hasPrivilege(PrivilegeKey::ChangeProjectManager) || empty($project->manager_institution_user_id));
     }
 
-    public function review(JwtPayloadUser $user, Project $project): bool
+    // partner access deliberately excluded
+    public function editSourceFiles(AuthUser $user, Project $project): bool
     {
-        return $this->isClient($project);
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->isInSameInstitutionAsProject($project) && (
+                $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+                $user->isClientOfProject($project)
+            );
     }
 
-    public function export(JwtPayloadUser $user)
+    // partner access deliberately excluded
+    public function editHelpFiles(AuthUser $user, Project $project): bool
     {
-        return Auth::hasPrivilege(PrivilegeKey::ExportInstitutionGeneralReport->value);
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->isInSameInstitutionAsProject($project) && (
+                $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+                $user->isClientOfProject($project)
+            );
+    }
+
+    public function downloadMedia(AuthUser $user, Project $project): bool
+    {
+        if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&
+            (
+                $user->hasActivePartnerAccessToProject($project)
+                || $user->hasSharedPartnerAccessToProject($project, true)
+            )) {
+            return true;
+        }
+
+        if (! $user->isInSameInstitutionAsProject($project)) {
+            return false;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::ManageProject) ||
+            $user->isClientOfProject($project) ||
+            $user->hasAssignmentCandidateAccessToProject($project);
+    }
+
+    // partner access deliberately excluded
+    public function cancel(AuthUser $user, Project $project): bool
+    {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::ManageProject) || $user->isClientOfProject($project);
+    }
+
+    // partner access deliberately excluded
+    public function review(AuthUser $user, Project $project): bool
+    {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->isClientOfProject($project);
+    }
+
+    // partner access deliberately excluded
+    public function export(AuthUser $user): bool
+    {
+        if ($user->belongsToTranslationAgency()) {
+            return false;
+        }
+
+        return $user->hasPrivilege(PrivilegeKey::ExportInstitutionGeneralReport);
     }
 
     /**
      * Determine whether the user can delete the model.
+     * partner access deliberately excluded
      */
-    public function delete(JwtPayloadUser $user, Project $project): bool
+    public function delete(AuthUser $user, Project $project): bool
     {
         return false; // TODO
     }
 
     /**
      * Determine whether the user can restore the model.
+     * partner access deliberately excluded
      */
-    public function restore(JwtPayloadUser $user, Project $project): bool
+    public function restore(AuthUser $user, Project $project): bool
     {
         return false; // TODO
     }
 
     /**
      * Determine whether the user can permanently delete the model.
+     * partner access deliberately excluded
      */
-    public function forceDelete(JwtPayloadUser $user, Project $project): bool
+    public function forceDelete(AuthUser $user, Project $project): bool
     {
         return false; // TODO
-    }
-
-    public static function isInSameInstitutionAsCurrentUser(Project $project): bool
-    {
-        return filled($currentInstitutionId = Auth::user()?->institutionId)
-            && $currentInstitutionId === $project->institution_id;
-    }
-
-    public static function isClient(Project $project): bool
-    {
-        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
-            return false;
-        }
-
-        return $project->client_institution_user_id === $institutionUserId;
-    }
-
-    public static function isAssignmentCandidate(Project $project): bool
-    {
-        if (empty($institutionUserId = Auth::user()?->institutionUserId)) {
-            return false;
-        }
-
-        if (empty($vendor = Vendor::query()->where('institution_user_id', $institutionUserId)->first())) {
-            return false;
-        }
-
-        return $project->candidates()->where('vendor_id', $vendor->id)->exists();
     }
 
     // Should serve as an query enhancement to Eloquent queries
@@ -198,7 +228,7 @@ class ProjectPolicy
     // of current query. The method name could be different, but in the sake of reusability
     // we can use this method that's provided by Laravel and used internally.
     //
-    public static function scope()
+    public static function scope(): Scope\ProjectScope
     {
         return new Scope\ProjectScope();
     }
@@ -220,6 +250,11 @@ class ProjectScope implements IScope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $builder->where('institution_id', Auth::user()->institutionId);
+        $institutionId = Auth::user()->institutionId;
+        $builder->where(function (Builder $q) use ($institutionId) {
+            $q->where('institution_id', $institutionId)
+                ->orWhereHas('subProjects.assignments',
+                    fn (Builder $a) => $a->sharedWithInstitution($institutionId));
+        });
     }
 }

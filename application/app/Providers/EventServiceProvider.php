@@ -62,6 +62,8 @@ class EventServiceProvider extends ServiceProvider
         Models\ProjectReviewRejection::observe(Observers\ProjectReviewRejectionObserver::class);
         Models\Media::observe(Observers\MediaObserver::class);
         Models\Candidate::observe(Observers\CandidateObserver::class);
+        Models\OutsourceRequest::observe(Observers\OutsourceRequestObserver::class);
+        Models\OutsourceOffer::observe(Observers\OutsourceOfferObserver::class);
     }
 
     /**

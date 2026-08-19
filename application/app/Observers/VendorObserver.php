@@ -20,7 +20,6 @@ class VendorObserver
      */
     public function updated(Vendor $vendor): void
     {
-        //
     }
 
     /**
@@ -37,7 +36,6 @@ class VendorObserver
      */
     public function restored(Vendor $vendor): void
     {
-        //
     }
 
     /**

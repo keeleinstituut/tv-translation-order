@@ -51,7 +51,7 @@ class VendorUpdateRequest extends FormRequest
             'tags' => 'sometimes|array',
             'tags.*' => [
                 'required',
-                Rule::exists(Tag::class, 'id')->where('type', TagType::Vendor->value),
+                Rule::exists(Tag::class, 'id')->whereIn('type', [TagType::Vendor->value, TagType::TranslationDomain->value]),
             ],
             'comment' => 'sometimes|nullable|string',
             'company_name' => 'sometimes|nullable|string',

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Repositories\Calendar\PriceVendorLanguageCoverageRepository;
+use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
+use App\Services\Calendar\CalendarSettingsResolver;
 use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
 use App\Sync\ApiClients\TvAuthorizationApiClient;
 use App\Sync\ApiClients\TvClassifierApiClient;
@@ -33,6 +36,13 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(ServiceAccountJwtRetrieverInterface::class)
             );
         });
+
+        $this->app->singleton(CalendarSettingsResolver::class);
+
+        $this->app->singleton(
+            VendorLanguageCoverageRepositoryInterface::class,
+            PriceVendorLanguageCoverageRepository::class,
+        );
     }
 
     /**

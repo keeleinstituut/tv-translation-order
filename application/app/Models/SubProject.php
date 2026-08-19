@@ -7,7 +7,6 @@ use App\Enums\SubProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Services\CatTools\CatPickerService;
 use App\Services\CatTools\Contracts\CatToolService;
-use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\SubProjectPriceCalculator;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\SubProjectWorkflowProcessInstance;
@@ -48,6 +47,7 @@ use Throwable;
  * @property string|null $active_job_definition_id
  * @property ArrayObject|null $cat_metadata
  * @property float|null $price
+ * @property float|null $discount_amount
  * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
@@ -107,6 +107,7 @@ class SubProject extends Model implements AuditLoggable
     protected $casts = [
         'cat_metadata' => AsArrayObject::class,
         'price' => 'float',
+        'discount_amount' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
         'deadline_at' => 'datetime'
@@ -150,7 +151,7 @@ class SubProject extends Model implements AuditLoggable
         );
     }
 
-    public function projectTypeConfig(): HasManyDeep
+    public function projectTypeConfig(): HasOneDeep
     {
         return $this->hasOneDeep(
             ProjectTypeConfig::class,
@@ -241,7 +242,7 @@ class SubProject extends Model implements AuditLoggable
         return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
     }
 
-    public function getPriceCalculator(): PriceCalculator
+    public function getPriceCalculator(): SubProjectPriceCalculator
     {
         return new SubProjectPriceCalculator($this);
     }

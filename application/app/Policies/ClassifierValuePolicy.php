@@ -2,15 +2,15 @@
 
 namespace App\Policies;
 
+use App\Models\AuthUser;
 use App\Models\CachedEntities\ClassifierValue;
-use KeycloakAuthGuard\Models\JwtPayloadUser;
 
 class ClassifierValuePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(JwtPayloadUser $jwtPayloadUser): bool
+    public function viewAny(AuthUser $user): bool
     {
         return true;
     }
@@ -18,7 +18,7 @@ class ClassifierValuePolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(JwtPayloadUser $jwtPayloadUser, ClassifierValue $classifierValue): bool
+    public function view(AuthUser $user, ClassifierValue $classifierValue): bool
     {
         throw new BadMethodCallException();
     }
@@ -26,7 +26,7 @@ class ClassifierValuePolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(JwtPayloadUser $jwtPayloadUser): bool
+    public function create(AuthUser $user): bool
     {
         throw new BadMethodCallException();
     }
@@ -34,7 +34,7 @@ class ClassifierValuePolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(JwtPayloadUser $jwtPayloadUser, ClassifierValue $classifierValue): bool
+    public function update(AuthUser $user, ClassifierValue $classifierValue): bool
     {
         throw new BadMethodCallException();
     }
@@ -42,7 +42,7 @@ class ClassifierValuePolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(JwtPayloadUser $jwtPayloadUser, ClassifierValue $classifierValue): bool
+    public function delete(AuthUser $user, ClassifierValue $classifierValue): bool
     {
         throw new BadMethodCallException();
     }
@@ -50,7 +50,7 @@ class ClassifierValuePolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(JwtPayloadUser $jwtPayloadUser, ClassifierValue $classifierValue): bool
+    public function restore(AuthUser $user, ClassifierValue $classifierValue): bool
     {
         throw new BadMethodCallException();
     }
@@ -58,7 +58,7 @@ class ClassifierValuePolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(JwtPayloadUser $jwtPayloadUser, ClassifierValue $classifierValue): bool
+    public function forceDelete(AuthUser $user, ClassifierValue $classifierValue): bool
     {
         throw new BadMethodCallException();
     }

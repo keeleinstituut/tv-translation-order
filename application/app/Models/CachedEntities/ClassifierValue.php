@@ -3,6 +3,7 @@
 namespace App\Models\CachedEntities;
 
 use App\Enums\ClassifierValueType;
+use App\Enums\ProjectTypeCode;
 use App\Models\ProjectTypeConfig;
 use Database\Factories\CachedEntities\ClassifierValueFactory;
 use Eloquent;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 
 /**
  * App\Models\CachedEntities\ClassifierValue
@@ -67,5 +69,30 @@ class ClassifierValue extends Model
             ?->projectTypeConfig()
             ?->where('is_start_date_supported', true)
             ?->exists() ?? false;
+    }
+
+    public static function isCalendarProjectType(?string $typeClassifierValueId): bool
+    {
+        if (blank($typeClassifierValueId)) {
+            return false;
+        }
+
+        return ClassifierValue::where('id', $typeClassifierValueId)
+            ->where('type', ClassifierValueType::ProjectType)
+            ->where('value', ProjectTypeCode::OralTranslation->value)
+            ->exists();
+    }
+
+    public static function getCalendarProjectType(): ClassifierValue
+    {
+        $projectType = ClassifierValue::where('type', ClassifierValueType::ProjectType)
+            ->where('value', ProjectTypeCode::OralTranslation->value)
+            ->first();
+
+        if (blank($projectType)) {
+            throw new RuntimeException('Failed to resolve calendar project type');
+        }
+
+        return $projectType;
     }
 }
