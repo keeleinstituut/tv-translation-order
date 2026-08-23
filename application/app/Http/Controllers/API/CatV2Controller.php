@@ -196,7 +196,11 @@ class CatV2Controller extends Controller
 
         $response = $this->catV2Service->updateTranslationMemory($id, $payload);
 
-        return CatV2TranslationMemoryResource::make($response['data']);
+        return CatV2TranslationMemoryResource::make($response['data'])
+            ->additional([
+                'segment_count' => data_get($response, 'segment_count'),
+                'edit_url' => data_get($response, 'edit_url'),
+            ]);
     }
 
     public function translationMemoryDestroy($id)
