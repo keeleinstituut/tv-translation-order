@@ -45,7 +45,6 @@ enum PrivilegeKey: string
     case ImportTranslationMemory = 'IMPORT_TM';
     case CreateTranslationMemory = 'CREATE_TM';
     case ExportTranslationMemory = 'EXPORT_TM';
-    case EditTranslationMemoryMetadata = 'EDIT_TM_METADATA';
     case EditTranslationMemory = 'EDIT_TM';
     case DeleteTranslationMemory = 'DELETE_TM';
     case ViewTranslationMemory = 'VIEW_TM';
