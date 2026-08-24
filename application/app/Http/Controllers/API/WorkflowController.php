@@ -1105,6 +1105,7 @@ class WorkflowController extends Controller
     {
         $relations = collect([
             'subProject.project.typeClassifierValue',
+            'subProject.project.translationDomainClassifierValue',
             'subProject.sourceLanguageClassifierValue',
             'subProject.destinationLanguageClassifierValue',
             'subProject.project.tags',
