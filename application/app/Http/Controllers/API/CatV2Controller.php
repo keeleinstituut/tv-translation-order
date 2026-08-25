@@ -191,8 +191,8 @@ class CatV2Controller extends Controller
                 // 'institution_id' => Auth::user()->institutionId,
                 'tv_domain' => $params->get('tv_domain'),
                 'tv_tags' => $params->get('tv_tags'),
-            ])->filter()->toArray(),
-        ])->filter()->toArray();
+            ])->toArray(),
+        ])->toArray();
 
         $response = $this->catV2Service->updateTranslationMemory($id, $payload);
 
