@@ -26,17 +26,14 @@ services:
       - 6379:6379
 
   camunda:
-    image: camunda/camunda-bpm-platform:7.18.0
+    image: cibseven/cibseven:run-2.1.0
     #    command: ./camunda.sh --webapps --rest --swaggerui
-    command: ./camunda.sh --webapps --rest --swaggerui --example
+    command: ./start.sh --webapps --rest --example
     ports:
       - 8090:8080
     environment:
       - CAMUNDA_BPM_ADMIN_USER_ID=admin
       - CAMUNDA_BPM_ADMIN_USER_PASSWORD=password
-    volumes:
-      - ./application/database/seeders/sample-files/bpmn/order.bpmn:/camunda/configuration/resources/order.bpmn
-      - ./application/database/seeders/sample-files/bpmn/diagram_1.bpmn:/camunda/configuration/resources/diagram_1.bpmn
 
   minio:
     image: quay.io/minio/minio
