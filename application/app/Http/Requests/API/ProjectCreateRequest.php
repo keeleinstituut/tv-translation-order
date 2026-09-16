@@ -56,7 +56,7 @@ use OpenApi\Attributes as OA;
                 new OA\Property(property: 'comment', type: 'string', nullable: true),
                 new OA\Property(
                     property: 'deadline_at',
-                    description: 'Required when is_calendar_project is false or omitted.',
+                    description: 'Required unless is_calendar_project is true or the project type supports a start date.',
                     type: 'string',
                     format: 'date-time',
                     example: '2020-12-31T12:00:00Z',
@@ -86,7 +86,7 @@ use OpenApi\Attributes as OA;
                 ),
                 new OA\Property(
                     property: 'event_end_at',
-                    description: 'Required for calendar projects. Must be after event_start_at.',
+                    description: 'Required for calendar projects and for project types that support start date. Must be after event_start_at.',
                     type: 'string',
                     format: 'date-time',
                     example: '2020-12-31T14:00:00Z',
@@ -128,7 +128,7 @@ use OpenApi\Attributes as OA;
                 ),
                 new OA\Property(
                     property: 'service_type',
-                    description: 'Required for calendar projects.',
+                    description: 'Required for calendar projects and for project types that support start date.',
                     type: 'string',
                     enum: ['ON_SITE', 'REMOTE'],
                     nullable: true
@@ -191,13 +191,15 @@ class ProjectCreateRequest extends FormRequest
                 'nullable',
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
                 'bail',
-                Rule::requiredIf(fn () => $this->isCalendarProject()),
+                Rule::requiredIf(fn () => $this->isCalendarProject()
+                    || ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
             ],
             'event_end_at' => [
                 'nullable',
                 'date_format:Y-m-d\\TH:i:s\\Z',
                 'bail',
-                Rule::requiredIf(fn () => $this->isCalendarProject()),
+                Rule::requiredIf(fn () => $this->isCalendarProject()
+                    || ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
             ],
             'manager_institution_user_id' => [
                 'nullable',
@@ -216,7 +218,8 @@ class ProjectCreateRequest extends FormRequest
             'comment' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
             'deadline_at' => [
                 'date_format:Y-m-d\\TH:i:s\\Z', // only UTC (zero offset)
-                Rule::requiredIf(fn () => !$this->isCalendarProject()),
+                Rule::requiredIf(fn () => !$this->isCalendarProject()
+                    && !ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
             ],
             'translation_domain_classifier_value_id' => [
                 Rule::requiredIf(fn () => !$this->isCalendarProject()),
@@ -263,7 +266,8 @@ class ProjectCreateRequest extends FormRequest
             ],
             'service_type' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->isCalendarProject()),
+                Rule::requiredIf(fn () => $this->isCalendarProject()
+                    || ClassifierValue::isProjectTypeSupportingEventStartDate($this->input('type_classifier_value_id'))),
                 Rule::in(ServiceType::cases()),
             ],
             'location' => [
@@ -362,11 +366,9 @@ class ProjectCreateRequest extends FormRequest
                     }
                 }
 
-                if ($this->isCalendarProject()) {
-                    if (filled($eventStart = data_get($validated, 'event_start_at')) && filled($eventEnd = data_get($validated, 'event_end_at'))) {
-                        if ($eventEnd <= $eventStart) {
-                            $validator->errors()->add('event_end_at', 'Event end datetime must be after event start datetime.');
-                        }
+                if (filled($eventStart = data_get($validated, 'event_start_at')) && filled($eventEnd = data_get($validated, 'event_end_at'))) {
+                    if ($eventEnd <= $eventStart) {
+                        $validator->errors()->add('event_end_at', 'Event end datetime must be after event start datetime.');
                     }
                 }
 

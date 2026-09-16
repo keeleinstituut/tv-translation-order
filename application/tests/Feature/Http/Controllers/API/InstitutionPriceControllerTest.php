@@ -82,12 +82,18 @@ class InstitutionPriceControllerTest extends TestCase
         Institution::factory()->create(['id' => $institutionId]);
         $src = ClassifierValue::factory()->language()->create();
         $dst = ClassifierValue::factory()->language()->create();
+        $skillIds = Skill::query()->pluck('id');
+        if ($skillIds->count() < 2) {
+            $this->markTestSkipped('This test requires at least two skills.');
+        }
 
-        InstitutionPrice::factory(2)->create([
-            'institution_id' => $institutionId,
-            'src_lang_classifier_value_id' => $src->id,
-            'dst_lang_classifier_value_id' => $dst->id,
-        ]);
+        InstitutionPrice::factory(2)
+            ->sequence(fn ($sequence) => ['skill_id' => $skillIds[$sequence->index]])
+            ->create([
+                'institution_id' => $institutionId,
+                'src_lang_classifier_value_id' => $src->id,
+                'dst_lang_classifier_value_id' => $dst->id,
+            ]);
         InstitutionPrice::factory(3)->create(['institution_id' => $institutionId]);
 
         $accessToken = AuthHelpers::generateAccessToken([

@@ -2,12 +2,8 @@
 
 namespace App\Http\Requests\API;
 
-use App\Enums\ClassifierValueType;
-use App\Models\CachedEntities\ClassifierValue;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
 
 #[OA\RequestBody(
@@ -20,7 +16,6 @@ use OpenApi\Attributes as OA;
             new OA\Property(property: 'buffer_after_minutes', type: 'integer', example: 0),
             new OA\Property(property: 'verbal_auto_acceptance_threshold_days', type: 'integer', example: 7, nullable: true),
             new OA\Property(property: 'non_verbal_auto_acceptance_threshold_days', type: 'integer', example: 14, nullable: true),
-            new OA\Property(property: 'default_project_type_id', type: 'string', format: 'uuid'),
         ]
     )
 )]
@@ -37,23 +32,6 @@ class InstitutionSettingUpdateRequest extends FormRequest
             'buffer_after_minutes' => ['sometimes', 'integer', 'min:0'],
             'verbal_auto_acceptance_threshold_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:365'],
             'non_verbal_auto_acceptance_threshold_days' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:365'],
-            'default_project_type_id' => [
-                'sometimes',
-                'uuid',
-                Rule::exists(ClassifierValue::class, 'id')
-                    ->where('type', ClassifierValueType::ProjectType->value),
-            ],
-        ];
-    }
-
-    public function after(): array
-    {
-        return [
-            function (Validator $validator): void {
-                if ($this->has('default_project_type_id') && !ClassifierValue::isCalendarProjectType($this->input('default_project_type_id'))) {
-                    $validator->errors()->add('default_project_type_id', 'Ainult suulise tõlke tüübid on lubatud');
-                }
-            }
         ];
     }
 }

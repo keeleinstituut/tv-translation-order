@@ -29,6 +29,15 @@ class VolumePriceCalculator implements PriceCalculator
         return round($this->volume->unit_quantity * $this->getUnitFee(), 2);
     }
 
+    public function getPriceWithoutDiscount(): ?float
+    {
+        if (empty($this->getUnitFee())) {
+            return null;
+        }
+
+        return round($this->volume->unit_quantity * $this->getUnitFee(), 2);
+    }
+
     public function setDiscount(?VolumeAnalysisDiscount $discount): static
     {
         $this->discount = $discount;

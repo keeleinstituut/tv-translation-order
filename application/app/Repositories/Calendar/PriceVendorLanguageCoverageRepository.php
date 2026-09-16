@@ -56,7 +56,7 @@ readonly class PriceVendorLanguageCoverageRepository implements VendorLanguageCo
         ?string $languageId = null,
         ?bool $isInternal = null,
     ): Builder {
-        $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
+        $skillId = $this->calendarSettings->getDefaultCalendarSkillId();
 
         $query = Price::query()
             ->join('vendors as v', 'v.id', '=', 'prices.vendor_id')

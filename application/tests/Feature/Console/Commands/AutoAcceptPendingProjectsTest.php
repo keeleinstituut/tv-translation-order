@@ -12,6 +12,7 @@ use Database\Seeders\ClassifiersAndProjectTypesSeeder;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Tests\AuthHelpers;
 use Tests\TestCase;
 
 class AutoAcceptPendingProjectsTest extends TestCase
@@ -41,6 +42,7 @@ class AutoAcceptPendingProjectsTest extends TestCase
         // Http::fake() appends stubs; setUp's broad '/*' pattern would otherwise
         // match before the test-specific ones, returning the wrong response.
         Http::swap(new Factory());
+        AuthHelpers::fakeServiceValidationResponse();
     }
 
     public function test_auto_accepts_project_warned_over_a_day_ago(): void

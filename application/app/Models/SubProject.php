@@ -46,6 +46,7 @@ use Throwable;
  * @property string|null $active_job_definition_id
  * @property float|null $price
  * @property array|null $cat_metadata
+ * @property float|null $discount_amount
  * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
  * @property Carbon|null $deadline_at
@@ -98,6 +99,7 @@ class SubProject extends Model implements AuditLoggable
 
     protected $casts = [
         'price' => 'float',
+        'discount_amount' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
         'deadline_at' => 'datetime',

@@ -45,7 +45,6 @@ enum PrivilegeKey: string
     case ImportTranslationMemory = 'IMPORT_TM';
     case CreateTranslationMemory = 'CREATE_TM';
     case ExportTranslationMemory = 'EXPORT_TM';
-    case EditTranslationMemoryMetadata = 'EDIT_TM_METADATA';
     case EditTranslationMemory = 'EDIT_TM';
     case DeleteTranslationMemory = 'DELETE_TM';
     case ViewTranslationMemory = 'VIEW_TM';
@@ -59,6 +58,7 @@ enum PrivilegeKey: string
     case ViewOutsourceRequest = 'VIEW_OUTSOURCE_REQUEST';
     case RespondOutsourceRequest = 'RESPOND_OUTSOURCE_REQUEST';
     case ManageOutsourceRequest = 'MANAGE_OUTSOURCE_REQUEST';
+    case ViewStatistic = 'VIEW_STATISTIC';
 
     public static function values(): array
     {

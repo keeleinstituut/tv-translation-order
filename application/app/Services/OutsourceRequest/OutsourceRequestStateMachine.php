@@ -194,7 +194,9 @@ readonly class OutsourceRequestStateMachine
         $next->update([
             'status' => OutsourceOfferStatus::RequestSent,
             'notified_at' => now(),
-            'expires_at' => now()->addMinutes($request->reaction_time_minutes),
+            'expires_at' => $request->reaction_time_minutes !== null
+                ? now()->addMinutes($request->reaction_time_minutes)
+                : null,
         ]);
 
         ExpireOutsourceOfferJob::dispatch($next->id)

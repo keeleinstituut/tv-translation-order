@@ -56,7 +56,7 @@ readonly class VendorSkillLanguageCoverageRepository implements VendorLanguageCo
         ?string $languageId = null,
         ?bool $isInternal = null,
     ): Builder {
-        $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
+        $skillId = $this->calendarSettings->getDefaultCalendarSkillId();
 
         $query = VendorSkillLanguage::query()
             ->join('vendors as v', 'v.id', '=', 'vendor_skill_languages.vendor_id')

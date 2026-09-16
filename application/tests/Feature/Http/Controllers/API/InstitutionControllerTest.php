@@ -384,6 +384,90 @@ class InstitutionControllerTest extends TestCase
             ->assertJsonFragment(['id' => $previouslyPartner->id]);
     }
 
+    public function test_index_has_current_as_partner_filter_returns_only_owner_institutions(): void
+    {
+        // GIVEN
+        $caller = Institution::factory()->create();
+        $owner = Institution::factory()->create();
+        $reverseOnly = Institution::factory()->create();
+        $unrelated = Institution::factory()->create();
+
+        // owner registered the caller as its partner → owner can send offers to the caller
+        InstitutionPartner::factory()->create([
+            'institution_id' => $owner->id,
+            'partner_institution_id' => $caller->id,
+        ]);
+        // caller registered reverseOnly as its partner (opposite direction) → must NOT match
+        InstitutionPartner::factory()->create([
+            'institution_id' => $caller->id,
+            'partner_institution_id' => $reverseOnly->id,
+        ]);
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?has_current_institution_as_partner=1');
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $owner->id])
+            ->assertJsonMissing(['id' => $reverseOnly->id])
+            ->assertJsonMissing(['id' => $unrelated->id])
+            ->assertJsonMissing(['id' => $caller->id]);
+    }
+
+    public function test_index_has_current_as_partner_filter_ignores_soft_deleted_partner_rows(): void
+    {
+        // GIVEN — partner row exists but is soft-deleted, so the owner should not appear
+        $caller = Institution::factory()->create();
+        $owner = Institution::factory()->create();
+
+        $partner = InstitutionPartner::factory()->create([
+            'institution_id' => $owner->id,
+            'partner_institution_id' => $caller->id,
+        ]);
+        $partner->delete();
+
+        $accessToken = $this->tokenWithManageExternalPartner($caller->id);
+
+        // WHEN
+        $response = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?has_current_institution_as_partner=1');
+
+        // THEN
+        $response->assertOk()
+            ->assertJsonMissing(['id' => $owner->id]);
+    }
+
+    public function test_index_has_current_as_partner_filter_allows_offer_viewer_without_manage_partner(): void
+    {
+        // GIVEN — caller can respond to outsource offers but cannot manage external partners
+        $caller = Institution::factory()->create();
+        $owner = Institution::factory()->create();
+
+        InstitutionPartner::factory()->create([
+            'institution_id' => $owner->id,
+            'partner_institution_id' => $caller->id,
+        ]);
+
+        $accessToken = $this->tokenWithRespondOutsourceRequest($caller->id);
+
+        // WHEN — filtered call is authorized
+        $filtered = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions?has_current_institution_as_partner=1');
+
+        // THEN
+        $filtered->assertOk()->assertJsonFragment(['id' => $owner->id]);
+
+        // WHEN — the unfiltered global list still requires ManageExternalPartner
+        $unfiltered = $this->prepareAuthorizedRequest($accessToken)
+            ->getJson('/api/institutions');
+
+        // THEN
+        $unfiltered->assertForbidden();
+    }
+
     public function test_index_returns_403_without_manage_external_partner_privilege(): void
     {
         // GIVEN — caller has an unrelated privilege only
@@ -419,6 +503,14 @@ class InstitutionControllerTest extends TestCase
         return AuthHelpers::generateAccessToken([
             'selectedInstitution' => ['id' => $institutionId, 'name' => $institutionName],
             'privileges' => [PrivilegeKey::ManageExternalPartner->value],
+        ]);
+    }
+
+    private function tokenWithRespondOutsourceRequest(string $institutionId, string $institutionName = 'Test Institution'): string
+    {
+        return AuthHelpers::generateAccessToken([
+            'selectedInstitution' => ['id' => $institutionId, 'name' => $institutionName],
+            'privileges' => [PrivilegeKey::RespondOutsourceRequest->value],
         ]);
     }
 }

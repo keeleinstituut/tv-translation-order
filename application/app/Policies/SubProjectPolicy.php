@@ -67,6 +67,43 @@ class SubProjectPolicy
         return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
     }
 
+    /**
+     * Determine whether the user can update the model.
+     * partner access deliberately excluded
+     */
+    public function manageCatTool(AuthUser $user, SubProject $subProject): bool
+    {
+        return $user->isInSameInstitutionAsProject($subProject->project) &&
+            $user->hasPrivilege(PrivilegeKey::ManageProject);
+    }
+
+    public function viewCatToolJobs(AuthUser $user, SubProject $subProject): bool
+    {
+        return ($user->isInSameInstitutionAsProject($subProject->project) &&
+                $user->hasPrivilege(PrivilegeKey::ManageProject)) || (
+                $user->hasActivePartnerAccessToSubProject($subProject)
+            );
+    }
+
+
+    public function downloadXliff(AuthUser $user, SubProject $subProject): bool
+    {
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject) && $user->hasActivePartnerAccessToSubProject($subProject)) {
+            return true;
+        }
+
+        return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
+    }
+
+    public function downloadTranslations(AuthUser $user, SubProject $subProject): bool
+    {
+        if ($user->hasPrivilege(PrivilegeKey::ManageProject) && $user->hasActivePartnerAccessToSubProject($subProject)) {
+            return true;
+        }
+
+        return $this->hasManageProjectPrivilegeOrAssigned($user, $subProject);
+    }
+
     public function downloadMedia(AuthUser $user, SubProject $subProject): bool
     {
         if ($user->hasPrivilege(PrivilegeKey::ViewOutsourceRequest) &&

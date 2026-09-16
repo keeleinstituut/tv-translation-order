@@ -4,9 +4,11 @@ namespace App\Http\Requests\API;
 
 use App\Http\Requests\Helpers\MaxLengthValue;
 use App\Models\Assignment;
+use App\Models\CachedEntities\ClassifierValue;
 use App\Policies\AssignmentPolicy;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 use OpenApi\Attributes as OA;
 
@@ -34,8 +36,16 @@ class AssignmentUpdateRequest extends FormRequest
     {
         return [
             'comments' => ['nullable', 'string', 'max:'. MaxLengthValue::TEXT],
-            'deadline_at' => ['required', 'date_format:' . self::DATETIME_FORMAT],
-            'event_start_at' => ['sometimes', 'date_format:' . self::DATETIME_FORMAT],
+            'deadline_at' => [
+                Rule::requiredIf(fn () => !$this->isEventAssignment()),
+                'nullable',
+                'date_format:' . self::DATETIME_FORMAT,
+            ],
+            'event_start_at' => [
+                Rule::requiredIf(fn () => $this->isEventAssignment()),
+                'nullable',
+                'date_format:' . self::DATETIME_FORMAT,
+            ],
         ];
     }
 
@@ -54,7 +64,9 @@ class AssignmentUpdateRequest extends FormRequest
                     return;
                 }
 
-                if ($this->validated('deadline_at') > $assignment->subProject->deadline_at->format(self::DATETIME_FORMAT)) {
+                $subProjectDeadline = $assignment->subProject->deadline_at?->format(self::DATETIME_FORMAT);
+                if (filled($this->validated('deadline_at')) && filled($subProjectDeadline)
+                    && $this->validated('deadline_at') > $subProjectDeadline) {
                     $validator->errors()->add('deadline_at', 'Assignment deadline should be less or equal to the sub-project deadline');
                 }
 
@@ -65,5 +77,21 @@ class AssignmentUpdateRequest extends FormRequest
                 }
             }
         ];
+    }
+
+    private ?bool $isEventAssignmentCached = null;
+
+    private function isEventAssignment(): bool
+    {
+        if ($this->isEventAssignmentCached !== null) {
+            return $this->isEventAssignmentCached;
+        }
+
+        $assignment = Assignment::withGlobalScope('policy', AssignmentPolicy::scope())
+            ->find($this->route('id'));
+
+        return $this->isEventAssignmentCached = filled($assignment) && ClassifierValue::isProjectTypeSupportingEventStartDate(
+            $assignment->subProject->project->type_classifier_value_id
+        );
     }
 }

@@ -8,6 +8,7 @@ use App\Enums\PrivilegeKey;
 use App\Enums\ProjectStatus;
 use App\Enums\ServiceType;
 use App\Enums\SkillCode;
+use App\Enums\TaskType;
 use App\Models\CachedEntities\ClassifierValue;
 use App\Models\CachedEntities\Institution;
 use App\Models\CachedEntities\InstitutionUser;
@@ -54,7 +55,6 @@ class CalendarProjectControllerUpdateTest extends TestCase
             'reaction_time_minutes' => 30,
             'buffer_before_minutes' => 0,
             'buffer_after_minutes' => 0,
-            'default_project_type_id' => null,
         ]);
         $this->destinationLanguage = ClassifierValue::where('type', ClassifierValueType::Language)
             ->whereNot('value', 'et-EE')
@@ -301,13 +301,26 @@ class CalendarProjectControllerUpdateTest extends TestCase
 
     private function createVendorInInstitution(): Vendor
     {
+        $worktime = collect(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
+            ->flatMap(fn (string $day) => [
+                "{$day}_worktime_start" => '00:00:00',
+                "{$day}_worktime_end" => '23:59:59',
+            ])
+            ->put('worktime_timezone', 'UTC')
+            ->all();
+
         $institutionUser = InstitutionUser::factory()
             ->setInstitution(['id' => $this->institution->id, 'name' => $this->institution->name])
-            ->create();
+            ->create($worktime);
 
-        return Vendor::factory()->create([
+        $vendor = Vendor::factory()->create([
             'institution_user_id' => $institutionUser->id,
+            'company_name' => null,
         ]);
+
+        $this->createCalendarImport($vendor);
+
+        return $vendor;
     }
 
     private function createVendorWithCoverage(bool $internal = true): Vendor
@@ -461,6 +474,11 @@ class CalendarProjectControllerUpdateTest extends TestCase
                         [
                             'name' => 'assignment_id',
                             'value' => $assignment->id,
+                            'executionId' => $executionId,
+                        ],
+                        [
+                            'name' => 'task_type',
+                            'value' => TaskType::Default->value,
                             'executionId' => $executionId,
                         ],
                     ], 200);

@@ -234,3 +234,4 @@ Route::withoutMiddleware(['auth:api'])
     ->middleware('service-account-with-catto-authorization-role')
     ->get('/catto-authorization', [API\CattoAuthorizationController::class, 'check'])
     ->name('translation-order.catto_authorization.check');
+Route::get('/statistics', API\StatisticsController::class)->name('translation-order.statistics.index');

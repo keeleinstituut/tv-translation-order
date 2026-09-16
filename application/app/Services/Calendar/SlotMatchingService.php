@@ -201,7 +201,7 @@ readonly class SlotMatchingService
             excludeWithActiveEmergencySchedule: true,
         )->filter(fn(Vendor $v) => !$v->is_internal);
 
-        $skillId = $this->calendarSettings->getDefaultCalendarSkillId($institutionId);
+        $skillId = $this->calendarSettings->getDefaultCalendarSkillId();
 
         if ($externals->isEmpty()) {
             return $externals;

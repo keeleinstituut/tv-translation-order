@@ -2,7 +2,6 @@
 
 namespace App\Services\Prices;
 
-use App\Models\Assignment;
 use App\Models\SubProject;
 
 readonly class SubProjectPriceCalculator implements PriceCalculator
@@ -21,6 +20,22 @@ readonly class SubProjectPriceCalculator implements PriceCalculator
 
         if ($prices->search(null, true) === false) {
             return $prices->sum();
+        }
+
+        return null;
+    }
+
+
+    public function getDiscountAmount(): ?float
+    {
+        $amounts = $this->subProject->assignments()->pluck('discount_amount');
+
+        if ($amounts->isEmpty()) {
+            return null;
+        }
+
+        if ($amounts->search(null, true) === false) {
+            return $amounts->sum();
         }
 
         return null;

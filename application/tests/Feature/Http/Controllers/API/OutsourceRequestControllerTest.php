@@ -25,10 +25,13 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\AuthHelpers;
+use Tests\FakesRealFiles;
 use Tests\TestCase;
 
 class OutsourceRequestControllerTest extends TestCase
 {
+    use FakesRealFiles;
+
     // --- store ---
 
     public function test_owner_can_create_cascade_request(): void
@@ -58,7 +61,7 @@ class OutsourceRequestControllerTest extends TestCase
                 'include_source_files' => true,
                 'price' => 123.456,
                 'request_files' => [
-                    UploadedFile::fake()->createWithContent('source.docx', "PK\x03\x04" . str_repeat("\0", 22)),
+                    $this->fakeDocx('source.docx'),
                 ],
             ]);
 
@@ -198,7 +201,7 @@ class OutsourceRequestControllerTest extends TestCase
         $this->assertDatabaseMissing('outsource_requests', ['assignment_id' => $assignment->id]);
     }
 
-    public function test_create_request_requires_reaction_time_minutes(): void
+    public function test_create_cascade_request_requires_reaction_time_minutes(): void
     {
         // GIVEN
         $ownerUser = $this->createOwnerUser();
@@ -223,6 +226,49 @@ class OutsourceRequestControllerTest extends TestCase
             ->assertJsonValidationErrors('reaction_time_minutes');
         $tooLargeResponse->assertUnprocessable()
             ->assertJsonValidationErrors('reaction_time_minutes');
+    }
+
+    public function test_owner_can_create_parallel_request_without_reaction_time_minutes(): void
+    {
+        // GIVEN
+        Queue::fake();
+        $ownerUser = $this->createOwnerUser();
+        $partnerA = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $partnerB = $this->createPartnerUser(PrivilegeKey::ViewOutsourceRequest);
+        $assignment = $this->createAssignmentForOwner($ownerUser);
+        $this->createInstitutionPartner($ownerUser, $partnerA);
+        $this->createInstitutionPartner($ownerUser, $partnerB);
+
+        // WHEN
+        $response = $this->withHeaders(AuthHelpers::createHeadersForInstitutionUser($ownerUser))
+            ->postJson('/api/outsource-requests', [
+                'assignment_id' => $assignment->id,
+                'mode' => OutsourceRequestMode::Parallel->value,
+                'price_mode' => OutsourceRequestPriceMode::PriceListBased->value,
+                'offers' => [
+                    ['institution_id' => $partnerA->institution['id']],
+                    ['institution_id' => $partnerB->institution['id']],
+                ],
+            ]);
+
+        // THEN
+        $response->assertCreated();
+        $outsourceRequest = OutsourceRequest::query()
+            ->with('offers')
+            ->where('assignment_id', $assignment->id)
+            ->firstOrFail();
+        $offers = $outsourceRequest->offers()->orderBy('position')->get();
+
+        $this->assertSame(OutsourceRequestMode::Parallel, $outsourceRequest->mode);
+        $this->assertNull($outsourceRequest->reaction_time_minutes);
+        $this->assertNull($outsourceRequest->deadline_at);
+        $this->assertCount(2, $offers);
+        $offers->each(function (OutsourceOffer $offer): void {
+            $this->assertSame(OutsourceOfferStatus::RequestSent, $offer->status);
+            $this->assertNotNull($offer->notified_at);
+            $this->assertNull($offer->expires_at);
+        });
+        Queue::assertPushed(ExpireOutsourceOfferJob::class, 2);
     }
 
     public function test_create_request_rejects_duplicate_offers(): void
@@ -1111,12 +1157,12 @@ class OutsourceRequestControllerTest extends TestCase
         // THEN
         $response->assertOk();
         $this->assertSame(OutsourceRequestStatus::Cancelled, $translationRequest->fresh()->status);
-//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $pending->fresh()->status);
-//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
-//        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $rejected->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::OfferAccepted, $selected->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $selected->fresh()->status);
     }
 
     public function test_partner_cannot_cancel_request(): void

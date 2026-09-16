@@ -24,6 +24,7 @@ class InstitutionController extends Controller
             new OA\QueryParameter(name: 'name', schema: new OA\Schema(type: 'string', nullable: true)),
             new OA\QueryParameter(name: 'type', schema: new OA\Schema(type: 'string', enum: InstitutionType::class, nullable: true)),
             new OA\QueryParameter(name: 'not_partner_of_current_institution', schema: new OA\Schema(type: 'boolean', default: false, nullable: true)),
+            new OA\QueryParameter(name: 'has_current_institution_as_partner', schema: new OA\Schema(type: 'boolean', default: false, nullable: true)),
             new OA\QueryParameter(name: 'per_page', schema: new OA\Schema(type: 'number', default: 10, maximum: 50, nullable: true)),
             new OA\QueryParameter(name: 'sort_by', schema: new OA\Schema(type: 'string', default: 'name', enum: ['name'])),
             new OA\QueryParameter(name: 'sort_order', schema: new OA\Schema(type: 'string', default: 'asc', enum: ['asc', 'desc'])),
@@ -36,7 +37,10 @@ class InstitutionController extends Controller
      */
     public function index(InstitutionListRequest $request): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', Institution::class);
+        $this->authorize(
+            $request->boolean('has_current_institution_as_partner') ? 'viewRequestOwners' : 'viewAny',
+            Institution::class,
+        );
 
         $params = collect($request->validated());
         $query = Institution::query();
@@ -57,6 +61,17 @@ class InstitutionController extends Controller
                     'partnerOf',
                     fn (Builder $q) => $q->where('institution_id', $currentInstitutionId),
                 );
+        }
+
+        // Institutions that registered the current institution as their partner, i.e. the
+        // institutions that can own outsource offers sent to it. This is the opposite direction
+        // from not_partner_of_current_institution above (partners vs. partnerOf).
+        if ($request->boolean('has_current_institution_as_partner')) {
+            $currentInstitutionId = Auth::user()->institutionId;
+            $query->whereHas(
+                'partners',
+                fn (Builder $q) => $q->where('partner_institution_id', $currentInstitutionId),
+            );
         }
 
         $sortBy = $params->get('sort_by', 'name');

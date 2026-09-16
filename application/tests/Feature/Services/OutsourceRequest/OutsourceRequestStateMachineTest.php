@@ -287,6 +287,38 @@ class OutsourceRequestStateMachineTest extends TestCase
         );
     }
 
+    public function test_decline_offer_activates_next_cascade_offer_with_null_reaction_time_minutes(): void
+    {
+        // GIVEN
+        Queue::fake();
+        $stateMachine = app(OutsourceRequestStateMachine::class);
+        $request = $this->createCascadeRequest(['reaction_time_minutes' => null]);
+        $notified = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'position' => 1,
+            'status' => OutsourceOfferStatus::RequestSent,
+        ]);
+        $next = $this->createOffer([
+            'outsource_request_id' => $request->id,
+            'position' => 2,
+            'status' => OutsourceOfferStatus::RequestPending,
+            'expires_at' => null,
+        ]);
+
+        // WHEN
+        $stateMachine->declineOffer($notified, 'No capacity.');
+
+        // THEN
+        $next->refresh();
+        $this->assertSame(OutsourceOfferStatus::RequestSent, $next->status);
+        $this->assertNotNull($next->notified_at);
+        $this->assertNull($next->expires_at);
+        Queue::assertPushed(
+            ExpireOutsourceOfferJob::class,
+            fn (ExpireOutsourceOfferJob $job) => $job->recipientId === $next->id
+        );
+    }
+
     // --- expireOffer ---
 
     public function test_expire_offer_activates_next_cascade_offer_when_deadline_passed(): void
@@ -457,10 +489,10 @@ class OutsourceRequestStateMachineTest extends TestCase
 
         // THEN
         $this->assertSame(OutsourceRequestStatus::Cancelled, $request->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $pending->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestPending, $pending->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestCancelled, $notified->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::RequestCancelled, $accepted->fresh()->status);
-        $this->assertSame(OutsourceOfferStatus::RequestDeclined, $declined->fresh()->status);
+        $this->assertSame(OutsourceOfferStatus::RequestCancelled, $declined->fresh()->status);
         $this->assertSame(OutsourceOfferStatus::OfferDeclined, $offerDeclined->fresh()->status);
     }
 

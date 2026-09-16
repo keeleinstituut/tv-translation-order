@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use RuntimeException;
 
 /**
  * App\Models\CachedEntities\ClassifierValue
@@ -76,11 +77,22 @@ class ClassifierValue extends Model
             return false;
         }
 
-        $isProjectTypeSynchronousTranslation = ClassifierValue::where('id', $typeClassifierValueId)
+        return ClassifierValue::where('id', $typeClassifierValueId)
             ->where('type', ClassifierValueType::ProjectType)
-            ->where('value', ProjectTypeCode::SynchronousTranslation->value)
+            ->where('value', ProjectTypeCode::OralTranslation->value)
             ->exists();
+    }
 
-        return !$isProjectTypeSynchronousTranslation && self::isProjectTypeSupportingEventStartDate($typeClassifierValueId);
+    public static function getCalendarProjectType(): ClassifierValue
+    {
+        $projectType = ClassifierValue::where('type', ClassifierValueType::ProjectType)
+            ->where('value', ProjectTypeCode::OralTranslation->value)
+            ->first();
+
+        if (blank($projectType)) {
+            throw new RuntimeException('Failed to resolve calendar project type');
+        }
+
+        return $projectType;
     }
 }
