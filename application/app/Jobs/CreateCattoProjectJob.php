@@ -36,6 +36,7 @@ class CreateCattoProjectJob implements ShouldQueue
         $result = $cattoApiClient->createProject(
             $this->subProject->ext_id,
             $this->subProject->sourceLanguageClassifierValue->value,
+            $this->subProject->project->institution_id,
         );
 
         $this->subProject->cat_metadata = array_merge(

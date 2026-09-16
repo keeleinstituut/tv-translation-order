@@ -227,3 +227,10 @@ Route::prefix('/media')
     });
 
 Route::get('/redirect', [API\RedirectController::class, '__invoke']);
+
+// Inbound machine-to-machine endpoint for Catto to delegate authorization decisions
+// for its tv-translation-order-linked projects back to this service's real policy.
+Route::withoutMiddleware(['auth:api'])
+    ->middleware('service-account-with-catto-authorization-role')
+    ->get('/catto-authorization', [API\CattoAuthorizationController::class, 'check'])
+    ->name('translation-order.catto_authorization.check');

@@ -15,7 +15,7 @@ class CattoApiClient
     /**
      * @throws RequestException
      */
-    public function createProject(string $name, string $sourceLocale): array
+    public function createProject(string $name, string $sourceLocale, string $institutionId): array
     {
         return Http::withHeaders([
             'Authorization' => 'Bearer '.$this->jwtRetriever->getJwt(),
@@ -25,6 +25,7 @@ class CattoApiClient
             ->post('/projects', [
                 'name' => $name,
                 'source_locale' => $sourceLocale,
+                'tenant_id' => $institutionId,
             ])
             ->json('data');
     }

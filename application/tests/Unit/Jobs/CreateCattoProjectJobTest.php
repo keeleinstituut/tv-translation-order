@@ -31,6 +31,7 @@ class CreateCattoProjectJobTest extends TestCase
             return $request->url() === rtrim(config('catto.base_url'), '/').'/projects'
                 && $request['name'] === $subProject->ext_id
                 && $request['source_locale'] === 'en'
+                && $request['tenant_id'] === $subProject->project->institution_id
                 && $request->hasHeader('Authorization');
         });
 
