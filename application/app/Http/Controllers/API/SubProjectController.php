@@ -249,9 +249,7 @@ class SubProjectController extends Controller
             'assignments.candidates.vendor.institutionUser',
             'assignments.assignee.institutionUser',
             'assignments.volumes.institutionDiscount',
-            'assignments.catToolJobs',
             'assignments.jobDefinition',
-            'catToolJobs',
             'activeJobDefinition'
         ])->findOrFail($id);
 
@@ -431,7 +429,6 @@ class SubProjectController extends Controller
                 'candidates.vendor.institutionUser',
                 'assignee.institutionUser',
                 'volumes.institutionDiscount',
-                'catToolJobs',
                 'jobDefinition',
             ])->get();
 

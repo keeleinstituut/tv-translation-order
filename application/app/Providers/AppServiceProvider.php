@@ -2,13 +2,15 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsureJwtBelongsToServiceAccountWithCattoAuthorizationRole;
 use App\Repositories\Calendar\PriceVendorLanguageCoverageRepository;
 use App\Repositories\Calendar\VendorLanguageCoverageRepositoryInterface;
 use App\Services\Calendar\CalendarSettingsResolver;
-use App\Services\TranslationMemories\TvTranslationMemoryApiClient;
+use App\Services\CattoApiClient;
 use App\Sync\ApiClients\TvAuthorizationApiClient;
 use App\Sync\ApiClients\TvClassifierApiClient;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use KeycloakAuthGuard\Services\ServiceAccountJwtRetrieverInterface;
 
@@ -31,8 +33,8 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->bind(TvTranslationMemoryApiClient::class, function (Application $app) {
-            return new TvTranslationMemoryApiClient(
+        $this->app->bind(CattoApiClient::class, function (Application $app) {
+            return new CattoApiClient(
                 $app->make(ServiceAccountJwtRetrieverInterface::class)
             );
         });
@@ -50,6 +52,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Route::aliasMiddleware(
+            'service-account-with-catto-authorization-role',
+            EnsureJwtBelongsToServiceAccountWithCattoAuthorizationRole::class
+        );
     }
 }

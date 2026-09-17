@@ -88,7 +88,6 @@ use Throwable;
  * @property-read Collection<int, Candidate> $candidates
  * @property-read Collection<int, OutsourceOffer> $outsourceOffers
  * @property-read int|null $outsource_offers_count
- * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  * @property-read InstitutionUser|null $clientInstitutionUser
  * @property-read InstitutionUser|null $managerInstitutionUser
  *
@@ -130,7 +129,6 @@ use Throwable;
  * @property-read int|null $candidates_count
  * @property-read int|null $volumes_count
  * @property-read int|null $assignees_count
- * @property-read int|null $cat_tool_tm_keys_count
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereAcceptedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereCancellationComment($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Project whereCancellationReason($value)
@@ -297,14 +295,6 @@ class Project extends Model implements AuditLoggable, HasMedia
         return $this->hasManyDeepFromRelations(
             $this->assignments(),
             (new Assignment())->assignee()
-        );
-    }
-
-    public function catToolTmKeys(): HasManyDeep
-    {
-        return $this->hasManyDeepFromRelations(
-            $this->subProjects(),
-            (new SubProject())->catToolTmKeys()
         );
     }
 

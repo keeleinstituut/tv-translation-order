@@ -39,7 +39,6 @@ use Illuminate\Support\Collection;
  * @method static Builder|ProjectTypeConfig whereWorkflowProcessDefinitionId($value)
  * @method static Builder|ProjectTypeConfig whereIsStartDateSupported($value)
  * @property-read int|null $job_definitions_count
- * @method static Builder|ProjectTypeConfig whereCatToolEnabled($value)
  * @mixin Eloquent
  */
 class ProjectTypeConfig extends Model
@@ -53,6 +52,7 @@ class ProjectTypeConfig extends Model
 
     protected $casts = [
         'features' => 'array',
+        'cat_tool_enabled' => 'boolean',
     ];
 
     public function jobDefinitions(): HasMany

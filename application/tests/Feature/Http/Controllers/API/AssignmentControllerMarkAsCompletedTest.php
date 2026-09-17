@@ -47,7 +47,6 @@ class AssignmentControllerMarkAsCompletedTest extends TestCase
             'project_type_config_id' => $projectTypeConfig->id,
             'job_key' => JobKey::JOB_TRANSLATION,
             'multi_assignments_enabled' => false,
-            'linking_with_cat_tool_jobs_enabled' => false,
             'sequence' => 1,
         ]);
 

@@ -202,7 +202,6 @@ class NotifyThatProjectTimeslotPassedWithNoAssigneeTest extends TestCase
             'job_key' => $jobKey,
             'job_short_name' => $jobKey->value,
             'multi_assignments_enabled' => false,
-            'linking_with_cat_tool_jobs_enabled' => false,
             'sequence' => 1,
         ]);
 

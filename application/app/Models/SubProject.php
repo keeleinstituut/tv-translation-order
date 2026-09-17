@@ -5,8 +5,7 @@ namespace App\Models;
 use App\Enums\JobKey;
 use App\Enums\SubProjectStatus;
 use App\Models\CachedEntities\ClassifierValue;
-use App\Services\CatTools\CatPickerService;
-use App\Services\CatTools\Contracts\CatToolService;
+use App\Services\Prices\PriceCalculator;
 use App\Services\Prices\SubProjectPriceCalculator;
 use App\Services\Workflows\ProjectWorkflowProcessInstance;
 use App\Services\Workflows\SubProjectWorkflowProcessInstance;
@@ -45,8 +44,8 @@ use Throwable;
  * @property string|null $source_language_classifier_value_id
  * @property string|null $destination_language_classifier_value_id
  * @property string|null $active_job_definition_id
- * @property ArrayObject|null $cat_metadata
  * @property float|null $price
+ * @property array|null $cat_metadata
  * @property float|null $discount_amount
  * @property SubProjectStatus|null $status
  * @property Carbon|null $created_at
@@ -60,22 +59,18 @@ use Throwable;
  * @property-read ClassifierValue|null $sourceLanguageClassifierValue
  * @property-read Collection<int, Media> $sourceFiles
  * @property-read Collection<int, Media> $finalFiles
- * @property-read Collection<int, CatToolJob> $catToolJobs
- * @property-read Collection<int, CatToolTmKey> $catToolTmKeys
  * @property-read ClassifierValue|null $translationDomainClassifierValue
  *
  * @method static SubProjectFactory factory($count = null, $state = [])
  * @method static Builder|SubProject newModelQuery()
  * @method static Builder|SubProject newQuery()
  * @method static Builder|SubProject query()
- * @method static Builder|SubProject whereCatMetadata($value)
  * @method static Builder|SubProject whereCreatedAt($value)
  * @method static Builder|SubProject whereDestinationLanguageClassifierValueId($value)
  * @method static Builder|SubProject whereExtId($value)
  * @method static Builder|SubProject whereFileCollection($value)
  * @method static Builder|SubProject whereFileCollectionFinal($value)
  * @method static Builder|SubProject whereId($value)
- * @method static Builder|SubProject whereMatecatJobId($value)
  * @method static Builder|SubProject whereProjectId($value)
  * @method static Builder|SubProject whereSourceLanguageClassifierValueId($value)
  * @method static Builder|SubProject whereUpdatedAt($value)
@@ -83,8 +78,6 @@ use Throwable;
  * @method static Builder|SubProject hasAnyOfLanguageDirections(array[] $languageDirections)
  *
  * @property Carbon|null $deleted_at
- * @property-read int|null $cat_tool_jobs_count
- * @property-read int|null $cat_tool_tm_keys_count
  *
  * @method static Builder|SubProject onlyTrashed()
  * @method static Builder|SubProject whereDeadlineAt($value)
@@ -105,12 +98,12 @@ class SubProject extends Model implements AuditLoggable
     protected $guarded = [];
 
     protected $casts = [
-        'cat_metadata' => AsArrayObject::class,
         'price' => 'float',
         'discount_amount' => 'float',
         'status' => SubProjectStatus::class,
         'workflow_started' => 'boolean',
-        'deadline_at' => 'datetime'
+        'deadline_at' => 'datetime',
+        'cat_metadata' => 'array',
     ];
 
     public function project(): BelongsTo
@@ -176,16 +169,6 @@ class SubProject extends Model implements AuditLoggable
         return $this->hasMany(Assignment::class);
     }
 
-    public function catToolJobs(): HasMany
-    {
-        return $this->hasMany(CatToolJob::class)->orderBy('id');
-    }
-
-    public function catToolTmKeys(): HasMany
-    {
-        return $this->hasMany(CatToolTmKey::class);
-    }
-
     /** @throws Throwable */
     public function initAssignments(): void
     {
@@ -237,12 +220,7 @@ class SubProject extends Model implements AuditLoggable
         }
     }
 
-    public function cat(): CatToolService
-    {
-        return (new CatPickerService($this))->pick(CatPickerService::MATECAT);
-    }
-
-    public function getPriceCalculator(): SubProjectPriceCalculator
+    public function getPriceCalculator(): PriceCalculator
     {
         return new SubProjectPriceCalculator($this);
     }
@@ -283,8 +261,6 @@ class SubProject extends Model implements AuditLoggable
                 'sourceLanguageClassifierValue',
                 'sourceFiles',
                 'finalFiles',
-                'catToolJobs',
-                'catToolTmKeys',
                 'translationDomainClassifierValue',
             ])
             ->toArray();

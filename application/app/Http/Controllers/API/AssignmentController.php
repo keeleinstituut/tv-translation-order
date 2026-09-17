@@ -11,7 +11,6 @@ use App\Helpers\SubProjectTaskMarkedAsDoneEmailNotificationMessageComposer;
 use App\Http\Controllers\Controller;
 use App\Http\OpenApiHelpers as OAH;
 use App\Http\Requests\API\AssignmentAddCandidatesRequest;
-use App\Http\Requests\API\AssignmentCatToolJobBulkLinkRequest;
 use App\Http\Requests\API\AssignmentCreateRequest;
 use App\Http\Requests\API\AssignmentDeleteCandidateRequest;
 use App\Http\Requests\API\AssignmentUpdateAssigneeCommentRequest;
@@ -22,7 +21,6 @@ use App\Jobs\Workflows\AddCandidatesToWorkflow;
 use App\Jobs\Workflows\DeleteCandidatesFromWorkflow;
 use App\Jobs\Workflows\TrackSubProjectStatus;
 use App\Models\Assignment;
-use App\Models\AssignmentCatToolJob;
 use App\Models\Candidate;
 use App\Models\Media;
 use App\Models\VendorCalendarEntry;
@@ -77,7 +75,6 @@ class AssignmentController extends Controller
                 'candidates.vendor.institutionUser',
                 'assignee.institutionUser',
                 'volumes',
-                'catToolJobs',
                 'jobDefinition',
                 'subProject.sourceLanguageClassifierValue',
                 'subProject.destinationLanguageClassifierValue',
@@ -96,59 +93,6 @@ class AssignmentController extends Controller
         $this->authorize('view', $assignment);
 
         return AssignmentResource::make($assignment);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[OA\Post(
-        path: '/assignments/link-cat-tool-jobs',
-        summary: 'Create/delete relations between CAT tool jobs and assignments (XLIFF assignment tab). Please note that not passed relations will be removed.',
-        requestBody: new OAH\RequestBody(AssignmentCatToolJobBulkLinkRequest::class),
-        tags: ['Assignment management'],
-        responses: [new OAH\Forbidden, new OAH\Unauthorized, new OAH\Invalid]
-    )]
-    #[OAH\CollectionResponse(itemsRef: AssignmentResource::class, description: 'List of affected assignments', response: Response::HTTP_OK)]
-    public function linkToCatToolJobs(AssignmentCatToolJobBulkLinkRequest $request)
-    {
-        $this->authorize('update', $request->getSubProject());
-
-        return DB::transaction(function () use ($request) {
-            $affectedAssignmentIds = collect();
-            $assignmentsIndexedById = $request->getAssignments();
-
-            $this->auditLogPublisher->publishModifyObjectsAfterAction(
-                $assignmentsIndexedById,
-                function () use ($affectedAssignmentIds, $assignmentsIndexedById, $request) {
-                    if (filled($request->validated('linking'))) {
-                        collect($request->validated('linking'))->mapToGroups(function (array $item) {
-                            return [$item['assignment_id'] => $item['cat_tool_job_id']];
-                        })->each(function ($catToolJobsIds, string $assignmentId) use ($assignmentsIndexedById, $affectedAssignmentIds) {
-                            $assignment = $assignmentsIndexedById->get($assignmentId);
-                            $assignment->catToolJobs()->sync($catToolJobsIds);
-                            $affectedAssignmentIds->add($assignment->id);
-                        });
-                    }
-
-                    AssignmentCatToolJob::query()->whereHas('assignment', function (Builder $assignmentQuery) use ($request) {
-                        $assignmentQuery->where('sub_project_id', $request->validated('sub_project_id'))
-                            ->where('job_definition_id', $request->getJobDefinition()->id)
-                            ->when(
-                                filled($request->getAssignments()->keys()),
-                                fn(Builder $assignmentSubQuery) => $assignmentSubQuery->whereNotIn(
-                                    'id',
-                                    $request->getAssignments()->keys()
-                                )
-                            );
-                    })->each(function (AssignmentCatToolJob $assignmentCatToolJob) use ($affectedAssignmentIds) {
-                        $affectedAssignmentIds->add($assignmentCatToolJob->assignment_id);
-                        $assignmentCatToolJob->delete();
-                    });
-                }
-            );
-
-            return AssignmentResource::collection(self::getAssignmentsByIds($affectedAssignmentIds));
-        });
     }
 
     /**
@@ -185,7 +129,6 @@ class AssignmentController extends Controller
                 'candidates.vendor.institutionUser',
                 'assignee.institutionUser',
                 'volumes',
-                'catToolJobs',
                 'jobDefinition',
                 'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
                 'outsourceRequests.offers.institution',
@@ -229,7 +172,6 @@ class AssignmentController extends Controller
                 'candidates.vendor.institutionUser',
                 'assignee.institutionUser',
                 'volumes',
-                'catToolJobs',
                 'jobDefinition',
                 'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
                 'outsourceRequests.offers.institution',
@@ -580,7 +522,6 @@ class AssignmentController extends Controller
                 'candidates.vendor.institutionUser',
                 'assignee.institutionUser',
                 'volumes.institutionDiscount',
-                'catToolJobs',
                 'jobDefinition',
                 'outsourceRequests' => fn ($q) => $q->withGlobalScope('policy', OutsourceRequestPolicy::scope()),
                 'outsourceRequests.offers.institution',

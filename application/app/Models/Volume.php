@@ -4,8 +4,8 @@ namespace App\Models;
 
 use App\Enums\VolumeUnits;
 use App\Models\CachedEntities\Institution;
+use App\Models\Dto\VolumeAnalysis;
 use App\Models\Dto\VolumeAnalysisDiscount;
-use App\Services\CatTools\VolumeAnalysis;
 use App\Services\Prices\VolumePriceCalculator;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,7 +24,6 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  *
  * @property string $id
  * @property string $assignment_id
- * @property string|null $cat_tool_job_id
  * @property VolumeUnits $unit_type
  * @property float $unit_quantity
  * @property float $unit_fee
@@ -35,14 +34,12 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @property Carbon|null $deleted_at
  * @property-read Assignment $assignment
  * @property-read InstitutionDiscount $institutionDiscount
- * @property-read CatToolJob|null $catToolJob
  *
  * @method static Builder|Volume newModelQuery()
  * @method static Builder|Volume newQuery()
  * @method static Builder|Volume onlyTrashed()
  * @method static Builder|Volume query()
  * @method static Builder|Volume whereAssignmentId($value)
- * @method static Builder|Volume whereCatChunkIdentifier($value)
  * @method static Builder|Volume whereCreatedAt($value)
  * @method static Builder|Volume whereDeletedAt($value)
  * @method static Builder|Volume whereId($value)
@@ -52,8 +49,6 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @method static Builder|Volume whereUpdatedAt($value)
  * @method static Builder|Volume withTrashed()
  * @method static Builder|Volume withoutTrashed()
- * @method static Builder|Volume whereCatToolJobId($value)
- * @method static Builder|Volume whereCustomVolumeAnalysis($value)
  * @method static Builder|Volume whereDiscounts($value)
  *
  * @mixin Eloquent
@@ -71,8 +66,8 @@ class Volume extends Model
 
     protected $casts = [
         'unit_type' => VolumeUnits::class,
-        'custom_volume_analysis' => AsArrayObject::class,
         'discounts' => AsArrayObject::class,
+        'custom_volume_analysis' => AsArrayObject::class,
         'unit_fee' => 'decimal:3',
         'unit_quantity' => 'decimal:3',
     ];
@@ -80,11 +75,6 @@ class Volume extends Model
     public function assignment(): BelongsTo
     {
         return $this->belongsTo(Assignment::class, 'assignment_id');
-    }
-
-    public function catToolJob(): BelongsTo
-    {
-        return $this->belongsTo(CatToolJob::class, 'cat_tool_job_id');
     }
 
     public function institutionDiscount(): HasOneDeep
@@ -118,20 +108,17 @@ class Volume extends Model
         return new VolumeAnalysisDiscount($institutionDiscounts);
     }
 
-    public function getVolumeAnalysis(): ?VolumeAnalysis
-    {
-        if (empty($this->cat_tool_job_id)) {
-            return null;
-        }
-
-        return new VolumeAnalysis(array_merge(
-            (array) $this->catToolJob->volume_analysis,
-            (array) $this->custom_volume_analysis
-        ));
-    }
-
     public function getPriceCalculator(): VolumePriceCalculator
     {
         return new VolumePriceCalculator($this);
+    }
+
+    public function getVolumeAnalysis(): ?VolumeAnalysis
+    {
+        if (empty($this->custom_volume_analysis)) {
+            return null;
+        }
+
+        return new VolumeAnalysis((array) $this->custom_volume_analysis);
     }
 }

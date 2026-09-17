@@ -3,8 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Http\Controllers\API\AssignmentController;
-use App\Http\Controllers\API\CatToolController;
-use App\Http\Controllers\API\CatToolTmKeyController;
 use App\Http\Controllers\API\InstitutionDiscountController;
 use App\Http\Controllers\API\MediaController;
 use App\Http\Controllers\API\PriceController;
@@ -15,7 +13,6 @@ use App\Models\Assignment;
 use App\Models\InstitutionDiscount;
 use App\Models\Media;
 use App\Models\Project;
-use App\Models\SubProject;
 use App\Models\Vendor;
 use AuditLogClient\Enums\AuditLogEventFailureType;
 use AuditLogClient\Enums\AuditLogEventObjectType;
@@ -77,8 +74,6 @@ class PublishAuditLogFailureMessageIfRequired
         return match ($controller) {
             MediaController::class,
             ProjectController::class => static::resolveProjectEventTypeAndParameters($controller, $action),
-            CatToolController::class,
-            CatToolTmKeyController::class => static::resolveSubprojectEventTypeAndParameters($controller, $action),
             AssignmentController::class,
             VolumeController::class => static::resolveAssignmentEventTypeAndParameters($controller, $action),
             PriceController::class,
@@ -120,57 +115,9 @@ class PublishAuditLogFailureMessageIfRequired
     /**
      * @return null|array{ AuditLogEventType, ?array }
      */
-    public static function resolveSubprojectEventTypeAndParameters(string $controller, string $action): ?array
-    {
-        return match ([$controller, $action]) {
-            [CatToolController::class, 'setup'],
-            [CatToolController::class, 'split'],
-            [CatToolController::class, 'merge'],
-            [CatToolTmKeyController::class, 'sync'] => [AuditLogEventType::ModifyObject, [
-                'object_type' => AuditLogEventObjectType::Subproject->value,
-                'object_identity_subset' => SubProject::find(Request::input('sub_project_id'))?->getIdentitySubset(),
-                'input' => Request::input(),
-            ]],
-            [CatToolController::class, 'toggleMTEngine'] => [AuditLogEventType::ModifyObject, [
-                'object_type' => AuditLogEventObjectType::Subproject->value,
-                'object_identity_subset' => SubProject::find(Route::current()->parameter('sub_project_id'))?->getIdentitySubset(),
-                'input' => Request::input(),
-            ]],
-            [CatToolController::class, 'downloadXLIFFs'] => [AuditLogEventType::DownloadSubProjectXliffs, [
-                'object_type' => AuditLogEventObjectType::Subproject->value,
-                'input' => Request::input(),
-            ]],
-            [CatToolController::class, 'downloadTranslations'] => [AuditLogEventType::DownloadSubProjectTranslations, [
-                'object_type' => AuditLogEventObjectType::Subproject->value,
-                'input' => Request::input(),
-            ]],
-            [CatToolTmKeyController::class, 'toggleWritable'], => [AuditLogEventType::ModifyObject, [
-                'object_type' => AuditLogEventObjectType::Subproject->value,
-                'object_identity_subset' => SubProject::whereRelation('catToolTmKeys', 'id', Route::current()->parameter('id'))
-                    ->get()
-                    ->first()
-                    ?->getIdentitySubset(),
-                'input' => Request::input(),
-            ]],
-
-            default => null
-        };
-    }
-
-    /**
-     * @return null|array{ AuditLogEventType, ?array }
-     */
     public static function resolveAssignmentEventTypeAndParameters(string $controller, string $action): ?array
     {
         return match ([$controller, $action]) {
-            [AssignmentController::class, 'linkToCatToolJobs'], => [AuditLogEventType::ModifyObject, [
-                'object_type' => AuditLogEventObjectType::Assignment->value,
-                'object_identity_subsets' => Assignment::whereIn('id', Request::input('linking.*.assignment_id'))
-                    ->get()
-                    ->map(fn (Assignment $assignment) => $assignment->getIdentitySubset())
-                    ->all(),
-                'input' => Request::input(),
-            ]],
             [AssignmentController::class, 'store'], => [AuditLogEventType::CreateObject, [
                 'object_type' => AuditLogEventObjectType::Assignment->value,
                 'input' => Request::input(),
@@ -188,14 +135,12 @@ class PublishAuditLogFailureMessageIfRequired
                 'object_identity_subset' => Assignment::find(Route::current()->parameter('id'))?->getIdentitySubset(),
             ]],
 
-            [VolumeController::class, 'store'],
-            [VolumeController::class, 'storeCatToolVolume'] => [AuditLogEventType::ModifyObject, [
+            [VolumeController::class, 'store'] => [AuditLogEventType::ModifyObject, [
                 'object_type' => AuditLogEventObjectType::Assignment->value,
                 'object_identity_subset' => Assignment::find(Request::input('assignment_id'))?->getIdentitySubset(),
                 'input' => Request::input(),
             ]],
             [VolumeController::class, 'update'],
-            [VolumeController::class, 'updateCatToolVolume'],
             [VolumeController::class, 'destroy'] => [AuditLogEventType::ModifyObject, [
                 'object_type' => AuditLogEventObjectType::Assignment->value,
                 'object_identity_subset' => Assignment::whereRelation('volumes', 'id', Route::current()->parameter('id'))->get()->first()?->getIdentitySubset(),

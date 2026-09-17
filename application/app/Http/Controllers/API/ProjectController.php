@@ -821,7 +821,6 @@ class ProjectController extends Controller
             'sourceLanguageClassifierValue',
             'destinationLanguageClassifierValues',
             'assignees.institutionUser',
-            'catToolTmKeys',
             'volumes'
         ])->when(
             $params->get('status'),

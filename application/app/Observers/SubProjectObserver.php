@@ -6,6 +6,7 @@ use App\Enums\AssignmentStatus;
 use App\Enums\JobKey;
 use App\Enums\OutsourceRequestStatus;
 use App\Enums\SubProjectStatus;
+use App\Jobs\CreateCattoProjectJob;
 use App\Jobs\ProcessCandidatesNotificationCycle;
 use App\Models\Assignment;
 use App\Models\SubProject;
@@ -42,7 +43,9 @@ class SubProjectObserver
      */
     public function created(SubProject $subProject): void
     {
-        //
+        if ($subProject->projectTypeConfig?->cat_tool_enabled) {
+            CreateCattoProjectJob::dispatch($subProject)->afterCommit();
+        }
     }
 
     /**

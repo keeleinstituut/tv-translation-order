@@ -23,8 +23,6 @@ use OpenApi\Attributes as OA;
         'features',
         'source_language_classifier_value_id',
         'destination_language_classifier_value_id',
-        'cat_files',
-        'mt_enabled',
         'status'
     ],
     properties: [
@@ -45,11 +43,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'assignments', type: 'array', items: new OA\Items(ref: AssignmentResource::class), nullable: true),
         new OA\Property(property: 'source_files', type: 'array', items: new OA\Items(ref: MediaResource::class), nullable: true),
         new OA\Property(property: 'final_files', type: 'array', items: new OA\Items(ref: MediaResource::class), nullable: true),
-        new OA\Property(property: 'cat_files', type: 'array', items: new OA\Items(ref: MediaResource::class), nullable: true),
-        new OA\Property(property: 'cat_jobs', type: 'array', items: new OA\Items(ref: CatToolJobResource::class), nullable: true),
-        new OA\Property(property: 'cat_tm_keys', type: 'array', items: new OA\Items(ref: CatToolTmKeyResource::class), nullable: true),
         new OA\Property(property: 'active_job_definition', ref: JobDefinitionResource::class, nullable: true),
-        new OA\Property(property: 'mt_enabled', type: 'boolean'),
         new OA\Property(property: 'status', type: 'string', format: 'enum', enum: SubProjectStatus::class),
         new OA\Property(property: 'workflow_started', type: 'boolean'),
     ],
@@ -76,6 +70,7 @@ class SubProjectResource extends JsonResource
                 'updated_at',
                 'status',
                 'workflow_started',
+                'cat_metadata',
             ]),
             // 'features' logic was changed and currently not in use.
             'features' => [], //$this->project->typeClassifierValue->projectTypeConfig->features,
@@ -85,10 +80,7 @@ class SubProjectResource extends JsonResource
             'destination_language_classifier_value_id' => $this->destination_language_classifier_value_id,
             'destination_language_classifier_value' => ClassifierValueResource::make($this->whenLoaded('destinationLanguageClassifierValue')),
             'translation_domain_classifier_value' => ClassifierValueResource::make($this->whenLoaded('translationDomainClassifierValue')),
-            'cat_jobs' => CatToolJobResource::collection($this->whenLoaded('catToolJobs')),
-            'cat_tm_keys' => CatToolTmKeyResource::collection($this->whenLoaded('catToolTmKeys')),
             'active_job_definition' => JobDefinitionResource::make($this->whenLoaded('activeJobDefinition')),
-            'mt_enabled' => $this->cat()->hasMtEnabled(),
             $this->mergeWhen($isInSameInstitutionAsSubProject, [
                 'assignments' => AssignmentResource::collection($this->whenLoaded('assignments')),
                 'price' => $this->price,
@@ -112,7 +104,6 @@ class SubProjectResource extends JsonResource
                 || $user->hasSharedPartnerAccessToSubProject($this->resource, true),
                 [
                     'source_files' => MediaResource::collection($this->whenLoaded('sourceFiles')),
-                    'cat_files' => MediaResource::collection($this->cat()->getSourceFiles()),
                 ]
             ),
         ];
